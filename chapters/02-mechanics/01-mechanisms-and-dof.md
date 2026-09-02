@@ -28,6 +28,28 @@
 
 在 URDF 中，`link` 描述结构和惯性，`joint` 描述父子连杆、运动类型、轴线、范围和零位。G1 29 DoF 描述文件中的 `left_hip_pitch_joint`、`left_knee_joint` 等名称，就是这种“关节对象”的软件标识。[4]
 
+### 四连杆机构与死点
+
+算法同学给一个带连杆传动的关节发送匀速指令，输入轴还在转，输出端却在某个姿态附近几乎不动；再往前推，输出方向甚至可能突然反过来。此时如果只检查电机速度或软件限位，很容易误以为是控制器“卡住了”。
+
+四连杆机构（Four-bar Linkage）是由机架、输入杆、连杆和输出杆组成的闭合平面机构。四个转动副（Revolute Pair, 4R）把四个构件首尾连接起来，在理想平面模型中通常只剩 1 个独立自由度：给定输入杆角度，其他杆件的姿态由几何约束共同决定。[1][2][6]
+
+当输入杆、连杆和输出杆接近共线时，机构会进入死点（Dead Center）附近。此时输入运动对输出运动的传递能力显著下降，输入轴继续转动，输出端的有效位移可能非常小；越过死点后，输出运动方向还可能发生改变。工程上常把死点附近一段“输出响应很小、控制很困难的区域”称为死区（Dead Zone），但严格来说，死点是特定几何构型，死区是围绕该构型表现出来的有效工作范围或响应区域，两者不要混用。
+
+![四连杆机构的死点、输出速度退化与雅可比奇异](assets/images/05-four-bar-dead-center.png)
+
+图：左上对比正常传动角与接近共线的死点构型，左下展示输入角速度与输出角速度的变化，右侧连接到雅可比速度映射和条件数。该图是四连杆概念示意，不代表 G1 的真实内部机构。
+
+从机构角度看，死点与传动角（Transmission Angle）变差有关：有效传力方向趋于共线，驱动力矩难以转化为期望的输出运动。从算法角度看，同一个构型会使约束方程的雅可比矩阵（Jacobian）接近奇异（Singular），速度映射可能出现极大的关节速度或很小的末端速度，逆运动学和轨迹优化因此变得病态。[1][2][6]
+
+这会影响多个上下游环节：
+
+- 规划器需要避开死点附近的不可行姿态，或显式加入传动角、速度和力矩约束；
+- 逆运动学不能只检查关节位置限位，还要检查雅可比条件数和输出速度；
+- 控制器需要限制目标变化率，避免在死点附近用过大的电机指令“硬顶”；
+- 机械设计需要通过杆长、轴线和限位位置改善传力方向，而不是只提高电机额定力矩。
+
+
 ## 自由度到底是什么
 
 ### 自由度（Degree of Freedom, DoF）
@@ -122,3 +144,5 @@ G1 的无手 29 DoF 模型适合先学习下肢、腰部和双臂的整体运动
 [4] Unitree Robotics. *unitree_rl_gym: G1 robot description*. 本文使用的版本为 `276801e46c5d433564f24658bac64f254b7d2d4b`，用于核对 G1 模型变体、关节名称和 URDF/MJCF。<https://github.com/unitreerobotics/unitree_rl_gym/tree/276801e46c5d433564f24658bac64f254b7d2d4b/resources/robots/g1_description>
 
 [5] Unitree Robotics. *unitree_sdk2: Unitree robot SDK version 2*. 本文使用的版本为 `9754cd153af3da471b0fe5f3aa535e426fb11db3`，用于核对 G1 关节索引和 PR/AB 模式命名。<https://github.com/unitreerobotics/unitree_sdk2/blob/9754cd153af3da471b0fe5f3aa535e426fb11db3/example/g1/low_level/g1_ankle_swing_example.cpp>
+
+[6] Norton, R. L. *Design of Machinery: An Introduction to the Synthesis and Analysis of Mechanisms and Machines*, 6th ed. McGraw-Hill, 2020. 四连杆机构、传动角、死点和机构速度分析教材。
