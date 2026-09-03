@@ -38,6 +38,12 @@ Drake 的定位比 Pinocchio 更宽：多体动力学（MultibodyPlant）、接�
 
 两个库的分工：要一个快、轻、可嵌入实时循环的动力学计算内核，选 Pinocchio；要把动力学、约束、优化和控制设计放进一个研究原型，选 Drake。二者都以 URDF/SDF 建模，模型的核对纪律与仿真器导入相同。
 
+## MoveIt 2：ROS 2 里的运动规划框架
+
+MoveIt 2 把 4.7 节的规划问题做成了 ROS 2 生态中的现成框架：规划场景（Planning Scene）维护机器人模型与环境几何，规划器插件（以 OMPL 等采样规划器为主）负责求路径，运动学插件解 IK，碰撞检查基于 FCL，执行端通过 ros2_control 的轨迹接口下发。[6] 对 G1 而言，典型用法是按规划组（Planning Group）组织：左臂、右臂各一组，双臂一组，腰部可并入躯干组；末端规划和双臂协同（5.2 节）都有对应入口。
+
+MoveIt 2 的边界也要说清：它擅长手臂类的自由空间规划和碰撞规避，不做动态步行和全身平衡——那是 4.6 节 WBC 的领域。把 MoveIt 2 的规划输出接入 G1 时，时间参数化、速度限幅和 4.7 节的刷新纪律依然要由调用方保证。
+
 ![算法库与仿真器的边界及交叉验证](assets/images/04-g1-libraries-vs-simulator-cross-validation.png)
 
 图：以 G1 `g1_29dof` 无手、腰部可动模型为例，对比运动学/动力学库（URDF → Model/Data → FK、Jacobian、RNEA/CRBA/ABA、碰撞检查）与物理仿真器（MJCF → 仿真循环）的分工，以及 FK 位姿、重力项、雅可比、逆动力学四项交叉验证和约定排查清单。图中结构用于解释工具边界；接口名称与语义以各库版本为准。
@@ -53,3 +59,5 @@ Drake 的定位比 Pinocchio 更宽：多体动力学（MultibodyPlant）、接�
 [4] Featherstone, R. *Rigid Body Dynamics Algorithms*. Springer, 2008. RNEA、CRBA、ABA 三类算法的标准教材。
 
 [5] Unitree Robotics. *unitree_rl_gym: G1 robot description*. 官方 G1 URDF/MJCF 模型；本文使用提交 `276801e46c5d433564f24658bac64f254b7d2d4b`，作为库与仿真器交叉验证的统一模型来源。<https://github.com/unitreerobotics/unitree_rl_gym/tree/276801e46c5d433564f24658bac64f254b7d2d4b/resources/robots/g1_description>
+
+[6] MoveIt 团队. *moveit2: MoveIt for ROS 2*. 本文使用提交 `92f23839cc2efe00490bb5bb9f6df7dde96df35e`，用于核对 Planning Scene、规划器插件、碰撞检查与规划组接口。<https://github.com/moveit/moveit2/tree/92f23839cc2efe00490bb5bb9f6df7dde96df35e>
