@@ -1,0 +1,63 @@
+# 5.4 VLA 与高级 AI 推理模型
+
+## 先看一个现场问题
+
+对带手的 G1 说"把桌上的红杯子递给我"：VLA 模型确实输出了动作序列，手臂也动了，但抓向的是旁边的蓝杯子——语言指令理解对了，视觉目标却绑定错了。重做一次，这次人对了，可中途有人把杯子挪了位置，模型继续按记忆中的位置抓了一把空气。还有一个工程现象：模型每隔几百毫秒才输出一次动作，两次推理之间手臂明显一顿一顿。
+
+现场通常会这样问：
+
+> “模型明明'听懂了'，为什么做错了？VLA 的输出是怎么一步步变成关节运动的？两次推理之间的几百毫秒，机器人在干什么？”
+
+VLA（Vision-Language-Action）模型是一类多模态大模型：输入图像、语言指令和机器人状态，直接输出机器人动作。[1][2] 它把"看懂场景、听懂指令、决定动作"放进同一个模型；RT-1 [8]、RT-2 [1]、OpenVLA [2][3]、Octo [4]、π0 [6] 是这条路线上的代表工作。 本节关心三件事：它吃什么、吐出什么、输出怎么接上前面四章的控制栈。
+
+## VLA 的输入与输出
+
+### 输入：图像、语言与机器人状态
+
+典型 VLA 的输入包括：一路或多路相机图像（Vision）、自然语言任务指令（Language）、机器人本体状态（Proprioception，关节角、末端位姿、手部状态）。状态和图像必须带同一时间基准——把 200 ms 前的图像和当前关节角拼在一起喂给模型，等于让它看着过去决定现在。
+
+### 输出：动作 token、动作块与频率
+
+VLA 的输出是动作（Action），常见形态有：离散化的动作 token（把每个维度的动作量分成若干档，像语言模型生成词一样逐个生成）、连续动作向量回归，以及扩散/流匹配（Diffusion/Flow Matching）生成的一段动作。[2][6] 输出通常是一个动作块（Action Chunk）：一次推理给出未来若干步的动作序列，而不是单步动作，用以掩盖推理延迟。
+
+动作的内容对应 5.2 节的动作空间：末端位姿或位姿增量、关节动作、手指动作，或更上层的技能调用（Skill Call，例如"抓取""放置"原语）。动作维度由机器人形态决定——带手 G1 的动作向量包含双臂、腰部（若启用）和双手手指，换机器人或换手型就要换动作头或重新训练。
+
+### 训练数据
+
+VLA 训练在模仿学习的数据之上叠加语言标注：图像、语言指令、机器人状态、双臂/手部动作，以及成功标签和失败轨迹。大规模数据来自开源数据集（如 Open X-Embodiment 系）和遥操作采集（5.3 节，LeRobot 格式）。[5] 失败轨迹同样有训练价值：它们告诉模型哪些动作会导致什么后果，前提是标注中保留了"失败"这个事实。
+
+## VLA 的时序边界与责任边界
+
+### 推理是低频的
+
+VLA 的推理频率通常在 1–10 Hz 量级，远低于 4.7 节频率分层表里的 MPC/WBC 和关节控制层。两次推理之间的空档由两种机制填补：动作块按开环或半开环方式执行，或交给一个高频的低层策略/控制器接管。开头"手臂一顿一顿"，就是动作块之间没有平滑衔接或推理太慢的表现。
+
+### VLA 不承担毫秒级闭环
+
+这是本节最重要的边界：VLA 做任务理解和动作决策，不做实时控制。平衡（4.6 节）、接触力管理（4.5 节）、限幅与保护（3.6 节）都必须留在模型之外的确定性模块里。模型输出永远是"意图"，意图进入控制栈之前要过安全过滤：限幅、工作空间检查、碰撞检查、ZMP 可行性检查。把 VLA 输出直接接进电机级命令，等于把一个会幻觉的组件放进了毫秒级回路。
+
+### 长任务的分解
+
+“把杯子递给我”这类指令隐含一串子任务：找杯子、接近、抓取、抬起、移动、递出、松手。VLA 可以自己端到端输出，也可以由上层做任务分解（Task Decomposition）、VLA 或技能库逐个执行子任务。端到端简单但调试困难——失败时不知道错在理解、绑定还是执行；显式分解则能逐段观察成功率，工程上更可控。
+
+![G1 的 VLA 动作链路](assets/images/04-g1-vla-action-pipeline.png)
+
+图：以 G1 `g1_29dof_with_hand` 带手模型（三指灵巧手）[7] 执行"把红杯子递给我"任务为例，概览 VLA 模型的图像/语言/状态输入、动作块输出，以及动作经解码限幅、安全过滤、IK/全身控制到关节执行的频率分层链路，并标出抓错目标与状态过时两类典型失败。图中频率为典型量级示意；具体接口与配置以所使用模型和 SDK 版本为准。
+
+## 参考资料
+
+[1] Brohan, A., et al. “RT-2: Vision-Language-Action Models Transfer Web Knowledge to Robotic Control.” *CoRL*, 2023. VLA 路线的代表工作：动作 token 化与网络知识迁移。<https://arxiv.org/abs/2307.15818>
+
+[2] Kim, M. J., et al. “OpenVLA: An Open-Source Vision-Language-Action Model.” *arXiv*, 2024. 开源 VLA 模型，本文关于 VLA 输入输出形态的主要参考。<https://arxiv.org/abs/2406.09246>
+
+[3] OpenVLA 团队. *openvla: Open-source vision-language-action model*. 本文使用提交 `c8f03f48af692657d3060c19588038c7220e9af9`，用于核对 VLA 推理接口、动作 token 化与策略调用方式。<https://github.com/openvla/openvla/tree/c8f03f48af692657d3060c19588038c7220e9af9>
+
+[4] Octo Model Team. “Octo: An Open-Source Generalist Robot Policy.” *RSS*, 2024. 通用机器人策略与动作头设计。<https://arxiv.org/abs/2405.12213>
+
+[5] Hugging Face. *LeRobot: Making AI for Robotics More Accessible*. 本文使用提交 `fbb811fca92504439792b97d216f0d00c2268382`，用于核对数据集格式与遥操作采集流水线。<https://github.com/huggingface/lerobot/tree/fbb811fca92504439792b97d216f0d00c2268382>
+
+[6] Black, K., et al. “π0: A Vision-Language-Action Flow Model for General Robot Control.” *arXiv*, 2024. 流匹配动作生成与动作块输出。<https://arxiv.org/abs/2410.24164>
+
+[7] Unitree Robotics. *unitree_rl_gym: G1 robot description*. 官方 G1 URDF/MJCF 模型；本文使用提交 `276801e46c5d433564f24658bac64f254b7d2d4b`，用于核对 `g1_29dof_with_hand` 模型结构与手部关节。<https://github.com/unitreerobotics/unitree_rl_gym/tree/276801e46c5d433564f24658bac64f254b7d2d4b/resources/robots/g1_description>
+
+[8] Brohan, A., et al. “RT-1: Robotics Transformer for Real-World Control at Scale.” *RSS*, 2023. 大规模真实机器人数据训练的 Transformer 策略，VLA 路线的前身。<https://arxiv.org/abs/2212.06817>
