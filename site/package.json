@@ -1,0 +1,19 @@
+{
+  "name": "humanoid-robot-tutorial-site",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "sync": "node scripts/sync-content.mjs",
+    "dev": "npm run sync && astro dev",
+    "start": "npm run dev",
+    "build": "npm run sync && astro build",
+    "preview": "npm run sync && astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.42.0",
+    "astro": "^7.3.1",
+    "sharp": "^0.35.4"
+  }
+}
