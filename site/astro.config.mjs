@@ -7,7 +7,7 @@ export default defineConfig({
   base: '/A_Brief_Tutorial_of_Humanoid_Robot',
   integrations: [
     starlight({
-      title: '人形机器人入门手册',
+      title: '《“听懂”具身智能——以人形机器人为例》',
       locales: {
         root: {
           label: '简体中文',

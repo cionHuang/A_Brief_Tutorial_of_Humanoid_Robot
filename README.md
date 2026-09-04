@@ -1,6 +1,8 @@
-# 人形机器人入门手册
+# 《“听懂”具身智能——以人形机器人为例》
 
-> 用最通俗的语言和最短的时间，让你掌握所有“具身黑话”。
+> 每个抽象术语，在机器人身上都有具体的样子。
+>
+> *Embodied AI, Explained — Through a Humanoid Robot. Every buzzword, shown on a real humanoid.*
 
 ## 项目定位
 
