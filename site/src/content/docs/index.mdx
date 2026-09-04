@@ -6,10 +6,42 @@ hero:
   tagline: 每个抽象术语，在机器人身上都有具体的样子。Every buzzword, shown on a real humanoid.
   actions:
     - text: 开始阅读
-      link: /A_Brief_Tutorial_of_Humanoid_Robot/01-system-overview/01-what-is-humanoid-robot/
+      link: /A_Brief_Tutorial_of_Humanoid_Robot/01-system-overview/01-what-is-embodied-ai/
       icon: right-arrow
       variant: primary
     - text: 在 GitHub 上查看
       link: https://github.com/cionHuang/A_Brief_Tutorial_of_Humanoid_Robot
       icon: external
 ---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## 这本书解决什么问题
+
+机器人项目里，机械、嵌入式、算法、软件说的是四套语言。这本书把它们翻译成一套，每个术语都在一台真实的 G1 人形机器人上找到对应。
+
+## 三种读法
+
+<CardGrid>
+  <Card title="跨部门工程师" icon="magnifier">
+    按需查词。从你最不熟的那一章直接进，每节独立成篇，不用按顺序读。
+  </Card>
+  <Card title="在校学生" icon="open-book">
+    顺序通读。七章从整机到零件再到算法，读完你会有一张完整的系统地图和学习清单。
+  </Card>
+  <Card title="产品 / PR" icon="comment">
+    只读每节开头。"现场问题 + 黑话定义 + 配图"三部分，足够你听懂会议、写对文案。
+  </Card>
+</CardGrid>
+
+## 每一节的固定套路
+
+```text
+现场问题 → 黑话名称（中英对照）→ 人话解释 → 上下游影响 → G1 落地 → 参考资料
+```
+
+知道这个套路后，你可以直接跳到自己需要的部分：赶时间就只读前两块，要深入就顺着 G1 参数和参考资料往下挖。
+
+## 贯穿案例：Unitree G1
+
+全书用宇树 G1 人形机器人作为唯一贯穿案例。无手、锁腰、带手三个模型变体按场景切换，所有模型文件、SDK 消息字段和关节参数都来自宇树官方开源仓库，可以逐个核对来源。
