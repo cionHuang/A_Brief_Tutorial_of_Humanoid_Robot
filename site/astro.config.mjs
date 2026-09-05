@@ -33,6 +33,7 @@ export default defineConfig({
       ],
       tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
       pagination: true,
+      customCss: ['./src/styles/custom.css'],
     }),
   ],
 });

@@ -1,0 +1,25 @@
+/* 中文长文阅读优化：放大正文字号、放宽行高 */
+.sl-markdown-content {
+  font-size: 1.125rem; /* 18px，默认 16px 对中文偏小 */
+  line-height: 1.8;
+}
+
+/* 表格内容跟随正文，避免字号落差 */
+.sl-markdown-content table {
+  font-size: 1rem;
+}
+
+/* 代码块保持紧凑，不随正文放大 */
+.sl-markdown-content pre {
+  font-size: 0.9375rem;
+}
+
+/* 左侧目录：默认约 14px，放大到 16px */
+.sidebar-content :is(a, summary, .group-label, span) {
+  font-size: 1rem;
+}
+
+/* 右侧"本页内容"：默认约 13–14px，放大到 15px */
+.right-sidebar-panel :is(a, .toc-title) {
+  font-size: 0.9375rem;
+}
