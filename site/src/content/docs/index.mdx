@@ -14,7 +14,7 @@ hero:
       icon: external
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
 
 ## 这本书解决什么问题
 
@@ -23,15 +23,21 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 ## 三种读法
 
 <CardGrid>
-  <Card title="跨部门工程师" icon="magnifier">
-    按需查词。从你最不熟的那一章直接进，每节独立成篇，不用按顺序读。
-  </Card>
-  <Card title="在校学生" icon="open-book">
-    顺序通读。七章从整机到零件再到算法，读完你会有一张完整的系统地图和学习清单。
-  </Card>
-  <Card title="产品 / PR" icon="comment">
-    只读每节开头。"现场问题 + 黑话定义 + 配图"三部分，足够你听懂会议、写对文案。
-  </Card>
+  <LinkCard
+    title="跨部门工程师"
+    description="按需查词。对号入座你要协作的部门，按推荐阅读顺序补语言。"
+    href="/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/01-engineer-cross-team/"
+  />
+  <LinkCard
+    title="在校学生"
+    description="顺序通读。七章约 8–10 小时，附每节预计时间和前置知识。"
+    href="/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/02-student/"
+  />
+  <LinkCard
+    title="产品 / PR"
+    description="精选 15 节速通，只读前两屏，约 1 小时听懂技术会议。"
+    href="/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/03-product-pr/"
+  />
 </CardGrid>
 
 ## 每一节的固定套路

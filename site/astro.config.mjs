@@ -22,6 +22,7 @@ export default defineConfig({
         },
       ],
       sidebar: [
+        { label: '从这里开始', items: [{ autogenerate: { directory: '00-reading-guides' } }] },
         { label: '系统总览', items: [{ autogenerate: { directory: '01-system-overview' } }] },
         { label: '机械', items: [{ autogenerate: { directory: '02-mechanics' } }] },
         { label: '电气与嵌入式', items: [{ autogenerate: { directory: '03-electrical-embedded' } }] },
