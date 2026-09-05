@@ -1,0 +1,264 @@
+---
+/**
+ * 自由度（DoF）交互示意：一条腿的膝关节。
+ * 大腿固定，小腿绕膝关节屈曲；摆动的只有 θ 一个数字，
+ * 这就是“1 个自由度”的含义。
+ *
+ * 操作方式：图下方滑块。
+ * 膝关节活动范围 −5°~165° 取自 G1 的 URDF 模型文件；腿长比例为示意。
+ *
+ * 纯 SVG + 原生 JS，无外部依赖；样式跟随 Starlight 明暗主题。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import DofHingeDemo from '../../../components/DofHingeDemo.astro';
+ *   <DofHingeDemo />
+ */
+
+// 示意几何（SVG 视图坐标）。腿长比例为示意，非 G1 实际尺寸
+const HIP_X = 205;
+const HIP_Y = 82;
+const L1 = 100; // 大腿
+const L2 = 108; // 小腿
+---
+
+<figure class="dof-demo">
+  <svg viewBox="0 0 440 340" role="img" aria-label="膝关节示意图：拖动滑块或圆点改变膝关节角度">
+    <defs>
+      <marker id="dof-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="dof-arrow-head"></path>
+      </marker>
+    </defs>
+
+    <!-- 地面 -->
+    <line x1="60" y1="312" x2="380" y2="312" class="dof-ground"></line>
+
+    <!-- 固定的躯干与大腿 -->
+    <rect x={HIP_X - 28} y={HIP_Y - 58} width="56" height="58" rx="10" class="dof-torso"></rect>
+    <text x={HIP_X - 34} y={HIP_Y - 24} class="dof-label" text-anchor="end">躯干（固定）</text>
+    <line x1={HIP_X} y1={HIP_Y} x2={HIP_X} y2={HIP_Y + L1} class="dof-bone"></line>
+    <text x={HIP_X - 12} y={HIP_Y + L1 / 2} class="dof-label" text-anchor="end">大腿</text>
+
+    <!-- 膝关节：小腿绕此屈曲 θ -->
+    <g transform={`translate(${HIP_X} ${HIP_Y + L1})`}>
+      <g class="dof-shank">
+        <line x1="0" y1="0" x2="0" y2={L2} class="dof-bone dof-bone-shank"></line>
+        <line x1="0" y1={L2} x2="30" y2={L2} class="dof-foot"></line>
+        <text class="dof-label dof-shank-label" x={17} y={56}>小腿</text>
+        <circle cx="0" cy={L2} r="7" class="dof-ankle"></circle>
+      </g>
+      <path class="dof-arc" fill="none" marker-end="url(#dof-arrow)"></path>
+      <text class="dof-glyph">θ</text>
+      <g class="dof-pivot">
+        <circle r="7" class="dof-pivot-dot"></circle>
+        <circle r="2.5" class="dof-pivot-core"></circle>
+        <text class="dof-label dof-knee-label" x={-13} y={-10} text-anchor="end">膝关节</text>
+      </g>
+    </g>
+  </svg>
+
+  <p class="dof-hint">拖动滑块，改变膝关节角度</p>
+
+  <div class="dof-sliders">
+    <label class="dof-slider-row">
+      <span class="dof-slider-name">膝关节 θ</span>
+      <input type="range" class="dof-slider" min="-5" max="165" step="1" aria-label="膝关节角度">
+      <output class="dof-slider-value">55°</output>
+    </label>
+  </div>
+
+  <p class="dof-readout">
+    <span class="dof-angles"></span>
+    <strong class="dof-dof"></strong>
+  </p>
+
+  <figcaption>
+    只有一个膝关节时，用 θ 一个数字就能描述这条腿的姿势，即 1 DoF。
+    膝关节活动范围 −5°~165° 取自 G1 的 URDF 模型文件，G1 的膝关节正是这样一个 1 DoF 关节；腿长比例为示意。
+  </figcaption>
+</figure>
+
+<script>
+  // 角度约定：偏离竖直向下方向、向前为正，单位为度
+  const LIMITS = [-5, 165];
+  const RAD = Math.PI / 180;
+
+  document.querySelectorAll('.dof-demo').forEach((demo) => {
+    const shank = demo.querySelector('.dof-shank');
+    const shankLabel = demo.querySelector('.dof-shank-label');
+    const arc = demo.querySelector('.dof-arc');
+    const glyph = demo.querySelector('.dof-glyph');
+    const slider = demo.querySelector('.dof-slider');
+    const output = demo.querySelector('.dof-slider-value');
+    const anglesOut = demo.querySelector('.dof-angles');
+    const dofOut = demo.querySelector('.dof-dof');
+
+    let knee = 55;
+
+    const clamp = (v) => Math.min(LIMITS[1], Math.max(LIMITS[0], v));
+
+    // 以膝点为圆心、r 为半径，画从竖直向下方向转过 deg 的圆弧
+    const arcPath = (r, deg) => {
+      // 避免 0° 时出现零长度弧与残留箭头
+      if (Math.abs(deg) < 1) deg = deg < 0 ? -1 : 1;
+      const end = { x: r * Math.sin(deg * RAD), y: r * Math.cos(deg * RAD) };
+      const large = Math.abs(deg) > 180 ? 1 : 0;
+      // SVG y 轴向下：正角（屏幕右侧）用逆时针 sweep=0，负角用顺时针 sweep=1
+      const sweep = deg < 0 ? 1 : 0;
+      return `M 0 ${r} A ${r} ${r} 0 ${large} ${sweep} ${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
+    };
+
+    function render() {
+      shank.setAttribute('transform', `rotate(${knee})`);
+      // 组内文字反向旋转，保持水平（位置随小腿，字形不转）
+      shankLabel.setAttribute('transform', `rotate(${-knee} 17 56)`);
+      arc.setAttribute('d', arcPath(46, knee));
+      const half = (knee * RAD) / 2;
+      glyph.setAttribute('x', (62 * Math.sin(half)).toFixed(1));
+      glyph.setAttribute('y', (62 * Math.cos(half) + 5).toFixed(1));
+      slider.value = knee;
+      output.textContent = `${Math.round(knee)}°`;
+      anglesOut.textContent = `θ = ${Math.round(knee)}°`;
+      dofOut.textContent = '只用 θ 一个数字描述这条腿 → 1 DoF';
+    }
+
+    slider.addEventListener('input', () => {
+      knee = clamp(Number(slider.value));
+      render();
+    });
+
+    render();
+  });
+</script>
+
+<style>
+  .dof-demo {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+
+  /* ---- SVG 主体 ---- */
+  .dof-demo svg {
+    display: block;
+    margin: 0 auto;
+    max-width: 440px;
+    width: 100%;
+    height: auto;
+    user-select: none;
+  }
+  /* 所有文字加底色描边，保证压线时可读 */
+  .dof-demo svg text {
+    paint-order: stroke;
+    stroke: var(--sl-color-bg);
+    stroke-width: 4px;
+    stroke-linejoin: round;
+  }
+  .dof-ground {
+    stroke: var(--sl-color-gray-4);
+    stroke-width: 2;
+  }
+  .dof-torso {
+    fill: var(--sl-color-gray-6);
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 1.5;
+  }
+  .dof-bone {
+    stroke: var(--sl-color-gray-2);
+    stroke-width: 14;
+    stroke-linecap: round;
+  }
+  .dof-bone-shank {
+    stroke: var(--sl-color-accent);
+  }
+  .dof-foot {
+    stroke: var(--sl-color-gray-2);
+    stroke-width: 10;
+    stroke-linecap: round;
+  }
+  .dof-pivot-dot {
+    fill: var(--sl-color-bg);
+    stroke: var(--sl-color-text);
+    stroke-width: 2;
+  }
+  .dof-pivot-core {
+    fill: var(--sl-color-text);
+  }
+  .dof-ankle {
+    fill: var(--sl-color-bg);
+    stroke: var(--sl-color-accent);
+    stroke-width: 2.5;
+  }
+  .dof-arc {
+    stroke: var(--sl-color-accent-high);
+    stroke-width: 2;
+  }
+  .dof-arrow-head {
+    fill: var(--sl-color-accent-high);
+  }
+  .dof-label {
+    fill: var(--sl-color-text);
+    font-size: 14px;
+  }
+  .dof-glyph {
+    fill: var(--sl-color-accent-high);
+    font-size: 17px;
+    font-weight: 700;
+    font-style: italic;
+    text-anchor: middle;
+  }
+
+  /* ---- 操作区 ---- */
+  .dof-hint {
+    margin: 0.4rem 0 0.2rem;
+    font-size: 0.8125rem;
+    color: var(--sl-color-gray-3);
+  }
+  .dof-sliders {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-width: 340px;
+    margin: 0 auto;
+  }
+  .dof-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.875rem;
+  }
+  .dof-slider-name {
+    flex: 0 0 5.5em;
+    text-align: right;
+    color: var(--sl-color-gray-2);
+  }
+  .dof-slider-row input[type='range'] {
+    flex: 1;
+    accent-color: var(--sl-color-accent);
+    cursor: pointer;
+  }
+  .dof-slider-value {
+    flex: 0 0 3em;
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+    color: var(--sl-color-text);
+  }
+
+  /* ---- 读出条 ---- */
+  .dof-readout {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: baseline;
+    gap: 0.25rem 1rem;
+    margin: 0.6rem 0 0;
+    font-size: 0.9375rem;
+  }
+  .dof-dof {
+    color: var(--sl-color-accent-high);
+  }
+
+  .dof-demo figcaption {
+    margin-top: 0.6rem;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-2);
+  }
+</style>

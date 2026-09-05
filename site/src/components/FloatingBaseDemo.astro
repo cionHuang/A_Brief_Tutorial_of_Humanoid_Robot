@@ -1,0 +1,474 @@
+---
+/**
+ * 浮动基座（Floating Base）交互示意：等轴测视角。
+ *
+ * 画面要素：
+ * - 世界坐标系 W 固定在地面，骨盆坐标系 P 挂在机器人身体上；
+ * - 两个滑块驱动真实运动学：躯干绕踝俯仰（旋转自由度）、下蹲（平移自由度），
+ *   P 系随身体移动，W 系纹丝不动；
+ * - 左上角固定基座机械臂对照小图。
+ *
+ * 轴约定：x 向前、y 向左、z 向上；轴色为通用 RGB 惯例（与 RViz/Isaac 一致）。
+ * 腿长与身高为示意比例。纯 SVG + 原生 JS，无外部依赖。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import FloatingBaseDemo from '../../../components/FloatingBaseDemo.astro';
+ *   <FloatingBaseDemo />
+ */
+
+const PITCH_MIN = -15;
+const PITCH_MAX = 15;
+---
+
+<figure class="fb-demo">
+  <svg viewBox="0 0 480 412" role="img" aria-label="浮动基座示意：等轴测视角下，骨盆坐标系随身体俯仰和下蹲而变化，世界坐标系固定在地面">
+    <defs>
+      <marker id="fb-ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" fill="#e5484d"></path>
+      </marker>
+      <marker id="fb-ag" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" fill="#46a758"></path>
+      </marker>
+      <marker id="fb-ab" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" fill="#3e63dd"></path>
+      </marker>
+    </defs>
+
+    <!-- 固定基座对照小图（纯 2D 静态） -->
+    <g class="fb-inset">
+      <text x="26" y="30" class="fb-inset-title">固定基座（对照）</text>
+      <line x1="28" y1="104" x2="178" y2="104" class="fb-inset-ground"></line>
+      <line x1="60" y1="110" x2="52" y2="118" class="fb-inset-ground"></line>
+      <line x1="78" y1="110" x2="70" y2="118" class="fb-inset-ground"></line>
+      <line x1="96" y1="110" x2="88" y2="118" class="fb-inset-ground"></line>
+      <rect x="70" y="92" width="32" height="12" rx="2" class="fb-box-top"></rect>
+      <line x1="86" y1="92" x2="121" y2="56" class="fb-inset-arm"></line>
+      <line x1="121" y1="56" x2="150" y2="74" class="fb-inset-arm"></line>
+      <circle cx="86" cy="92" r="4" class="fb-inset-joint"></circle>
+      <circle cx="121" cy="56" r="4" class="fb-inset-joint"></circle>
+      <line x1="86" y1="92" x2="86" y2="62" class="fb-axis" stroke="#3e63dd" marker-end="url(#fb-ab)"></line>
+      <line x1="86" y1="92" x2="112" y2="92" class="fb-axis" stroke="#e5484d" marker-end="url(#fb-ar)"></line>
+      <text x="116" y="96" class="fb-axis-label" fill="#e5484d">x</text>
+      <text x="78" y="58" class="fb-axis-label" fill="#3e63dd">z</text>
+      <text x="26" y="140" class="fb-inset-caption">机械臂基座钉在地面，位姿已知且不变</text>
+    </g>
+
+    <!-- 地面（等轴测菱形 + 网格，JS 初始化） -->
+    <polygon class="fb-ground" id="fbGround"></polygon>
+    <g id="fbGrid" class="fb-grid"></g>
+
+    <!-- 世界坐标系 W（初始化后固定不动） -->
+    <g id="fbWorld">
+      <line class="fb-axis" stroke="#e5484d" marker-end="url(#fb-ar)"></line>
+      <line class="fb-axis" stroke="#46a758" marker-end="url(#fb-ag)"></line>
+      <line class="fb-axis" stroke="#3e63dd" marker-end="url(#fb-ab)"></line>
+      <text class="fb-axis-label" fill="#e5484d">x</text>
+      <text class="fb-axis-label" fill="#46a758">y</text>
+      <text class="fb-axis-label" fill="#3e63dd">z</text>
+      <text class="fb-frame-label">W（世界）</text>
+    </g>
+
+    <!-- 机器人：脚固定，腿与身体随滑块运动 -->
+    <g id="fbRobot">
+      <polygon class="fb-face fb-face-top" id="fbFootLT"></polygon>
+      <polygon class="fb-face fb-face-x" id="fbFootLX"></polygon>
+      <polygon class="fb-face fb-face-y" id="fbFootLY"></polygon>
+      <polygon class="fb-face fb-face-top" id="fbFootRT"></polygon>
+      <polygon class="fb-face fb-face-x" id="fbFootRX"></polygon>
+      <polygon class="fb-face fb-face-y" id="fbFootRY"></polygon>
+      <polyline class="fb-leg" id="fbLegL"></polyline>
+      <polyline class="fb-leg" id="fbLegR"></polyline>
+      <polygon class="fb-face fb-face-top" id="fbPelvisT"></polygon>
+      <polygon class="fb-face fb-face-x" id="fbPelvisX"></polygon>
+      <polygon class="fb-face fb-face-y" id="fbPelvisY"></polygon>
+      <polygon class="fb-face fb-face-top" id="fbTorsoT"></polygon>
+      <polygon class="fb-face fb-face-x" id="fbTorsoX"></polygon>
+      <polygon class="fb-face fb-face-y" id="fbTorsoY"></polygon>
+      <polygon class="fb-face fb-face-top" id="fbHeadT"></polygon>
+      <polygon class="fb-face fb-face-x" id="fbHeadX"></polygon>
+      <polygon class="fb-face fb-face-y" id="fbHeadY"></polygon>
+      <!-- 骨盆系 P 在地面投影的铅垂线 -->
+      <line id="fbPlumb" class="fb-plumb"></line>
+      <circle id="fbPlumbDot" r="3" class="fb-plumb-dot"></circle>
+    </g>
+
+    <!-- 骨盆坐标系 P（随身体运动） -->
+    <g id="fbPelvis">
+      <line class="fb-axis" stroke="#e5484d" marker-end="url(#fb-ar)"></line>
+      <line class="fb-axis" stroke="#46a758" marker-end="url(#fb-ag)"></line>
+      <line class="fb-axis" stroke="#3e63dd" marker-end="url(#fb-ab)"></line>
+      <text class="fb-axis-label" fill="#e5484d">x</text>
+      <text class="fb-axis-label" fill="#46a758">y</text>
+      <text class="fb-axis-label" fill="#3e63dd">z</text>
+      <text class="fb-frame-label">P（骨盆）</text>
+    </g>
+  </svg>
+
+  <p class="fb-hint">拖动滑块，观察骨盆坐标系 P 相对世界坐标系 W 的变化</p>
+
+  <div class="fb-sliders">
+    <label class="fb-slider-row">
+      <span class="fb-slider-name">躯干俯仰 θ</span>
+      <input type="range" class="fb-slider-pitch" min={PITCH_MIN} max={PITCH_MAX} step="1" aria-label="躯干俯仰角">
+      <output class="fb-slider-value fb-output-pitch">8°</output>
+    </label>
+    <label class="fb-slider-row">
+      <span class="fb-slider-name">下蹲幅度</span>
+      <input type="range" class="fb-slider-crouch" min="0" max="100" step="1" aria-label="下蹲幅度">
+      <output class="fb-slider-value fb-output-crouch">35%</output>
+    </label>
+  </div>
+
+  <p class="fb-readout">
+    <span class="fb-poses"></span>
+    <strong class="fb-dof"></strong>
+  </p>
+
+  <figcaption>
+    等轴测视角：x 向前、y 向左、z 向上。W 固定在地面，P 系在骨盆上、随身体移动和倾斜；
+    腿长与身高为示意比例。机械臂基座位姿已知且不变，人形机器人的基座"浮"在空中，
+    它的位姿无法由关节编码器测得，必须靠状态估计实时求得。
+  </figcaption>
+</figure>
+
+<script>
+  // 等轴测投影：x 向前（屏右下），y 向左（屏左下），z 向上
+  const SCALE = 85;
+  const OX = 252;
+  const OY = 280;
+  const COS = Math.cos(Math.PI / 6);
+  const SIN = 0.5;
+  const RAD = Math.PI / 180;
+
+  const px = (x, y, z) => [OX + (x - y) * COS * SCALE, OY + (x + y) * SIN * SCALE - z * SCALE];
+  const pts = (corners) => corners.map((c) => px(c[0], c[1], c[2]).map((v) => v.toFixed(1)).join(',')).join(' ');
+
+  document.querySelectorAll('.fb-demo').forEach((demo) => {
+    const $ = (sel) => demo.querySelector(sel);
+
+    // ---- 地面（初始化一次） ----
+    const G = 1.3;
+    $('#fbGround').setAttribute('points', pts([[-G, -G, 0], [G, -G, 0], [G, G, 0], [-G, G, 0]]));
+    const grid = $('#fbGrid');
+    for (const g of [-0.65, 0, 0.65]) {
+      for (const [a, b] of [
+        [
+          [g, -G, 0],
+          [g, G, 0],
+        ],
+        [
+          [-G, g, 0],
+          [G, g, 0],
+        ],
+      ]) {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        const [x1, y1] = px(a[0], a[1], a[2]);
+        const [x2, y2] = px(b[0], b[1], b[2]);
+        line.setAttribute('x1', x1);
+        line.setAttribute('y1', y1);
+        line.setAttribute('x2', x2);
+        line.setAttribute('y2', y2);
+        grid.appendChild(line);
+      }
+    }
+
+    // 画一个三维坐标系：原点 + 俯仰角（th=0 表示与世界对齐）
+    const setTriad = (group, ox, oy, oz, th) => {
+      const ct = Math.cos(th);
+      const st = Math.sin(th);
+      const axes = [
+        [ct, 0, -st],
+        [0, 1, 0],
+        [st, 0, ct],
+      ];
+      const lines = group.querySelectorAll('line');
+      const labels = group.querySelectorAll('.fb-axis-label');
+      const [oxs, oys] = px(ox, oy, oz);
+      axes.forEach((ax, i) => {
+        const [tx, ty] = px(ox + ax[0] * 0.26, oy + ax[1] * 0.26, oz + ax[2] * 0.26);
+        lines[i].setAttribute('x1', oxs);
+        lines[i].setAttribute('y1', oys);
+        lines[i].setAttribute('x2', tx);
+        lines[i].setAttribute('y2', ty);
+        labels[i].setAttribute('x', tx + 6);
+        labels[i].setAttribute('y', ty - 3);
+      });
+      const frameLabel = group.querySelector('.fb-frame-label');
+      frameLabel.setAttribute('x', oxs - 6);
+      frameLabel.setAttribute('y', oys + 16);
+    };
+    // 世界系 W：固定在地面，之后不再动
+    setTriad($('#fbWorld'), -0.85, 0.55, 0, 0);
+
+    // ---- 机器人（随滑块渲染） ----
+    const faces = (base) => ({
+      top: $(`#${base}T`),
+      x: $(`#${base}X`),
+      y: $(`#${base}Y`),
+    });
+    const boxList = {
+      footL: faces('fbFootL'),
+      footR: faces('fbFootR'),
+      pelvis: faces('fbPelvis'),
+      torso: faces('fbTorso'),
+      head: faces('fbHead'),
+    };
+
+    // 画一个轴测长方体：中心、三边长、俯仰角，写三个可见面（+x、+y、+z）
+    const drawBox = (box, cx, cy, cz, sx, sy, sz, th) => {
+      const ct = Math.cos(th);
+      const st = Math.sin(th);
+      const ex = [ct, 0, -st];
+      const ey = [0, 1, 0];
+      const ez = [st, 0, ct];
+      const corner = (i, j, k) => [
+        cx + (i * sx * ex[0] + j * sy * ey[0] + k * sz * ez[0]) / 2,
+        cy + (i * sx * ex[1] + j * sy * ey[1] + k * sz * ez[1]) / 2,
+        cz + (i * sx * ex[2] + j * sy * ey[2] + k * sz * ez[2]) / 2,
+      ];
+      box.top.setAttribute('points', pts([corner(-1, -1, 1), corner(1, -1, 1), corner(1, 1, 1), corner(-1, 1, 1)]));
+      box.x.setAttribute('points', pts([corner(1, -1, -1), corner(1, 1, -1), corner(1, 1, 1), corner(1, -1, 1)]));
+      box.y.setAttribute('points', pts([corner(-1, 1, -1), corner(-1, 1, 1), corner(1, 1, 1), corner(1, 1, -1)]));
+    };
+
+    const legL = $('#fbLegL');
+    const legR = $('#fbLegR');
+    const plumb = $('#fbPlumb');
+    const plumbDot = $('#fbPlumbDot');
+    const pelvisTriad = $('#fbPelvis');
+    const sliderPitch = $('.fb-slider-pitch');
+    const sliderCrouch = $('.fb-slider-crouch');
+    const outputPitch = $('.fb-output-pitch');
+    const outputCrouch = $('.fb-output-crouch');
+    const posesOut = $('.fb-poses');
+    const dofOut = $('.fb-dof');
+
+    const state = { pitch: 8, crouch: 35 };
+
+    function render() {
+      const th = state.pitch * RAD;
+      const t = state.crouch / 100;
+      const h = 0.56 - 0.18 * t; // 站立髋高 0.56 m，全蹲 0.38 m（示意）
+      const kx = 0.24 * t;
+      const kz = h * 0.45;
+      const ct = Math.cos(th);
+      const st = Math.sin(th);
+      const rot = (x, z) => [x * ct + z * st, -x * st + z * ct];
+
+      // 双腿：踝固定，膝与髋绕踝转动
+      [
+        [legL, -0.09],
+        [legR, 0.09],
+      ].forEach(([leg, sy]) => {
+        const [hx, hz] = rot(0, h);
+        const [cx2, cz2] = rot(kx, kz);
+        leg.setAttribute(
+          'points',
+          pts([
+            [0.01, sy, 0.05],
+            [cx2, sy, cz2],
+            [hx, sy, hz],
+          ]),
+        );
+      });
+
+      // 身体各段：脚钉在地面，骨盆/躯干/头的中心随俯仰转动
+      drawBox(boxList.footL, 0.05, -0.09, 0.04, 0.22, 0.11, 0.08, 0);
+      drawBox(boxList.footR, 0.05, 0.09, 0.04, 0.22, 0.11, 0.08, 0);
+      const [pcx, pcz] = rot(0, h + 0.02);
+      drawBox(boxList.pelvis, pcx, 0, pcz, 0.26, 0.2, 0.1, th);
+      const [txc, tzc] = rot(0, h + 0.225);
+      drawBox(boxList.torso, txc, 0, tzc, 0.3, 0.22, 0.31, th);
+      const [hxc, hzc] = rot(0, h + 0.455);
+      drawBox(boxList.head, hxc, 0, hzc, 0.15, 0.15, 0.15, th);
+
+      // 骨盆系 P 与铅垂线（P 在地面上的投影）
+      setTriad(pelvisTriad, pcx, 0, pcz, th);
+      const [gx, gy] = px(pcx, 0, 0);
+      const [tx2, ty2] = px(pcx, 0, pcz);
+      plumb.setAttribute('x1', gx);
+      plumb.setAttribute('y1', gy);
+      plumb.setAttribute('x2', tx2);
+      plumb.setAttribute('y2', ty2);
+      plumbDot.setAttribute('cx', gx);
+      plumbDot.setAttribute('cy', gy);
+
+      // 读出
+      sliderPitch.value = state.pitch;
+      sliderCrouch.value = state.crouch;
+      outputPitch.textContent = `${Math.round(state.pitch)}°`;
+      outputCrouch.textContent = `${Math.round(state.crouch)}%`;
+      posesOut.textContent = `P 相对 W：前倾 ${Math.round(state.pitch)}° · 髋高 ${h.toFixed(2)} m（示意）`;
+      dofOut.textContent = '基座位姿（3 平移 + 3 旋转，共 6 个数）编码器测不到 → 浮动基座';
+    }
+
+    sliderPitch.addEventListener('input', () => {
+      state.pitch = Number(sliderPitch.value);
+      render();
+    });
+    sliderCrouch.addEventListener('input', () => {
+      state.crouch = Number(sliderCrouch.value);
+      render();
+    });
+
+    render();
+  });
+</script>
+
+<style>
+  .fb-demo {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+  .fb-demo svg {
+    display: block;
+    margin: 0 auto;
+    max-width: 480px;
+    width: 100%;
+    height: auto;
+    user-select: none;
+  }
+  .fb-demo svg text {
+    paint-order: stroke;
+    stroke: var(--sl-color-bg);
+    stroke-width: 4px;
+    stroke-linejoin: round;
+  }
+
+  /* ---- 对照小图 ---- */
+  .fb-inset-title {
+    fill: var(--sl-color-gray-2);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .fb-inset-ground {
+    stroke: var(--sl-color-gray-4);
+    stroke-width: 1.5;
+  }
+  .fb-inset-arm {
+    stroke: var(--sl-color-gray-2);
+    stroke-width: 6;
+    stroke-linecap: round;
+  }
+  .fb-inset-joint {
+    fill: var(--sl-color-bg);
+    stroke: var(--sl-color-gray-2);
+    stroke-width: 2;
+  }
+  .fb-inset-caption {
+    fill: var(--sl-color-gray-2);
+    font-size: 12px;
+  }
+
+  /* ---- 地面与坐标系 ---- */
+  .fb-ground {
+    fill: var(--sl-color-gray-6);
+    stroke: var(--sl-color-gray-4);
+    stroke-width: 1.5;
+  }
+  .fb-grid line {
+    stroke: var(--sl-color-gray-4);
+    stroke-width: 1;
+    stroke-dasharray: 3 4;
+    opacity: 0.6;
+  }
+  .fb-axis {
+    stroke-width: 2.5;
+  }
+  .fb-axis-label {
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .fb-frame-label {
+    fill: var(--sl-color-text);
+    font-size: 13px;
+    font-weight: 600;
+    text-anchor: end;
+  }
+
+  /* ---- 机器人 ---- */
+  .fb-leg {
+    fill: none;
+    stroke: var(--sl-color-gray-2);
+    stroke-width: 10;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .fb-face {
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 1;
+  }
+  .fb-face-top {
+    fill: var(--sl-color-gray-6);
+  }
+  .fb-face-x {
+    fill: var(--sl-color-gray-5);
+  }
+  .fb-face-y {
+    fill: var(--sl-color-gray-4);
+  }
+  .fb-plumb {
+    stroke: var(--sl-color-accent-high);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 4;
+  }
+  .fb-plumb-dot {
+    fill: var(--sl-color-accent-high);
+  }
+
+  /* ---- 操作区 ---- */
+  .fb-hint {
+    margin: 0.4rem 0 0.2rem;
+    font-size: 0.8125rem;
+    color: var(--sl-color-gray-3);
+  }
+  .fb-sliders {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-width: 340px;
+    margin: 0 auto;
+  }
+  .fb-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.875rem;
+  }
+  .fb-slider-name {
+    flex: 0 0 5.5em;
+    text-align: right;
+    color: var(--sl-color-gray-2);
+  }
+  .fb-slider-row input[type='range'] {
+    flex: 1;
+    accent-color: var(--sl-color-accent);
+    cursor: pointer;
+  }
+  .fb-slider-value {
+    flex: 0 0 3em;
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+    color: var(--sl-color-text);
+  }
+
+  /* ---- 读出条 ---- */
+  .fb-readout {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: baseline;
+    gap: 0.25rem 1rem;
+    margin: 0.6rem 0 0;
+    font-size: 0.9375rem;
+  }
+  .fb-dof {
+    color: var(--sl-color-accent-high);
+  }
+
+  .fb-demo figcaption {
+    margin-top: 0.6rem;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-2);
+  }
+</style>
