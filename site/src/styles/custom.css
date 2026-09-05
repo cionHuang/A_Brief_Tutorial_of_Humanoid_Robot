@@ -23,3 +23,18 @@
 .right-sidebar-panel :is(a, .toc-title) {
   font-size: 0.9375rem;
 }
+
+/* 疑问句/现场提问的视觉强调：高亮竖条 + 浅色底卡片。
+   全书的 blockquote 都按此样式渲染，作为"抛给读者的问题"的统一视觉语言。 */
+.sl-markdown-content blockquote {
+  border-left: 4px solid var(--sl-color-accent);
+  background: color-mix(in srgb, var(--sl-color-accent) 8%, transparent);
+  padding: 0.75rem 1.25rem;
+  border-radius: 0 8px 8px 0;
+  font-weight: 500;
+  color: var(--sl-color-text);
+}
+
+.sl-markdown-content blockquote p {
+  margin: 0;
+}

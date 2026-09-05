@@ -1,0 +1,151 @@
+---
+/**
+ * 闭环控制示意图：五个环节围成环形，一个光点沿环匀速流动，
+ * 光点经过时对应环节高亮。纯 SVG + CSS 动画，无 JS 依赖。
+ * 遵循 prefers-reduced-motion：用户系统开启减弱动态效果时动画静止。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import ClosedLoopDiagram from '../../../components/ClosedLoopDiagram.astro';
+ *   <ClosedLoopDiagram />
+ */
+
+// 五个环节，按顺时针排列，第一个在正上方
+const steps = ['感知当前状态', '计算下一步动作', '驱动执行器', '观察动作结果', '修正下一步动作'];
+
+const cx = 210;
+const cy = 190;
+const r = 130;
+const n = steps.length;
+
+// 各节点坐标（首节点在正上方，顺时针）
+const nodes = steps.map((label, i) => {
+  const angle = (-90 + (360 / n) * i) * (Math.PI / 180);
+  return {
+    label,
+    x: cx + r * Math.cos(angle),
+    y: cy + r * Math.sin(angle),
+    // 光点绕环一周 6s，经过第 i 个节点的时刻为 i * 6/n 秒
+    delay: `${(i * 6) / n}s`,
+  };
+});
+
+// 环形轨道（用两段圆弧拼成整圆，供 animateMotion 使用）
+const ringPath = `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx - 0.01} ${cy - r}`;
+
+// 相邻节点之间的弧形箭头
+const arcs = nodes.map((node, i) => {
+  const next = nodes[(i + 1) % n];
+  const a1 = Math.atan2(node.y - cy, node.x - cx);
+  const a2 = Math.atan2(next.y - cy, next.x - cx);
+  const pad = 0.16; // 两端各让出节点圆的空间
+  const start = { x: cx + r * Math.cos(a1 + pad), y: cy + r * Math.sin(a1 + pad) };
+  const end = { x: cx + r * Math.cos(a2 - pad), y: cy + r * Math.sin(a2 - pad) };
+  return `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} A ${r} ${r} 0 0 1 ${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
+});
+---
+
+<figure class="closed-loop-diagram">
+  <svg viewBox="0 0 420 380" role="img" aria-label="闭环控制示意图：感知、计算、执行、观察、修正五个环节循环往复">
+    <defs>
+      <marker id="cld-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="cld-arrow-head"></path>
+      </marker>
+    </defs>
+
+    <path d={ringPath} class="cld-ring" fill="none"></path>
+    {arcs.map((d) => <path d={d} class="cld-arc" fill="none" marker-end="url(#cld-arrow)"></path>)}
+
+    {nodes.map((node) => (
+      <g class="cld-node" style={`--delay: ${node.delay}`}>
+        <circle cx={node.x} cy={node.y} r="34" class="cld-node-circle"></circle>
+        <text x={node.x} y={node.y} class="cld-node-label" text-anchor="middle" dominant-baseline="central">
+          {node.label}
+        </text>
+      </g>
+    ))}
+
+    <circle r="7" class="cld-pulse">
+      <animateMotion dur="6s" repeatCount="indefinite" path={ringPath}></animateMotion>
+    </circle>
+  </svg>
+  <figcaption>感知 → 决策 → 执行 → 观察 → 修正：闭环控制持续运转，没有起点也没有终点。</figcaption>
+</figure>
+
+<style>
+  .closed-loop-diagram {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+  .closed-loop-diagram svg {
+    display: block;
+    margin: 0 auto;
+    max-width: 420px;
+    width: 100%;
+    height: auto;
+  }
+  .cld-ring {
+    stroke: var(--sl-color-gray-4);
+    stroke-width: 1.5;
+    stroke-dasharray: 3 5;
+  }
+  .cld-arc {
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 2;
+  }
+  .cld-arrow-head {
+    fill: var(--sl-color-gray-3);
+  }
+  .cld-node-circle {
+    fill: var(--sl-color-bg);
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 2;
+    animation: cld-glow 6s linear infinite;
+    animation-delay: var(--delay);
+  }
+  .cld-node-label {
+    fill: var(--sl-color-text);
+    font-size: 13px;
+    animation: cld-label-glow 6s linear infinite;
+    animation-delay: var(--delay);
+  }
+  .cld-pulse {
+    fill: var(--sl-color-accent);
+  }
+  .closed-loop-diagram figcaption {
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-2);
+  }
+
+  /* 光点经过的约 1/5 周期内节点高亮，其余时间保持常态 */
+  @keyframes cld-glow {
+    0%, 14% {
+      stroke: var(--sl-color-accent);
+      stroke-width: 3;
+    }
+    24%, 100% {
+      stroke: var(--sl-color-gray-3);
+      stroke-width: 2;
+    }
+  }
+  @keyframes cld-label-glow {
+    0%, 14% {
+      fill: var(--sl-color-accent-high);
+      font-weight: 600;
+    }
+    24%, 100% {
+      fill: var(--sl-color-text);
+      font-weight: 400;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cld-pulse {
+      display: none;
+    }
+    .cld-node-circle,
+    .cld-node-label {
+      animation: none;
+    }
+  }
+</style>

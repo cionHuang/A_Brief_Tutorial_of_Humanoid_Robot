@@ -4,12 +4,13 @@
 
 读的过程中建议同步做两件事：把每节出现的黑话记成自己的词汇表；把 G1 的[开源模型](https://github.com/unitreerobotics/unitree_rl_gym)下载下来，边读边对照。
 
-## 第 1 章 系统总览（约 30 分钟）
+## 第 1 章 系统总览（约 45 分钟）
 
 | 小节 | 预计时间 | 前置知识 |
 | --- | --- | --- |
-| [1.1 具身智能是什么](../01-system-overview/01-what-is-embodied-ai.md) | 10 分钟 | 无 |
-| [1.2 人形机器人系统架构](../01-system-overview/02-humanoid-robot-system-architecture.md) | 20 分钟 | 1.1 |
+| [1.1 具身智能是什么](../01-system-overview/01-what-is-embodied-ai.mdx) | 10 分钟 | 无 |
+| [1.2 人形机器人：定义、构造与 G1](../01-system-overview/02-humanoid-robot-anatomy.md) | 15 分钟 | 1.1 |
+| [1.3 人形机器人系统架构](../01-system-overview/03-humanoid-robot-system-architecture.md) | 20 分钟 | 1.1、1.2 |
 
 ## 第 2 章 机械（约 1.5 小时）
 

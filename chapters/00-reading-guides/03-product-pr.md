@@ -4,12 +4,13 @@
 
 **读法约定**：下面每一节，只读开头的"现场问题"、黑话定义和配图，前两屏即可。全书精选 15 节，总计约 1 小时。遇到不懂的词，直接用页面顶部的搜索框。
 
-## 第一步：建立整机概念（约 15 分钟）
+## 第一步：建立整机概念（约 20 分钟）
 
 | 小节 | 你将听懂 |
 | --- | --- |
-| [1.1 具身智能是什么](../01-system-overview/01-what-is-embodied-ai.md) | "具身智能"和人形机器人的关系；DoF、执行器、浮动基座 |
-| [1.2 人形机器人系统架构](../01-system-overview/02-humanoid-robot-system-architecture.md) | 系统分哪几层；控制频率、LowCmd/LowState 是什么 |
+| [1.1 具身智能是什么](../01-system-overview/01-what-is-embodied-ai.mdx) | "具身智能"和人形机器人的关系；DoF、执行器、浮动基座 |
+| [1.2 人形机器人：定义、构造与 G1](../01-system-overview/02-humanoid-robot-anatomy.md) | 人形机器人的定义；DoF、执行器、浮动基座、末端执行器 |
+| [1.3 人形机器人系统架构](../01-system-overview/03-humanoid-robot-system-architecture.md) | 系统分哪几层；控制频率、LowCmd/LowState 是什么 |
 
 ## 第二步：机械与电气高频词（约 20 分钟）
 

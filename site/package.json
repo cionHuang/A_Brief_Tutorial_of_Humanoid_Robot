@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "scripts": {
     "sync": "node scripts/sync-content.mjs",
-    "dev": "npm run sync && astro dev",
+    "dev": "node scripts/dev.mjs",
     "start": "npm run dev",
     "build": "npm run sync && astro build",
     "preview": "npm run sync && astro preview",
