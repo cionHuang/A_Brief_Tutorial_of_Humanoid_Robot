@@ -15,7 +15,7 @@ await syncContent();
 
 // Astro 7 检测到 AI agent 环境时会自动后台启动 dev server，容易留下旧进程
 // 继续占用 4321 并返回旧内容。显式关闭该行为，让 dev server 跟随本进程退出。
-const astro = spawn('npx', ['astro', 'dev'], {
+const astro = spawn('npx', ['astro', 'dev', '--force'], {
   stdio: 'inherit',
   env: { ...process.env, ASTRO_DEV_BACKGROUND: '0' },
 });
