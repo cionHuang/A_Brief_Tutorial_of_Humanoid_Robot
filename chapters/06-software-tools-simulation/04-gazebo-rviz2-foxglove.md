@@ -1,4 +1,4 @@
-# 6.3 Gazebo、RViz 2 与 Foxglove
+# 6.4 Gazebo、RViz 2 与 Foxglove
 
 ## 先看一个现场问题
 
@@ -14,29 +14,29 @@
 
 ### SDF 与插件
 
-Gazebo 使用 SDF（Simulation Description Format）描述世界（World）和模型（Model），通过插件（Plugin）扩展功能：传感器插件提供相机、IMU、激光雷达和接触传感器，世界插件控制物理和渲染行为。[1][2] SDF 的表达力覆盖闭环机构和传感器挂载，URDF 模型进入 Gazebo 时需要转换，转换后的检查项与 6.2 节的 USD 导入相同：关节方向、限位、惯量、碰撞几何。
+Gazebo 使用 SDF（Simulation Description Format）描述世界（World）和模型（Model），通过插件（Plugin）扩展功能：传感器插件提供相机、IMU、激光雷达和接触传感器，世界插件控制物理和渲染行为。[1][2] SDF 的表达力覆盖闭环机构和传感器挂载，URDF 模型进入 Gazebo 时需要转换，转换后的检查项与 6.3 节的 USD 导入相同：关节方向、限位、惯量、碰撞几何。
 
 ### ROS 2 集成与控制器
 
-Gazebo 与 ROS 2 的集成有两层。消息层由 `ros_gz` 桥接：Gazebo 内部的传感器数据被转成 ROS 2 Topic。控制层由 `gz_ros2_control` 承担：它在 Gazebo 里实现 4.8 节 ros2_control 的 Hardware Interface，让同一套控制器配置既能跑仿真又能跑实机。[5] 开头的"加载就瘫"有一类典型原因：模型里的惯量过小或为默认值，或控制器插件未加载，机器人处于无阻尼状态。
+Gazebo 与 ROS 2 的集成有两层。消息层由 `ros_gz` 桥接：Gazebo 内部的传感器数据被转成 ROS 2 Topic。控制层由 `gz_ros2_control` 承担：它在 Gazebo 里实现 6.1 节 ros2_control 的 Hardware Interface，让同一套控制器配置既能跑仿真又能跑实机。[5] 开头的"加载就瘫"有一类典型原因：模型里的惯量过小或为默认值，或控制器插件未加载，机器人处于无阻尼状态。
 
 ### 与 MuJoCo、Isaac 的分工
 
-Gazebo 的价值在 ROS 2 集成生态：TF、ros2_control、Nav2 等组件开箱即用，适合验证软件架构和传感器链路。纯 RL 训练吞吐选 Isaac（6.2 节），部署前的接触验证选 MuJoCo（6.1 节）；Gazebo 居中，是"让算法在 ROS 2 系统里跑起来"的仿真环境。
+Gazebo 的价值在 ROS 2 集成生态：TF、ros2_control、Nav2 等组件开箱即用，适合验证软件架构和传感器链路。纯 RL 训练吞吐选 Isaac（6.3 节），部署前的接触验证选 MuJoCo（6.2 节）；Gazebo 居中，是"让算法在 ROS 2 系统里跑起来"的仿真环境。
 
 ## RViz 2：看空间，不做仿真
 
 RViz 2 把订阅到的消息画在三维空间里：RobotModel 面板按 URDF 渲染机器人（驱动数据来自 `JointState`），TF 面板显示坐标树，此外还有点云、图像、轨迹和规划路径等显示类型。[3] 它渲染的是消息内容，不计算任何物理——RViz 2 里模型不散架，只说明 URDF 和 TF 是对的，不说明动力学可行。这也是开头"RViz 对、Gazebo 瘫"的全部原因。
 
-RViz 2 的正确用法是当作"机器人内部状态的空间投影"：规划器认为脚在哪、TF 树是否成环、检测到的目标在机器人坐标系的什么位置。它与 4.8 节架构中的可视化角色一一对应。
+RViz 2 的正确用法是当作"机器人内部状态的空间投影"：规划器认为脚在哪、TF 树是否成环、检测到的目标在机器人坐标系的什么位置。它与 6.1 节架构中的可视化角色一一对应。
 
 ## Foxglove：看时间，做回放
 
-Foxglove 面向时间序列和日志回放：关节跟踪误差、`tau_est`、IMU 原始数据、接触力、ZMP 裕量、控制器内部残差，按时间轴对齐到同一个界面上；配合 rosbag2 回放，可以把一次故障的完整信号历史逐帧复盘。[4] 它与 RViz 2 的分工在 4.8 节已经定过：空间关系看 RViz 2，时间序列看 Foxglove。
+Foxglove 面向时间序列和日志回放：关节跟踪误差、`tau_est`、IMU 原始数据、接触力、ZMP 裕量、控制器内部残差，按时间轴对齐到同一个界面上；配合 rosbag2 回放，可以把一次故障的完整信号历史逐帧复盘。[4] 它与 RViz 2 的分工在 6.1 节已经定过：空间关系看 RViz 2，时间序列看 Foxglove。
 
-开头"没录接触力只能猜"的教训对应一条纪律：记录 Topic 的清单应按故障排查需求设计，而不是按"现在想看什么"设计。4.5–4.7 节每节的排查清单，落到工程上就是 Foxglove 里的一组预设面板和 rosbag2 里的一组必录 Topic。
+开头"没录接触力只能猜"的教训对应一条纪律：记录 Topic 的清单应按故障排查需求设计，而不是按"现在想看什么"设计。4.5–4.6 节与 5.2 节每节的排查清单，落到工程上就是 Foxglove 里的一组预设面板和 rosbag2 里的一组必录 Topic。
 
-![Gazebo、RViz 2 与 Foxglove 的三工具分工](assets/images/03-g1-gazebo-rviz2-foxglove.png)
+![Gazebo、RViz 2 与 Foxglove 的三工具分工](assets/images/04-g1-gazebo-rviz2-foxglove.png)
 
 图：以 G1 `g1_29dof` 无手、腰部可动模型为例，对比 Gazebo（物理仿真，SDF 世界、传感器插件、`ros_gz` 桥与 `gz_ros2_control`）、RViz 2（RobotModel、TF 树、点云的空间可视化，不做物理计算）和 Foxglove（关节误差、`tau_est`、IMU、接触力的时间序列与 rosbag 回放）在 ROS 2 消息总线上的分工。图中结构用于解释工具边界；集成方式以各工具版本为准。
 

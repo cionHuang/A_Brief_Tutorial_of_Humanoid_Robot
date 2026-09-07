@@ -2,6 +2,7 @@
 
 import DofHingeDemo from '../../../components/DofHingeDemo.astro';
 import FloatingBaseDemo from '../../../components/FloatingBaseDemo.astro';
+import G1UrdfViewer from '../../../components/G1UrdfViewer.astro';
 
 ## 先看一个现场问题
 
@@ -65,6 +66,10 @@ import FloatingBaseDemo from '../../../components/FloatingBaseDemo.astro';
 - 足底传感器测量接触和载荷；
 - 相机测量环境中的物体和几何信息。
 
+![Intel RealSense D435 深度相机实拍图](assets/images/intel-realsense-d435-photo.jpg)
+
+*图：Intel RealSense D435 深度相机实拍。深度相机可以把环境几何转换为距离或点云，是人形机器人感知系统的常用输入。作者：[Marc Auledas](https://commons.wikimedia.org/wiki/User:Auledas)；来源：[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Intel_Realsense_depth_camera_D435.jpg)；授权：[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)。*
+
 ### 浮动基座（Floating Base）
 
 机械臂通常固定在地面上，基座位置可以认为不变；人形机器人站在地面上，身体整体可能移动、倾斜和旋转，因此需要估计躯干或骨盆相对于世界的位姿。这种不固定在地面上的整体基座称为浮动基座（Floating Base），在动力学建模中通常作为具有平移和旋转自由度的基座处理。[4]
@@ -80,9 +85,15 @@ import FloatingBaseDemo from '../../../components/FloatingBaseDemo.astro';
 - 足部是与地面交互的末端执行器；
 - 手掌和手指是与物体交互的末端执行器。
 
+![Shadow Dexterous Hand 灵巧手握持灯泡实拍图](assets/images/shadow-dexterous-hand-photo.jpg)
+
+*图：Shadow Dexterous Hand 多指灵巧手实拍。相比夹爪，灵巧手通过多个手指关节完成更丰富的接触和抓取动作，是末端执行器的一种典型形态。作者：Richard Greenhill 与 Hugo Elias（Shadow Robot Company）；来源：[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Shadow_Hand_Bulb_large.jpg)；授权：[CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/)。*
+
 ## 以 G1 看一台人形机器人
 
 本手册默认使用 Unitree G1 29 DoF 无灵巧手模型作为系统级案例。该模型的自由度分布和带手/锁腰变体以宇树官方 `unitree_rl_gym` 仓库中的描述文件为准。[5]
+
+<G1UrdfViewer />
 
 可以先把它分成四个区域：
 
@@ -103,7 +114,7 @@ import FloatingBaseDemo from '../../../components/FloatingBaseDemo.astro';
 - **电气/嵌入式**：电机、驱动器、编码器、IMU、总线、控制周期和故障状态；
 - **算法**：坐标系、运动学、动力学、状态估计、控制器、规划和策略；
 - **软件**：URDF/MJCF、ROS 2、DDS、消息、TF、日志和仿真接口；
-- **VLA/操作**：相机观测、语言任务、手臂目标、手指动作和安全过滤。
+- **VLA/WAM 与操作**：VLA 把相机观测和语言任务转换成手臂、手部动作意图；WAM 进一步预测这些动作会怎样改变世界状态。两类输出都必须经过规划、全身控制和安全过滤，才进入底层执行。
 
 这些说法并不矛盾，它们只是观察同一系统的不同侧面。后续章节会逐步把这些内容串起来，让你看到一台人形机器人如何通过结构、电气、算法和软件协同工作。
 

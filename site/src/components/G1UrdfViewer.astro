@@ -1,0 +1,383 @@
+---
+/**
+ * Unitree G1 29 DoF 无手模型的 URDF 查看器。
+ *
+ * 模型资源由 scripts/sync-robot-assets.mjs 在 dev/build 前复制到
+ * public/models/g1/。Three.js、urdf-loader 与 STL 均在组件进入视口后
+ * 才开始加载，避免拖慢整页首屏。
+ */
+const baseUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const urdfUrl = `${baseUrl}models/g1/g1_29dof.urdf`;
+---
+
+<figure class="g1-urdf-demo" data-state="idle" data-urdf-url={urdfUrl}>
+  <div class="g1-viewport" data-g1-viewport role="application" tabindex="0" aria-label="Unitree G1 29 DoF 无手模型的三维 URDF 查看器">
+    <div class="g1-loading" data-g1-loading>
+      <span class="g1-spinner" aria-hidden="true"></span>
+      <span class="g1-status" data-g1-status>准备加载模型</span>
+    </div>
+  </div>
+
+  <div class="g1-toolbar">
+    <span class="g1-model-name">Unitree G1 · 29 DoF · 无手模型</span>
+    <button class="g1-reset" data-g1-reset type="button" disabled>重置视角</button>
+  </div>
+
+  <figcaption>
+    这是 Unitree 官方 URDF 描述文件的浏览器渲染结果，用于观察整机外形、连杆布局和关节连接关系；
+    网格为可视化模型，不代表真实硬件的内部结构或外观细节。模型来源：
+    <a href="https://github.com/unitreerobotics/unitree_rl_gym/tree/main/resources/robots/g1_description">unitree_rl_gym</a>。
+  </figcaption>
+</figure>
+
+<script>
+  const demos = document.querySelectorAll('.g1-urdf-demo');
+
+  demos.forEach((demo) => {
+    const viewport = demo.querySelector('[data-g1-viewport]');
+    const status = demo.querySelector('[data-g1-status]');
+    const resetButton = demo.querySelector('[data-g1-reset]');
+    const urdfUrl = demo.dataset.urdfUrl;
+
+    if (!(viewport instanceof HTMLElement) || !(status instanceof HTMLElement) || !(resetButton instanceof HTMLButtonElement) || !urdfUrl) {
+      return;
+    }
+
+    let started = false;
+    let renderer;
+    let camera;
+    let controls;
+    let scene;
+    let modelGroup;
+    let THREE_NS;
+    let animationFrame = 0;
+    let resizeObserver;
+    let visibilityObserver;
+    let pageVisible = true;
+    let inViewport = false;
+
+    const setState = (state, message) => {
+      demo.dataset.state = state;
+      if (message) status.textContent = message;
+    };
+
+    const scheduleRender = () => {
+      if (animationFrame || !renderer || !scene || !camera) return;
+      animationFrame = requestAnimationFrame(render);
+    };
+
+    const render = () => {
+      animationFrame = 0;
+      if (!renderer || !scene || !camera || !pageVisible) return;
+      const moving = controls ? controls.update() : false;
+      renderer.render(scene, camera);
+      demo.dataset.rendered = 'true';
+      demo.dataset.renderedTriangles = String(renderer.info.render.triangles);
+      if (moving) scheduleRender();
+    };
+
+    const fitCamera = () => {
+      if (!camera || !controls || !modelGroup || !THREE_NS) return;
+
+      const THREE = THREE_NS;
+      const box = new THREE.Box3().setFromObject(modelGroup);
+      if (box.isEmpty()) return;
+
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const radius = Math.max(size.x, size.y, size.z, 0.1) * 0.5;
+      const fitDistance = radius / Math.tan((camera.fov * Math.PI) / 360);
+
+      controls.target.copy(center);
+      camera.near = Math.max(fitDistance / 100, 0.01);
+      camera.far = fitDistance * 20;
+      camera.position.set(center.x + fitDistance * 0.85, center.y + fitDistance * 0.42, center.z + fitDistance * 1.15);
+      camera.updateProjectionMatrix();
+      controls.update();
+      scheduleRender();
+    };
+
+    const resize = () => {
+      if (!renderer || !camera) return;
+      const width = Math.max(viewport.clientWidth, 1);
+      const height = Math.max(viewport.clientHeight, 1);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(width, height, false);
+      scheduleRender();
+    };
+
+    const dispose = () => {
+      visibilityObserver?.disconnect();
+      resizeObserver?.disconnect();
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      animationFrame = 0;
+
+      modelGroup?.traverse((object) => {
+        if (object.isMesh) {
+          object.geometry?.dispose();
+          const materials = Array.isArray(object.material) ? object.material : [object.material];
+          materials.forEach((material) => {
+            material?.map?.dispose();
+            material?.dispose();
+          });
+        }
+      });
+      controls?.dispose();
+      renderer?.dispose();
+      renderer?.domElement.remove();
+    };
+
+    const load = async () => {
+      try {
+        setState('loading', '加载 Three.js 与 URDF 解析器');
+        const [THREE, orbitModule, urdfModule] = await Promise.all([
+          import('three'),
+          import('three/examples/jsm/controls/OrbitControls.js'),
+          import('urdf-loader'),
+        ]);
+        const { OrbitControls } = orbitModule;
+        const URDFLoader = urdfModule.default;
+
+        THREE_NS = THREE;
+
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(38, 1, 0.01, 100);
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.setClearColor(0x000000, 0);
+        viewport.appendChild(renderer.domElement);
+
+        const hemisphere = new THREE.HemisphereLight(0xffffff, 0x46505f, 2.3);
+        const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);
+        const fillLight = new THREE.DirectionalLight(0xbdd7ff, 0.9);
+        keyLight.position.set(2.5, 4, 3);
+        fillLight.position.set(-3, 1.5, -2);
+        scene.add(hemisphere, keyLight, fillLight);
+
+        const grid = new THREE.GridHelper(2.4, 12, 0x768094, 0x3d4552);
+        grid.position.y = -0.002;
+        scene.add(grid);
+
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.minDistance = 0.45;
+        controls.maxDistance = 5;
+        controls.addEventListener('change', scheduleRender);
+        controls.listenToKeyEvents(viewport);
+
+        const manager = new THREE.LoadingManager();
+        let resolveResources;
+        let rejectResources;
+        const resourcesLoaded = new Promise((resolve, reject) => {
+          resolveResources = resolve;
+          rejectResources = reject;
+        });
+        manager.onProgress = (_url, loaded, total) => {
+          setState('loading', total > 0 ? `加载模型资源 ${loaded}/${total}` : '加载模型资源');
+        };
+        manager.onError = (url) => {
+          const error = new Error(`模型资源加载失败：${url}`);
+          setState('error', error.message);
+          rejectResources(error);
+        };
+        // 必须在 loadAsync 之前绑定：资源命中浏览器缓存时，加载可能很快完成，
+        // 后绑定 onLoad 会错过完成回调并停留在最后的进度文案。
+        manager.onLoad = () => resolveResources();
+
+        const loader = new URDFLoader(manager);
+        loader.workingPath = urdfUrl.slice(0, urdfUrl.lastIndexOf('/') + 1);
+        loader.fetchOptions = { cache: 'force-cache' };
+
+        setState('loading', '解析 URDF 结构');
+        const robot = await loader.loadAsync(urdfUrl);
+        robot.rotation.x = -Math.PI / 2; // URDF 为 Z-up，Three.js 场景为 Y-up
+        modelGroup = new THREE.Group();
+        modelGroup.add(robot);
+        scene.add(modelGroup);
+
+        await resourcesLoaded;
+
+        let meshCount = 0;
+        modelGroup.traverse((object) => {
+          if (object.isMesh) meshCount += 1;
+        });
+        demo.dataset.linkCount = String(Object.keys(robot.links).length);
+        demo.dataset.jointCount = String(Object.keys(robot.joints).length);
+        demo.dataset.meshCount = String(meshCount);
+
+        const box = new THREE.Box3().setFromObject(modelGroup);
+        if (!box.isEmpty()) {
+          modelGroup.position.y -= box.min.y;
+        }
+
+        resizeObserver = new ResizeObserver(resize);
+        resizeObserver.observe(viewport);
+        resetButton.disabled = false;
+        resetButton.addEventListener('click', fitCamera);
+        setState('ready', '');
+        resize();
+        fitCamera();
+      } catch (error) {
+        console.error('G1 URDF 渲染失败：', error);
+        setState('error', '模型加载失败，请检查网络或资源路径');
+        dispose();
+      }
+    };
+
+    const start = () => {
+      if (started) return;
+      started = true;
+      load();
+    };
+
+    if ('IntersectionObserver' in window) {
+      const loadObserver = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) {
+            loadObserver.disconnect();
+            start();
+          }
+        },
+        { rootMargin: '240px' },
+      );
+      loadObserver.observe(demo);
+
+      visibilityObserver = new IntersectionObserver((entries) => {
+        inViewport = entries.some((entry) => entry.isIntersecting);
+      });
+      visibilityObserver.observe(demo);
+    } else {
+      start();
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      pageVisible = document.visibilityState === 'visible';
+      if (pageVisible && inViewport) scheduleRender();
+    });
+  });
+</script>
+
+<style>
+  .g1-urdf-demo {
+    margin: 1.5rem 0;
+  }
+
+  .g1-viewport {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    min-height: 320px;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 8px;
+    background: var(--sl-color-gray-7, var(--sl-color-gray-6));
+  }
+
+  .g1-viewport canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    touch-action: none;
+  }
+
+  .g1-loading {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    padding: 1rem;
+    color: var(--sl-color-gray-2);
+    font-size: 0.9375rem;
+    text-align: center;
+    background: color-mix(in srgb, var(--sl-color-bg) 62%, transparent);
+  }
+
+  .g1-spinner {
+    flex: 0 0 auto;
+    width: 1.15rem;
+    height: 1.15rem;
+    border: 2px solid var(--sl-color-gray-4);
+    border-top-color: var(--sl-color-accent);
+    border-radius: 50%;
+    animation: g1-spin 0.9s linear infinite;
+  }
+
+  .g1-urdf-demo[data-state='ready'] .g1-loading {
+    display: none;
+  }
+
+  .g1-urdf-demo[data-state='error'] .g1-spinner {
+    display: none;
+  }
+
+  .g1-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.6rem 0.15rem 0;
+  }
+
+  .g1-model-name {
+    color: var(--sl-color-gray-2);
+    font-size: 0.875rem;
+  }
+
+  .g1-reset {
+    min-height: 2rem;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--sl-color-gray-4);
+    border-radius: 6px;
+    color: var(--sl-color-text);
+    background: var(--sl-color-bg);
+    font: inherit;
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+
+  .g1-reset:hover:not(:disabled) {
+    border-color: var(--sl-color-accent);
+    color: var(--sl-color-accent-high);
+  }
+
+  .g1-reset:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .g1-urdf-demo figcaption {
+    margin-top: 0.6rem;
+    color: var(--sl-color-gray-2);
+    font-size: 0.875rem;
+    line-height: 1.65;
+  }
+
+  @media (max-width: 40rem) {
+    .g1-viewport {
+      aspect-ratio: 4 / 3;
+      min-height: 300px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .g1-spinner {
+      animation: none;
+    }
+  }
+
+  @keyframes g1-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+</style>

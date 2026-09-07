@@ -8,10 +8,17 @@
 import { watch } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { chaptersRoot, syncContent } from './sync-content.mjs';
+import { syncRobotAssets } from './sync-robot-assets.mjs';
 
+await syncRobotAssets();
 await syncContent();
 
-const astro = spawn('npx', ['astro', 'dev'], { stdio: 'inherit' });
+// Astro 7 检测到 AI agent 环境时会自动后台启动 dev server，容易留下旧进程
+// 继续占用 4321 并返回旧内容。显式关闭该行为，让 dev server 跟随本进程退出。
+const astro = spawn('npx', ['astro', 'dev'], {
+  stdio: 'inherit',
+  env: { ...process.env, ASTRO_DEV_BACKGROUND: '0' },
+});
 
 let timer;
 let syncing = false;
@@ -32,5 +39,17 @@ watch(chaptersRoot, { recursive: true }, () => {
 
 console.log(`已监听 ${chaptersRoot}，正文修改将自动同步。`);
 
-// Astro dev 以守护进程方式运行后会自行退出，本进程依靠 fs.watch 保持存活，
-// 持续承担 chapters/ 的监听与同步职责。停止服务用 npx astro dev stop。
+astro.on('exit', (code, signal) => {
+  if (signal) {
+    process.kill(process.pid, signal);
+    return;
+  }
+  process.exit(code ?? 0);
+});
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    if (!astro.killed) astro.kill(signal);
+    setTimeout(() => process.exit(0), 200).unref();
+  });
+}

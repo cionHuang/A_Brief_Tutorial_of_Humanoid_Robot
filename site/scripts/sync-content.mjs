@@ -26,6 +26,16 @@ export async function syncContent() {
     .map((entry) => entry.name)
     .sort();
 
+  // 章节目录重命名后，删除已不属于内容源的旧生成目录，避免旧章节残留。
+  const generatedDirs = (await readdir(docsRoot, { withFileTypes: true }).catch(() => []))
+    .filter((entry) => entry.isDirectory() && /^\d{2}-/.test(entry.name))
+    .map((entry) => entry.name);
+  for (const generatedDir of generatedDirs) {
+    if (!chapterDirs.includes(generatedDir)) {
+      await rm(path.join(docsRoot, generatedDir), { recursive: true, force: true });
+    }
+  }
+
   if (chapterDirs.length === 0) {
     throw new Error(`未在 ${chaptersRoot} 找到章节目录`);
   }

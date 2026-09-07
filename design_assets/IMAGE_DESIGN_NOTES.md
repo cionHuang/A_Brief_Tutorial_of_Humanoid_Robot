@@ -1,6 +1,6 @@
 # 图片素材说明
 
-本文档说明 `design_assets/` 目录下新增图片素材的设计目的，供后续编辑本项目的 agent 查阅。素材暂存于项目根目录的 `design_assets/`，未放入站点目录结构，避免影响正在进行的站点开发；正式接入页面时由负责的 agent 决定最终存放位置（如 `site/src/content/docs/<章节>/assets/images/`，注意 `.md` 说明文档不能放进 `src/content/docs/`，会被 Starlight 当成页面渲染）。
+本文档说明新增图片素材的设计目的，供后续编辑本项目的 agent 查阅。新增素材可先暂存于项目根目录的 `design_assets/`；正式接入页面后移动到对应章节的 `chapters/<章节>/assets/images/`，并在下方记录当前位置。注意 `.md` 说明文档不能放进 `src/content/docs/`，否则会被 Starlight 当成页面渲染。
 
 ## embodied-ai-keyword-collage.png
 
@@ -69,3 +69,48 @@
 ### 再生成 / 修改
 
 源素材与生成脚本在 `素材工作目录/`（`shots_pai/` 原始截图、仿推文卡片 `tweets_pai.html`）。
+
+## intel-realsense-d435-photo.jpg
+
+**Intel RealSense D435 深度相机实拍图**（3472×4624，约 2.2 MB）。
+
+当前位置：`chapters/01-system-overview/assets/images/intel-realsense-d435-photo.jpg`
+
+### 设计目的
+
+- 用于传感器相关章节展示人形机器人常用的深度相机实物（真实拍摄照片，非渲染图/合成图）；
+- RealSense D 系列是机器人领域最常见的深度相机之一，适合配合感知/嵌入式章节使用。
+
+### 来源与授权（引用时必须署名）
+
+- 来源：Wikimedia Commons，文件页 https://commons.wikimedia.org/wiki/File:Intel_Realsense_depth_camera_D435.jpg
+- 作者：Marc Auledas（https://commons.wikimedia.org/wiki/User:Auledas）
+- 授权：CC BY-SA 4.0（https://creativecommons.org/licenses/by-sa/4.0），使用时需署名作者并注明相同方式共享；
+- 下载时间：2026-09-07；原图未经修改。
+
+### 同类备选
+
+更多传感器实拍图链接（LiDAR、IMU、触觉传感器、真机搭载图等，均来自 Wikimedia Commons）见 `素材工作目录里的 commons_results.json`，按需下载并在本节补充同样的署名信息。
+
+## shadow-dexterous-hand-photo.jpg
+
+**Shadow Dexterous Hand 灵巧手实拍图**（2560×3840，约 0.6 MB，Shadow Hand 握持灯泡的经典官方照片）。
+
+当前位置：`chapters/01-system-overview/assets/images/shadow-dexterous-hand-photo.jpg`
+
+### 设计目的
+
+- 用于末端执行器/灵巧操作相关章节，展示多指灵巧手的实物形态（真实拍摄照片，非渲染图/合成图）；
+- Shadow Hand 是灵巧操作研究中最经典的平台之一，与书中操作（manipulation）内容契合。
+
+### 来源与授权（引用时必须署名）
+
+- 来源：Wikimedia Commons，文件页 https://commons.wikimedia.org/wiki/File:Shadow_Hand_Bulb_large.jpg
+- 作者：Richard Greenhill and Hugo Elias（Shadow Robot Company）
+- 授权：CC BY-SA 3.0（http://creativecommons.org/licenses/by-sa/3.0/），使用时需署名作者并注明相同方式共享；
+- 下载时间：2026-09-07；原图未经修改。
+
+### 同类备选（均为实拍，检索自 Wikimedia Commons）
+
+- Schunk SVH 五指手（CC BY-SA 4.0）：https://commons.wikimedia.org/wiki/File:Servo-electric_5-Finger_gripping_hand_-_Schunk_SVH.JPG
+- NIST 灵巧操作测试台（公有领域）：https://commons.wikimedia.org/wiki/File:NIST_Dexterous_Manipulation_Testbed_(9502902636).jpg

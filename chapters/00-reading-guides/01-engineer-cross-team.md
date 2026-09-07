@@ -29,22 +29,23 @@
 
 | 顺序 | 小节 | 为什么读 | 读法 |
 | --- | --- | --- | --- |
-| 1 | [4.1 机器人数学基础](../04-algorithms-software/01-robot-mathematics-foundations.md) | 坐标系和旋转表示是所有算法对话的通用语 | 全读 |
-| 2 | [4.2 运动学](../04-algorithms-software/02-kinematics.md) | IK 报"目标不可达"时，分清是几何问题还是代码问题 | 全读 |
-| 3 | [4.5 基础控制](../04-algorithms-software/05-basic-control.md) | "把 kp 调大"意味着什么，机器人会有什么表现 | 全读 |
-| 4 | [4.6 双足平衡与全身控制](../04-algorithms-software/06-balance-and-whole-body-control.md) | ZMP、支撑域、全身控制任务栈 | 读前半 |
-| 5 | [4.4 状态估计](../04-algorithms-software/04-state-estimation.md) | 为什么"机器人以为自己在哪里"和"实际在哪里"会不一样 | 读开头 |
-| 6 | [4.3 动力学](../04-algorithms-software/03-dynamics.md) | 质量、惯量参数的改动如何传导到关节力矩需求 | 读开头 |
+| 1 | [4.1 机器人数学基础](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.md) | 坐标系和旋转表示是所有算法对话的通用语 | 全读 |
+| 2 | [4.2 运动学](../04-cerebellum-realtime-control/02-kinematics.md) | IK 报"目标不可达"时，分清是几何问题还是代码问题 | 全读 |
+| 3 | [4.5 基础控制](../04-cerebellum-realtime-control/05-basic-control.md) | "把 kp 调大"意味着什么，机器人会有什么表现 | 全读 |
+| 4 | [4.6 双足平衡与全身控制](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.md) | ZMP、支撑域、全身控制任务栈 | 读前半 |
+| 5 | [4.4 状态估计](../04-cerebellum-realtime-control/04-state-estimation.md) | 为什么"机器人以为自己在哪里"和"实际在哪里"会不一样 | 读开头 |
+| 6 | [4.3 动力学](../04-cerebellum-realtime-control/03-dynamics.md) | 质量、惯量参数的改动如何传导到关节力矩需求 | 读开头 |
 
 ## 你要和软件/AI 同学协作
 
 | 顺序 | 小节 | 为什么读 | 读法 |
 | --- | --- | --- | --- |
-| 1 | [4.8 ROS 2 与机器人软件架构](../04-algorithms-software/08-ros2-software-architecture.md) | 节点、Topic、TF 是软件层的通用语 | 全读 |
-| 2 | [5.1 感知系统](../05-perception-manipulation-vla/01-perception-system.md) | 相机、雷达数据如何进入坐标链 | 读前半 |
-| 3 | [5.4 VLA 与高级 AI 推理模型](../05-perception-manipulation-vla/04-vla-and-advanced-ai.md) | 大模型输出如何一步步变成关节动作 | 读前半 |
-| 4 | [6.1 MuJoCo](../06-simulation-tools-integration/01-mujoco.md) | 仿真里的表现和实机为什么不一样 | 读开头 |
-| 5 | [6.5 从仿真到真实系统](../06-simulation-tools-integration/05-sim-to-real.md) | Sim2Real 差距来自哪里 | 读开头 |
+| 1 | [6.1 ROS 2 与机器人软件架构](../06-software-tools-simulation/01-ros2-software-architecture.md) | 节点、Topic、TF 是软件层的通用语 | 全读 |
+| 2 | [5.1 感知系统](../05-brain-perception-planning-vla-wam/01-perception-system.md) | 相机、雷达数据如何进入坐标链 | 读前半 |
+| 3 | [5.5 VLA 与高级 AI 推理模型](../05-brain-perception-planning-vla-wam/05-vla-and-advanced-ai.md) | 大模型输出如何一步步变成关节动作 | 读前半 |
+| 4 | [5.6 WAM：世界动作模型](../05-brain-perception-planning-vla-wam/06-wam-world-action-model.md) | 世界动作模型与 VLA 的分工 | 读前半 |
+| 5 | [6.2 MuJoCo](../06-software-tools-simulation/02-mujoco.md) | 仿真里的表现和实机为什么不一样 | 读开头 |
+| 6 | [6.6 从仿真到真实系统](../06-software-tools-simulation/06-sim-to-real.md) | Sim2Real 差距来自哪里 | 读开头 |
 
 ## 读完之后
 

@@ -4,7 +4,7 @@
   "type": "module",
   "version": "0.1.0",
   "scripts": {
-    "sync": "node scripts/sync-content.mjs",
+    "sync": "node scripts/sync-content.mjs && node scripts/sync-robot-assets.mjs",
     "dev": "node scripts/dev.mjs",
     "start": "npm run dev",
     "build": "npm run sync && astro build",
@@ -14,6 +14,8 @@
   "dependencies": {
     "@astrojs/starlight": "^0.42.0",
     "astro": "^7.3.1",
-    "sharp": "^0.35.4"
+    "sharp": "^0.35.4",
+    "three": "^0.185.1",
+    "urdf-loader": "^0.13.1"
   }
 }

@@ -1,13 +1,7 @@
 node_modules/
 dist/
 .astro/
+public/models/g1/
 
 # 由 scripts/sync-content.mjs 从 ../../chapters 生成的内容，不重复入库
-src/content/docs/00-reading-guides/
-src/content/docs/01-system-overview/
-src/content/docs/02-mechanics/
-src/content/docs/03-electrical-embedded/
-src/content/docs/04-algorithms-software/
-src/content/docs/05-perception-manipulation-vla/
-src/content/docs/06-simulation-tools-integration/
-src/content/docs/07-engineering-practice-safety/
+src/content/docs/[0-9][0-9]-*/
