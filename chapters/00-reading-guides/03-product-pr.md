@@ -10,7 +10,7 @@
 | --- | --- |
 | [1.1 具身智能是什么](../01-system-overview/01-what-is-embodied-ai.mdx) | "具身智能"和人形机器人的关系；DoF、执行器、浮动基座 |
 | [1.2 人形机器人：定义、构造与 G1](../01-system-overview/02-humanoid-robot-anatomy.mdx) | 人形机器人的定义；DoF、执行器、浮动基座、末端执行器 |
-| [1.3 人形机器人系统架构](../01-system-overview/03-humanoid-robot-system-architecture.md) | 系统分哪几层；控制频率、LowCmd/LowState 是什么 |
+| [1.3 人形机器人系统架构](../01-system-overview/03-humanoid-robot-system-architecture.mdx) | 系统分哪几层；控制频率、LowCmd/LowState 是什么 |
 
 ## 第二步：机械与电气高频词（约 20 分钟）
 
