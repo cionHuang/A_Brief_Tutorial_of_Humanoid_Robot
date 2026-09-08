@@ -1,0 +1,564 @@
+---
+/**
+ * 四连杆机构与死点交互演示（曲柄摇杆）：
+ * 左侧机构默认以恒定角速度旋转输入曲柄，读者可拖动曲柄接管，
+ * 松手后从当前角度恢复自动恒速；右侧同步绘制 θ_out–θ_in 曲线，
+ * 当前点带切线——接近死点时切线变平、斜率趋零，机构与曲线同步高亮，
+ * 曲线上淡色区域为死区（|dθ_out/dθ_in| 小于阈值的角度区间）。
+ *
+ * 操作方式：左侧机构上拖动 / 点击曲柄；松手即恢复自动恒速旋转。
+ * 机构参数为示意（满足 Grashof 曲柄摇杆条件），不代表 G1 真实机构。
+ * 纯 SVG + 原生 JS，无外部依赖；样式跟随 Starlight 明暗主题；
+ * 遵循 prefers-reduced-motion：开启减弱动态效果时不自动旋转。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import FourBarDeadCenterDemo from '../../../components/FourBarDeadCenterDemo.astro';
+ *   <FourBarDeadCenterDemo />
+ */
+---
+
+<figure class="fb-demo">
+  <svg viewBox="0 0 760 390" role="img" aria-label="四连杆机构与死点演示：左侧曲柄摇杆机构可拖动，右侧为输入输出角度曲线，接近死点时切线变平">
+    <defs>
+      <marker id="fb-tarrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="fb-head-t"></path>
+      </marker>
+    </defs>
+
+    <text x="185" y="30" class="fb-title" text-anchor="middle">① 曲柄摇杆机构（拖动曲柄接管）</text>
+    <text x="582" y="30" class="fb-title" text-anchor="middle">② 同一条运动的输入输出曲线</text>
+
+    {/* 左画面：机构 */}
+    <g class="fb-mech">
+      {/* 机架 */}
+      <line x1="95" y1="265" x2="275" y2="265" class="fb-ground"></line>
+      <text x="185" y="284" class="fb-label" text-anchor="middle">机架（固定）</text>
+
+      {/* 连杆、曲柄、摇杆（由 JS 更新） */}
+      <line class="fb-link fb-coupler"></line>
+      <line class="fb-link fb-crank"></line>
+      <line class="fb-link fb-rocker"></line>
+
+      {/* 铰点 */}
+      <circle cx="110" cy="255" r="5" class="fb-joint"></circle>
+      <circle cx="240" cy="255" r="5" class="fb-joint"></circle>
+      <circle class="fb-joint fb-joint-b"></circle>
+      <circle class="fb-joint fb-joint-c"></circle>
+
+      {/* 曲柄手柄（拖动点） */}
+      <circle class="fb-handle"></circle>
+
+      {/* 死点状态标注 */}
+      <text x="185" y="66" class="fb-badge" text-anchor="middle">接近死点：输出几乎不动，斜率 ≈ 0</text>
+
+      {/* 图例 */}
+      <g class="fb-legend">
+        <line x1="60" y1="322" x2="84" y2="322" class="fb-link fb-crank"></line>
+        <text x="92" y="326" class="fb-note">曲柄（输入）</text>
+        <line x1="180" y1="322" x2="204" y2="322" class="fb-link fb-coupler"></line>
+        <text x="212" y="326" class="fb-note">连杆</text>
+        <line x1="262" y1="322" x2="286" y2="322" class="fb-link fb-rocker"></line>
+        <text x="294" y="326" class="fb-note">摇杆（输出）</text>
+      </g>
+    </g>
+
+    {/* 右画面：θ_out–θ_in 曲线 */}
+    <g class="fb-plot">
+      {/* 坐标轴 */}
+      <line x1="432" y1="302" x2="737" y2="302" class="fb-axis"></line>
+      <line x1="432" y1="302" x2="432" y2="88" class="fb-axis"></line>
+      <text x="737" y="322" class="fb-note" text-anchor="end">θ<tspan class="fb-sub" dy="3">in</tspan><tspan dy="-3">（输入角）→</tspan></text>
+      <text x="424" y="92" class="fb-note" text-anchor="end">θ<tspan class="fb-sub" dy="3">out</tspan></text>
+      <text x="424" y="106" class="fb-note" text-anchor="end">（输出角）</text>
+
+      {/* 死区淡色带（JS 填充） */}
+      <g class="fb-dzbands"></g>
+
+      {/* 曲线、当前点、切线（JS 填充/更新） */}
+      <path class="fb-curve" fill="none"></path>
+      <line class="fb-tangent" marker-end="url(#fb-tarrow)" marker-start="url(#fb-tarrow)"></line>
+      <circle class="fb-marker" r="6"></circle>
+    </g>
+  </svg>
+
+  <p class="fb-hint">默认恒速旋转；在左侧机构上按住曲柄即可接管，松手后从当前角度恢复恒速</p>
+
+  <div class="fb-gauges">
+    <div class="fb-gauge">
+      <span class="fb-gauge-name">输入角速度 ω<sub>in</sub></span>
+      <div class="fb-bar"><div class="fb-bar-fill fb-fill-in" style="width: 100%"></div></div>
+      <span class="fb-gauge-val">恒定 32°/s</span>
+    </div>
+    <div class="fb-gauge">
+      <span class="fb-gauge-name">输出角速度 |ω<sub>out</sub>|</span>
+      <div class="fb-bar"><div class="fb-bar-fill fb-fill-out"></div></div>
+      <span class="fb-gauge-val fb-out-val">0°/s</span>
+    </div>
+    <div class="fb-gauge">
+      <span class="fb-gauge-name">硬顶时电机力矩指令（随卡住时间累积）</span>
+      <div class="fb-bar"><div class="fb-bar-fill fb-fill-tau"></div></div>
+      <span class="fb-gauge-val fb-tau-val">上限的 0%</span>
+    </div>
+  </div>
+
+  <p class="fb-readout">
+    θ<sub>in</sub> = <output class="fb-o-in">0</output>°　θ<sub>out</sub> = <output class="fb-o-out">0</output>°　dθ<sub>out</sub>/dθ<sub>in</sub> = <output class="fb-o-slope" aria-live="polite">0.00</output>　<span class="fb-status">正常传动</span>
+  </p>
+
+  <figcaption>
+    拖动输入曲柄（或观看它恒速旋转）：输出摇杆的角度完全由输入角决定——这就是 1 DoF。接近共线构型（死点）时，输出几乎不动、越过死点后方向反转；右图上同一时刻表现为切线变平、dθ<sub>out</sub>/dθ<sub>in</sub> 趋零，也就是算法语言里的速度映射病态。下方三根条把同一时刻量化：输入满格、输出归零；第三根条回答“如果控制器偏要维持输出速度会怎样”——位置模式下力矩指令 = k<sub>p</sub> × 累积误差，输出卡住时误差越攒越大，力矩一路攀升直到撞上驱动器电流上限（饱和），这就是现场问题里“电机还在输出、连杆几乎不动”和正文“不要用过大电机指令硬顶”的原因。曲线上的淡色区域是死区：死点是具体构型，死区是它周围输出响应很差的一段范围。机构尺寸与力矩关系为示意，不代表 G1 真实机构。
+  </figcaption>
+</figure>
+
+<script>
+  document.querySelectorAll('.fb-demo').forEach((demo) => {
+    // 机构参数（示意，满足 Grashof 曲柄摇杆条件：s + l ≤ p + q）
+    const D = 100; // 机架
+    const R1 = 30; // 曲柄（可整周旋转）
+    const R2 = 95; // 连杆
+    const R3 = 80; // 摇杆
+    const A = [110, 255]; // 输入铰点（SVG 坐标）
+    const DP = [240, 255]; // 输出铰点
+    const S = 1.3; // px / 机构单位
+    const OMEGA = (32 * Math.PI) / 180; // 恒速输入（rad/s）
+    const SLOPE_EPS = 0.12; // 死区判定阈值 |dθ_out/dθ_in|
+
+    // 曲线图坐标映射
+    const PLOT = { x0: 432, x1: 737, y0: 302, y1: 88 };
+
+    const crankEl = demo.querySelector('.fb-crank');
+    const couplerEl = demo.querySelector('.fb-coupler');
+    const rockerEl = demo.querySelector('.fb-rocker');
+    const jointB = demo.querySelector('.fb-joint-b');
+    const jointC = demo.querySelector('.fb-joint-c');
+    const handle = demo.querySelector('.fb-handle');
+    const badge = demo.querySelector('.fb-badge');
+    const curveEl = demo.querySelector('.fb-curve');
+    const tangentEl = demo.querySelector('.fb-tangent');
+    const markerEl = demo.querySelector('.fb-marker');
+    const bandsEl = demo.querySelector('.fb-dzbands');
+    const oIn = demo.querySelector('.fb-o-in');
+    const oOut = demo.querySelector('.fb-o-out');
+    const oSlope = demo.querySelector('.fb-o-slope');
+    const statusEl = demo.querySelector('.fb-status');
+    const mech = demo.querySelector('.fb-mech');
+    const svg = demo.querySelector('svg');
+    const outBar = demo.querySelector('.fb-fill-out');
+    const outVal = demo.querySelector('.fb-out-val');
+    const tauBar = demo.querySelector('.fb-fill-tau');
+    const tauVal = demo.querySelector('.fb-tau-val');
+
+    // 机构求解：给定输入角 θ1，求连杆/摇杆构型（圆-圆求交，跟踪装配分支）
+    function solve(th1, prevC) {
+      const B = [A[0] + R1 * S * Math.cos(th1), A[1] - R1 * S * Math.sin(th1)];
+      // B 到 DP 的距离
+      const dx = DP[0] - B[0];
+      const dy = DP[1] - B[1];
+      const dist = Math.hypot(dx, dy);
+      const r2 = R2 * S;
+      const r3 = R3 * S;
+      // 圆-圆交点
+      const a = (r2 * r2 - r3 * r3 + dist * dist) / (2 * dist);
+      const h = Math.sqrt(Math.max(r2 * r2 - a * a, 0));
+      const mx = B[0] + (a * dx) / dist;
+      const my = B[1] + (a * dy) / dist;
+      const c1 = [mx - (h * dy) / dist, my + (h * dx) / dist];
+      const c2 = [mx + (h * dy) / dist, my - (h * dx) / dist];
+      // 选择与上一帧连续的交点；首帧取上方（y 较小）分支
+      const C =
+        prevC == null
+          ? c1[1] < c2[1]
+            ? c1
+            : c2
+          : Math.hypot(c1[0] - prevC[0], c1[1] - prevC[1]) <= Math.hypot(c2[0] - prevC[0], c2[1] - prevC[1])
+            ? c1
+            : c2;
+      const th3 = Math.atan2(-(C[1] - DP[1]), C[0] - DP[0]); // 摇杆角（y 向上为正）
+      const th2 = Math.atan2(-(C[1] - B[1]), C[0] - B[0]); // 连杆角
+      // 速度映射：θ3' = θ1' · r1·sin(θ2−θ1) / (r3·sin(θ3−θ2))
+      const slope = (R1 * Math.sin(th2 - th1)) / (R3 * Math.sin(th3 - th2));
+      return { B, C, th3, slope };
+    }
+
+    // 预采样曲线，确定输出角范围与死区区间
+    const samples = [];
+    {
+      let prev = null;
+      for (let d = 0; d <= 360; d += 1) {
+        const s = solve((d * Math.PI) / 180, prev);
+        prev = s.C;
+        samples.push({ d, th3: (s.th3 * 180) / Math.PI, slope: s.slope });
+      }
+    }
+    const th3Min = Math.min(...samples.map((s) => s.th3));
+    const th3Max = Math.max(...samples.map((s) => s.th3));
+    const slopeMax = Math.max(...samples.map((s) => Math.abs(s.slope)));
+    const pad = Math.max((th3Max - th3Min) * 0.12, 4);
+    const outMin = th3Min - pad;
+    const outMax = th3Max + pad;
+    const plotX = (deg) => PLOT.x0 + (deg / 360) * (PLOT.x1 - PLOT.x0);
+    const plotY = (outDeg) => PLOT.y0 - ((outDeg - outMin) / (outMax - outMin)) * (PLOT.y0 - PLOT.y1);
+
+    // 曲线与死区淡色带
+    curveEl.setAttribute(
+      'd',
+      samples.map((s, i) => `${i === 0 ? 'M' : 'L'} ${plotX(s.d).toFixed(1)} ${plotY(s.th3).toFixed(1)}`).join(' '),
+    );
+    {
+      let start = null;
+      const bands = [];
+      samples.forEach((s) => {
+        const inDz = Math.abs(s.slope) < SLOPE_EPS;
+        if (inDz && start == null) start = s.d;
+        if (!inDz && start != null) {
+          bands.push([start, s.d]);
+          start = null;
+        }
+      });
+      if (start != null) bands.push([start, 360]);
+      bands.forEach(([d0, d1]) => {
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', plotX(d0));
+        rect.setAttribute('y', PLOT.y1);
+        rect.setAttribute('width', plotX(d1) - plotX(d0));
+        rect.setAttribute('height', PLOT.y0 - PLOT.y1);
+        bandsEl.appendChild(rect);
+      });
+    }
+
+    let th1 = 0;
+    let prevC = null;
+    let manual = false;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // 硬顶力矩模型（位置模式示意）：控制器要求输出保持 TARGET °/s，
+    // 输出卡住时位置误差持续累积，力矩指令 ∝ 误差，撞到上限即饱和
+    const TARGET_SPEED = 8; // °/s（沿当前运动方向）
+    const ERR_SAT = 6; // °，误差达到该值即撞上限
+    let trackErr = 0;
+    let prevTh1 = 0;
+    let lastFrame = performance.now();
+
+    function render() {
+      const s = solve(th1, prevC);
+      prevC = s.C;
+
+      // 机构
+      crankEl.setAttribute('x1', A[0]);
+      crankEl.setAttribute('y1', A[1]);
+      crankEl.setAttribute('x2', s.B[0]);
+      crankEl.setAttribute('y2', s.B[1]);
+      couplerEl.setAttribute('x1', s.B[0]);
+      couplerEl.setAttribute('y1', s.B[1]);
+      couplerEl.setAttribute('x2', s.C[0]);
+      couplerEl.setAttribute('y2', s.C[1]);
+      rockerEl.setAttribute('x1', DP[0]);
+      rockerEl.setAttribute('y1', DP[1]);
+      rockerEl.setAttribute('x2', s.C[0]);
+      rockerEl.setAttribute('y2', s.C[1]);
+      jointB.setAttribute('cx', s.B[0]);
+      jointB.setAttribute('cy', s.B[1]);
+      jointB.setAttribute('r', 4);
+      jointC.setAttribute('cx', s.C[0]);
+      jointC.setAttribute('cy', s.C[1]);
+      jointC.setAttribute('r', 4);
+      handle.setAttribute('cx', s.B[0]);
+      handle.setAttribute('cy', s.B[1]);
+      handle.setAttribute('r', 11);
+
+      // 曲线当前点与切线
+      const inDeg = (((th1 * 180) / Math.PI) % 360 + 360) % 360;
+      const outDeg = (s.th3 * 180) / Math.PI;
+      const px = plotX(inDeg);
+      const py = plotY(outDeg);
+      markerEl.setAttribute('cx', px);
+      markerEl.setAttribute('cy', py);
+      // 屏幕坐标切线斜率（y 轴向下取负）
+      const mScreen = -s.slope * ((PLOT.y0 - PLOT.y1) / (outMax - outMin)) * (360 / (PLOT.x1 - PLOT.x0));
+      const halfLen = 42 / Math.hypot(1, mScreen);
+      tangentEl.setAttribute('x1', px - halfLen);
+      tangentEl.setAttribute('y1', py - halfLen * mScreen);
+      tangentEl.setAttribute('x2', px + halfLen);
+      tangentEl.setAttribute('y2', py + halfLen * mScreen);
+
+      // 死点状态
+      const nearDead = Math.abs(s.slope) < SLOPE_EPS;
+      demo.classList.toggle('fb-dead', nearDead);
+      oIn.textContent = inDeg.toFixed(0);
+      oOut.textContent = outDeg.toFixed(1);
+      oSlope.textContent = s.slope.toFixed(2);
+      statusEl.textContent = nearDead ? '接近死点：输出几乎不动' : '正常传动';
+
+      // 仪表：输出角速度条 + 硬顶力矩指令（误差累积，饱和爆红）
+      const now = performance.now();
+      const dt = Math.min((now - lastFrame) / 1000, 0.25);
+      lastFrame = now;
+      let dTh = th1 - prevTh1;
+      dTh = Math.atan2(Math.sin(dTh), Math.cos(dTh)); // 角度差归一化到 [-π, π]
+      prevTh1 = th1;
+      const OMEGA_DEG = 32;
+      const outSpeed = Math.abs(s.slope) * OMEGA_DEG;
+      outBar.style.width = `${((Math.abs(s.slope) / slopeMax) * 100).toFixed(1)}%`;
+      outVal.textContent = `${outSpeed.toFixed(0)}°/s`;
+      // ω_out = 斜率 × ω_in（本帧实际输入角速度，°/s）；沿当前运动方向累积误差，
+      // 回程不误判为“卡住”
+      const omegaIn = dt > 0 ? (dTh * 180) / Math.PI / dt : 0;
+      const omegaOutMag = Math.abs(s.slope * omegaIn);
+      trackErr = Math.min(Math.max(trackErr + (TARGET_SPEED - omegaOutMag) * dt, 0), ERR_SAT);
+      const demand = trackErr / ERR_SAT;
+      tauBar.style.width = `${(demand * 100).toFixed(1)}%`;
+      tauVal.textContent = demand >= 1 ? '饱和：撞电流上限' : `上限的 ${(demand * 100).toFixed(0)}%`;
+      demo.classList.toggle('fb-overload', demand >= 0.85);
+    }
+
+    // 自动恒速旋转
+    let last = performance.now();
+    function tick(now) {
+      const dt = Math.min((now - last) / 1000, 0.1);
+      last = now;
+      if (!manual && !reduced) {
+        th1 += OMEGA * dt;
+        render();
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    // 拖动接管：按住曲柄手柄或机构区域，松手恢复自动恒速
+    function setFromEvent(e) {
+      const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());
+      th1 = Math.atan2(A[1] - pt.y, pt.x - A[0]);
+      render();
+    }
+    mech.addEventListener('pointerdown', (e) => {
+      manual = true;
+      mech.setPointerCapture(e.pointerId);
+      setFromEvent(e);
+    });
+    mech.addEventListener('pointermove', (e) => {
+      if (manual && mech.hasPointerCapture(e.pointerId)) setFromEvent(e);
+    });
+    mech.addEventListener('pointerup', () => {
+      manual = false;
+    });
+
+    // 键盘操作：聚焦机构区域时方向键步进输入角
+    mech.setAttribute('tabindex', '0');
+    mech.addEventListener('keydown', (e) => {
+      const delta = { ArrowLeft: -3, ArrowRight: 3, ArrowUp: 1, ArrowDown: -1 }[e.key];
+      if (delta == null) return;
+      e.preventDefault();
+      manual = true;
+      th1 += (delta * Math.PI) / 180;
+      render();
+      clearTimeout(mech._fbKbTimer);
+      mech._fbKbTimer = setTimeout(() => (manual = false), 1200);
+    });
+
+    render();
+  });
+</script>
+
+<style>
+  .fb-demo {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+  .fb-demo svg {
+    display: block;
+    margin: 0 auto;
+    max-width: 760px;
+    width: 100%;
+    height: auto;
+  }
+  .fb-title {
+    fill: var(--sl-color-gray-2);
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .fb-label,
+  .fb-note {
+    fill: var(--sl-color-gray-2);
+    font-size: 13px;
+  }
+  .fb-sub {
+    font-size: 0.75em;
+  }
+  .fb-mech {
+    cursor: grab;
+    touch-action: none;
+    outline: none;
+  }
+  .fb-mech:focus-visible {
+    outline: 2px solid var(--sl-color-accent);
+    outline-offset: 4px;
+    border-radius: 8px;
+  }
+
+  /* 机构 */
+  .fb-ground {
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 3;
+  }
+  .fb-link {
+    stroke-width: 4;
+    stroke-linecap: round;
+  }
+  .fb-crank {
+    stroke: var(--sl-color-accent);
+  }
+  .fb-coupler {
+    stroke: var(--sl-color-gray-2);
+  }
+  .fb-rocker {
+    stroke: light-dark(#0f766e, #5eead4);
+  }
+  .fb-joint {
+    fill: var(--sl-color-bg);
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 2;
+  }
+  .fb-handle {
+    fill: var(--sl-color-accent);
+    opacity: 0.35;
+  }
+  .fb-mech:hover .fb-handle {
+    opacity: 0.6;
+  }
+
+  /* 死点高亮状态 */
+  .fb-badge {
+    fill: light-dark(#dc2626, #f87171);
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+  .fb-dead .fb-badge {
+    opacity: 1;
+  }
+  .fb-dead .fb-rocker {
+    stroke: light-dark(#dc2626, #f87171);
+  }
+
+  /* 曲线图 */
+  .fb-axis {
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 1.5;
+  }
+  .fb-dzbands rect {
+    fill: var(--sl-color-accent);
+    opacity: 0.08;
+  }
+  .fb-curve {
+    stroke: var(--sl-color-text);
+    stroke-width: 2;
+  }
+  .fb-tangent {
+    stroke: light-dark(#b45309, #fbbf24);
+    stroke-width: 2;
+  }
+  .fb-head-t {
+    fill: light-dark(#b45309, #fbbf24);
+  }
+  .fb-dead .fb-tangent {
+    stroke: light-dark(#dc2626, #f87171);
+  }
+  .fb-dead .fb-head-t {
+    fill: light-dark(#dc2626, #f87171);
+  }
+  .fb-marker {
+    fill: var(--sl-color-accent);
+    stroke: var(--sl-color-bg);
+    stroke-width: 2;
+  }
+  .fb-dead .fb-marker {
+    fill: light-dark(#dc2626, #f87171);
+  }
+
+  .fb-hint {
+    margin: 0.5rem 0 0.25rem;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-2);
+  }
+
+  /* 仪表区 */
+  .fb-gauges {
+    max-width: 640px;
+    margin: 0.75rem auto 0;
+    display: grid;
+    gap: 0.45rem;
+    text-align: left;
+  }
+  .fb-gauge {
+    display: grid;
+    grid-template-columns: 220px 1fr 92px;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.8125rem;
+  }
+  .fb-gauge-name {
+    color: var(--sl-color-gray-2);
+  }
+  .fb-bar {
+    height: 10px;
+    border-radius: 5px;
+    background: var(--sl-color-gray-5);
+    overflow: hidden;
+  }
+  .fb-bar-fill {
+    height: 100%;
+    border-radius: 5px;
+  }
+  .fb-fill-in {
+    background: var(--sl-color-accent);
+  }
+  .fb-fill-out {
+    background: light-dark(#0f766e, #5eead4);
+  }
+  .fb-fill-tau {
+    background: light-dark(#b45309, #fbbf24);
+  }
+  .fb-dead .fb-fill-out {
+    background: light-dark(#dc2626, #f87171);
+  }
+  .fb-overload .fb-fill-tau {
+    background: light-dark(#dc2626, #f87171);
+  }
+  .fb-gauge-val {
+    font-family: var(--sl-font-mono, monospace);
+    font-size: 0.8125rem;
+    color: var(--sl-color-accent);
+    font-weight: 600;
+  }
+  .fb-overload .fb-tau-val {
+    color: light-dark(#dc2626, #f87171);
+  }
+  @media (max-width: 560px) {
+    .fb-gauge {
+      grid-template-columns: 1fr 92px;
+    }
+    .fb-gauge-name {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .fb-readout {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    color: var(--sl-color-text);
+  }
+  .fb-readout output,
+  .fb-status {
+    color: var(--sl-color-accent);
+    font-weight: 600;
+  }
+  .fb-dead .fb-status {
+    color: light-dark(#dc2626, #f87171);
+  }
+
+  .fb-demo figcaption {
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-2);
+  }
+</style>

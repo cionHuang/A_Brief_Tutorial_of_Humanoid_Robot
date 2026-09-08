@@ -1,0 +1,54 @@
+---
+/**
+ * URDF link / joint 源码节选卡片：逐字摘自本书使用的 G1 模型文件
+ * g1_29dof_lock_waist.urdf（来自 unitree_rl_gym 固定提交
+ * 276801e46c5d433564f24658bac64f254b7d2d4b），保留原文件行号；
+ * 正文提到的属性行高亮并附中文注释标签，其余行压暗。
+ * 卡片头部文件路径可点击跳转到 GitHub 对应文件的对应行。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import UrdfLinkJointSnippet from '../../../components/UrdfLinkJointSnippet.astro';
+ *   <UrdfLinkJointSnippet />
+ */
+
+import SourceSnippet from './SourceSnippet.astro';
+
+const COMMIT = '276801e46c5d433564f24658bac64f254b7d2d4b';
+const src = (line) =>
+  `https://github.com/unitreerobotics/unitree_rl_gym/blob/${COMMIT}/resources/robots/g1_description/g1_29dof_lock_waist.urdf#L${line}`;
+
+const cards = [
+  {
+    role: 'link · 结构与惯性',
+    file: 'g1_29dof_lock_waist.urdf',
+    url: src(144),
+    lines: [
+      { n: 144, code: '  <link name="left_knee_link">', hl: true, ann: '结构件的软件标识' },
+      { n: 145, code: '    <inertial>' },
+      { n: 146, code: '      <origin xyz="0.005457 0.003964 -0.12074" rpy="0 0 0"/>', ann: '质心位置（m）' },
+      { n: 147, code: '      <mass value="1.932"/>', hl: true, ann: '质量（kg）' },
+      { n: 148, code: '      <inertia ixx="0.011329" ixy="4.82E-05" ixz="-4.49E-05" iyy="0.011277" iyz="-0.0007146" izz="0.0015168"/>', hl: true, ann: '转动惯量（kg·m²）' },
+      { n: 149, code: '    </inertial>' },
+    ],
+  },
+  {
+    role: 'joint · 运动关系',
+    file: 'g1_29dof_lock_waist.urdf',
+    url: src(166),
+    lines: [
+      { n: 166, code: '  <joint name="left_knee_joint" type="revolute">', hl: true, ann: '关节对象名 · 转动关节' },
+      { n: 167, code: '    <origin xyz="-0.078273 0.0021489 -0.17734" rpy="0 0.1749 0"/>', ann: 'q = 0 时的安装位姿（零位由此定义）' },
+      { n: 168, code: '    <parent link="left_hip_yaw_link"/>', hl: true, ann: '父连杆' },
+      { n: 169, code: '    <child link="left_knee_link"/>', hl: true, ann: '子连杆' },
+      { n: 170, code: '    <axis xyz="0 1 0"/>', hl: true, ann: '关节轴线（y 轴）' },
+      { n: 171, code: '    <limit lower="-0.087267" upper="2.8798" effort="139" velocity="20"/>', hl: true, ann: '限位（弧度）与力 / 速度上限' },
+      { n: 172, code: '  </joint>' },
+    ],
+  },
+];
+---
+
+<SourceSnippet
+  cards={cards}
+  caption={'片段逐字摘自 G1 锁腰模型 <code>g1_29dof_lock_waist.urdf</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为原文件行号；<code>link</code> 中的 visual/collision 网格引用从略，膝关节内容与其他 G1 模型变体一致。'}
+/>

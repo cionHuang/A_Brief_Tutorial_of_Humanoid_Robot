@@ -1,6 +1,8 @@
 # 2.1 机构、关节与自由度
 
 import RigidBodyForceDemo from '../../../components/RigidBodyForceDemo.astro';
+import UrdfLinkJointSnippet from '../../../components/UrdfLinkJointSnippet.astro';
+import FourBarDeadCenterDemo from '../../../components/FourBarDeadCenterDemo.astro';
 
 ## 先看一个现场问题
 
@@ -35,7 +37,9 @@ import RigidBodyForceDemo from '../../../components/RigidBodyForceDemo.astro';
 - 关节（Joint）描述两个连杆之间允许的相对运动，例如转动关节（Revolute Joint）或移动关节（Prismatic Joint）；
 - 运动链（Kinematic Chain）是从基座到末端，按关节连接起来的一串连杆。
 
-在 URDF 中，`link` 描述结构和惯性，`joint` 描述父子连杆、运动类型、轴线、范围和零位。G1 29 DoF 描述文件中的 `left_hip_pitch_joint`、`left_knee_joint` 等名称，就是这种“关节对象”的软件标识。[4]
+在 URDF 中，`link` 描述结构和惯性，`joint` 描述父子连杆、运动类型、轴线、范围和零位。G1 29 DoF 描述文件中的 `left_hip_pitch_joint`、`left_knee_joint` 等名称，就是这种“关节对象”的软件标识。[4] 下面是从本书使用的 G1 URDF 中截取的真实定义，高亮行就是上面提到的属性：
+
+<UrdfLinkJointSnippet />
 
 ### 四连杆机构与死点
 
@@ -45,11 +49,11 @@ import RigidBodyForceDemo from '../../../components/RigidBodyForceDemo.astro';
 
 当输入杆、连杆和输出杆接近共线时，机构会进入死点（Dead Center）附近。此时输入运动对输出运动的传递能力显著下降，输入轴继续转动，输出端的有效位移可能非常小；越过死点后，输出运动方向还可能发生改变。工程上常把死点附近一段“输出响应很小、控制很困难的区域”称为死区（Dead Zone），但严格来说，死点是特定几何构型，死区是围绕该构型表现出来的有效工作范围或响应区域，两者不要混用。
 
-![四连杆机构的死点、输出速度退化与雅可比奇异](assets/images/05-four-bar-dead-center.png)
-
-图：左上对比正常传动角与接近共线的死点构型，左下展示输入角速度与输出角速度的变化，右侧连接到雅可比速度映射和条件数。该图是四连杆概念示意，不代表 G1 的真实内部机构。
-
 从机构角度看，死点与传动角（Transmission Angle）变差有关：有效传力方向趋于共线，驱动力矩难以转化为期望的输出运动。从算法角度看，同一个构型会使约束方程的雅可比矩阵（Jacobian）接近奇异（Singular），速度映射可能出现极大的关节速度或很小的末端速度，逆运动学（Inverse Kinematics, IK）和轨迹优化因此变得病态。[1][2][6]
+
+下面的演示把这两种语言放在一起：左边是机械视角的四连杆，右边是同一条运动的输入输出曲线。机构默认恒速旋转，你可以拖动曲柄接管、停在任意构型上细看，松手后恢复恒速——注意接近死点时，输出摇杆的停顿和曲线切线的变平是同一时刻发生的：
+
+<FourBarDeadCenterDemo />
 
 这会影响多个上下游环节：
 

@@ -3,12 +3,14 @@
  * LowCmd / LowState 源码节选卡片：逐字摘自 unitree_sdk2 固定提交
  * （9754cd153af3da471b0fe5f3aa535e426fb11db3）的消息定义与官方 G1 低层示例，
  * 保留原文件行号；正文提到的字段行高亮并附中文注释标签，其余行压暗。
- * 纯 HTML + CSS，无 JS 依赖。
+ * 卡片头部文件路径可点击跳转到 GitHub 对应文件的对应行。
  *
  * 使用方式（仅限 .mdx 小节）：
  *   import LowCmdLowStateSnippet from '../../../components/LowCmdLowStateSnippet.astro';
  *   <LowCmdLowStateSnippet />
  */
+
+import SourceSnippet from './SourceSnippet.astro';
 
 const COMMIT = '9754cd153af3da471b0fe5f3aa535e426fb11db3';
 const src = (file, line) => `https://github.com/unitreerobotics/unitree_sdk2/blob/${COMMIT}/${file}#L${line}`;
@@ -17,7 +19,7 @@ const cards = [
   {
     role: '下发 · 消息定义',
     file: 'include/unitree/idl/hg/LowCmd_.hpp',
-    anchor: 23,
+    url: src('include/unitree/idl/hg/LowCmd_.hpp', 23),
     lines: [
       { n: 23, code: 'class LowCmd_' },
       { n: 26, code: ' uint8_t mode_pr_ = 0;' },
@@ -30,7 +32,7 @@ const cards = [
   {
     role: '下发 · 单个关节的指令字段',
     file: 'include/unitree/idl/hg/MotorCmd_.hpp',
-    anchor: 20,
+    url: src('include/unitree/idl/hg/MotorCmd_.hpp', 20),
     lines: [
       { n: 20, code: 'class MotorCmd_' },
       { n: 23, code: ' uint8_t mode_ = 0;', ann: '使能模式' },
@@ -45,7 +47,7 @@ const cards = [
   {
     role: '回报 · 消息定义',
     file: 'include/unitree/idl/hg/LowState_.hpp',
-    anchor: 25,
+    url: src('include/unitree/idl/hg/LowState_.hpp', 25),
     lines: [
       { n: 25, code: 'class LowState_' },
       { n: 31, code: ' uint32_t tick_ = 0;', ann: '时间戳' },
@@ -57,7 +59,7 @@ const cards = [
   {
     role: '官方低层示例 · 控制线程',
     file: 'example/g1/low_level/g1_ankle_swing_example.cpp',
-    anchor: 175,
+    url: src('example/g1/low_level/g1_ankle_swing_example.cpp', 175),
     lines: [
       { n: 175, code: '        control_dt_(0.002),', hl: true, ann: '2 ms 控制周期（500 Hz）' },
       { n: 284, code: ' void LowCommandWriter() {' },
@@ -69,120 +71,7 @@ const cards = [
 ];
 ---
 
-<figure class="lc-snippet">
-  {cards.map((card) => (
-    <div class="lc-card">
-      <div class="lc-card-head">
-        <span class="lc-role">{card.role}</span>
-        <a class="lc-file" href={src(card.file, card.anchor)} target="_blank" rel="noopener noreferrer" title={`在 GitHub 查看源码（固定提交 ${COMMIT.slice(0, 7)}）`}>{card.file}</a>
-      </div>
-      <div class="lc-body">
-        {card.lines.map((line) => (
-          <div class={line.hl ? 'lc-line lc-hl' : 'lc-line lc-dim'}>
-            <span class="lc-ln">{line.n}</span>
-            <code class="lc-code">{line.code}</code>
-            {line.ann && <span class="lc-ann">{line.ann}</span>}
-          </div>
-        ))}
-      </div>
-    </div>
-  ))}
-  <figcaption>
-    片段逐字摘自 unitree_sdk2（提交 <code>9754cd1</code>）对应文件，行号为原文件行号，行号不连续处为省略；高亮行即正文提到的字段，右侧为中文注释。
-  </figcaption>
-</figure>
-
-<style>
-  .lc-snippet {
-    margin: 1.5rem 0;
-  }
-  .lc-card {
-    border: 1px solid var(--sl-color-gray-5);
-    border-radius: 8px;
-    overflow: hidden;
-    margin-bottom: 0.75rem;
-    background: var(--sl-color-bg);
-  }
-  .lc-card-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 0.75rem;
-    padding: 0.35rem 0.75rem;
-    border-bottom: 1px solid var(--sl-color-gray-5);
-    background: var(--sl-color-bg-sidebar);
-  }
-  .lc-role {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--sl-color-text);
-    white-space: nowrap;
-  }
-  .lc-file {
-    font-family: var(--sl-font-mono, monospace);
-    font-size: 0.75rem;
-    color: var(--sl-color-gray-2);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    text-decoration: none;
-    border-bottom: 1px dashed var(--sl-color-gray-4);
-  }
-  .lc-file:hover {
-    color: var(--sl-color-accent);
-    border-bottom-color: var(--sl-color-accent);
-  }
-  .lc-body {
-    overflow-x: auto;
-    padding: 0.25rem 0;
-    font-family: var(--sl-font-mono, monospace);
-    font-size: 0.75rem;
-    line-height: 1.7;
-  }
-  .lc-line {
-    display: flex;
-    align-items: baseline;
-    padding: 0 0.75rem 0 0;
-    border-left: 3px solid transparent;
-  }
-  .lc-ln {
-    flex: 0 0 2.5rem;
-    text-align: right;
-    padding-right: 0.75rem;
-    color: var(--sl-color-gray-3);
-    user-select: none;
-  }
-  .lc-code {
-    white-space: pre;
-    color: var(--sl-color-text);
-    background: none;
-    padding: 0;
-  }
-  .lc-ann {
-    margin-left: auto;
-    padding-left: 1.5rem;
-    white-space: nowrap;
-    font-family: var(--sl-font, sans-serif);
-    font-size: 0.6875rem;
-    color: var(--sl-color-accent);
-  }
-  .lc-dim .lc-code {
-    opacity: 0.45;
-  }
-  .lc-dim .lc-ann {
-    color: var(--sl-color-gray-2);
-  }
-  .lc-hl {
-    border-left-color: var(--sl-color-accent);
-    background: light-dark(rgba(79, 70, 229, 0.07), rgba(139, 131, 255, 0.12));
-  }
-  .lc-hl .lc-code {
-    font-weight: 600;
-  }
-
-  .lc-snippet figcaption {
-    margin-top: 0.25rem;
-    font-size: 0.8125rem;
-    color: var(--sl-color-gray-2);
-  }
-</style>
+<SourceSnippet
+  cards={cards}
+  caption={'片段逐字摘自 unitree_sdk2（提交 <code>9754cd1</code>）对应文件，行号为原文件行号，行号不连续处为省略；高亮行即正文提到的字段，右侧为中文注释。'}
+/>
