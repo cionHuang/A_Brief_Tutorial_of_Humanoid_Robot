@@ -1,0 +1,243 @@
+---
+/**
+ * G1 指令旅程图：一条指令从任务目标出发，依次经过大脑层、小脑层、
+ * 软件与工具链层、电气与嵌入式层、机械与本体层，再经 LowState 回报
+ * 和状态估计回到大脑，形成闭环。每个节点标注所在层并带层配色；
+ * 光点逐站向下流动，到站时节点发光；底部虚线弧表示进入下一拍。
+ * 纯 SVG + CSS/SMIL，无 JS 依赖。
+ * 遵循 prefers-reduced-motion：用户系统开启减弱动态效果时光点静止。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import G1CommandJourney from '../../../components/G1CommandJourney.astro';
+ *   <G1CommandJourney />
+ */
+
+// 旅程节点，按指令流动顺序排列；cls 决定层标注与发光配色
+const steps = [
+  { label: '外部任务：ROS 2 / Python 脚本发布“向前走 0.5 米”的目标', layer: '起点', cls: 'plain' },
+  { label: '行为状态机选择“行走”技能，调用步态规划器', layer: '大脑层', cls: 'brain' },
+  { label: '规划器输出未来若干步的足底目标、躯干姿态、质心轨迹', layer: '大脑层', cls: 'brain' },
+  { label: '全身控制器把躯干/足底任务映射成 29 个关节的位置/速度/力矩目标', layer: '小脑层', cls: 'cerebellum' },
+  { label: 'ROS 2 Topic 或 DDS rt/lowcmd 消息封装成 LowCmd', layer: '软件与工具链层', cls: 'software' },
+  { label: '控制线程按设定周期发布 LowCmd（500 Hz，即 2 ms）', layer: '电气与嵌入式层', cls: 'elec' },
+  { label: '电机驱动器解析 LowCmd，跑电流环，驱动 29 个关节模组', layer: '电气与嵌入式层', cls: 'elec' },
+  { label: '机器人本体运动，编码器和 IMU 测量新状态', layer: '机械与本体层', cls: 'mech' },
+  { label: '数据流：LowState 返回 MotorState、IMUState 等状态', layer: '软件与工具链层', cls: 'software' },
+  { label: '状态估计更新浮动基座和关节状态', layer: '小脑层', cls: 'cerebellum' },
+  { label: '闭环完成，回到任务层等待下一拍', layer: '回到起点', cls: 'plain' },
+];
+
+const BOX_X = 16; // 节点左缘
+const BOX_W = 568; // 节点宽
+const BOX_H = 40; // 节点高
+const PITCH = 52; // 节点间距
+const nodeY = (i) => 40 + i * PITCH; // 第 i 个节点的中心 y
+const ARROW_X = BOX_X + BOX_W / 2; // 站间箭头与光点的 x
+
+// 动画时序：一个周期 T 秒，第 m 个节点在 m 秒发光（起点在 0.2s），
+// 第 k 段光点在到达前 0.7s 出发，回流光点在周期末尾走底部弧线
+const T = 12;
+const glowAt = (m) => (m === 0 ? 0.2 : m * 1.0);
+const fmt = (n) => (Math.round(n * 1000) / 1000).toString();
+
+const n = steps.length;
+
+// 站间箭头（第 k 段连接节点 k 与 k+1）
+const segments = Array.from({ length: n - 1 }, (_, k) => ({
+  d: `M ${ARROW_X} ${nodeY(k) + BOX_H / 2 + 2} L ${ARROW_X} ${nodeY(k + 1) - BOX_H / 2 - 3}`,
+}));
+
+// 每段上的流动光点
+const dotAnims = segments.map((_, k) => {
+  const b = (glowAt(k + 1) - 0.7) / T;
+  const e = glowAt(k + 1) / T;
+  return {
+    motionKeyTimes: `0;${fmt(e)};1`,
+    opacityValues: '0;0;1;1;0;0',
+    opacityKeyTimes: `0;${fmt(b)};${fmt(b + 0.008)};${fmt(e - 0.004)};${fmt(e)};1`,
+  };
+});
+
+// 节点发光：光点到达（或起点出发）时亮起，随后淡出
+const nodeGlows = steps.map((_, m) => {
+  const a = glowAt(m) / T;
+  return {
+    values: '0;0;1;0;0',
+    keyTimes: `0;${fmt(a)};${fmt(a + 0.02)};${fmt(a + 0.08)};1`,
+  };
+});
+
+// 底部回流弧：从末节点右缘绕回起点右缘
+const returnPath = `M ${BOX_X + BOX_W} ${nodeY(n - 1)} C 632 ${nodeY(n - 1)}, 632 ${nodeY(0)}, ${BOX_X + BOX_W + 3} ${nodeY(0)}`;
+const returnDot = {
+  motionKeyTimes: `0;${fmt(11.4 / T)};1`,
+  opacityValues: '0;0;1;1;0;0',
+  opacityKeyTimes: `0;${fmt(10.5 / T)};${fmt(10.55 / T)};${fmt(11.35 / T)};${fmt(11.45 / T)};1`,
+};
+---
+
+<figure class="g1-command-journey">
+  <svg
+    viewBox="0 0 640 596"
+    role="img"
+    aria-label="G1 指令旅程图：外部任务经大脑层的行为决策与规划、小脑层的全身控制、软件与工具链层的 LowCmd 封装、电气与嵌入式层的 500 Hz 发布和电机驱动、机械与本体层的本体运动，再经 LowState 回报和小脑层状态估计回到闭环；光点逐站流动，到站节点发光"
+  >
+    <defs>
+      <marker id="gcj-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="gcj-arrow-head"></path>
+      </marker>
+    </defs>
+
+    {/* 站间箭头 */}
+    {segments.map(({ d }) => <path d={d} class="gcj-link" fill="none" marker-end="url(#gcj-arrow)"></path>)}
+
+    {/* 底部回流虚线弧 */}
+    <path d={returnPath} class="gcj-return" fill="none" marker-end="url(#gcj-arrow)"></path>
+    <text x="626" y={(nodeY(0) + nodeY(n - 1)) / 2} class="gcj-arc-label" text-anchor="middle" transform={`rotate(-90 626 ${(nodeY(0) + nodeY(n - 1)) / 2})`}>
+      下一拍指令
+    </text>
+
+    {/* 旅程节点 */}
+    {steps.map((step, i) => (
+      <g class={`gcj-node gcj-node-${step.cls}`}>
+        <rect x={BOX_X} y={nodeY(i) - BOX_H / 2} width={BOX_W} height={BOX_H} rx="6" class="gcj-box"></rect>
+        <rect x={BOX_X} y={nodeY(i) - BOX_H / 2} width="4" height={BOX_H} class="gcj-bar"></rect>
+        <text x={BOX_X + 16} y={nodeY(i)} class="gcj-label" dominant-baseline="central">{step.label}</text>
+        <text x={BOX_X + BOX_W - 12} y={nodeY(i)} class="gcj-tag" text-anchor="end" dominant-baseline="central">{step.layer}</text>
+      </g>
+    ))}
+
+    {/* 发光覆盖层与流动光点（减弱动态效果时整体隐藏） */}
+    <g class="gcj-anim">
+      {/* 节点发光覆盖层 */}
+      {steps.map((step, i) => (
+        <rect x={BOX_X} y={nodeY(i) - BOX_H / 2} width={BOX_W} height={BOX_H} rx="6" class={`gcj-glow gcj-glow-${step.cls}`} opacity="0">
+          <animate attributeName="opacity" values={nodeGlows[i].values} keyTimes={nodeGlows[i].keyTimes} dur={`${T}s`} repeatCount="indefinite"></animate>
+        </rect>
+      ))}
+      {/* 站间光点 */}
+      {segments.map(({ d }, k) => (
+        <circle r="5" class="gcj-dot" opacity="0">
+          <animateMotion dur={`${T}s`} repeatCount="indefinite" path={d} calcMode="linear" keyPoints="0;1;1" keyTimes={dotAnims[k].motionKeyTimes}></animateMotion>
+          <animate attributeName="opacity" values={dotAnims[k].opacityValues} keyTimes={dotAnims[k].opacityKeyTimes} dur={`${T}s`} repeatCount="indefinite"></animate>
+        </circle>
+      ))}
+      {/* 回流光点 */}
+      <circle r="5" class="gcj-dot gcj-dot-return" opacity="0">
+        <animateMotion dur={`${T}s`} repeatCount="indefinite" path={returnPath} calcMode="linear" keyPoints="0;1;1" keyTimes={returnDot.motionKeyTimes}></animateMotion>
+        <animate attributeName="opacity" values={returnDot.opacityValues} keyTimes={returnDot.opacityKeyTimes} dur={`${T}s`} repeatCount="indefinite"></animate>
+      </circle>
+    </g>
+  </svg>
+  <figcaption>一条指令的旅程：任务目标逐层细化，穿过大脑、小脑、工具链、电气与本体，再由 LowState 回报和状态估计回到闭环；光点流动的顺序就是指令实际的流动顺序。</figcaption>
+</figure>
+
+<style>
+  .g1-command-journey {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+  .g1-command-journey svg {
+    display: block;
+    margin: 0 auto;
+    max-width: 640px;
+    width: 100%;
+    height: auto;
+  }
+  .gcj-link {
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 1.5;
+  }
+  .gcj-arrow-head {
+    fill: var(--sl-color-gray-3);
+  }
+  .gcj-return {
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 4;
+  }
+  .gcj-arc-label {
+    fill: var(--sl-color-gray-2);
+    font-size: 11px;
+  }
+  .gcj-box {
+    fill: var(--sl-color-bg);
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 1.5;
+  }
+  .gcj-label {
+    fill: var(--sl-color-text);
+    font-size: 13px;
+  }
+  .gcj-tag {
+    font-size: 10.5px;
+  }
+
+  /* 各层配色（标注、色条、发光共用），兼顾明暗两套主题 */
+  .gcj-node-plain {
+    --layer: light-dark(#4b5563, #9ca3af);
+  }
+  .gcj-node-brain {
+    --layer: light-dark(#6d28d9, #c4b5fd);
+  }
+  .gcj-node-cerebellum {
+    --layer: light-dark(#0f766e, #5eead4);
+  }
+  .gcj-node-software {
+    --layer: light-dark(#1d4ed8, #93c5fd);
+  }
+  .gcj-node-elec {
+    --layer: light-dark(#b45309, #fbbf24);
+  }
+  .gcj-node-mech {
+    --layer: light-dark(#9f1239, #fda4af);
+  }
+  .gcj-tag,
+  .gcj-bar {
+    fill: var(--layer);
+  }
+
+  /* 发光覆盖层：节点本身不透明，由 SMIL 控制透明度 */
+  .gcj-glow {
+    fill: none;
+    stroke-width: 3;
+  }
+  .gcj-glow-plain {
+    stroke: var(--sl-color-gray-2);
+  }
+  .gcj-glow-brain {
+    stroke: light-dark(#6d28d9, #c4b5fd);
+  }
+  .gcj-glow-cerebellum {
+    stroke: light-dark(#0f766e, #5eead4);
+  }
+  .gcj-glow-software {
+    stroke: light-dark(#1d4ed8, #93c5fd);
+  }
+  .gcj-glow-elec {
+    stroke: light-dark(#b45309, #fbbf24);
+  }
+  .gcj-glow-mech {
+    stroke: light-dark(#9f1239, #fda4af);
+  }
+
+  /* 流动光点 */
+  .gcj-dot {
+    fill: var(--sl-color-accent);
+  }
+  .gcj-dot-return {
+    fill: var(--sl-color-gray-2);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .gcj-anim {
+      display: none;
+    }
+  }
+
+  .g1-command-journey figcaption {
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-2);
+  }
+</style>

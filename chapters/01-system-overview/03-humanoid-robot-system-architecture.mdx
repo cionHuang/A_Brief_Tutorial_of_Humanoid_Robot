@@ -1,6 +1,8 @@
 # 1.3 人形机器人系统架构
 
 import SystemLoopMapping from '../../../components/SystemLoopMapping.astro';
+import G1CommandJourney from '../../../components/G1CommandJourney.astro';
+import LowCmdLowStateSnippet from '../../../components/LowCmdLowStateSnippet.astro';
 
 ## 先看一个现场问题
 
@@ -139,25 +141,15 @@ import SystemLoopMapping from '../../../components/SystemLoopMapping.astro';
 
 ## 以 G1 看一条指令的旅程
 
-用 G1 的 `g1_29dof` 模型可以把上面的抽象架构变成一条具体链路：
+用 G1 的 `g1_29dof` 模型可以把上面的抽象架构变成一条具体链路。下图跟踪一条“向前走 0.5 米”的指令，看它依次穿过哪些层、每一层叫什么名字：
 
-```text
-外部任务：ROS 2 / Python 脚本发布一个“向前走 0.5 米”的目标
-→ 大脑层：行为状态机选择“行走”技能，调用步态规划器
-→ 大脑层：规划器输出未来若干步的足底目标、躯干姿态、质心轨迹
-→ 小脑层：全身控制器把躯干/足底任务映射成 29 个关节的位置/速度/力矩目标
-→ 软件与工具链层：ROS 2 Topic 或 DDS rt/lowcmd 消息封装成 LowCmd
-→ 电气与嵌入式层：控制线程按设定周期发布 LowCmd（官方 G1 低层示例使用 2 ms，即 500 Hz）
-→ 电气与嵌入式层：电机驱动器解析 LowCmd，跑电流环，驱动 29 个关节模组
-→ 机械与本体层：机器人本体运动，编码器和 IMU 测量新状态
-→ 数据流：LowState 返回 MotorState、IMUState 等状态
-→ 小脑层：状态估计更新浮动基座和关节状态
-→ 闭环完成
-```
+<G1CommandJourney />
 
-其中 `LowCmd` 和 `LowState` 是 G1 低层通信接口的核心消息。[9][10] 在 SDK2 的 G1 消息定义中，[`LowCmd_`](https://github.com/unitreerobotics/unitree_sdk2/blob/9754cd153af3da471b0fe5f3aa535e426fb11db3/include/unitree/idl/hg/LowCmd_.hpp) 包含 `mode_pr`、`mode_machine`、`motor_cmd`、`reserve` 和 `crc`；每个 [`MotorCmd_`](https://github.com/unitreerobotics/unitree_sdk2/blob/9754cd153af3da471b0fe5f3aa535e426fb11db3/include/unitree/idl/hg/MotorCmd_.hpp) 再包含 `mode`、`q`（目标位置）、`dq`（目标速度）、`tau`（前馈力矩）、`kp`、`kd`。对应的 [`LowState_`](https://github.com/unitreerobotics/unitree_sdk2/tree/9754cd153af3da471b0fe5f3aa535e426fb11db3/include/unitree/idl/hg) 包含版本、模式、时间戳、`IMUState_`、电机状态数组、遥控器数据和 CRC；每个 [`MotorState_`](https://github.com/unitreerobotics/unitree_sdk2/tree/9754cd153af3da471b0fe5f3aa535e426fb11db3/include/unitree/idl/hg) 提供 `q`、`dq`、`ddq`、`tau_est`、温度、电压和状态码。消息定义的数组容量为 35，但[官方 G1 低层示例](https://github.com/unitreerobotics/unitree_sdk2/blob/9754cd153af3da471b0fe5f3aa535e426fb11db3/example/g1/low_level/g1_ankle_swing_example.cpp)按 29 个电机索引使用。[10]
+这条链路上有两个名字值得先记住：`LowCmd` 和 `LowState` 是 G1 低层通信接口的核心消息——`LowCmd` 逐关节携带目标位置、速度、前馈力矩和 `kp`/`kd` 增益，`LowState` 回报电机状态和 IMU 数据。[9][10] 也就是说，上层算法和真实电机之间隔着这两个消息。下面是从官方 SDK 和官方低层示例中截取的真实定义，高亮行就是上面提到的字段；`kp`/`kd`/`tau` 的控制含义在 4.5 节展开。
 
-需要区分“消息类型存在”和“消息是否嵌套在 `LowState_` 中”：[`PressSensorState_`](https://github.com/unitreerobotics/unitree_sdk2/blob/9754cd153af3da471b0fe5f3aa535e426fb11db3/include/unitree/idl/hg/PressSensorState_.hpp) 用于压力传感器状态，[`BmsState_`](https://github.com/unitreerobotics/unitree_sdk2/blob/9754cd153af3da471b0fe5f3aa535e426fb11db3/include/unitree/idl/hg/BmsState_.hpp) 用于电池管理状态，它们在 SDK2 中是独立的 IDL 类型，不能简单写成 `LowState_` 的直接字段。[10] 同样，官方示例中的 500 Hz（2 ms）是该示例控制线程的配置，不代表所有 G1 工作模式或所有整机通信链路都固定使用这个频率；传输介质也应以具体硬件和驱动实现为准。
+<LowCmdLowStateSnippet />
+
+注意，官方示例中的 500 Hz（2 ms）是该示例控制线程的配置，不代表 G1 所有工作模式都固定使用这个频率。
 
 G1 的 URDF 中还固定了 `d435_link` 和 `mid360_link`，分别对应 RGB-D 相机和激光雷达的安装位姿。它们目前在仿真中可能没有实际传感器数据，但在软件与工具链层已经预留了视觉/激光感知的坐标系接口。
 
