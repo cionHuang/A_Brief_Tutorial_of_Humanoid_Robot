@@ -6,6 +6,8 @@
  * 由 Astro 的内容集合热更新负责刷新页面。
  */
 import { watch } from 'node:fs';
+import { readdir, stat } from 'node:fs/promises';
+import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { chaptersRoot, syncContent } from './sync-content.mjs';
 import { syncRobotAssets } from './sync-robot-assets.mjs';
@@ -22,7 +24,7 @@ const astro = spawn('npx', ['astro', 'dev', '--force'], {
 
 let timer;
 let syncing = false;
-watch(chaptersRoot, { recursive: true }, () => {
+function scheduleSync() {
   clearTimeout(timer);
   timer = setTimeout(async () => {
     if (syncing) return;
@@ -35,7 +37,29 @@ watch(chaptersRoot, { recursive: true }, () => {
       syncing = false;
     }
   }, 300);
-});
+}
+watch(chaptersRoot, { recursive: true }, scheduleSync);
+
+// fs.watch 在编辑器的原子重命名写入后偶发漏报，用周期性 mtime 扫描兜底，
+// 保证 chapters/ 的改动一定会触发同步
+let snapshot = new Map();
+async function scanChanges() {
+  const next = new Map();
+  for (const chapter of await readdir(chaptersRoot, { withFileTypes: true })) {
+    if (!chapter.isDirectory() || !/^\d{2}-/.test(chapter.name)) continue;
+    const dir = path.join(chaptersRoot, chapter.name);
+    for (const name of await readdir(dir).catch(() => [])) {
+      if (!name.endsWith('.md') && !name.endsWith('.mdx')) continue;
+      const s = await stat(path.join(dir, name));
+      next.set(`${chapter.name}/${name}`, s.mtimeMs);
+    }
+  }
+  const changed =
+    next.size !== snapshot.size || [...next].some(([key, value]) => snapshot.get(key) !== value);
+  snapshot = next;
+  if (changed) scheduleSync();
+}
+setInterval(scanChanges, 2000);
 
 console.log(`已监听 ${chaptersRoot}，正文修改将自动同步。`);
 

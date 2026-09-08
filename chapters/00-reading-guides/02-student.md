@@ -16,7 +16,7 @@
 
 | 小节 | 预计时间 | 前置知识 |
 | --- | --- | --- |
-| [2.1 机构、关节与自由度](../02-mechanics/01-mechanisms-and-dof.md) | 20 分钟 | 无 |
+| [2.1 机构、关节与自由度](../02-mechanics/01-mechanisms-and-dof.mdx) | 20 分钟 | 无 |
 | [2.2 结构设计、材料与刚柔性](../02-mechanics/02-links-structure-and-materials.md) | 15 分钟 | 无 |
 | [2.3 传动与关节模组](../02-mechanics/03-transmission-and-joint-modules.md) | 20 分钟 | 2.1 |
 | [2.4 足部、接触与稳定性](../02-mechanics/04-foot-contact-and-stability.md) | 15 分钟 | 2.1 |

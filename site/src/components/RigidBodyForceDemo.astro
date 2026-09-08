@@ -1,0 +1,407 @@
+---
+/**
+ * 刚体力系简化交互演示：左侧刚体上作用三个方向、大小、作用点不同的力；
+ * 右侧同一刚体，读者点击或拖动选择简化中心 P，实时显示主矢 R 与主矩 M_P。
+ * R 不随 P 变化，M_P 随 P 更新；虚线为合力作用线（M = 0），P 靠近时高亮。
+ *
+ * 操作方式：右侧刚体上点击 / 拖动，或用方向键移动 P。
+ * 力学坐标约定：x 向右、y 向上，力矩逆时针为正；100 px = 1 m，1.1 px = 1 N。
+ * 纯 SVG + 原生 JS，无外部依赖；样式跟随 Starlight 明暗主题。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import RigidBodyForceDemo from '../../../components/RigidBodyForceDemo.astro';
+ *   <RigidBodyForceDemo />
+ */
+
+// 力系定义：作用点 a 与力 f 均为力学坐标（米 / 牛，y 向上）
+const FORCES = [
+  { name: 'F₁', a: [-0.6, 0.3], f: [50, 25], cls: 'f1' },
+  { name: 'F₂', a: [0.55, -0.35], f: [-20, 45], cls: 'f2' },
+  { name: 'F₃', a: [0.1, 0.6], f: [45, -30], cls: 'f3' },
+];
+
+const PX = 100; // px / m
+const FS = 1.1; // px / N
+const LC = [170, 190]; // 左画面中心（SVG 坐标）
+const RC = [570, 190]; // 右画面中心
+
+const toSvg = (c, p) => [c[0] + p[0] * PX, c[1] - p[1] * PX];
+
+// 主矢与对原点的主矩
+const R = [FORCES.reduce((s, F) => s + F.f[0], 0), FORCES.reduce((s, F) => s + F.f[1], 0)];
+const MO = FORCES.reduce((s, F) => s + F.a[0] * F.f[1] - F.a[1] * F.f[0], 0);
+const R_LEN = Math.hypot(R[0], R[1]);
+
+// 合力作用线（M = 0 的直线）：过点 Q、方向沿 R
+const n = [-R[1] / R_LEN, R[0] / R_LEN]; // R 的法向单位向量
+const q = [n[0] * (-MO / R_LEN), n[1] * (-MO / R_LEN)];
+const Q_SVG = toSvg(RC, q);
+const R_DIR_SVG = [R[0] / R_LEN, -R[1] / R_LEN];
+const zeroLine = {
+  x1: Q_SVG[0] - R_DIR_SVG[0] * 125,
+  y1: Q_SVG[1] - R_DIR_SVG[1] * 125,
+  x2: Q_SVG[0] + R_DIR_SVG[0] * 125,
+  y2: Q_SVG[1] + R_DIR_SVG[1] * 125,
+};
+
+// 左画面力箭头的起止点
+const arrows = FORCES.map((F) => {
+  const [sx, sy] = toSvg(LC, F.a);
+  const ex = sx + F.f[0] * FS;
+  const ey = sy - F.f[1] * FS;
+  const len = Math.hypot(ex - sx, ey - sy);
+  return {
+    ...F,
+    sx,
+    sy,
+    ex,
+    ey,
+    lx: ex + ((ex - sx) / len) * 16,
+    ly: ey + ((ey - sy) / len) * 16 + 5,
+  };
+});
+
+// 右画面上力的作用点参考小圆点
+const refDots = FORCES.map((F) => toSvg(RC, F.a));
+
+// 刚体轮廓：任意形状（强调结论与几何外形无关）
+const BLOB =
+  'M 0 -85 C 45 -85 80 -50 82 -5 C 84 40 50 80 0 82 C -50 84 -82 45 -84 0 C -86 -45 -45 -86 0 -85 Z';
+---
+
+<figure class="rbf-demo">
+  <svg viewBox="0 0 745 390" role="img" aria-label="刚体力系简化演示：左侧刚体上有三个力，右侧刚体上可点击选择简化中心 P，显示主矢与主矩">
+    <defs>
+      <path id="rbf-blob" d={BLOB}></path>
+      <marker id="rbf-m-f1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="rbf-head-f1"></path>
+      </marker>
+      <marker id="rbf-m-f2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="rbf-head-f2"></path>
+      </marker>
+      <marker id="rbf-m-f3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="rbf-head-f3"></path>
+      </marker>
+      <marker id="rbf-m-r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="rbf-head-r"></path>
+      </marker>
+      <marker id="rbf-m-m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="rbf-head-m"></path>
+      </marker>
+    </defs>
+
+    <text x={LC[0]} y="36" class="rbf-title" text-anchor="middle">① 刚体上的任意力系</text>
+    <text x={RC[0]} y="36" class="rbf-title" text-anchor="middle">② 向任选点 P 简化</text>
+
+    {/* 左画面：力系 */}
+    <use href="#rbf-blob" transform={`translate(${LC[0]} ${LC[1]})`} class="rbf-body"></use>
+    {arrows.map((A) => (
+      <g>
+        <circle cx={A.sx} cy={A.sy} r="3.5" class={`rbf-dot rbf-${A.cls}`}></circle>
+        <line x1={A.sx} y1={A.sy} x2={A.ex} y2={A.ey} class={`rbf-force rbf-${A.cls}`} marker-end={`url(#rbf-m-${A.cls})`}></line>
+        <text x={A.lx} y={A.ly} class={`rbf-flabel rbf-${A.cls}`} text-anchor="middle">{A.name}</text>
+      </g>
+    ))}
+    <text x={LC[0]} y="336" class="rbf-note" text-anchor="middle">
+      <tspan class="rbf-f1">F₁ = (50, 25) N</tspan><tspan dx="12">　</tspan><tspan class="rbf-f2">F₂ = (−20, 45) N</tspan><tspan dx="12">　</tspan><tspan class="rbf-f3">F₃ = (45, −30) N</tspan>
+    </text>
+
+    {/* 右画面：简化 */}
+    <use href="#rbf-blob" transform={`translate(${RC[0]} ${RC[1]})`} class="rbf-body"></use>
+    {refDots.map(([x, y]) => <circle cx={x} cy={y} r="2.5" class="rbf-refdot"></circle>)}
+
+    {/* 合力作用线（M = 0） */}
+    <line x1={zeroLine.x1} y1={zeroLine.y1} x2={zeroLine.x2} y2={zeroLine.y2} class="rbf-zeroline"></line>
+
+    {/* 主矢 R（位置随 P，方向大小不变） */}
+    <line class="rbf-rvec" marker-end="url(#rbf-m-r)"></line>
+    <text class="rbf-rlabel">R</text>
+
+    {/* 主矩 M_P 圆弧 */}
+    <path class="rbf-marc" fill="none" marker-end="url(#rbf-m-m)"></path>
+    <text class="rbf-mglyph">M</text>
+
+    {/* 简化中心 P */}
+    <g class="rbf-p" tabindex="0" role="slider" aria-label="简化中心 P，可用方向键移动" aria-valuemin="-0.8" aria-valuemax="0.8">
+      <circle class="rbf-p-ring" r="9"></circle>
+      <circle class="rbf-p-dot" r="3.5"></circle>
+      <text class="rbf-plabel">P</text>
+    </g>
+
+    {/* 指针事件接收层：置于最顶层，避免被刚体等元素遮挡 */}
+    <rect x="460" y="55" width="280" height="300" class="rbf-hit"></rect>
+
+    <text x={RC[0]} y="336" class="rbf-note" text-anchor="middle">虚线：合力作用线（M = 0）</text>
+  </svg>
+
+  <p class="rbf-hint">在右侧刚体上点击或拖动，选择简化中心 P</p>
+
+  <p class="rbf-readout">
+    <strong class="rbf-rout">R = ΣFᵢ = ({R[0].toFixed(1)}, {R[1].toFixed(1)}) N</strong>（与 P 无关）
+    <br />
+    M<sub>P</sub> = Σ(rᵢ − P) × Fᵢ = <output class="rbf-mout" aria-live="polite">{MO.toFixed(1)}</output> N·m（随 P 更新，逆时针为正）
+  </p>
+
+  <figcaption>
+    左：刚体上作用着三个方向、大小、作用点都不同的力；右：任意力系都可以向刚体上任选一点 P 简化为一个主矢 R 和一个主矩 M_P。主矢与简化中心无关；主矩随简化中心改变——力矩弧的大小表示 |M_P|，弧的方向表示顺/逆时针。P 落在虚线上时主矩为零，此时力系简化为一个合力。
+  </figcaption>
+</figure>
+
+<script>
+  document.querySelectorAll('.rbf-demo').forEach((demo) => {
+    const svg = demo.querySelector('svg');
+    const hit = demo.querySelector('.rbf-hit');
+    const pGroup = demo.querySelector('.rbf-p');
+    const pRing = demo.querySelector('.rbf-p-ring');
+    const pDot = demo.querySelector('.rbf-p-dot');
+    const pLabel = demo.querySelector('.rbf-plabel');
+    const rVec = demo.querySelector('.rbf-rvec');
+    const rLabel = demo.querySelector('.rbf-rlabel');
+    const mArc = demo.querySelector('.rbf-marc');
+    const mGlyph = demo.querySelector('.rbf-mglyph');
+    const mOut = demo.querySelector('.rbf-mout');
+    const zeroLine = demo.querySelector('.rbf-zeroline');
+
+    // 与 frontmatter 一致的力系数据（力学坐标：米 / 牛，y 向上）
+    const FORCES = [
+      { a: [-0.6, 0.3], f: [50, 25] },
+      { a: [0.55, -0.35], f: [-20, 45] },
+      { a: [0.1, 0.6], f: [45, -30] },
+    ];
+    const R = [FORCES.reduce((s, F) => s + F.f[0], 0), FORCES.reduce((s, F) => s + F.f[1], 0)];
+    const PX = 100;
+    const FS = 1.1;
+    const RC = [570, 190];
+    const MAX_R = 0.8; // P 限制在刚体轮廓内
+    const ZERO_EPS = 3; // |M| 小于该值时视为落在合力作用线上
+
+    const p = [0, 0]; // P 的力学坐标
+
+    function update() {
+      const cx = RC[0] + p[0] * PX;
+      const cy = RC[1] - p[1] * PX;
+      // M_P = Σ (rᵢ − P) × Fᵢ
+      const m = FORCES.reduce((s, F) => s + (F.a[0] - p[0]) * F.f[1] - (F.a[1] - p[1]) * F.f[0], 0);
+
+      pRing.setAttribute('cx', cx);
+      pRing.setAttribute('cy', cy);
+      pDot.setAttribute('cx', cx);
+      pDot.setAttribute('cy', cy);
+      pLabel.setAttribute('x', cx + 14);
+      pLabel.setAttribute('y', cy - 10);
+
+      const rx = cx + R[0] * FS;
+      const ry = cy - R[1] * FS;
+      rVec.setAttribute('x1', cx);
+      rVec.setAttribute('y1', cy);
+      rVec.setAttribute('x2', rx);
+      rVec.setAttribute('y2', ry);
+      rLabel.setAttribute('x', rx + 12);
+      rLabel.setAttribute('y', ry - 8);
+
+      // 主矩圆弧：半径随 |M| 缩放（14~44 px），M > 0 逆时针扫过顶部，M < 0 反向
+      const M_MAX = 110; // |M| 的近似上限（P 取到刚体边缘时）
+      const r = 14 + 30 * Math.min(Math.abs(m) / M_MAX, 1);
+      const a0 = (210 * Math.PI) / 180;
+      const a1 = (330 * Math.PI) / 180;
+      const pt = (a) => [cx + r * Math.cos(a), cy - r * Math.sin(a)];
+      const [s, e] = m >= 0 ? [pt(a0), pt(a1)] : [pt(a1), pt(a0)];
+      mArc.setAttribute('d', `M ${s[0].toFixed(1)} ${s[1].toFixed(1)} A ${r} ${r} 0 0 ${m >= 0 ? 0 : 1} ${e[0].toFixed(1)} ${e[1].toFixed(1)}`);
+      mGlyph.setAttribute('x', cx - 4);
+      mGlyph.setAttribute('y', cy - r - 12);
+
+      const nearZero = Math.abs(m) < ZERO_EPS;
+      mArc.style.opacity = nearZero ? 0.25 : 1;
+      mGlyph.style.opacity = nearZero ? 0.4 : 1;
+      zeroLine.classList.toggle('rbf-zeroline-on', nearZero);
+      mOut.textContent = m.toFixed(1);
+      pGroup.setAttribute('aria-valuenow', `${p[0].toFixed(2)}, ${p[1].toFixed(2)}`);
+    }
+
+    function clamp() {
+      const len = Math.hypot(p[0], p[1]);
+      if (len > MAX_R) {
+        p[0] *= MAX_R / len;
+        p[1] *= MAX_R / len;
+      }
+    }
+
+    function setFromEvent(e) {
+      const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());
+      p[0] = (pt.x - RC[0]) / PX;
+      p[1] = (RC[1] - pt.y) / PX;
+      clamp();
+      update();
+    }
+
+    hit.addEventListener('pointerdown', (e) => {
+      hit.setPointerCapture(e.pointerId);
+      setFromEvent(e);
+    });
+    hit.addEventListener('pointermove', (e) => {
+      if (hit.hasPointerCapture(e.pointerId)) setFromEvent(e);
+    });
+
+    // 键盘操作：方向键移动 P
+    pGroup.addEventListener('keydown', (e) => {
+      const step = 0.05;
+      const delta = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }[e.key];
+      if (!delta) return;
+      e.preventDefault();
+      p[0] += delta[0];
+      p[1] += delta[1];
+      clamp();
+      update();
+    });
+
+    update();
+  });
+</script>
+
+<style>
+  .rbf-demo {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+  .rbf-demo svg {
+    display: block;
+    margin: 0 auto;
+    max-width: 745px;
+    width: 100%;
+    height: auto;
+  }
+  .rbf-title {
+    fill: var(--sl-color-gray-2);
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .rbf-note {
+    fill: var(--sl-color-gray-2);
+    font-size: 13px;
+  }
+  .rbf-body {
+    fill: light-dark(#f4f4f5, #26272b);
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 2;
+  }
+  .rbf-hit {
+    fill: transparent;
+    cursor: crosshair;
+    touch-action: none;
+  }
+  .rbf-refdot {
+    fill: var(--sl-color-gray-3);
+  }
+
+  /* 三个力的配色 */
+  .rbf-f1 {
+    stroke: light-dark(#b45309, #fbbf24);
+    fill: light-dark(#b45309, #fbbf24);
+  }
+  .rbf-f2 {
+    stroke: light-dark(#0f766e, #5eead4);
+    fill: light-dark(#0f766e, #5eead4);
+  }
+  .rbf-f3 {
+    stroke: light-dark(#6d28d9, #c4b5fd);
+    fill: light-dark(#6d28d9, #c4b5fd);
+  }
+  .rbf-force {
+    stroke-width: 2.5;
+  }
+  .rbf-flabel {
+    font-size: 14px;
+    font-weight: 600;
+    stroke: none;
+  }
+  text .rbf-f1,
+  text .rbf-f2,
+  text .rbf-f3 {
+    stroke: none;
+  }
+
+  /* 合力作用线 */
+  .rbf-zeroline {
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 1.5;
+    stroke-dasharray: 5 5;
+    transition: stroke 0.2s;
+  }
+  .rbf-zeroline-on {
+    stroke: var(--sl-color-accent);
+    stroke-width: 2.5;
+  }
+
+  /* 主矢与主矩 */
+  .rbf-rvec {
+    stroke: var(--sl-color-accent);
+    stroke-width: 3;
+  }
+  .rbf-head-r {
+    fill: var(--sl-color-accent);
+  }
+  .rbf-rlabel {
+    fill: var(--sl-color-accent);
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .rbf-marc {
+    stroke: var(--sl-color-gray-2);
+    stroke-width: 2;
+  }
+  .rbf-head-m {
+    fill: var(--sl-color-gray-2);
+  }
+  .rbf-mglyph {
+    fill: var(--sl-color-gray-2);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  /* 简化中心 P */
+  .rbf-p {
+    cursor: grab;
+    outline: none;
+    pointer-events: none;
+  }
+  .rbf-p-ring {
+    fill: transparent;
+    stroke: var(--sl-color-accent);
+    stroke-width: 2;
+  }
+  .rbf-p-dot {
+    fill: var(--sl-color-accent);
+  }
+  .rbf-p:focus-visible .rbf-p-ring {
+    stroke-width: 3;
+    stroke-dasharray: 3 3;
+  }
+  .rbf-plabel {
+    fill: var(--sl-color-accent);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .rbf-hint {
+    margin: 0.5rem 0 0.25rem;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-2);
+  }
+  .rbf-readout {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    color: var(--sl-color-text);
+    line-height: 1.8;
+  }
+  .rbf-readout .rbf-rout,
+  .rbf-readout .rbf-mout {
+    color: var(--sl-color-accent);
+    font-weight: 600;
+  }
+
+  .rbf-demo figcaption {
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-2);
+  }
+</style>

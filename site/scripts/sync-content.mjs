@@ -9,6 +9,8 @@
  * 4. 支持 .md 与 .mdx 小节（需要嵌入交互组件的小节使用 .mdx，
  *    组件放在 site/src/components/，用相对路径引入）；
  * 5. 校验每条图片引用在目标侧存在，缺失时让构建失败。
+ * 6. 原地增量更新：内容未变的文件不重写，仅删除已不属于内容源的文件，
+ *    避免整目录删除重建导致 dev 服务器的文件监听失效。
  *
  * 生成结果不入库（见 site/.gitignore），由 dev/build 前自动执行。
  */
@@ -47,13 +49,19 @@ export async function syncContent() {
     const sourceDir = path.join(chaptersRoot, chapter);
     const targetDir = path.join(docsRoot, chapter);
 
-    // 全量重建该章节目录，保证删除的小节不会残留
-    await rm(targetDir, { recursive: true, force: true });
     await mkdir(targetDir, { recursive: true });
 
     const sections = (await readdir(sourceDir))
       .filter((name) => name.endsWith('.md') || name.endsWith('.mdx'))
       .sort();
+
+    // 删除目标侧已不属于内容源的小节文件
+    const existingSections = (await readdir(targetDir, { withFileTypes: true }))
+      .filter((entry) => entry.isFile() && (entry.name.endsWith('.md') || entry.name.endsWith('.mdx')))
+      .map((entry) => entry.name);
+    for (const stale of existingSections.filter((name) => !sections.includes(name))) {
+      await rm(path.join(targetDir, stale), { force: true });
+    }
 
     for (const section of sections) {
       const raw = await readFile(path.join(sourceDir, section), 'utf8');
@@ -70,7 +78,18 @@ export async function syncContent() {
         body = body.replace(/<(https?:\/\/[^>\s]+)>/g, '$1');
       }
       const frontmatter = ['---', `title: ${JSON.stringify(title)}`, '---', ''].join('\n');
-      await writeFile(path.join(targetDir, section), frontmatter + body);
+      const targetFile = path.join(targetDir, section);
+      const next = frontmatter + body;
+      // 内容未变时不重写，保持文件 mtime 稳定，减少 dev 热重载的无效触发
+      let prev = null;
+      try {
+        prev = await readFile(targetFile, 'utf8');
+      } catch {
+        // 目标文件不存在
+      }
+      if (prev !== next) {
+        await writeFile(targetFile, next);
+      }
 
       // 校验图片引用（直接核对源目录，复制结构与原目录一致）
       for (const img of raw.matchAll(/!\[[^\]]*\]\(([^)\s]+)[^)]*\)/g)) {
@@ -90,8 +109,17 @@ export async function syncContent() {
     try {
       await stat(assetsDir);
       await cp(assetsDir, path.join(targetDir, 'assets'), { recursive: true });
+      // 删除目标侧已不属于内容源的图片
+      const srcImagesDir = path.join(assetsDir, 'images');
+      const dstImagesDir = path.join(targetDir, 'assets', 'images');
+      const srcImages = await readdir(srcImagesDir).catch(() => []);
+      const dstImages = await readdir(dstImagesDir).catch(() => []);
+      for (const stale of dstImages.filter((name) => !srcImages.includes(name))) {
+        await rm(path.join(dstImagesDir, stale), { force: true });
+      }
     } catch {
-      // 该章节没有 assets 目录
+      // 该章节没有 assets 目录；若目标侧残留则删除
+      await rm(path.join(targetDir, 'assets'), { recursive: true, force: true });
     }
   }
 
