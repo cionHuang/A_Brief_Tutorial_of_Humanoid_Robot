@@ -1,0 +1,63 @@
+---
+/**
+ * G1 关节轴线源码节选卡片：逐字摘自本书使用的 G1 模型文件
+ * g1_29dof_lock_waist.urdf（来自 unitree_rl_gym 固定提交
+ * 276801e46c5d433564f24658bac64f254b7d2d4b），保留原文件行号；
+ * 正文提到的 <axis xyz> 行高亮并附中文注释标签，其余行压暗。
+ * 卡片头部文件路径可点击跳转到 GitHub 对应文件的对应行。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import JointAxisSnippet from '../../../components/JointAxisSnippet.astro';
+ *   <JointAxisSnippet />
+ */
+
+import SourceSnippet from './SourceSnippet.astro';
+
+const COMMIT = '276801e46c5d433564f24658bac64f254b7d2d4b';
+const src = (line) =>
+  `https://github.com/unitreerobotics/unitree_rl_gym/blob/${COMMIT}/resources/robots/g1_description/g1_29dof_lock_waist.urdf#L${line}`;
+
+const cards = [
+  {
+    role: '左膝关节 · 俯仰 pitch',
+    file: 'g1_29dof_lock_waist.urdf',
+    url: src(166),
+    lines: [
+      { n: 166, code: '  <joint name="left_knee_joint" type="revolute">' },
+      { n: 170, code: '    <axis xyz="0 1 0"/>', hl: true, ann: '轴线指向 y 轴' },
+    ],
+  },
+  {
+    role: '左髋关节 · 侧摆 roll',
+    file: 'g1_29dof_lock_waist.urdf',
+    url: src(108),
+    lines: [
+      { n: 108, code: '  <joint name="left_hip_roll_joint" type="revolute">' },
+      { n: 112, code: '    <axis xyz="1 0 0"/>', hl: true, ann: '轴线指向 x 轴' },
+    ],
+  },
+  {
+    role: '左踝关节 · 侧倾 roll',
+    file: 'g1_29dof_lock_waist.urdf',
+    url: src(242),
+    lines: [
+      { n: 242, code: '  <joint name="left_ankle_roll_joint" type="revolute">' },
+      { n: 246, code: '    <axis xyz="1 0 0"/>', hl: true, ann: '轴线指向 x 轴' },
+    ],
+  },
+  {
+    role: '腰关节 · 偏航 yaw',
+    file: 'g1_29dof_lock_waist.urdf',
+    url: src(459),
+    lines: [
+      { n: 459, code: '  <joint name="waist_yaw_joint" type="revolute">' },
+      { n: 463, code: '    <axis xyz="0 0 1"/>', hl: true, ann: '轴线指向 z 轴' },
+    ],
+  },
+];
+---
+
+<SourceSnippet
+  cards={cards}
+  caption={'片段逐字摘自 G1 锁腰模型 <code>g1_29dof_lock_waist.urdf</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为原文件行号。四个关节的 <code>axis</code> 分别指向 x / y / z 轴：轴线不是注释，而是正运动学、雅可比和限位判断都要读取的模型数据。'}
+/>

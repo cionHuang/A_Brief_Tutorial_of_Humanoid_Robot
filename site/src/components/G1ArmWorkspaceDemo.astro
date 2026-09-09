@@ -1,0 +1,633 @@
+---
+/**
+ * G1 锁腰版上半身左臂工作空间 / 任务空间交互演示（直接加载官方 URDF）。
+ *
+ * 用 urdf-loader 加载 1.2 节同一份 g1_29dof.urdf（含 STL 网格），隐藏腿部，
+ * 腰部 roll / pitch 锁在 0（等价锁腰）；用 x / y / z 滑块设定目标位置，只驱动
+ * 左臂做 CCD 位置逆运动学，右臂静止以避免穿模。
+ *
+ * 姿态维度：蓝点是末端能到达的所有位置（位置工作空间）；橙点是「同时满足当前
+ * 末端姿态」的位置集合（该姿态下的任务空间），总是蓝点的子集。目标点上的橙色
+ * 坐标架表示期望姿态，手上青色坐标架表示实际姿态，读数给出两者的夹角。
+ *
+ * Three.js、urdf-loader 与 STL 均在组件进入视口后懒加载；样式跟随 Starlight 主题，
+ * 遵循 prefers-reduced-motion（该设置下不自动播放）。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import G1ArmWorkspaceDemo from '../../../components/G1ArmWorkspaceDemo.astro';
+ *   <G1ArmWorkspaceDemo />
+ */
+
+const baseUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+// 复用 1.2 节同一份 URDF；腰部 roll/pitch 在代码里锁在 0，等价于锁腰版
+const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
+
+const ARM_L = [
+  'left_shoulder_pitch_joint',
+  'left_shoulder_roll_joint',
+  'left_shoulder_yaw_joint',
+  'left_elbow_joint',
+  'left_wrist_roll_joint',
+  'left_wrist_pitch_joint',
+  'left_wrist_yaw_joint',
+];
+---
+
+<figure class="g1ws-demo" data-state="idle" data-urdf-url={urdfUrl} data-arm-l={ARM_L.join(',')}>
+  <div class="g1ws-viewport" data-g1ws-viewport role="application" tabindex="0" aria-label="G1 锁腰版上半身左臂工作空间与任务空间演示：用滑块设定目标位置和末端姿态">
+    <div class="g1ws-loading" data-g1ws-loading>
+      <span class="g1ws-spinner" aria-hidden="true"></span>
+      <span class="g1ws-status" data-g1ws-status>准备加载 G1 模型</span>
+    </div>
+  </div>
+
+  <div class="g1ws-toolbar">
+    <button class="g1ws-btn" data-g1ws-reset type="button" disabled>重置视角</button>
+    <label class="g1ws-check"><input type="checkbox" data-g1ws-cloud checked disabled> 位置工作空间</label>
+    <label class="g1ws-check"><input type="checkbox" data-g1ws-task checked disabled> 该姿态任务空间</label>
+    <button class="g1ws-btn" data-g1ws-auto type="button" aria-pressed="false" disabled>自动演示</button>
+  </div>
+
+  <div class="g1ws-sliders">
+    <label>x（前方）<input type="range" data-g1ws-x min="0.22" max="0.38" step="0.005" value="0.30" disabled> <output data-g1ws-xv>0.300</output> m</label>
+    <label>y（左侧）<input type="range" data-g1ws-y min="0.15" max="0.30" step="0.005" value="0.20" disabled> <output data-g1ws-yv>0.200</output> m</label>
+    <label>z（高度）<input type="range" data-g1ws-z min="0.16" max="0.34" step="0.005" value="0.25" disabled> <output data-g1ws-zv>0.250</output> m</label>
+    <label>末端朝向<input type="range" data-g1ws-yaw min="-180" max="180" step="1" value="0" disabled> <output data-g1ws-yawv>0</output>°</label>
+  </div>
+
+  <p class="g1ws-readout"><output data-g1ws-out aria-live="polite">加载中…</output></p>
+
+  <figcaption>
+    用 x / y / z 滑块设定目标位置（机器人坐标系，单位 m），左臂用逆运动学去够它。<b>蓝点</b>是末端能到达的所有位置，即位置工作空间；<b>橙点</b>是「同时满足当前末端姿态」的位置集合，即该姿态下的任务空间——它总是蓝点的子集。目标点上的橙色坐标架是期望姿态，手上的青色坐标架是实际姿态；拖动「末端朝向」可以看到任务空间随之缩小或移动。读数给出位置误差与姿态夹角。右臂保持静止，避免双手追同一点互相穿插。模型是 1.2 节同一份官方 <code>g1_29dof.urdf</code>（隐藏腿部、腰部 roll/pitch 锁在 0，等价锁腰），网格为可视化模型；演示不含碰撞检测。
+  </figcaption>
+</figure>
+
+<script>
+  // 用于高密度采样工作空间的局部正运动学链（与 URDF 手臂链一致；渲染仍用 URDF）
+  const FK_CHAIN = [
+    { xyz: [0.0039563, 0.10022, 0.23778], rpy: [0.27931, 0.000054949, -0.00019159], axis: [0, 1, 0], lo: -3.0892, hi: 2.6704 },
+    { xyz: [0, 0.038, -0.013831], rpy: [-0.27925, 0, 0], axis: [1, 0, 0], lo: -1.5882, hi: 2.2515 },
+    { xyz: [0, 0.00624, -0.1032], rpy: [0, 0, 0], axis: [0, 0, 1], lo: -2.618, hi: 2.618 },
+    { xyz: [0.015783, 0, -0.080518], rpy: [0, 0, 0], axis: [0, 1, 0], lo: -1.0472, hi: 2.0944 },
+    { xyz: [0.1, 0.00188791, -0.01], rpy: [0, 0, 0], axis: [1, 0, 0], lo: -1.972222054, hi: 1.972222054 },
+    { xyz: [0.038, 0, 0], rpy: [0, 0, 0], axis: [0, 1, 0], lo: -1.614429558, hi: 1.614429558 },
+    { xyz: [0.046, 0, 0], rpy: [0, 0, 0], axis: [0, 0, 1], lo: -1.614429558, hi: 1.614429558 },
+    { xyz: [0.0415, 0.003, 0], rpy: [0, 0, 0], axis: null, lo: 0, hi: 0 },
+  ];
+
+  document.querySelectorAll('.g1ws-demo').forEach((demo) => {
+    const viewport = demo.querySelector('[data-g1ws-viewport]');
+    const status = demo.querySelector('[data-g1ws-status]');
+    const out = demo.querySelector('[data-g1ws-out]');
+    const resetBtn = demo.querySelector('[data-g1ws-reset]');
+    const autoBtn = demo.querySelector('[data-g1ws-auto]');
+    const cloudToggle = demo.querySelector('[data-g1ws-cloud]');
+    const taskToggle = demo.querySelector('[data-g1ws-task]');
+    const sliderX = demo.querySelector('[data-g1ws-x]');
+    const sliderY = demo.querySelector('[data-g1ws-y]');
+    const sliderZ = demo.querySelector('[data-g1ws-z]');
+    const sliderYaw = demo.querySelector('[data-g1ws-yaw]');
+    const outX = demo.querySelector('[data-g1ws-xv]');
+    const outY = demo.querySelector('[data-g1ws-yv]');
+    const outZ = demo.querySelector('[data-g1ws-zv]');
+    const outYaw = demo.querySelector('[data-g1ws-yawv]');
+    const urdfUrl = demo.dataset.urdfUrl;
+    const ARM_L = (demo.dataset.armL || '').split(',').filter(Boolean);
+
+    if (!(viewport instanceof HTMLElement) || !(status instanceof HTMLElement) || !urdfUrl) return;
+
+    const COUNT = 80000;
+    const ORI_TOL = 0.55; // rad，约 32°，判定「同姿态」的容差
+
+    let started = false;
+    let THREE_NS, renderer, scene, camera, orbit;
+    let robot, fkRoot, armRoot, armL, handL, posCloud, taskCloud, taskPositions, targetMesh, targetFrame, handFrame;
+    let fkOrigins, fkAxes, torsoMat, torsoQuat;
+    let baseHandQuat, desiredQuat;
+    let renderFrame = 0;
+    let autoFrame = 0;
+    let resizeObserver, loadObserver, visibilityObserver;
+    let pageVisible = true, inViewport = false;
+    let autoPlay = false, autoTime = 0, lastTs = 0, lastTaskTs = 0;
+    let reduced = false;
+    const sampleQuats = new Float32Array(COUNT * 4);
+    const targetLocal = { x: 0.3, y: 0.2, z: 0.25 };
+
+    const setState = (state, message) => {
+      demo.dataset.state = state;
+      if (message !== undefined) status.textContent = message;
+    };
+    const scheduleRender = () => {
+      if (renderFrame || !renderer) return;
+      renderFrame = requestAnimationFrame(render);
+    };
+    const render = () => {
+      renderFrame = 0;
+      if (!renderer || !pageVisible) return;
+      const moving = orbit ? orbit.update() : false;
+      renderer.render(scene, camera);
+      if (moving) scheduleRender();
+    };
+
+    const ccdIK = (joints, handLink, target, iters) => {
+      const THREE = THREE_NS;
+      const end = new THREE.Vector3();
+      const pj = new THREE.Vector3();
+      const axisW = new THREE.Vector3();
+      const v1 = new THREE.Vector3();
+      const v2 = new THREE.Vector3();
+      const cross = new THREE.Vector3();
+      const quat = new THREE.Quaternion();
+      for (let it = 0; it < iters; it++) {
+        handLink.getWorldPosition(end);
+        if (end.distanceTo(target) < 0.0015) break;
+        for (let k = joints.length - 1; k >= 0; k--) {
+          const J = joints[k];
+          J.getWorldPosition(pj);
+          J.getWorldQuaternion(quat);
+          axisW.copy(J.axis).applyQuaternion(quat).normalize();
+          handLink.getWorldPosition(end);
+          v1.copy(end).sub(pj);
+          v2.copy(target).sub(pj);
+          v1.addScaledVector(axisW, -v1.dot(axisW));
+          v2.addScaledVector(axisW, -v2.dot(axisW));
+          if (v1.lengthSq() < 1e-10 || v2.lengthSq() < 1e-10) continue;
+          const ang = Math.atan2(cross.crossVectors(v1, v2).dot(axisW), v1.dot(v2));
+          let nq = J.jointValue[0] + ang;
+          nq = Math.max(J.limit.lower, Math.min(J.limit.upper, nq));
+          J.setJointValue(nq);
+          armRoot.updateMatrixWorld(true);
+        }
+      }
+      handLink.getWorldPosition(end);
+      return end.distanceTo(target);
+    };
+
+    // 局部正运动学高密度采样（结果再用 torso 世界矩阵变换到世界系）
+    const sampleWorkspace = (positions) => {
+      const THREE = THREE_NS;
+      const m = new THREE.Matrix4();
+      const rot = new THREE.Matrix4();
+      const p = new THREE.Vector3();
+      const q = new THREE.Quaternion();
+      const cfg = new Float64Array(FK_CHAIN.length);
+      for (let i = 0; i < COUNT; i++) {
+        for (let k = 0; k < FK_CHAIN.length - 1; k++) {
+          cfg[k] = FK_CHAIN[k].lo + Math.random() * (FK_CHAIN[k].hi - FK_CHAIN[k].lo);
+        }
+        m.identity();
+        for (let k = 0; k < FK_CHAIN.length; k++) {
+          m.multiply(fkOrigins[k]);
+          if (fkAxes[k]) { rot.makeRotationAxis(fkAxes[k], cfg[k]); m.multiply(rot); }
+        }
+        p.setFromMatrixPosition(m).applyMatrix4(torsoMat);
+        q.setFromRotationMatrix(m).premultiply(torsoQuat);
+        positions[i * 3] = p.x;
+        positions[i * 3 + 1] = p.y;
+        positions[i * 3 + 2] = p.z;
+        sampleQuats[i * 4] = q.x;
+        sampleQuats[i * 4 + 1] = q.y;
+        sampleQuats[i * 4 + 2] = q.z;
+        sampleQuats[i * 4 + 3] = q.w;
+      }
+    };
+
+    // 期望姿态：以 q=0 时手的姿态为基准，绕世界竖轴旋转 yaw
+    const updateDesiredQuat = () => {
+      const THREE = THREE_NS;
+      const yaw = (Number(sliderYaw.value) * Math.PI) / 180;
+      desiredQuat.copy(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw)).multiply(baseHandQuat);
+      targetFrame.quaternion.copy(desiredQuat);
+      outYaw.textContent = String(Math.round(Number(sliderYaw.value)));
+    };
+
+    // 用已采样的位置+姿态筛出「该姿态任务空间」，写入固定缓冲并调整 drawRange
+    const updateTaskSpace = () => {
+      const THREE = THREE_NS;
+      const q = new THREE.Quaternion();
+      let n = 0;
+      for (let i = 0; i < COUNT; i++) {
+        q.set(sampleQuats[i * 4], sampleQuats[i * 4 + 1], sampleQuats[i * 4 + 2], sampleQuats[i * 4 + 3]);
+        const dot = Math.abs(q.dot(desiredQuat));
+        const ang = 2 * Math.acos(Math.min(1, dot));
+        if (ang < ORI_TOL) {
+          taskPositions[n * 3] = posCloud.geometry.attributes.position.array[i * 3];
+          taskPositions[n * 3 + 1] = posCloud.geometry.attributes.position.array[i * 3 + 1];
+          taskPositions[n * 3 + 2] = posCloud.geometry.attributes.position.array[i * 3 + 2];
+          n += 1;
+        }
+      }
+      taskCloud.geometry.attributes.position.needsUpdate = true;
+      taskCloud.geometry.setDrawRange(0, n);
+      taskCloud.visible = taskToggle.checked && n > 0;
+      demo.dataset.taskCount = String(n);
+      scheduleRender();
+    };
+
+    const fitCamera = () => {
+      if (!camera || !orbit || !robot) return;
+      const THREE = THREE_NS;
+      const box = new THREE.Box3();
+      ['torso_link', 'head_link', 'left_shoulder_pitch_link', 'left_rubber_hand'].forEach((name) => {
+        const link = robot.links[name];
+        if (link) box.expandByObject(link);
+      });
+      if (posCloud) box.expandByObject(posCloud);
+      if (box.isEmpty()) return;
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const radius = Math.max(size.x, size.y, size.z, 0.3) * 0.5;
+      const dist = (radius / Math.tan((camera.fov * Math.PI) / 360)) * 1.35;
+      orbit.target.copy(center);
+      camera.near = Math.max(dist / 100, 0.01);
+      camera.far = dist * 20;
+      camera.position.set(center.x + dist * 0.7, center.y + dist * 0.35, center.z + dist * 0.95);
+      camera.updateProjectionMatrix();
+      orbit.update();
+      scheduleRender();
+    };
+
+    const resize = () => {
+      if (!renderer || !camera) return;
+      const w = Math.max(viewport.clientWidth, 1);
+      const h = Math.max(viewport.clientHeight, 1);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(w, h, false);
+      scheduleRender();
+    };
+
+    const updateFromTarget = () => {
+      const THREE = THREE_NS;
+      const targetWorld = targetMesh.getWorldPosition(new THREE.Vector3());
+      const errL = ccdIK(armL, handL, targetWorld, 30);
+      const reach = errL < 0.02;
+      targetMesh.material.color.setHex(reach ? 0x22c55e : 0xef4444);
+      const handQuat = handL.getWorldQuaternion(new THREE.Quaternion());
+      handL.getWorldPosition(handFrame.position);
+      handFrame.quaternion.copy(handQuat);
+      const dot = Math.abs(handQuat.dot(desiredQuat));
+      const oriErrDeg = (2 * Math.acos(Math.min(1, dot)) * 180) / Math.PI;
+      out.textContent =
+        '位置 x=' + targetLocal.x.toFixed(3) + ' y=' + targetLocal.y.toFixed(3) + ' z=' + targetLocal.z.toFixed(3) +
+        ' m　位置误差 ' + (errL * 1000).toFixed(0) + ' mm' + (reach ? '（可达）' : '（超出位置工作空间）') +
+        '　姿态夹角 ' + oriErrDeg.toFixed(0) + '°';
+      scheduleRender();
+    };
+
+    const setTargetFromSliders = () => {
+      const THREE = THREE_NS;
+      targetLocal.x = Number(sliderX.value);
+      targetLocal.y = Number(sliderY.value);
+      targetLocal.z = Number(sliderZ.value);
+      outX.textContent = targetLocal.x.toFixed(3);
+      outY.textContent = targetLocal.y.toFixed(3);
+      outZ.textContent = targetLocal.z.toFixed(3);
+      targetMesh.position.copy(robot.localToWorld(new THREE.Vector3(targetLocal.x, targetLocal.y, targetLocal.z)));
+      targetFrame.position.copy(targetMesh.position);
+      updateFromTarget();
+    };
+
+    const autoTick = (ts) => {
+      if (!autoPlay) return;
+      if (!lastTs) lastTs = ts;
+      autoTime += Math.min((ts - lastTs) / 1000, 0.05);
+      lastTs = ts;
+      const t = autoTime;
+      sliderX.value = String((0.30 + 0.06 * Math.sin(t * 0.7)).toFixed(3));
+      sliderY.value = String((0.22 + 0.05 * Math.sin(t * 1.1)).toFixed(3));
+      sliderZ.value = String((0.25 + 0.06 * Math.sin(t * 0.9 + 1.2)).toFixed(3));
+      sliderYaw.value = String(Math.round(60 * Math.sin(t * 0.5)));
+      updateDesiredQuat();
+      if (!lastTaskTs || ts - lastTaskTs > 160) {
+        updateTaskSpace();
+        lastTaskTs = ts;
+      }
+      setTargetFromSliders();
+      if (autoPlay) autoFrame = requestAnimationFrame(autoTick);
+    };
+
+    const load = async () => {
+      try {
+        setState('loading', '加载 Three.js 与 URDF 解析器');
+        const [THREE, orbitModule, urdfModule] = await Promise.all([
+          import('three'),
+          import('three/examples/jsm/controls/OrbitControls.js'),
+          import('urdf-loader'),
+        ]);
+        const { OrbitControls } = orbitModule;
+        const URDFLoader = urdfModule.default;
+        THREE_NS = THREE;
+        reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        fkOrigins = FK_CHAIN.map((j) => new THREE.Matrix4().compose(
+          new THREE.Vector3(j.xyz[0], j.xyz[1], j.xyz[2]),
+          new THREE.Quaternion().setFromEuler(new THREE.Euler(j.rpy[0], j.rpy[1], j.rpy[2], 'ZYX')),
+          new THREE.Vector3(1, 1, 1),
+        ));
+        fkAxes = FK_CHAIN.map((j) => (j.axis ? new THREE.Vector3(j.axis[0], j.axis[1], j.axis[2]).normalize() : null));
+        baseHandQuat = new THREE.Quaternion();
+        desiredQuat = new THREE.Quaternion();
+
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(40, 1, 0.01, 50);
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.setClearColor(0x000000, 0);
+        viewport.appendChild(renderer.domElement);
+
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x4a5568, 2.3));
+        const key = new THREE.DirectionalLight(0xffffff, 2.4);
+        key.position.set(1.6, 2.4, 1.8);
+        scene.add(key);
+        const fill = new THREE.DirectionalLight(0xbcd4ff, 0.9);
+        fill.position.set(-2, 1.2, -1.6);
+        scene.add(fill);
+
+        const grid = new THREE.GridHelper(1.8, 18, 0x7c8598, 0x4a5261);
+        grid.position.y = -0.02;
+        scene.add(grid);
+
+        orbit = new OrbitControls(camera, renderer.domElement);
+        orbit.enableDamping = true;
+        orbit.dampingFactor = 0.08;
+        orbit.minDistance = 0.5;
+        orbit.maxDistance = 5;
+        orbit.addEventListener('change', scheduleRender);
+        orbit.listenToKeyEvents(viewport);
+
+        const manager = new THREE.LoadingManager();
+        let resourcesReady = false;
+        let resolveResources;
+        const resourcesLoaded = new Promise((resolve) => { resolveResources = resolve; });
+        manager.onLoad = () => { resourcesReady = true; resolveResources(); };
+        manager.onProgress = (_url, loaded, total) => {
+          if (resourcesReady) return;
+          setState('loading', total > 0 ? '加载模型资源 ' + loaded + '/' + total : '加载模型资源');
+        };
+        const loader = new URDFLoader(manager);
+        loader.workingPath = urdfUrl.slice(0, urdfUrl.lastIndexOf('/') + 1);
+        loader.fetchOptions = { cache: 'force-cache' };
+        setState('loading', '解析 URDF 结构');
+        robot = await loader.loadAsync(urdfUrl);
+        robot.rotation.x = -Math.PI / 2;
+        scene.add(robot);
+
+        // 锁腰：腰部 roll / pitch 固定在 0，逆运动学只驱动左臂
+        ['waist_roll_joint', 'waist_pitch_joint'].forEach((name) => {
+          const joint = robot.joints[name];
+          if (joint) joint.setJointValue(0);
+        });
+        robot.updateMatrixWorld(true);
+
+        // 隐藏腿部，只保留上半身与双臂
+        const LEG = /(hip|knee|ankle|foot|toe)/;
+        Object.values(robot.links).forEach((link) => {
+          if (LEG.test(link.name)) link.visible = false;
+        });
+
+        fkRoot = robot.links['torso_link'];
+        handL = robot.links['left_rubber_hand'];
+        armL = ARM_L.map((n) => robot.joints[n]).filter(Boolean);
+        armRoot = robot.joints['left_shoulder_pitch_joint'];
+        if (!fkRoot || !handL || !armRoot || armL.length < 7) {
+          throw new Error('未找到预期的 G1 左臂关节或手部 link');
+        }
+        torsoMat = fkRoot.matrixWorld.clone();
+        torsoQuat = new THREE.Quaternion().setFromRotationMatrix(torsoMat);
+        handL.getWorldQuaternion(baseHandQuat);
+
+        setState('loading', '采样位置工作空间与姿态');
+        const posArr = new Float32Array(COUNT * 3);
+        sampleWorkspace(posArr);
+
+        const posGeo = new THREE.BufferGeometry();
+        posGeo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+        posCloud = new THREE.Points(posGeo, new THREE.PointsMaterial({
+          color: 0x38bdf8, size: 0.012, sizeAttenuation: true, transparent: true, opacity: 0.18, depthWrite: false,
+        }));
+        scene.add(posCloud);
+
+        taskPositions = new Float32Array(COUNT * 3);
+        const taskGeo = new THREE.BufferGeometry();
+        taskGeo.setAttribute('position', new THREE.BufferAttribute(taskPositions, 3));
+        taskCloud = new THREE.Points(taskGeo, new THREE.PointsMaterial({
+          color: 0xf59e0b, size: 0.016, sizeAttenuation: true, transparent: true, opacity: 0.5, depthWrite: false,
+        }));
+        scene.add(taskCloud);
+
+        const makeFrame = (color, size) => {
+          const geo = new THREE.BufferGeometry();
+          geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+            0, 0, 0, size, 0, 0,
+            0, 0, 0, 0, size, 0,
+            0, 0, 0, 0, 0, size,
+          ]), 3));
+          return new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.95 }));
+        };
+        targetFrame = makeFrame(0xf59e0b, 0.09);
+        handFrame = makeFrame(0x06b6d4, 0.06);
+        scene.add(targetFrame, handFrame);
+
+        targetMesh = new THREE.Mesh(
+          new THREE.SphereGeometry(0.024, 20, 16),
+          new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.4, metalness: 0.1, emissive: 0x0b3d1a }),
+        );
+        scene.add(targetMesh);
+
+        updateDesiredQuat();
+        updateTaskSpace();
+        setTargetFromSliders();
+
+        resizeObserver = new ResizeObserver(resize);
+        resizeObserver.observe(viewport);
+        resetBtn.disabled = false;
+        autoBtn.disabled = false;
+        cloudToggle.disabled = false;
+        taskToggle.disabled = false;
+        sliderX.disabled = false;
+        sliderY.disabled = false;
+        sliderZ.disabled = false;
+        sliderYaw.disabled = false;
+        resetBtn.addEventListener('click', fitCamera);
+        cloudToggle.addEventListener('change', () => {
+          posCloud.visible = cloudToggle.checked;
+          scheduleRender();
+        });
+        taskToggle.addEventListener('change', () => {
+          updateTaskSpace();
+        });
+        [sliderX, sliderY, sliderZ].forEach((slider) => {
+          slider.addEventListener('input', () => {
+            if (autoPlay) {
+              autoPlay = false;
+              autoBtn.setAttribute('aria-pressed', 'false');
+              autoBtn.textContent = '自动演示';
+            }
+            setTargetFromSliders();
+          });
+        });
+        sliderYaw.addEventListener('input', () => {
+          if (autoPlay) {
+            autoPlay = false;
+            autoBtn.setAttribute('aria-pressed', 'false');
+            autoBtn.textContent = '自动演示';
+          }
+          updateDesiredQuat();
+          updateTaskSpace();
+          updateFromTarget();
+        });
+        autoBtn.addEventListener('click', () => {
+          autoPlay = !autoPlay;
+          autoBtn.setAttribute('aria-pressed', String(autoPlay));
+          autoBtn.textContent = autoPlay ? '停止' : '自动演示';
+          if (autoPlay) { lastTs = 0; autoFrame = requestAnimationFrame(autoTick); }
+        });
+
+        await resourcesLoaded;
+        setState('ready', '');
+        resize();
+        fitCamera();
+      } catch (error) {
+        console.error('G1 工作空间演示加载失败：', error);
+        setState('error', '3D 视图加载失败：' + (error && error.message ? error.message : error));
+      }
+    };
+
+    const start = () => {
+      if (started) return;
+      started = true;
+      load();
+    };
+
+    if ('IntersectionObserver' in window) {
+      loadObserver = new IntersectionObserver((entries) => {
+        if (entries.some((e) => e.isIntersecting)) { loadObserver.disconnect(); start(); }
+      }, { rootMargin: '240px' });
+      loadObserver.observe(demo);
+      visibilityObserver = new IntersectionObserver((entries) => {
+        inViewport = entries.some((e) => e.isIntersecting);
+        if (inViewport) scheduleRender();
+      });
+      visibilityObserver.observe(demo);
+    } else {
+      start();
+    }
+    document.addEventListener('visibilitychange', () => {
+      pageVisible = document.visibilityState === 'visible';
+      if (pageVisible && inViewport) scheduleRender();
+    });
+  });
+</script>
+
+<style>
+  .g1ws-demo { margin: 1.5rem 0; }
+  .g1ws-viewport {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    min-height: 320px;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 8px;
+    background: var(--sl-color-gray-7, var(--sl-color-gray-6));
+  }
+  .g1ws-viewport canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    touch-action: none;
+  }
+  .g1ws-loading {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    padding: 1rem;
+    color: var(--sl-color-gray-2);
+    font-size: 0.9375rem;
+    text-align: center;
+    background: color-mix(in srgb, var(--sl-color-bg) 62%, transparent);
+  }
+  .g1ws-spinner {
+    flex: 0 0 auto;
+    width: 1.15rem;
+    height: 1.15rem;
+    border: 2px solid var(--sl-color-gray-4);
+    border-top-color: var(--sl-color-accent);
+    border-radius: 50%;
+    animation: g1ws-spin 0.9s linear infinite;
+  }
+  .g1ws-demo[data-state='ready'] .g1ws-loading { display: none; }
+  .g1ws-demo[data-state='error'] .g1ws-spinner { display: none; }
+  .g1ws-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.15rem 0;
+  }
+  .g1ws-toolbar > .g1ws-btn,
+  .g1ws-toolbar > .g1ws-check { margin: 0; }
+  .g1ws-btn, .g1ws-check {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    height: 2.1rem;
+    box-sizing: border-box;
+    padding: 0 0.7rem;
+    border: 1px solid var(--sl-color-gray-4);
+    border-radius: 6px;
+    color: var(--sl-color-text);
+    background: var(--sl-color-bg);
+    font: inherit;
+    font-size: 0.8125rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .g1ws-btn:hover:not(:disabled) { border-color: var(--sl-color-accent); color: var(--sl-color-accent-high); }
+  .g1ws-btn:disabled { cursor: not-allowed; opacity: 0.55; }
+  .g1ws-sliders {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 0.5rem 1.25rem;
+    padding: 0.7rem 0.15rem 0;
+  }
+  .g1ws-sliders label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--sl-color-gray-2);
+    white-space: nowrap;
+  }
+  .g1ws-sliders input[type='range'] { flex: 1; accent-color: var(--sl-color-accent); }
+  .g1ws-sliders output { min-width: 3.2rem; text-align: right; color: var(--sl-color-accent); font-variant-numeric: tabular-nums; }
+  .g1ws-readout {
+    margin: 0.5rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--sl-color-text);
+    line-height: 1.7;
+  }
+  .g1ws-readout output { color: var(--sl-color-accent); font-weight: 600; }
+  .g1ws-demo figcaption {
+    margin-top: 0.6rem;
+    color: var(--sl-color-gray-2);
+    font-size: 0.875rem;
+    line-height: 1.65;
+  }
+  @media (max-width: 40rem) {
+    .g1ws-viewport { aspect-ratio: 4 / 3; min-height: 300px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .g1ws-spinner { animation: none; }
+  }
+  @keyframes g1ws-spin { to { transform: rotate(360deg); } }
+</style>

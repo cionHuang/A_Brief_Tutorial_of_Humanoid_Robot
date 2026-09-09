@@ -1,0 +1,189 @@
+---
+/**
+ * 行星减速器（Planetary Gearbox）原理演示。
+ *
+ * 中心太阳轮为输入，齿圈固定，行星架为输出。三个行星轮同时与太阳轮和齿圈啮合，
+ * 一边自转、一边绕太阳轮公转，行星架因此以远低于太阳轮的速度转动。
+ * 运动学关系：ω_c = ω_s · z_s / (z_s + z_r)；本演示取 z_s = 12、z_p = 12、z_r = 36，
+ * 因此传动比 (z_s + z_r) / z_s = 4。
+ *
+ * 纯 SVG + 原生 JS；样式跟随 Starlight 明暗主题，遵循 prefers-reduced-motion。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import PlanetaryGearDemo from '../../../components/PlanetaryGearDemo.astro';
+ *   <PlanetaryGearDemo />
+ */
+
+const ZS = 12;
+const ZP = 12;
+const ZR = 36;
+const RS = 30;
+const RP = 30;
+const RR = 90;
+const CX = 280;
+const CY = 200;
+
+const teethPath = (count, rInner, rOuter) => {
+  let d = '';
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    d += 'M ' + (c * rInner).toFixed(2) + ' ' + (s * rInner).toFixed(2) +
+         ' L ' + (c * rOuter).toFixed(2) + ' ' + (s * rOuter).toFixed(2) + ' ';
+  }
+  return d;
+};
+
+const sunTeeth = teethPath(ZS, RS - 1, RS + 6);
+const planetTeeth = teethPath(ZP, RP - 1, RP + 6);
+const ringTeeth = teethPath(ZR, RR - 6, RR + 1);
+const planetAngles = [0, 120, 240];
+const planetPos = planetAngles.map((deg) => {
+  const a = (deg * Math.PI) / 180;
+  return { x: CX + (RS + RP) * Math.cos(a), y: CY + (RS + RP) * Math.sin(a), dx: (RS + RP) * Math.cos(a), dy: (RS + RP) * Math.sin(a) };
+});
+---
+
+<figure class="pg-demo">
+  <svg viewBox="0 0 560 400" role="img" aria-label="行星减速器原理演示：太阳轮输入、齿圈固定、行星架输出">
+    <g class="pg-ring" transform={`translate(${CX} ${CY})`}>
+      <circle r={RR} class="pg-ring-body"></circle>
+      <path d={ringTeeth} class="pg-teeth"></path>
+    </g>
+    <g class="pg-carrier" transform={`translate(${CX} ${CY})`}>
+      {planetPos.map((p) => <line x1="0" y1="0" x2={p.dx} y2={p.dy} class="pg-carrier-arm"></line>)}
+      <circle r="15" class="pg-out-flange"></circle>
+      <line class="pg-out-arrow" x1="0" y1="0" x2="0" y2="0"></line>
+      <polygon class="pg-out-head" points="0,0 0,0 0,0"></polygon>
+    </g>
+    {planetPos.map((p, i) => (
+      <g class={`pg-planet pg-planet-${i}`} transform={`translate(${p.x} ${p.y})`}>
+        <circle r={RP} class="pg-gear-body"></circle>
+        <path d={planetTeeth} class="pg-teeth"></path>
+      </g>
+    ))}
+    <g class="pg-sun" transform={`translate(${CX} ${CY})`}>
+      <circle r={RS} class="pg-gear-body pg-sun-body"></circle>
+      <path d={sunTeeth} class="pg-teeth"></path>
+    </g>
+    <text class="pg-label" x="280" y="42" text-anchor="middle">行星减速器：太阳轮输入 · 齿圈固定 · 行星架输出</text>
+    <text class="pg-out-tag" x="280" y="378" text-anchor="middle">输出 = 行星架（蓝箭头，缓慢转动）</text>
+  </svg>
+
+  <div class="pg-controls">
+    <button type="button" class="pg-play" data-pg-play aria-pressed="true">暂停</button>
+    <label>输入转速 <input type="range" data-pg-speed min="20" max="160" step="10" value="80" /> <output data-pg-speed-out>80</output></label>
+  </div>
+
+  <p class="pg-readout"><output data-pg-out aria-live="polite"></output></p>
+
+  <figcaption>
+    太阳轮（输入，黄色）转动时，三个行星轮（青色）同时与太阳轮和外侧齿圈啮合，被迫一边自转、一边沿齿圈内壁公转；连接三个行星轮中心的行星架（虚线）就是输出。本演示取 z_s = 12、z_p = 12、z_r = 36，传动比 (z_s + z_r) / z_s = 4：太阳轮转 4 圈，行星架才转 1 圈。真实关节里常用多级行星减速或与其他形式组合来获得更大减速比。
+  </figcaption>
+</figure>
+
+<script>
+  document.querySelectorAll('.pg-demo').forEach((demo) => {
+    const sunG = demo.querySelector('.pg-sun');
+    const carrierG = demo.querySelector('.pg-carrier');
+    const planetGs = [0, 1, 2].map((i) => demo.querySelector('.pg-planet-' + i));
+    const speedSlider = demo.querySelector('[data-pg-speed]');
+    const speedOut = demo.querySelector('[data-pg-speed-out]');
+    const out = demo.querySelector('[data-pg-out]');
+    const playBtn = demo.querySelector('[data-pg-play]');
+    const outArrow = demo.querySelector('.pg-out-arrow');
+    const outHead = demo.querySelector('.pg-out-head');
+
+    const ZS = 12, ZP = 12, ZR = 36;
+    const RS = 30, RP = 30;
+    const CX = 280, CY = 200;
+    const RATIO = (ZS + ZR) / ZS;
+    const D = RS + RP;
+
+    let thetaS = 0;
+    let playing = true;
+    let lastTs = 0;
+    let raf = 0;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const updateReadout = () => {
+      const degC = (thetaS / RATIO) * 180 / Math.PI;
+      out.textContent = '太阳轮已转 ' + ((thetaS * 180 / Math.PI) / 360).toFixed(2) + ' 圈　行星架已转 ' +
+        (degC / 360).toFixed(2) + ' 圈　传动比 (z_s + z_r) / z_s = ' + RATIO;
+    };
+
+    const loop = (ts) => {
+      if (!playing) { raf = 0; return; }
+      if (!lastTs) lastTs = ts;
+      const dt = Math.min((ts - lastTs) / 1000, 0.05);
+      lastTs = ts;
+      const omega = (Number(speedSlider.value) / 80) * 1.2; // 视觉角速度（rad/s）
+      thetaS = (thetaS + dt * omega) % (Math.PI * 2 * RATIO);
+      const thetaC = thetaS / RATIO;
+      const thetaP = 2 * thetaC - thetaS;
+      sunG.setAttribute('transform', 'translate(' + CX + ' ' + CY + ') rotate(' + ((thetaS * 180) / Math.PI).toFixed(2) + ')');
+      carrierG.setAttribute('transform', 'translate(' + CX + ' ' + CY + ') rotate(' + ((thetaC * 180) / Math.PI).toFixed(2) + ')');
+      planetGs.forEach((g, i) => {
+        const psi = (i * 120 * Math.PI) / 180 + thetaC;
+        const px = CX + D * Math.cos(psi);
+        const py = CY + D * Math.sin(psi);
+        g.setAttribute('transform', 'translate(' + px.toFixed(1) + ' ' + py.toFixed(1) + ') rotate(' + ((thetaP * 180) / Math.PI).toFixed(2) + ')');
+      });
+      const aLen = 46;
+      const ax = aLen * Math.cos(thetaC);
+      const ay = aLen * Math.sin(thetaC);
+      outArrow.setAttribute('x2', ax.toFixed(1));
+      outArrow.setAttribute('y2', ay.toFixed(1));
+      const hx = (aLen + 9) * Math.cos(thetaC);
+      const hy = (aLen + 9) * Math.sin(thetaC);
+      const p1x = (aLen - 1) * Math.cos(thetaC) + 6 * Math.sin(thetaC);
+      const p1y = (aLen - 1) * Math.sin(thetaC) - 6 * Math.cos(thetaC);
+      const p2x = (aLen - 1) * Math.cos(thetaC) - 6 * Math.sin(thetaC);
+      const p2y = (aLen - 1) * Math.sin(thetaC) + 6 * Math.cos(thetaC);
+      outHead.setAttribute('points', hx.toFixed(1) + ',' + hy.toFixed(1) + ' ' + p1x.toFixed(1) + ',' + p1y.toFixed(1) + ' ' + p2x.toFixed(1) + ',' + p2y.toFixed(1));
+      updateReadout();
+      raf = requestAnimationFrame(loop);
+    };
+
+    const setPlaying = (v) => {
+      playing = v;
+      playBtn.setAttribute('aria-pressed', String(v));
+      playBtn.textContent = v ? '暂停' : '播放';
+      if (v && raf === 0) { lastTs = 0; raf = requestAnimationFrame(loop); }
+    };
+
+    speedSlider.addEventListener('input', () => { speedOut.textContent = speedSlider.value; updateReadout(); });
+    playBtn.addEventListener('click', () => setPlaying(!playing));
+
+    speedOut.textContent = speedSlider.value;
+    updateReadout();
+    outArrow.setAttribute('x2', '46');
+    outArrow.setAttribute('y2', '0');
+    outHead.setAttribute('points', '55,0 45,-6 45,6');
+    if (reduced) setPlaying(false); else setPlaying(true);
+  });
+</script>
+
+<style>
+  .pg-demo { margin: 1.5rem 0; }
+  .pg-demo svg { display: block; width: 100%; max-width: 560px; height: auto; margin: 0 auto; }
+  .pg-ring-body { fill: none; stroke: var(--sl-color-gray-3); stroke-width: 14; }
+  .pg-gear-body { fill: light-dark(#e2e8f0, #334155); stroke: var(--sl-color-gray-3); stroke-width: 1.5; }
+  .pg-sun-body { fill: light-dark(#fde68a, #a16207); stroke: light-dark(#d97706, #fbbf24); }
+  .pg-teeth { fill: none; stroke: var(--sl-color-gray-2); stroke-width: 2; }
+  .pg-carrier-arm { stroke: var(--sl-color-accent); stroke-width: 2; stroke-dasharray: 6 5; }
+  .pg-out-flange { fill: light-dark(rgba(79, 70, 229, 0.18), rgba(139, 131, 255, 0.22)); stroke: var(--sl-color-accent); stroke-width: 2; }
+  .pg-out-arrow { stroke: var(--sl-color-accent); stroke-width: 5; stroke-linecap: round; }
+  .pg-out-head { fill: var(--sl-color-accent); }
+  .pg-out-tag { fill: var(--sl-color-accent); font-size: 13px; font-weight: 600; }
+  .pg-label { fill: var(--sl-color-text); font-size: 14px; font-weight: 600; }
+  .pg-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.25rem; max-width: 560px; margin: 0.6rem auto 0; }
+  .pg-controls label { display: flex; align-items: center; gap: 0.45rem; margin: 0; font-size: 0.8125rem; color: var(--sl-color-gray-2); }
+  .pg-controls input[type='range'] { width: 9rem; accent-color: var(--sl-color-accent); }
+  .pg-controls output { color: var(--sl-color-accent); font-variant-numeric: tabular-nums; }
+  .pg-play { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.75rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
+  .pg-readout { max-width: 560px; margin: 0.5rem auto 0; font-size: 0.8125rem; color: var(--sl-color-text); line-height: 1.7; }
+  .pg-readout output { color: var(--sl-color-accent); font-weight: 600; }
+  .pg-demo figcaption { max-width: 560px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.875rem; line-height: 1.65; }
+</style>

@@ -17,7 +17,7 @@
 | 小节 | 你将听懂 |
 | --- | --- |
 | [2.1 机构、关节与自由度](../02-mechanics/01-mechanisms-and-dof.mdx) | 自由度、限位、死点/奇异——"机器人卡住了"的常见原因 |
-| [2.3 传动与关节模组](../02-mechanics/03-transmission-and-joint-modules.md) | 谐波/行星减速器、峰值扭矩——关节性能宣传的关键参数 |
+| [2.3 传动与关节模组](../02-mechanics/03-transmission-and-joint-modules.mdx) | 谐波/行星减速器、峰值扭矩——关节性能宣传的关键参数 |
 | [3.1 电源系统](../03-electrical-embedded/01-power-system.md) | 电池包、BMS、续航与峰值功率 |
 | [3.2 电机、驱动器与伺服控制](../03-electrical-embedded/02-motors-drivers-servo-control.md) | FOC、伺服——为什么机器人动作可以又稳又准 |
 | [3.4 实时通信与总线](../03-electrical-embedded/04-real-time-communication-and-buses.md) | EtherCAT、DDS——"全身 29 个关节如何同步" |

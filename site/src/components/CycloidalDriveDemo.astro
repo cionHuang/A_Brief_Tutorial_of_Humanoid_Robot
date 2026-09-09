@@ -1,0 +1,170 @@
+---
+/**
+ * 摆线减速器（Cycloidal Reducer）原理演示。
+ *
+ * 偏心输入轴带动摆线轮做「摆动」（轮心绕输入轴画小圆），摆线轮的波瓣与固定的
+ * 针齿圈啮合。摆线轮比针齿少 1 个齿，因此输入轴每转一圈，摆线轮只反向转过
+ * 1/z_d 圈——减速比就是摆线轮的齿数 z_d（本演示 z_d = 10、针齿 11 个）。
+ * 摆线轮的慢速转动再通过「柱销—销孔」耦合输出。
+ *
+ * 纯 SVG + 原生 JS；样式跟随 Starlight 明暗主题，遵循 prefers-reduced-motion。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import CycloidalDriveDemo from '../../../components/CycloidalDriveDemo.astro';
+ *   <CycloidalDriveDemo />
+ */
+
+const ZD = 10;
+const ZR = 11;
+const RD = 58;
+const A = 5;
+const E = 5;
+const RPIN = 69;
+const PR = 5;
+const CX = 200;
+const CY = 200;
+
+const pins = Array.from({ length: ZR }, (_, i) => {
+  const a = (i / ZR) * Math.PI * 2;
+  return { x: RPIN * Math.cos(a), y: RPIN * Math.sin(a) };
+});
+---
+
+<figure class="cy-demo">
+  <svg viewBox="0 0 400 400" role="img" aria-label="摆线减速器原理演示：偏心输入使摆线轮与针齿圈啮合">
+    <g transform={`translate(${CX} ${CY})`}>
+      <g class="cy-pins">
+        {pins.map((p) => <circle cx={p.x} cy={p.y} r={PR} class="cy-pin"></circle>)}
+      </g>
+
+      <line class="cy-input" x1="0" y1="0" x2="0" y2="0"></line>
+      <g class="cy-disc-g">
+        <path class="cy-disc"></path>
+      </g>
+      <line class="cy-output" x1="0" y1="0" x2="0" y2="0"></line>
+      <polygon class="cy-out-head" points="0,0 0,0 0,0"></polygon>
+      <circle r="5" class="cy-hub"></circle>
+    </g>
+    <text class="cy-label" x="200" y="34" text-anchor="middle">摆线减速器：偏心输入 · 摆线轮 · 针齿圈</text>
+    <text class="cy-out-tag" x="200" y="378" text-anchor="middle">输出 = 摆线轮慢速转动（蓝箭头）</text>
+  </svg>
+
+  <div class="cy-controls">
+    <button type="button" class="cy-play" data-cy-play aria-pressed="true">暂停</button>
+    <label>输入转速 <input type="range" data-cy-speed min="20" max="160" step="10" value="90" /> <output data-cy-speed-out>90</output></label>
+  </div>
+
+  <p class="cy-readout"><output data-cy-out aria-live="polite"></output></p>
+
+  <figcaption>
+    偏心输入轴（橙色）带动摆线轮（青色）一边公转、一边与固定的针齿圈（灰色滚柱）啮合。摆线轮的波瓣数比针齿数少 1（本演示 10 对 11），所以输入轴每转一圈，摆线轮只反向转过 1/10 圈——减速比等于摆线轮齿数 10。摆线轮的慢速转动再通过轮上的销孔与输出柱销耦合，从中心轴输出。摆线减速器抗冲击、承载大，但体积、噪声和加工精度需要权衡。
+  </figcaption>
+</figure>
+
+<script>
+  document.querySelectorAll('.cy-demo').forEach((demo) => {
+    const inputLine = demo.querySelector('.cy-input');
+    const discG = demo.querySelector('.cy-disc-g');
+    const disc = demo.querySelector('.cy-disc');
+    const outputLine = demo.querySelector('.cy-output');
+    const speedSlider = demo.querySelector('[data-cy-speed]');
+    const speedOut = demo.querySelector('[data-cy-speed-out]');
+    const out = demo.querySelector('[data-cy-out]');
+    const playBtn = demo.querySelector('[data-cy-play]');
+    const outHead = demo.querySelector('.cy-out-head');
+
+    const ZD = 10;
+    const RD = 58;
+    const A = 5;
+    const E = 5;
+    const RATIO = ZD;
+    const CX = 200, CY = 200;
+
+    const discPath = () => {
+      let d = '';
+      for (let i = 0; i <= 200; i++) {
+        const t = (i / 200) * Math.PI * 2;
+        const r = RD + A * Math.cos(ZD * t);
+        const x = r * Math.cos(t);
+        const y = r * Math.sin(t);
+        d += (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1) + ' ';
+      }
+      return d + 'Z';
+    };
+    disc.setAttribute('d', discPath());
+
+    let thetaIn = 0;
+    let playing = true;
+    let lastTs = 0;
+    let raf = 0;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const render = () => {
+      const thetaOut = -thetaIn / RATIO;
+      const ex = E * Math.cos(thetaIn);
+      const ey = E * Math.sin(thetaIn);
+      inputLine.setAttribute('x2', ex.toFixed(1));
+      inputLine.setAttribute('y2', ey.toFixed(1));
+      discG.setAttribute('transform', 'translate(' + ex.toFixed(1) + ' ' + ey.toFixed(1) + ') rotate(' + ((thetaOut * 180) / Math.PI).toFixed(2) + ')');
+      const ox = (RD + A + 8) * Math.cos(thetaOut);
+      const oy = (RD + A + 8) * Math.sin(thetaOut);
+      outputLine.setAttribute('x2', ox.toFixed(1));
+      outputLine.setAttribute('y2', oy.toFixed(1));
+      const hx = (RD + A + 20) * Math.cos(thetaOut);
+      const hy = (RD + A + 20) * Math.sin(thetaOut);
+      const p1x = (RD + A + 8) * Math.cos(thetaOut) + 6 * Math.sin(thetaOut);
+      const p1y = (RD + A + 8) * Math.sin(thetaOut) - 6 * Math.cos(thetaOut);
+      const p2x = (RD + A + 8) * Math.cos(thetaOut) - 6 * Math.sin(thetaOut);
+      const p2y = (RD + A + 8) * Math.sin(thetaOut) + 6 * Math.cos(thetaOut);
+      outHead.setAttribute('points', hx.toFixed(1) + ',' + hy.toFixed(1) + ' ' + p1x.toFixed(1) + ',' + p1y.toFixed(1) + ' ' + p2x.toFixed(1) + ',' + p2y.toFixed(1));
+      out.textContent = '输入已转 ' + ((thetaIn * 180 / Math.PI) / 360).toFixed(2) + ' 圈　摆线轮已转 ' +
+        ((thetaOut * 180 / Math.PI) / 360).toFixed(2) + ' 圈　减速比 z_d = ' + RATIO;
+    };
+
+    const loop = (ts) => {
+      if (!playing) { raf = 0; return; }
+      if (!lastTs) lastTs = ts;
+      const dt = Math.min((ts - lastTs) / 1000, 0.05);
+      lastTs = ts;
+      const omega = (Number(speedSlider.value) / 90) * 1.1;
+      thetaIn = (thetaIn + dt * omega) % (Math.PI * 2 * RATIO);
+      render();
+      raf = requestAnimationFrame(loop);
+    };
+
+    const setPlaying = (v) => {
+      playing = v;
+      playBtn.setAttribute('aria-pressed', String(v));
+      playBtn.textContent = v ? '暂停' : '播放';
+      if (v && raf === 0) { lastTs = 0; raf = requestAnimationFrame(loop); }
+    };
+
+    speedSlider.addEventListener('input', () => { speedOut.textContent = speedSlider.value; });
+    playBtn.addEventListener('click', () => setPlaying(!playing));
+
+    speedOut.textContent = speedSlider.value;
+    render();
+    if (reduced) setPlaying(false); else setPlaying(true);
+  });
+</script>
+
+<style>
+  .cy-demo { margin: 1.5rem 0; }
+  .cy-demo svg { display: block; width: 100%; max-width: 400px; height: auto; margin: 0 auto; }
+  .cy-pin { fill: light-dark(#e2e8f0, #475569); stroke: var(--sl-color-gray-2); stroke-width: 1.5; }
+  .cy-disc { fill: light-dark(rgba(13, 148, 136, 0.25), rgba(45, 212, 191, 0.28)); stroke: light-dark(#0d9488, #2dd4bf); stroke-width: 2.5; }
+  .cy-input { stroke: light-dark(#ea580c, #fb923c); stroke-width: 4; stroke-linecap: round; }
+  .cy-output { stroke: var(--sl-color-accent); stroke-width: 4; stroke-linecap: round; }
+  .cy-out-head { fill: var(--sl-color-accent); }
+  .cy-out-tag { fill: var(--sl-color-accent); font-size: 13px; font-weight: 600; }
+  .cy-hub { fill: var(--sl-color-text); }
+  .cy-label { fill: var(--sl-color-text); font-size: 14px; font-weight: 600; }
+  .cy-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.25rem; max-width: 400px; margin: 0.6rem auto 0; }
+  .cy-controls label { display: flex; align-items: center; gap: 0.45rem; margin: 0; font-size: 0.8125rem; color: var(--sl-color-gray-2); }
+  .cy-controls input[type='range'] { width: 8rem; accent-color: var(--sl-color-accent); }
+  .cy-controls output { color: var(--sl-color-accent); font-variant-numeric: tabular-nums; }
+  .cy-play { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.75rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
+  .cy-readout { max-width: 400px; margin: 0.5rem auto 0; font-size: 0.8125rem; color: var(--sl-color-text); line-height: 1.7; }
+  .cy-readout output { color: var(--sl-color-accent); font-weight: 600; }
+  .cy-demo figcaption { max-width: 400px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.875rem; line-height: 1.65; }
+</style>

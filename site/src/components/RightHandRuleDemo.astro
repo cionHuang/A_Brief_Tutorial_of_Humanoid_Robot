@@ -1,0 +1,416 @@
+---
+/**
+ * 右手定则交互演示：右手坐标系（x 红、y 绿、z 蓝）加一个绕选定轴旋转的标记向量。
+ * 选定轴后，粗箭头表示“拇指指向 +轴”，轴周围的圆弧箭头表示“四指弯曲方向 = 正转角”；
+ * 拖动滑块或播放可让标记向量沿正方向旋转。
+ * 三个轴分别对应 G1 的膝关节俯仰（y）、髋/踝侧摆（x）和腰部偏航（z），把定则落到具体关节。
+ *
+ * 纯 SVG + 原生 JS，无外部依赖；样式跟随 Starlight 明暗主题，
+ * 遵循 prefers-reduced-motion（该设置下默认不自动播放）。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import RightHandRuleDemo from '../../../components/RightHandRuleDemo.astro';
+ *   <RightHandRuleDemo />
+ */
+
+const CX = 340;
+const CY = 252;
+const L = 132;
+const B = { x: [-0.866, 0.5], y: [0.866, 0.5], z: [0, -1] };
+const proj = ([x, y, z]) => [
+  CX + L * (x * B.x[0] + y * B.y[0] + z * B.z[0]),
+  CY + L * (x * B.x[1] + y * B.y[1] + z * B.z[1]),
+];
+const axisDefs = [
+  { name: 'x', joint: '髋 / 踝侧摆', tip: proj([1, 0, 0]), neg: proj([-0.36, 0, 0]) },
+  { name: 'y', joint: '膝关节俯仰', tip: proj([0, 1, 0]), neg: proj([0, -0.36, 0]) },
+  { name: 'z', joint: '腰部偏航', tip: proj([0, 0, 1]), neg: proj([0, 0, -0.36]) },
+];
+---
+
+<figure class="rhd-demo">
+  <svg viewBox="0 0 720 430" role="img" aria-label="右手定则交互演示：右手坐标系与绕选定轴的正转方向">
+    <defs>
+      <marker id="rhd-m-x" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="rhd-mh-x"></path>
+      </marker>
+      <marker id="rhd-m-y" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="rhd-mh-y"></path>
+      </marker>
+      <marker id="rhd-m-z" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="rhd-mh-z"></path>
+      </marker>
+    </defs>
+
+    {axisDefs.map((a) => (
+      <line x1={a.neg[0]} y1={a.neg[1]} x2={CX} y2={CY} class={`rhd-neg rhd-${a.name}`}></line>
+    ))}
+
+    {axisDefs.map((a) => (
+      <g data-axis={a.name} class="rhd-axis-group">
+        <line x1={CX} y1={CY} x2={a.tip[0]} y2={a.tip[1]} class={`rhd-axis rhd-${a.name}`}></line>
+        <circle cx={a.tip[0]} cy={a.tip[1]} r="3" class={`rhd-tip rhd-fill-${a.name}`}></circle>
+        <text
+          x={a.tip[0] + (a.name === 'x' ? -14 : a.name === 'z' ? 0 : 14)}
+          y={a.tip[1] + (a.name === 'z' ? -12 : 6)}
+          class={`rhd-label rhd-text-${a.name}`}
+          text-anchor={a.name === 'x' ? 'end' : a.name === 'z' ? 'middle' : 'start'}>{a.name}</text>
+      </g>
+    ))}
+
+    <path class="rhd-orbit" fill="none"></path>
+    <path class="rhd-near" fill="none"></path>
+    <path class="rhd-curl" fill="none"></path>
+    <line class="rhd-thumb"></line>
+    <text class="rhd-thumb-label" text-anchor="middle">拇指 → +轴</text>
+    <line class="rhd-vec"></line>
+    <circle class="rhd-dot" r="5"></circle>
+    <circle cx={CX} cy={CY} r="3.5" class="rhd-origin"></circle>
+    <text x={CX + 12} y={CY + 18} class="rhd-origin-label">O</text>
+  </svg>
+
+  <p class="rhd-hint">轨道实线的一半靠近观察者、虚线的一半远离观察者；圆点越大越靠前（相机在 +x +y +z 方向俯视）。</p>
+
+  <div class="rhd-controls">
+    <div class="rhd-axis-btns" role="group" aria-label="选择旋转轴">
+      <button type="button" class="rhd-axis-btn" data-axis="x">髋/踝侧摆 · x</button>
+      <button type="button" class="rhd-axis-btn" data-axis="y">膝关节俯仰 · y</button>
+      <button type="button" class="rhd-axis-btn" data-axis="z">腰部偏航 · z</button>
+    </div>
+    <div class="rhd-row">
+      <label class="rhd-slider-label">正转角 θ
+        <input class="rhd-slider" type="range" min="0" max="360" step="1" value="0" />
+      </label>
+      <button type="button" class="rhd-play" aria-pressed="true">暂停</button>
+    </div>
+  </div>
+
+  <p class="rhd-readout"><output class="rhd-out" aria-live="polite"></output></p>
+
+  <figcaption>
+    拇指沿 +轴方向，四指弯曲的方向就是正转角的方向。切换 x / y / z 轴可以看到正转方向如何随轴改变：绕 x 正转从 y 转向 z，绕 y 正转从 z 转向 x，绕 z 正转从 x 转向 y。三个轴分别对应 G1 的髋/踝侧摆、膝关节俯仰和腰部偏航；这正是 URDF 里 <code>axis</code> 取正号时关节角的转向。
+  </figcaption>
+</figure>
+
+<script>
+  document.querySelectorAll('.rhd-demo').forEach((demo) => {
+    const orbit = demo.querySelector('.rhd-orbit');
+    const nearArc = demo.querySelector('.rhd-near');
+    const curl = demo.querySelector('.rhd-curl');
+    const thumb = demo.querySelector('.rhd-thumb');
+    const thumbLabel = demo.querySelector('.rhd-thumb-label');
+    const vec = demo.querySelector('.rhd-vec');
+    const dot = demo.querySelector('.rhd-dot');
+    const out = demo.querySelector('.rhd-out');
+    const slider = demo.querySelector('.rhd-slider');
+    const playBtn = demo.querySelector('.rhd-play');
+    const axisBtns = Array.from(demo.querySelectorAll('.rhd-axis-btn'));
+    const axisLines = {};
+    demo.querySelectorAll('g.rhd-axis-group').forEach((g) => {
+      axisLines[g.dataset.axis] = g.querySelector('.rhd-axis');
+    });
+
+    const CX = 340, CY = 252, L = 132, RC = 0.42;
+    const B = { x: [-0.866, 0.5], y: [0.866, 0.5], z: [0, -1] };
+    const proj = ([x, y, z]) => [
+      CX + L * (x * B.x[0] + y * B.y[0] + z * B.z[0]),
+      CY + L * (x * B.x[1] + y * B.y[1] + z * B.z[1]),
+    ];
+    const add = (u, v) => [u[0] + v[0], u[1] + v[1], u[2] + v[2]];
+    const scale = (u, s) => [u[0] * s, u[1] * s, u[2] * s];
+
+    // p × q = a，保证 θ 增大的方向就是右手定则的正转方向
+    const AXES = {
+      x: { a: [1, 0, 0], p: [0, 1, 0], q: [0, 0, 1], joint: '髋 / 踝侧摆', from: 'y', to: 'z' },
+      y: { a: [0, 1, 0], p: [0, 0, 1], q: [1, 0, 0], joint: '膝关节俯仰', from: 'z', to: 'x' },
+      z: { a: [0, 0, 1], p: [1, 0, 0], q: [0, 1, 0], joint: '腰部偏航', from: 'x', to: 'y' },
+    };
+
+    const circlePoint = (axis, deg) => {
+      const t = (deg * Math.PI) / 180;
+      const A = AXES[axis];
+      return proj(add(scale(A.p, RC * Math.cos(t)), scale(A.q, RC * Math.sin(t))));
+    };
+    const pathFrom = (pts) =>
+      pts.map((p, i) => `${i ? 'L' : 'M'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+
+    // 只增删颜色 class，不能用 setAttribute('class', ...) 覆盖——
+    // 那会把 Astro 的作用域 class（astro-xxxx）一起抹掉，导致 scoped CSS 失效
+    // 沿视线方向 (1,1,1) 的深度：正值 = 靠近观察者
+    const depthOf = (axis, deg) => {
+      const t = (deg * Math.PI) / 180;
+      const A = AXES[axis];
+      const v = add(scale(A.p, RC * Math.cos(t)), scale(A.q, RC * Math.sin(t)));
+      return (v[0] + v[1] + v[2]) / Math.sqrt(3);
+    };
+    const applyStroke = (el, ax) => {
+      ['x', 'y', 'z'].forEach((n) => el.classList.remove(`rhd-stroke-${n}`));
+      el.classList.add(`rhd-stroke-${ax}`);
+    };
+    const applyFill = (el, ax) => {
+      ['x', 'y', 'z'].forEach((n) => el.classList.remove(`rhd-fill-${n}`));
+      el.classList.add(`rhd-fill-${ax}`);
+    };
+
+    let axis = 'z';
+    let theta = 0;
+
+    function update() {
+      const A = AXES[axis];
+
+      const orbitPts = [];
+      for (let d = 0; d <= 360; d += 4) orbitPts.push(circlePoint(axis, d));
+      orbit.setAttribute('d', pathFrom(orbitPts) + ' Z');
+
+      // 靠近观察者的一半画成实线，远离的一半保持虚线
+      const nearPts = [];
+      for (let dd = -45; dd <= 135; dd += 4) nearPts.push(circlePoint(axis, dd));
+      nearArc.setAttribute('d', pathFrom(nearPts));
+
+      const curlPts = [];
+      for (let d = 0; d <= 300; d += 4) curlPts.push(circlePoint(axis, d));
+      curl.setAttribute('d', pathFrom(curlPts));
+      applyStroke(curl, axis);
+      curl.setAttribute('marker-end', `url(#rhd-m-${axis})`);
+
+      const tEnd = proj(scale(A.a, 1.1));
+      thumb.setAttribute('x1', CX);
+      thumb.setAttribute('y1', CY);
+      thumb.setAttribute('x2', tEnd[0]);
+      thumb.setAttribute('y2', tEnd[1]);
+      applyStroke(thumb, axis);
+      thumb.setAttribute('marker-end', `url(#rhd-m-${axis})`);
+      thumbLabel.textContent = `拇指 → +${axis}`;
+      if (axis === 'z') {
+        thumbLabel.setAttribute('x', tEnd[0] + 46);
+        thumbLabel.setAttribute('y', tEnd[1] + 4);
+      } else {
+        thumbLabel.setAttribute('x', tEnd[0] + (axis === 'x' ? -34 : 34));
+        thumbLabel.setAttribute('y', tEnd[1] + 18);
+      }
+
+      const tipP = circlePoint(axis, theta);
+      vec.setAttribute('x1', CX);
+      vec.setAttribute('y1', CY);
+      vec.setAttribute('x2', tipP[0]);
+      vec.setAttribute('y2', tipP[1]);
+      applyStroke(vec, axis);
+      dot.setAttribute('cx', tipP[0]);
+      dot.setAttribute('cy', tipP[1]);
+      applyFill(dot, axis);
+      // 圆点大小随深度变化：越大越靠近观察者，用来消除正转方向的视觉歧义
+      const near = (depthOf(axis, theta) / RC + 1) / 2;
+      dot.setAttribute('r', (4 + 3 * near).toFixed(2));
+      dot.style.opacity = (0.55 + 0.45 * near).toFixed(2);
+
+      for (const [name, line] of Object.entries(axisLines)) {
+        line.classList.toggle('rhd-axis-on', name === axis);
+      }
+      for (const b of axisBtns) b.setAttribute('aria-pressed', String(b.dataset.axis === axis));
+
+      const deg = Math.round(((theta % 360) + 360) % 360);
+      out.textContent = `轴 = ${axis}（${A.joint}）　θ = ${deg}°　正转方向：${A.from} → ${A.to}`;
+      slider.value = String(deg);
+    }
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let playing = !reduced;
+    let raf = null;
+    let last = 0;
+
+    function loop(ts) {
+      if (!playing) {
+        raf = null;
+        return;
+      }
+      if (!last) last = ts;
+      const dt = Math.min((ts - last) / 1000, 0.05);
+      last = ts;
+      theta = (theta + dt * 48) % 360;
+      update();
+      raf = requestAnimationFrame(loop);
+    }
+
+    function setPlaying(v) {
+      playing = v;
+      playBtn.textContent = v ? '暂停' : '播放';
+      playBtn.setAttribute('aria-pressed', String(v));
+      if (v && raf === null) {
+        last = 0;
+        raf = requestAnimationFrame(loop);
+      }
+    }
+
+    axisBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        axis = btn.dataset.axis;
+        update();
+      });
+    });
+
+    slider.addEventListener('input', () => {
+      setPlaying(false);
+      theta = Number(slider.value);
+      update();
+    });
+
+    playBtn.addEventListener('click', () => setPlaying(!playing));
+
+    setPlaying(playing);
+    update();
+  });
+</script>
+
+<style>
+  .rhd-demo {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+  .rhd-demo svg {
+    display: block;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 720px;
+    height: auto;
+  }
+  .rhd-neg {
+    stroke-width: 1.5;
+    stroke-dasharray: 4 4;
+    opacity: 0.35;
+  }
+  .rhd-axis {
+    stroke-width: 2.5;
+    opacity: 0.55;
+    transition: opacity 0.2s, stroke-width 0.2s;
+  }
+  .rhd-axis-on {
+    stroke-width: 4;
+    opacity: 1;
+  }
+  .rhd-x { stroke: light-dark(#dc2626, #f87171); }
+  .rhd-y { stroke: light-dark(#16a34a, #4ade80); }
+  .rhd-z { stroke: light-dark(#2563eb, #60a5fa); }
+  .rhd-stroke-x { stroke: light-dark(#dc2626, #f87171); }
+  .rhd-stroke-y { stroke: light-dark(#16a34a, #4ade80); }
+  .rhd-stroke-z { stroke: light-dark(#2563eb, #60a5fa); }
+  .rhd-fill-x { fill: light-dark(#dc2626, #f87171); }
+  .rhd-fill-y { fill: light-dark(#16a34a, #4ade80); }
+  .rhd-fill-z { fill: light-dark(#2563eb, #60a5fa); }
+  .rhd-text-x { fill: light-dark(#dc2626, #f87171); }
+  .rhd-text-y { fill: light-dark(#16a34a, #4ade80); }
+  .rhd-text-z { fill: light-dark(#2563eb, #60a5fa); }
+  .rhd-mh-x { fill: light-dark(#dc2626, #f87171); }
+  .rhd-mh-y { fill: light-dark(#16a34a, #4ade80); }
+  .rhd-mh-z { fill: light-dark(#2563eb, #60a5fa); }
+  .rhd-orbit {
+    fill: none;
+    stroke: var(--sl-color-gray-4);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 5;
+  }
+  .rhd-near {
+    fill: none;
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 2.5;
+  }
+  .rhd-hint {
+    margin: 0.5rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--sl-color-gray-2);
+  }
+  .rhd-curl {
+    fill: none;
+    stroke-width: 2.5;
+  }
+  .rhd-thumb {
+    stroke-width: 4;
+  }
+  .rhd-thumb-label {
+    fill: var(--sl-color-gray-2);
+    font-size: 13px;
+  }
+  .rhd-vec {
+    stroke-width: 2.5;
+    stroke-dasharray: 6 4;
+  }
+  .rhd-origin {
+    fill: var(--sl-color-text);
+  }
+  .rhd-origin-label {
+    fill: var(--sl-color-gray-2);
+    font-size: 13px;
+  }
+  .rhd-label {
+    font-size: 17px;
+    font-weight: 700;
+  }
+  .rhd-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    max-width: 640px;
+    margin: 0.5rem auto 0;
+  }
+  .rhd-axis-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+  .rhd-axis-btn {
+    font-size: 0.8125rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid var(--sl-color-gray-4);
+    background: var(--sl-color-bg);
+    color: var(--sl-color-text);
+    cursor: pointer;
+  }
+  .rhd-axis-btn[aria-pressed='true'] {
+    border-color: var(--sl-color-accent);
+    color: var(--sl-color-accent);
+    background: light-dark(rgba(79, 70, 229, 0.08), rgba(139, 131, 255, 0.14));
+    font-weight: 600;
+  }
+  .rhd-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .rhd-slider-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    font-size: 0.8125rem;
+    color: var(--sl-color-gray-2);
+    white-space: nowrap;
+  }
+  .rhd-slider {
+    flex: 1;
+    accent-color: var(--sl-color-accent);
+  }
+  .rhd-play {
+    font-size: 0.8125rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 6px;
+    border: 1px solid var(--sl-color-gray-4);
+    background: var(--sl-color-bg);
+    color: var(--sl-color-text);
+    cursor: pointer;
+  }
+  .rhd-readout {
+    margin: 0.5rem 0 0;
+    font-size: 0.875rem;
+    color: var(--sl-color-text);
+  }
+  .rhd-out {
+    color: var(--sl-color-accent);
+    font-weight: 600;
+  }
+  .rhd-demo figcaption {
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-2);
+  }
+</style>

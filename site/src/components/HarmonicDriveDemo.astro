@@ -1,0 +1,177 @@
+---
+/**
+ * 谐波减速器（Harmonic Drive / Strain-wave Gear）原理演示。
+ *
+ * 波发生器（椭圆凸轮）把薄壁柔轮撑成椭圆，使柔轮外齿在长轴两端与固定的刚轮内齿啮合。
+ * 柔轮比刚轮少 2 个齿，因此波发生器每转一圈，柔轮相对刚轮只前进 2 个齿——
+ * 这就是谐波减速比 z_f/2 的来源（本演示 z_c = 18、z_f = 16，减速比 8）。
+ *
+ * 纯 SVG + 原生 JS；样式跟随 Starlight 明暗主题，遵循 prefers-reduced-motion。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import HarmonicDriveDemo from '../../../components/HarmonicDriveDemo.astro';
+ *   <HarmonicDriveDemo />
+ */
+
+const ZC = 18;
+const ZF = 16;
+const RC = 84;
+const RF = 76;
+const D = 4;
+const CX = 200;
+const CY = 200;
+
+const teethPath = (count, rInner, rOuter) => {
+  let d = '';
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    d += 'M ' + (c * rInner).toFixed(2) + ' ' + (s * rInner).toFixed(2) +
+         ' L ' + (c * rOuter).toFixed(2) + ' ' + (s * rOuter).toFixed(2) + ' ';
+  }
+  return d;
+};
+const ringTeeth = teethPath(ZC, RC - 6, RC + 1);
+---
+
+<figure class="hd-demo">
+  <svg viewBox="0 0 400 400" role="img" aria-label="谐波减速器原理演示：波发生器把柔轮撑成椭圆并与刚轮啮合">
+    <g transform={`translate(${CX} ${CY})`}>
+      <circle r={RC} class="hd-ring-body"></circle>
+      <path d={ringTeeth} class="hd-teeth hd-ring-teeth"></path>
+
+      <g class="hd-wave">
+        <ellipse rx={RF - 4} ry={RF - 4 - 2 * D} class="hd-wave-body"></ellipse>
+      </g>
+
+      <ellipse class="hd-flex-body" rx={RF + D} ry={RF - D}></ellipse>
+      <path class="hd-teeth hd-flex-teeth"></path>
+      <line class="hd-out-arrow" x1="0" y1="0" x2="0" y2="0"></line>
+      <polygon class="hd-out-head" points="0,0 0,0 0,0"></polygon>
+    </g>
+    <text class="hd-label" x="200" y="34" text-anchor="middle">谐波减速器：波发生器 · 柔轮 · 刚轮</text>
+    <text class="hd-out-tag" x="200" y="378" text-anchor="middle">输出 = 柔轮（蓝箭头，缓慢转动）</text>
+  </svg>
+
+  <div class="hd-controls">
+    <button type="button" class="hd-play" data-hd-play aria-pressed="true">暂停</button>
+    <label>波发生器转速 <input type="range" data-hd-speed min="20" max="160" step="10" value="90" /> <output data-hd-speed-out>90</output></label>
+  </div>
+
+  <p class="hd-readout"><output data-hd-out aria-live="polite"></output></p>
+
+  <figcaption>
+    波发生器（橙色椭圆凸轮）转动时把薄壁柔轮（青色）撑成椭圆，柔轮外齿只在椭圆长轴两端与固定的刚轮（灰色内齿圈）啮合。柔轮比刚轮少 2 个齿（本演示 16 vs 18），所以波发生器每转一圈，柔轮相对刚轮只退后 2 个齿——减速比 z_f/2 = 8。谐波减速器体积小、单级减速比大、回差小，代价是柔轮和波发生器的弹性会带来扭转刚度问题。
+  </figcaption>
+</figure>
+
+<script>
+  document.querySelectorAll('.hd-demo').forEach((demo) => {
+    const waveG = demo.querySelector('.hd-wave');
+    const flexBody = demo.querySelector('.hd-flex-body');
+    const flexTeeth = demo.querySelector('.hd-teeth.hd-flex-teeth');
+    const speedSlider = demo.querySelector('[data-hd-speed]');
+    const speedOut = demo.querySelector('[data-hd-speed-out]');
+    const out = demo.querySelector('[data-hd-out]');
+    const playBtn = demo.querySelector('[data-hd-play]');
+    const outArrow = demo.querySelector('.hd-out-arrow');
+    const outHead = demo.querySelector('.hd-out-head');
+
+    const ZF = 16;
+    const RF = 76;
+    const D = 4;
+    const RATIO = ZF / 2;
+    const CX = 200, CY = 200;
+
+    let thetaWg = 0;
+    let playing = true;
+    let lastTs = 0;
+    let raf = 0;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const setOutArrow = (f) => {
+      const aLen = RF - 22;
+      const ax = aLen * Math.cos(f);
+      const ay = aLen * Math.sin(f);
+      outArrow.setAttribute('x2', ax.toFixed(1));
+      outArrow.setAttribute('y2', ay.toFixed(1));
+      const hx = (aLen + 9) * Math.cos(f);
+      const hy = (aLen + 9) * Math.sin(f);
+      const p1x = (aLen - 1) * Math.cos(f) + 6 * Math.sin(f);
+      const p1y = (aLen - 1) * Math.sin(f) - 6 * Math.cos(f);
+      const p2x = (aLen - 1) * Math.cos(f) - 6 * Math.sin(f);
+      const p2y = (aLen - 1) * Math.sin(f) + 6 * Math.cos(f);
+      outHead.setAttribute('points', hx.toFixed(1) + ',' + hy.toFixed(1) + ' ' + p1x.toFixed(1) + ',' + p1y.toFixed(1) + ' ' + p2x.toFixed(1) + ',' + p2y.toFixed(1));
+    };
+
+    const flexTeethPath = (wg, f) => {
+      let d = '';
+      for (let i = 0; i < ZF; i++) {
+        const a = (i / ZF) * Math.PI * 2 + f;
+        const r = RF + D * Math.cos(2 * (a - wg));
+        const c = Math.cos(a);
+        const s = Math.sin(a);
+        d += 'M ' + (c * (r - 2)).toFixed(1) + ' ' + (s * (r - 2)).toFixed(1) +
+             ' L ' + (c * (r + 3)).toFixed(1) + ' ' + (s * (r + 3)).toFixed(1) + ' ';
+      }
+      return d;
+    };
+
+    const loop = (ts) => {
+      if (!playing) { raf = 0; return; }
+      if (!lastTs) lastTs = ts;
+      const dt = Math.min((ts - lastTs) / 1000, 0.05);
+      lastTs = ts;
+      const omega = (Number(speedSlider.value) / 90) * 1.1;
+      thetaWg = (thetaWg + dt * omega) % (Math.PI * 2 * RATIO);
+      const thetaF = -thetaWg / RATIO;
+      waveG.setAttribute('transform', 'rotate(' + ((thetaWg * 180) / Math.PI).toFixed(2) + ')');
+      flexBody.setAttribute('transform', 'rotate(' + ((thetaWg * 180) / Math.PI).toFixed(2) + ')');
+      flexTeeth.setAttribute('d', flexTeethPath(thetaWg, thetaF));
+      setOutArrow(thetaF);
+      out.textContent = '波发生器已转 ' + ((thetaWg * 180 / Math.PI) / 360).toFixed(2) + ' 圈　柔轮已转 ' +
+        ((thetaF * 180 / Math.PI) / 360).toFixed(2) + ' 圈　减速比 z_f / 2 = ' + RATIO;
+      raf = requestAnimationFrame(loop);
+    };
+
+    const setPlaying = (v) => {
+      playing = v;
+      playBtn.setAttribute('aria-pressed', String(v));
+      playBtn.textContent = v ? '暂停' : '播放';
+      if (v && raf === 0) { lastTs = 0; raf = requestAnimationFrame(loop); }
+    };
+
+    speedSlider.addEventListener('input', () => { speedOut.textContent = speedSlider.value; });
+    playBtn.addEventListener('click', () => setPlaying(!playing));
+
+    speedOut.textContent = speedSlider.value;
+    flexTeeth.setAttribute('d', flexTeethPath(0, 0));
+    setOutArrow(0);
+    out.textContent = '波发生器已转 0.00 圈　柔轮已转 0.00 圈　减速比 z_f / 2 = ' + RATIO;
+    if (reduced) setPlaying(false); else setPlaying(true);
+  });
+</script>
+
+<style>
+  .hd-demo { margin: 1.5rem 0; }
+  .hd-demo svg { display: block; width: 100%; max-width: 400px; height: auto; margin: 0 auto; }
+  .hd-ring-body { fill: none; stroke: var(--sl-color-gray-3); stroke-width: 16; }
+  .hd-teeth { fill: none; stroke: var(--sl-color-gray-2); stroke-width: 2; }
+  .hd-ring-teeth { stroke: var(--sl-color-gray-2); }
+  .hd-flex-body { fill: none; stroke: light-dark(#0d9488, #2dd4bf); stroke-width: 6; }
+  .hd-flex-teeth { stroke: light-dark(#0d9488, #2dd4bf); }
+  .hd-wave-body { fill: light-dark(rgba(234, 88, 12, 0.25), rgba(251, 146, 60, 0.3)); stroke: light-dark(#ea580c, #fb923c); stroke-width: 3; }
+  .hd-out-arrow { stroke: var(--sl-color-accent); stroke-width: 5; stroke-linecap: round; }
+  .hd-out-head { fill: var(--sl-color-accent); }
+  .hd-out-tag { fill: var(--sl-color-accent); font-size: 13px; font-weight: 600; }
+  .hd-label { fill: var(--sl-color-text); font-size: 14px; font-weight: 600; }
+  .hd-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.25rem; max-width: 400px; margin: 0.6rem auto 0; }
+  .hd-controls label { display: flex; align-items: center; gap: 0.45rem; margin: 0; font-size: 0.8125rem; color: var(--sl-color-gray-2); }
+  .hd-controls input[type='range'] { width: 8rem; accent-color: var(--sl-color-accent); }
+  .hd-controls output { color: var(--sl-color-accent); font-variant-numeric: tabular-nums; }
+  .hd-play { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.75rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
+  .hd-readout { max-width: 400px; margin: 0.5rem auto 0; font-size: 0.8125rem; color: var(--sl-color-text); line-height: 1.7; }
+  .hd-readout output { color: var(--sl-color-accent); font-weight: 600; }
+  .hd-demo figcaption { max-width: 400px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.875rem; line-height: 1.65; }
+</style>

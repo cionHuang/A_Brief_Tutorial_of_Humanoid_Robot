@@ -1,0 +1,209 @@
+---
+/**
+ * 传动比（Gear Ratio）聚焦演示。
+ *
+ * 与「一条关节传动链」里的减速器是同一对齿轮，这里只保留最核心的关系：
+ * 齿数比 z2/z1 = 传动比 N = ωm/ωout；输出转速降为 1/N，输出力矩放大约 ηN 倍。
+ * 输入齿轮持续旋转，输出齿轮按 1/N 反向旋转；右侧公式与实时数值、下方的
+ * 「输入转 N 圈 = 输出转 1 圈」计数一起把抽象公式变成可看的关系。
+ *
+ * 纯 SVG + 原生 JS，无外部依赖；样式跟随 Starlight 明暗主题，
+ * 遵循 prefers-reduced-motion（该设置下默认暂停）。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import GearRatioDemo from '../../../components/GearRatioDemo.astro';
+ *   <GearRatioDemo />
+ */
+---
+
+<figure class="gr-demo">
+  <svg viewBox="0 0 760 300" role="img" aria-label="传动比演示：两个啮合齿轮的齿数比决定转速与力矩的转换">
+    <g class="gr-input-gear"><path class="gr-gear"></path></g>
+    <g class="gr-output-gear"><path class="gr-gear"></path></g>
+    <text class="gr-gear-label" data-gr-z1 text-anchor="middle"></text>
+    <text class="gr-gear-label" data-gr-z2 text-anchor="middle"></text>
+
+    <text class="gr-title" x="440" y="54">传动比 N = z2 / z1 = ωm / ωout</text>
+    <text class="gr-live" x="440" y="104" data-gr-live1></text>
+    <text class="gr-live" x="440" y="148" data-gr-live2></text>
+    <text class="gr-live" x="440" y="192" data-gr-live3></text>
+    <text class="gr-count" x="440" y="244" data-gr-count></text>
+    <text class="gr-note" x="440" y="272">η 为传动效率，此处取 0.85</text>
+  </svg>
+
+  <div class="gr-controls">
+    <label>输出齿数 z2 <input type="range" data-gr-ratio min="2" max="5" step="1" value="4" /> <output data-gr-ratio-out>4</output> 倍</label>
+    <button type="button" class="gr-play" data-gr-play aria-pressed="true">暂停</button>
+  </div>
+
+  <figcaption>
+    输入齿轮有 z1 = 10 个齿，输出齿轮有 z2 = 10N 个齿，因此传动比 N = z2 / z1：输入转 N 圈，输出才转 1 圈。转速按 ωout = ωm / N 降低，力矩按 τout ≈ η·N·τm 放大——这就是前面传动链演示里那对齿轮的定量关系。拖动滑块改变 N，可以看到齿数、转速和力矩如何一起变化。
+  </figcaption>
+</figure>
+
+<script>
+  document.querySelectorAll('.gr-demo').forEach((demo) => {
+    const inputGearG = demo.querySelector('.gr-input-gear');
+    const outputGearG = demo.querySelector('.gr-output-gear');
+    const inputPath = demo.querySelector('.gr-input-gear path');
+    const outputPath = demo.querySelector('.gr-output-gear path');
+    const z1Label = demo.querySelector('[data-gr-z1]');
+    const z2Label = demo.querySelector('[data-gr-z2]');
+    const live1 = demo.querySelector('[data-gr-live1]');
+    const live2 = demo.querySelector('[data-gr-live2]');
+    const live3 = demo.querySelector('[data-gr-live3]');
+    const countText = demo.querySelector('[data-gr-count]');
+    const ratioSlider = demo.querySelector('[data-gr-ratio]');
+    const ratioOut = demo.querySelector('[data-gr-ratio-out]');
+    const playBtn = demo.querySelector('[data-gr-play]');
+
+    const ETA = 0.85;
+    const CY = 150;
+    const R1 = 22;
+    const Z1 = 10;
+    const GAP = 4;
+    const CX1 = 150;
+
+    let N = 4, r2 = R1 * N, cx2 = CX1 + R1 + r2 + GAP;
+    let thetaIn = 0;
+    let playing = true;
+    let lastTs = 0;
+    let raf = 0;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const gearPath = (teeth, rRoot, rTip) => {
+      const pts = [];
+      const pitch = (Math.PI * 2) / teeth;
+      for (let i = 0; i < teeth; i++) {
+        const a = i * pitch;
+        const add = (ang, r) => pts.push([Math.cos(ang) * r, Math.sin(ang) * r]);
+        add(a - pitch * 0.30, rRoot);
+        add(a - pitch * 0.14, rTip);
+        add(a + pitch * 0.14, rTip);
+        add(a + pitch * 0.30, rRoot);
+      }
+      return 'M' + pts.map((p) => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L') + ' Z';
+    };
+
+    const layout = () => {
+      N = Number(ratioSlider.value);
+      r2 = R1 * N;
+      cx2 = CX1 + R1 + r2 + GAP;
+      inputPath.setAttribute('d', gearPath(Z1, R1 - 3, R1 + 3));
+      outputPath.setAttribute('d', gearPath(Z1 * N, r2 - 3, r2 + 3));
+      inputGearG.setAttribute('transform', 'translate(' + CX1 + ' ' + CY + ')');
+      outputGearG.setAttribute('transform', 'translate(' + cx2 + ' ' + CY + ')');
+      z1Label.setAttribute('x', String(CX1));
+      z1Label.setAttribute('y', String(CY + R1 + 34));
+      z1Label.textContent = 'z1 = ' + Z1;
+      z2Label.setAttribute('x', String(cx2));
+      z2Label.setAttribute('y', String(CY + r2 + 34));
+      z2Label.textContent = 'z2 = ' + Z1 * N;
+      ratioOut.textContent = String(N);
+      live1.textContent = 'N = ' + (Z1 * N) + ' / ' + Z1 + ' = ' + N;
+      live2.textContent = 'ωout = ωm / N = ' + (1 / N).toFixed(2) + ' ωm';
+      live3.textContent = 'τout ≈ η N τm = ' + (ETA * N).toFixed(2) + ' τm';
+    };
+
+    const updateCount = () => {
+      const inCycle = (thetaIn / (Math.PI * 2)) % N;
+      const outCycle = inCycle / N;
+      countText.textContent = '本轮：输入 ' + inCycle.toFixed(1) + ' / ' + N + ' 圈　输出 ' + outCycle.toFixed(1) + ' / 1 圈';
+    };
+
+    const loop = (ts) => {
+      if (!playing) { raf = 0; return; }
+      if (!lastTs) lastTs = ts;
+      const dt = Math.min((ts - lastTs) / 1000, 0.05);
+      lastTs = ts;
+      // 在一个周期（输入 N 圈）内取模：既避免角度无限增大，也让计数按圈复位
+      thetaIn = (thetaIn + dt * Math.PI * 2 * 0.9) % (Math.PI * 2 * N);
+      const thetaOut = -thetaIn / N;
+      const degIn = (thetaIn * 180) / Math.PI;
+      const degOut = (thetaOut * 180) / Math.PI;
+      inputGearG.setAttribute('transform', 'translate(' + CX1 + ' ' + CY + ') rotate(' + degIn.toFixed(2) + ')');
+      outputGearG.setAttribute('transform', 'translate(' + cx2 + ' ' + CY + ') rotate(' + degOut.toFixed(2) + ')');
+      updateCount();
+      raf = requestAnimationFrame(loop);
+    };
+
+    const setPlaying = (v) => {
+      playing = v;
+      playBtn.setAttribute('aria-pressed', String(v));
+      playBtn.textContent = v ? '暂停' : '播放';
+      if (v && raf === 0) { lastTs = 0; raf = requestAnimationFrame(loop); }
+    };
+
+    ratioSlider.addEventListener('input', () => { layout(); updateCount(); });
+    playBtn.addEventListener('click', () => setPlaying(!playing));
+
+    layout();
+    updateCount();
+    if (reduced) { setPlaying(false); } else { setPlaying(true); }
+  });
+</script>
+
+<style>
+  .gr-demo { margin: 1.5rem 0; }
+  .gr-demo svg {
+    display: block;
+    width: 100%;
+    max-width: 760px;
+    height: auto;
+    margin: 0 auto;
+  }
+  .gr-gear {
+    fill: light-dark(#cbd5e1, #475569);
+    stroke: light-dark(#64748b, #94a3b8);
+    stroke-width: 1.5;
+  }
+  .gr-input-gear .gr-gear { fill: light-dark(#fde68a, #a16207); stroke: light-dark(#d97706, #fbbf24); }
+  .gr-gear-label { fill: var(--sl-color-gray-2); font-size: 13px; font-weight: 600; }
+  .gr-title { fill: var(--sl-color-text); font-size: 15px; font-weight: 700; }
+  .gr-live { fill: var(--sl-color-accent); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .gr-count { fill: var(--sl-color-text); font-size: 13px; }
+  .gr-note { fill: var(--sl-color-gray-3); font-size: 11px; }
+  .gr-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1.25rem;
+    max-width: 760px;
+    margin: 0.6rem auto 0;
+  }
+  .gr-controls label {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--sl-color-gray-2);
+    white-space: nowrap;
+  }
+  .gr-controls input[type='range'] { width: 9rem; accent-color: var(--sl-color-accent); }
+  .gr-controls output { color: var(--sl-color-accent); font-variant-numeric: tabular-nums; }
+  .gr-play {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.1rem;
+    margin: 0;
+    padding: 0 0.75rem;
+    box-sizing: border-box;
+    border: 1px solid var(--sl-color-gray-4);
+    border-radius: 6px;
+    background: var(--sl-color-bg);
+    color: var(--sl-color-text);
+    font: inherit;
+    font-size: 0.8125rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .gr-demo figcaption {
+    max-width: 760px;
+    margin: 0.6rem auto 0;
+    color: var(--sl-color-gray-2);
+    font-size: 0.875rem;
+    line-height: 1.65;
+  }
+</style>

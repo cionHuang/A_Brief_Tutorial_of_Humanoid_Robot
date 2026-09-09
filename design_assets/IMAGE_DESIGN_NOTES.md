@@ -114,3 +114,33 @@
 
 - Schunk SVH 五指手（CC BY-SA 4.0）：https://commons.wikimedia.org/wiki/File:Servo-electric_5-Finger_gripping_hand_-_Schunk_SVH.JPG
 - NIST 灵巧操作测试台（公有领域）：https://commons.wikimedia.org/wiki/File:NIST_Dexterous_Manipulation_Testbed_(9502902636).jpg
+## 减速器实拍图（2.3 节）
+
+**谐波、行星、摆线三类减速器的真实照片**（2026-09-09 检索并下载自 Wikimedia Commons，均按标题/描述核对，未做 AI 识别；已缩放至最长边 1400px、JPEG q82）。
+
+当前位置：`chapters/02-mechanics/assets/images/`
+
+### 04-reducer-harmonic-drive.jpg
+
+- 内容：Harmonic Drive AG 的谐波减速器零件——波发生器轴承（左上）、柔轮（右上）、刚轮（下）；
+- 来源：https://commons.wikimedia.org/wiki/File:Harmonic_Drive_AG_strain_wave_gear_set.jpg
+- 作者：Pieceofmetalwork；授权：CC BY-SA 4.0（署名 + 相同方式共享）。
+
+### 04-reducer-planetary.jpg
+
+- 内容：行星齿轮组实物（Maybach-Motors VL2，腓特烈港齐柏林博物馆藏）；
+- 来源：https://commons.wikimedia.org/wiki/File:Planetary_gears,_Maybach-Motors_VL2_-_Zeppelin_Museum_Friedrichshafen_-_DSC06814.jpg
+- 作者：Daderot；授权：CC0。
+
+### 04-reducer-cycloidal.jpg
+
+- 内容：组装后的摆线减速器（立体光固化 3D 打印件）；
+- 来源：https://commons.wikimedia.org/wiki/File:Stereolithography_cycloidal_drive.JPG
+- 作者：Clemenspool；授权：CC BY-SA 3.0（署名 + 相同方式共享）。
+
+### 备选
+
+- 摆线驱动动画（公有领域，Petteri Aimonen，POV-Ray 渲染）：https://commons.wikimedia.org/wiki/File:Cycloidal_drive.gif
+- 摆线减速器零件分解图（公有领域，Petteri Aimonen）：https://commons.wikimedia.org/wiki/File:Cycloidal_drive_parts.png
+- 行星齿轮组特写（CC0）：https://commons.wikimedia.org/wiki/File:Looking_through_a_set_of_planetary_gears.png
+

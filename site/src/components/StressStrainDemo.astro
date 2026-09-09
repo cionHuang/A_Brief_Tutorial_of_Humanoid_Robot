@@ -1,0 +1,360 @@
+---
+/**
+ * 轴向拉伸应力—应变交互演示。
+ *
+ * 左侧是一根两端受拉的试件（变形已放大便于观察）：滑块加大载荷时试件伸长，
+ * 越过屈服后变为塑性（颜色变化），点「卸载」会沿弹性斜率回弹，保留塑性残余。
+ * 右侧是应力—应变曲线：弹性段用分段轴放大，屈服点、塑性段、当前工作点和
+ * 卸载线都会随载荷实时更新。材料可切换，用于对比不同刚度 E 与屈服强度。
+ *
+ * 纯 SVG + 原生 JS，无外部依赖；样式跟随 Starlight 明暗主题。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import StressStrainDemo from '../../../components/StressStrainDemo.astro';
+ *   <StressStrainDemo />
+ */
+---
+
+<figure class="ss-demo">
+  <svg viewBox="0 0 800 420" role="img" aria-label="轴向拉伸应力应变交互演示：拖动载荷滑块，观察弹性变形、屈服和卸载后的塑性残余">
+    <!-- 左侧：受拉试件 -->
+    <g class="ss-panel">
+      <line class="ss-wall-hatch" x1="30" y1="96" x2="30" y2="204"></line>
+      <rect class="ss-wall" x="30" y="96" width="16" height="108"></rect>
+      <rect class="ss-bar-ghost" x="46" y="118" width="210" height="64"></rect>
+      <rect class="ss-bar" x="46" y="118" width="210" height="64"></rect>
+      <line class="ss-force" x1="256" y1="150" x2="256" y2="150"></line>
+      <text class="ss-force-label" x="0" y="0">F</text>
+      <text class="ss-panel-title" x="140" y="72" text-anchor="middle">受拉试件（变形已放大）</text>
+      <text class="ss-ghost-label" x="46" y="262">原始长度</text>
+    </g>
+
+    <!-- 右侧：应力—应变曲线 -->
+    <g class="ss-panel">
+      <line class="ss-axis" x1="470" y1="360" x2="770" y2="360"></line>
+      <line class="ss-axis" x1="470" y1="360" x2="470" y2="90"></line>
+      <path class="ss-break" d="M 582 352 l 6 8 l -6 8"></path>
+      <path class="ss-curve"></path>
+      <line class="ss-unload"></line>
+      <circle class="ss-point" r="6"></circle>
+      <line class="ss-yield-line" x1="470" y1="0" x2="470" y2="0"></line>
+      <text class="ss-axis-label" x="770" y="384" text-anchor="end">应变 ε</text>
+      <text class="ss-axis-label" x="474" y="84">应力 σ</text>
+      <text class="ss-panel-title" x="620" y="72" text-anchor="middle">应力—应变曲线（弹性段已放大）</text>
+      <text class="ss-break-label" x="586" y="384">← 弹性段 | 塑性段 →</text>
+    </g>
+  </svg>
+
+  <div class="ss-controls">
+    <div class="ss-materials" role="group" aria-label="选择材料">
+      <button type="button" class="ss-mat" data-mat="0" aria-pressed="true">铝合金</button>
+      <button type="button" class="ss-mat" data-mat="1" aria-pressed="false">钢</button>
+      <button type="button" class="ss-mat" data-mat="2" aria-pressed="false">钛合金</button>
+    </div>
+    <div class="ss-row">
+      <label class="ss-slider-label">载荷 F
+        <input class="ss-slider" type="range" min="0" max="24" step="0.05" value="0" />
+      </label>
+      <output class="ss-load-out">0.00 kN</output>
+      <button type="button" class="ss-unload-btn" disabled>卸载</button>
+    </div>
+  </div>
+
+  <p class="ss-readout"><output class="ss-out" aria-live="polite">拖动滑块开始加载</output></p>
+
+  <figcaption>
+    拖动「载荷 F」滑块给试件轴向加载：应力 σ = F / A，应变 ε = ΔL / L，弹性段满足 σ = E·ε（斜率就是弹性模量 E，也就是刚度）。应力越过屈服强度后进入塑性段，卸载只能沿弹性斜率回弹一部分，剩下的就是塑性残余变形——颜色会由青绿变为橙红。切换材料可以看到 E 越大越“硬”（同样载荷变形更小），屈服强度越高越不容易进入塑性。试件长度 0.3 m、截面积 1 cm²，变形已放大以便观察。
+  </figcaption>
+</figure>
+
+<script>
+  const SS_MATERIALS = [
+    { name: '铝合金', E: 70e9, sy: 200e6, et: 1.5e9 },
+    { name: '钢', E: 200e9, sy: 350e6, et: 3e9 },
+    { name: '钛合金', E: 110e9, sy: 800e6, et: 4e9 },
+  ];
+  const SS_L0 = 0.3;   // m
+  const SS_A = 1e-4;   // m^2
+
+  document.querySelectorAll('.ss-demo').forEach((demo) => {
+    const svg = demo.querySelector('svg');
+    const bar = demo.querySelector('.ss-bar');
+    const force = demo.querySelector('.ss-force');
+    const forceLabel = demo.querySelector('.ss-force-label');
+    const curve = demo.querySelector('.ss-curve');
+    const unloadLine = demo.querySelector('.ss-unload');
+    const point = demo.querySelector('.ss-point');
+    const yieldLine = demo.querySelector('.ss-yield-line');
+    const slider = demo.querySelector('.ss-slider');
+    const loadOut = demo.querySelector('.ss-load-out');
+    const out = demo.querySelector('.ss-out');
+    const unloadBtn = demo.querySelector('.ss-unload-btn');
+    const matBtns = Array.from(demo.querySelectorAll('.ss-mat'));
+
+    // 曲线坐标系（应变分段轴：弹性段占 40% 宽，塑性段占 60%）
+    const PLOT_X = 470, PLOT_Y = 360, PLOT_W = 290, PLOT_H = 270;
+    const EPS_BREAK = 0.008, EPS_MAX = 0.05, SIG_MAX = 900e6;
+    const BAR_X = 46, BAR_W = 210, BAR_Y = 118, BAR_H = 64, BAR_CY = 150;
+    const STRETCH_PX = 60, FORCE_PX = 80;
+
+    const strainToX = (eps) => {
+      if (eps <= EPS_BREAK) return PLOT_X + (eps / EPS_BREAK) * 0.4 * PLOT_W;
+      return PLOT_X + (0.4 + (eps - EPS_BREAK) / (EPS_MAX - EPS_BREAK) * 0.6) * PLOT_W;
+    };
+    const stressToY = (sig) => PLOT_Y - (sig / SIG_MAX) * PLOT_H;
+
+    let matIndex = 0;
+    let peakSigma = 0;
+    let peakEps = 0;
+    let currentSigma = 0;
+    let currentEps = 0;
+
+    const mat = () => SS_MATERIALS[matIndex];
+    const strainOnCurve = (sig) => {
+      const m = mat();
+      const ey = m.sy / m.E;
+      if (sig <= m.sy) return sig / m.E;
+      return ey + (sig - m.sy) / m.et;
+    };
+    const resetState = () => {
+      peakSigma = 0;
+      peakEps = 0;
+      currentSigma = 0;
+      currentEps = 0;
+      slider.value = '0';
+    };
+
+    const drawCurve = () => {
+      const m = mat();
+      const ey = m.sy / m.E;
+      const smax = 1.2 * m.sy;
+      const pts = [];
+      for (let i = 0; i <= 8; i++) {
+        const s = m.sy * (i / 8);
+        pts.push([strainToX(s / m.E), stressToY(s)]);
+      }
+      for (let i = 1; i <= 8; i++) {
+        const s = m.sy + (smax - m.sy) * (i / 8);
+        pts.push([strainToX(ey + (s - m.sy) / m.et), stressToY(s)]);
+      }
+      curve.setAttribute('d', pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' '));
+      yieldLine.setAttribute('x1', strainToX(ey).toFixed(1));
+      yieldLine.setAttribute('x2', strainToX(ey).toFixed(1));
+      yieldLine.setAttribute('y1', stressToY(0).toFixed(1));
+      yieldLine.setAttribute('y2', stressToY(m.sy).toFixed(1));
+    };
+
+    const update = () => {
+      const m = mat();
+      const F = Number(slider.value) * 1000; // kN -> N
+      const sigma = F / SS_A;
+
+      // 加载/卸载：材料记忆峰值，卸载沿弹性斜率回弹
+      if (sigma >= peakSigma) {
+        peakSigma = sigma;
+        peakEps = strainOnCurve(sigma);
+        currentSigma = sigma;
+        currentEps = peakEps;
+      } else {
+        currentSigma = sigma;
+        currentEps = peakEps - (peakSigma - sigma) / m.E;
+      }
+
+      const plastic = peakSigma > m.sy + 1e6;
+      const residual = currentEps;
+
+      // 试件变形（放大）
+      const stretch = Math.max(0, currentEps) / EPS_MAX * STRETCH_PX;
+      bar.setAttribute('width', (BAR_W + stretch).toFixed(1));
+      bar.classList.toggle('ss-bar-plastic', plastic);
+      const forcePx = Math.min(1, sigma / (1.2 * m.sy)) * FORCE_PX;
+      force.setAttribute('x2', (BAR_X + BAR_W + stretch + forcePx).toFixed(1));
+      forceLabel.setAttribute('x', (BAR_X + BAR_W + stretch + forcePx + 6).toFixed(1));
+      forceLabel.setAttribute('y', (BAR_CY + 4).toFixed(1));
+
+      // 曲线工作点与卸载线
+      const px = strainToX(Math.max(0, currentEps));
+      const py = stressToY(currentSigma);
+      point.setAttribute('cx', px.toFixed(1));
+      point.setAttribute('cy', py.toFixed(1));
+      point.classList.toggle('ss-point-plastic', plastic);
+      if (plastic && currentSigma < peakSigma - 1e6) {
+        unloadLine.setAttribute('x1', strainToX(peakEps).toFixed(1));
+        unloadLine.setAttribute('y1', stressToY(peakSigma).toFixed(1));
+        unloadLine.setAttribute('x2', px.toFixed(1));
+        unloadLine.setAttribute('y2', py.toFixed(1));
+        unloadLine.classList.add('ss-unload-on');
+      } else {
+        unloadLine.classList.remove('ss-unload-on');
+      }
+
+      loadOut.textContent = (F / 1000).toFixed(2) + ' kN';
+      const state = peakSigma <= m.sy ? '弹性' : (sigma >= peakSigma - 1e6 ? '塑性（继续加载）' : '卸载中');
+      out.textContent =
+        'σ = ' + (sigma / 1e6).toFixed(1) + ' MPa　ε = ' + (currentEps * 100).toFixed(3) + '%　' +
+        'ΔL = ' + (currentEps * SS_L0 * 1000).toFixed(3) + ' mm　' + state +
+        (plastic && currentSigma < 1e6 ? '　（卸载后残余应变 ' + (residual * 100).toFixed(3) + '%）' : '');
+      unloadBtn.disabled = F <= 0;
+    };
+
+    const setMaterial = (idx) => {
+      matIndex = idx;
+      matBtns.forEach((b, i) => b.setAttribute('aria-pressed', String(i === idx)));
+      slider.max = String((1.2 * mat().sy * SS_A) / 1000);
+      resetState();
+      drawCurve();
+      update();
+    };
+
+    matBtns.forEach((btn) => {
+      btn.addEventListener('click', () => setMaterial(Number(btn.dataset.mat)));
+    });
+    slider.addEventListener('input', update);
+    unloadBtn.addEventListener('click', () => {
+      unloadBtn.disabled = true;
+      const start = Number(slider.value);
+      const t0 = performance.now();
+      const step = (now) => {
+        const k = Math.min(1, (now - t0) / 500);
+        slider.value = String(start * (1 - k));
+        update();
+        if (k < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+
+    setMaterial(0);
+  });
+</script>
+
+<style>
+  .ss-demo { margin: 1.5rem 0; }
+  .ss-demo svg {
+    display: block;
+    width: 100%;
+    max-width: 800px;
+    height: auto;
+    margin: 0 auto;
+  }
+  .ss-wall {
+    fill: var(--sl-color-gray-4);
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 1;
+  }
+  .ss-wall-hatch {
+    stroke: var(--sl-color-gray-4);
+    stroke-width: 6;
+    stroke-dasharray: 2 8;
+  }
+  .ss-bar-ghost {
+    fill: none;
+    stroke: var(--sl-color-gray-4);
+    stroke-width: 1.5;
+    stroke-dasharray: 5 5;
+  }
+  .ss-bar {
+    fill: light-dark(rgba(13, 148, 136, 0.28), rgba(45, 212, 191, 0.3));
+    stroke: light-dark(#0d9488, #2dd4bf);
+    stroke-width: 2.5;
+    transition: fill 0.15s, stroke 0.15s;
+  }
+  .ss-bar-plastic {
+    fill: light-dark(rgba(234, 88, 12, 0.28), rgba(251, 146, 60, 0.3));
+    stroke: light-dark(#ea580c, #fb923c);
+  }
+  .ss-force { stroke: light-dark(#dc2626, #f87171); stroke-width: 3; }
+  .ss-force-label { fill: light-dark(#dc2626, #f87171); font-size: 15px; font-weight: 700; }
+  .ss-panel-title { fill: var(--sl-color-gray-2); font-size: 14px; font-weight: 600; }
+  .ss-ghost-label { fill: var(--sl-color-gray-3); font-size: 12px; }
+  .ss-axis { stroke: var(--sl-color-gray-3); stroke-width: 1.5; }
+  .ss-break { fill: none; stroke: var(--sl-color-gray-3); stroke-width: 1.5; }
+  .ss-break-label { fill: var(--sl-color-gray-3); font-size: 11px; }
+  .ss-axis-label { fill: var(--sl-color-gray-2); font-size: 13px; }
+  .ss-curve {
+    fill: none;
+    stroke: var(--sl-color-accent);
+    stroke-width: 2.5;
+  }
+  .ss-yield-line {
+    stroke: var(--sl-color-gray-4);
+    stroke-width: 1;
+    stroke-dasharray: 4 4;
+  }
+  .ss-unload { stroke: var(--sl-color-gray-2); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: 0; }
+  .ss-unload-on { opacity: 1; }
+  .ss-point { fill: var(--sl-color-accent); }
+  .ss-point-plastic { fill: light-dark(#ea580c, #fb923c); }
+  .ss-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+    max-width: 800px;
+    margin: 0.5rem auto 0;
+  }
+  .ss-materials { display: flex; gap: 0.5rem; }
+  .ss-mat, .ss-unload-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.1rem;
+    margin: 0;
+    padding: 0 0.75rem;
+    box-sizing: border-box;
+    border: 1px solid var(--sl-color-gray-4);
+    border-radius: 6px;
+    background: var(--sl-color-bg);
+    color: var(--sl-color-text);
+    font: inherit;
+    font-size: 0.8125rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .ss-mat[aria-pressed='true'] {
+    border-color: var(--sl-color-accent);
+    color: var(--sl-color-accent);
+    background: light-dark(rgba(79, 70, 229, 0.08), rgba(139, 131, 255, 0.14));
+    font-weight: 600;
+  }
+  .ss-unload-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .ss-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex: 1;
+    min-width: 260px;
+  }
+  .ss-slider-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--sl-color-gray-2);
+    white-space: nowrap;
+  }
+  .ss-slider { flex: 1; accent-color: var(--sl-color-accent); }
+  .ss-load-out {
+    min-width: 4.5rem;
+    text-align: right;
+    color: var(--sl-color-accent);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .ss-readout {
+    max-width: 800px;
+    margin: 0.5rem auto 0;
+    font-size: 0.8125rem;
+    color: var(--sl-color-text);
+    line-height: 1.7;
+  }
+  .ss-readout output { color: var(--sl-color-accent); font-weight: 600; }
+  .ss-demo figcaption {
+    max-width: 800px;
+    margin: 0.6rem auto 0;
+    color: var(--sl-color-gray-2);
+    font-size: 0.875rem;
+    line-height: 1.65;
+  }
+</style>

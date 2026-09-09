@@ -38,7 +38,12 @@ function scheduleSync() {
     }
   }, 300);
 }
-watch(chaptersRoot, { recursive: true }, scheduleSync);
+const chaptersWatcher = watch(chaptersRoot, { recursive: true }, scheduleSync);
+// 编辑器原子写入时，递归 watch 可能对已被删除的临时目录抛 ENOENT；
+// 监听只是热更新的加速器，出错时应忽略，不能让整个 dev server 退出。
+chaptersWatcher.on('error', (error) => {
+  console.warn(`chapters 监听出错（已忽略）：${error.message}`);
+});
 
 // fs.watch 在编辑器的原子重命名写入后偶发漏报，用周期性 mtime 扫描兜底，
 // 保证 chapters/ 的改动一定会触发同步

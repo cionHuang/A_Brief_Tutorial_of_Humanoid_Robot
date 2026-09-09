@@ -1,0 +1,62 @@
+---
+/**
+ * 广义坐标源码节选卡片：逐字摘自 MuJoCo 的 mjmodel.h 与 unitree_sdk2 的
+ * MotorState_.hpp（均为本书固定提交），保留原文件行号；正文提到的字段行
+ * 高亮并附中文注释标签，其余行压暗。
+ * 卡片头部文件路径可点击跳转到 GitHub 对应文件的对应行。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import GeneralizedCoordinatesSnippet from '../../../components/GeneralizedCoordinatesSnippet.astro';
+ *   <GeneralizedCoordinatesSnippet />
+ */
+
+import SourceSnippet from './SourceSnippet.astro';
+
+const MUJOCO_COMMIT = '44c118d712db5ca5d8c6264e4a21e3086e2ac952';
+const SDK_COMMIT = '9754cd153af3da471b0fe5f3aa535e426fb11db3';
+const mujoco = (line) =>
+  `https://github.com/google-deepmind/mujoco/blob/${MUJOCO_COMMIT}/include/mujoco/mjmodel.h#L${line}`;
+const sdk = (line) =>
+  `https://github.com/unitreerobotics/unitree_sdk2/blob/${SDK_COMMIT}/include/unitree/idl/hg/MotorState_.hpp#L${line}`;
+
+const cards = [
+  {
+    role: 'MuJoCo · 广义坐标与自由度维度',
+    file: 'include/mujoco/mjmodel.h',
+    url: mujoco(246),
+    lines: [
+      { n: 246, code: '  mjtSize nq;                     // number of generalized coordinates = dim(qpos)', hl: true, ann: '广义坐标数' },
+      { n: 247, code: '  mjtSize nv;                     // number of degrees of freedom = dim(qvel)', hl: true, ann: '自由度（速度）数' },
+      { n: 248, code: '  mjtSize nu;                     // number of scalar controls = dim(ctrl)', ann: '控制输入数' },
+    ],
+  },
+  {
+    role: 'MuJoCo · 广义坐标数组',
+    file: 'include/mujoco/mjmodel.h',
+    url: mujoco(366),
+    lines: [
+      { n: 366, code: '  // default generalized coordinates' },
+      { n: 367, code: '  mjtNum*   qpos0;                // qpos values at default pose              (nq x 1)', hl: true, ann: '默认位姿 qpos0' },
+      { n: 368, code: '  mjtNum*   qpos_spring;          // reference pose for springs               (nq x 1)' },
+    ],
+  },
+  {
+    role: 'Unitree SDK2 · 单关节的 q / dq / ddq',
+    file: 'include/unitree/idl/hg/MotorState_.hpp',
+    url: sdk(21),
+    lines: [
+      { n: 21, code: 'class MotorState_' },
+      { n: 24, code: ' uint8_t mode_ = 0;', ann: '关节模式' },
+      { n: 25, code: ' float q_ = 0.0f;', hl: true, ann: '关节位置' },
+      { n: 26, code: ' float dq_ = 0.0f;', hl: true, ann: '关节速度' },
+      { n: 27, code: ' float ddq_ = 0.0f;', hl: true, ann: '关节加速度' },
+      { n: 28, code: ' float tau_est_ = 0.0f;', ann: '估计力矩' },
+    ],
+  },
+];
+---
+
+<SourceSnippet
+  cards={cards}
+  caption={'片段逐字摘自 MuJoCo（提交 <code>44c118d</code>）与 unitree_sdk2（提交 <code>9754cd1</code>）对应文件，行号为原文件行号。MuJoCo 把构型写成 <code>qpos</code>、速度写成 <code>qvel</code>，并用 <code>nq</code> / <code>nv</code> 记录长度；浮动基座使 <code>nq ≠ nv</code>。SDK 回报的 <code>q_ / dq_ / ddq_</code> 则是驱动关节这一子集的广义坐标。'}
+/>

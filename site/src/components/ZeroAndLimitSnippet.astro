@@ -1,0 +1,54 @@
+---
+/**
+ * 零位与限位源码节选卡片：逐字摘自本书使用的 G1 模型文件
+ * g1_29dof_lock_waist.urdf（来自 unitree_rl_gym 固定提交
+ * 276801e46c5d433564f24658bac64f254b7d2d4b），保留原文件行号。
+ * 说明 URDF 没有独立的“零位”字段：零位由关节 origin 隐含定义，
+ * limit 的上下限相对它量出；文件中没有 calibration / safety_controller。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import ZeroAndLimitSnippet from '../../../components/ZeroAndLimitSnippet.astro';
+ *   <ZeroAndLimitSnippet />
+ */
+
+import SourceSnippet from './SourceSnippet.astro';
+
+const COMMIT = '276801e46c5d433564f24658bac64f254b7d2d4b';
+const src = (line) =>
+  `https://github.com/unitreerobotics/unitree_rl_gym/blob/${COMMIT}/resources/robots/g1_description/g1_29dof_lock_waist.urdf#L${line}`;
+
+const cards = [
+  {
+    role: '零位 · 与父连杆对齐',
+    file: 'g1_29dof_lock_waist.urdf',
+    url: src(79),
+    lines: [
+      { n: 79, code: '  <joint name="left_hip_pitch_joint" type="revolute">' },
+      { n: 80, code: '    <origin xyz="0 0.064452 -0.1027" rpy="0 0 0"/>', hl: true, ann: 'q = 0 时与父连杆姿态对齐' },
+    ],
+  },
+  {
+    role: '零位 · 带装配偏置',
+    file: 'g1_29dof_lock_waist.urdf',
+    url: src(166),
+    lines: [
+      { n: 166, code: '  <joint name="left_knee_joint" type="revolute">' },
+      { n: 167, code: '    <origin xyz="-0.078273 0.0021489 -0.17734" rpy="0 0.1749 0"/>', hl: true, ann: 'q = 0 时膝已有约 10° 俯仰偏置' },
+    ],
+  },
+  {
+    role: '限位 · 相对零位量出',
+    file: 'g1_29dof_lock_waist.urdf',
+    url: src(166),
+    lines: [
+      { n: 166, code: '  <joint name="left_knee_joint" type="revolute">' },
+      { n: 171, code: '    <limit lower="-0.087267" upper="2.8798" effort="139" velocity="20"/>', hl: true, ann: '位置 / 力 / 速度限位' },
+    ],
+  },
+];
+---
+
+<SourceSnippet
+  cards={cards}
+  caption={'片段逐字摘自 G1 锁腰模型 <code>g1_29dof_lock_waist.urdf</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为原文件行号。URDF 没有独立的“零位”字段：零位由关节 <code>origin</code> 隐含定义，<code>limit</code> 的上下限也相对它量出。文件里没有 <code>calibration</code> 或 <code>safety_controller</code>，因此编码器零位、机械装配零位与模型零位的对齐只能靠外部标定偏置；<code>limit</code> 也不区分机械止挡、驱动器与软件限位。'}
+/>

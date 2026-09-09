@@ -1,0 +1,64 @@
+---
+/**
+ * G1 惯性参数源码节选卡片：逐字摘自本书使用的 G1 模型文件
+ * g1_29dof_lock_waist.urdf（来自 unitree_rl_gym 固定提交
+ * 276801e46c5d433564f24658bac64f254b7d2d4b），保留原文件行号。
+ * 高亮 <origin>（质心）、<mass>（质量）与 <inertia>（转动惯量张量）。
+ * 卡片头部文件路径可点击跳转到 GitHub 对应文件的对应行。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import InertialSnippet from '../../../components/InertialSnippet.astro';
+ *   <InertialSnippet />
+ */
+
+import SourceSnippet from './SourceSnippet.astro';
+
+const COMMIT = '276801e46c5d433564f24658bac64f254b7d2d4b';
+const src = (line) =>
+  `https://github.com/unitreerobotics/unitree_rl_gym/blob/${COMMIT}/resources/robots/g1_description/g1_29dof_lock_waist.urdf#L${line}`;
+
+const cards = [
+  {
+    role: '左膝连杆 · inertial 全字段',
+    file: 'g1_29dof_lock_waist.urdf',
+    url: src(144),
+    lines: [
+      { n: 144, code: '  <link name="left_knee_link">' },
+      { n: 145, code: '    <inertial>' },
+      { n: 146, code: '      <origin xyz="0.005457 0.003964 -0.12074" rpy="0 0 0"/>', hl: true, ann: '质心位置（m）' },
+      { n: 147, code: '      <mass value="1.932"/>', hl: true, ann: '质量（kg）' },
+      { n: 148, code: '      <inertia ixx="0.011329" ixy="4.82E-05" ixz="-4.49E-05" iyy="0.011277" iyz="-0.0007146" izz="0.0015168"/>', hl: true, ann: '转动惯量张量（kg·m²）' },
+      { n: 149, code: '    </inertial>' },
+    ],
+  },
+  {
+    role: '骨盆 · 质量 3.813 kg',
+    file: 'g1_29dof_lock_waist.urdf',
+    url: src(13),
+    lines: [
+      { n: 13, code: '  <link name="pelvis">' },
+      { n: 14, code: '    <inertial>' },
+      { n: 15, code: '      <origin xyz="0 0 -0.07605" rpy="0 0 0"/>', ann: '质心位置' },
+      { n: 16, code: '      <mass value="3.813"/>', hl: true, ann: '质量（kg）' },
+      { n: 17, code: '      <inertia ixx="0.010549" ixy="0" ixz="2.1E-06" iyy="0.0093089" iyz="0" izz="0.0079184"/>' },
+    ],
+  },
+  {
+    role: '躯干 · 与 MJCF 不一致',
+    file: 'g1_29dof_lock_waist.urdf',
+    url: src(489),
+    lines: [
+      { n: 489, code: '  <link name="torso_link">' },
+      { n: 490, code: '    <inertial>' },
+      { n: 491, code: '      <origin xyz="0.002601 0.000257 0.153719" rpy="0 0 0"/>', ann: '质心位置' },
+      { n: 492, code: '      <mass value="8.562"/>', hl: true, ann: 'URDF 8.562 / MJCF 9.598 kg' },
+      { n: 493, code: '      <inertia ixx="0.065674966" ixy="-8.597E-05" ixz="-0.001737252" iyy="0.053535188" iyz="8.6899E-05" izz="0.030808125"/>' },
+    ],
+  },
+];
+---
+
+<SourceSnippet
+  cards={cards}
+  caption={'片段逐字摘自 G1 锁腰模型 <code>g1_29dof_lock_waist.urdf</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为原文件行号。<code>&lt;origin&gt;</code> 是质心在 link 坐标系下的位置，<code>&lt;mass&gt;</code> 是质量，<code>&lt;inertia&gt;</code> 是绕该坐标系的转动惯量张量（6 个独立分量）。注意同一条 link 的惯性参数在 URDF 与 MJCF 中可以不一致：<code>torso_link</code> 的 mass 在 URDF 里是 8.562 kg，在 <code>g1_29dof.xml</code> 里是 9.598 kg——所以不要跨文件直接比较惯量数字，改动结构后两个文件都要同步更新。'}
+/>
