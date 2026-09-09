@@ -24,9 +24,10 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
 
 <figure class="ankle-demo">
   <div class="ankle-panels">
+    <p class="ankle-panel-title ankle-title-a">① 这只脚能摆出哪些姿势？（移动光标选姿势）</p>
+    <p class="ankle-panel-title ankle-title-b">② 该姿态下的机构构型（拖拽旋转视角）</p>
     <div class="ankle-map-wrap">
-      <p class="ankle-panel-title">① 这只脚能摆出哪些姿势？（移动光标选姿势）</p>
-      <canvas class="ankle-map" data-ankle-map role="img" aria-label="G1 简化踝模型的姿态可达空间热图：横轴 roll、纵轴 pitch，灰色不可达，红框为关节限位"></canvas>
+      <canvas class="ankle-map" data-ankle-map role="img" aria-label="G1 简化踝模型的姿态可达空间图：横轴 roll、纵轴 pitch，浅青区域摆得到、浅红区域传动差、灰色区域摆不到，红框为关节限位"></canvas>
       <div class="ankle-legend">
         <span><i class="ankle-chip ankle-chip-ok"></i>摆得到</span>
         <span><i class="ankle-chip ankle-chip-warn"></i>传动差（准死区）</span>
@@ -36,7 +37,6 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
       </div>
     </div>
     <div class="ankle-view-wrap">
-      <p class="ankle-panel-title">② 该姿态下的机构构型（拖拽旋转视角）</p>
       <div class="ankle-viewport" data-ankle-viewport data-mesh-base={meshBase} role="application" tabindex="0" aria-label="G1 简化踝机构的三维示意图">
         <div class="ankle-loading" data-ankle-loading>
           <span class="ankle-spinner" aria-hidden="true"></span>
@@ -51,7 +51,7 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
   </p>
 
   <figcaption>
-    左图读法：每个小脚印是（左右侧倾, 前后俯仰）平面上的一个脚部姿势，脚印朝向就是脚尖方向。浅青区域摆得到，浅红区域虽然摆得到但传动已经病态（准死区），灰色摆不到——摆得到与摆不到之间的那条分界线，就是平面四连杆“死区段”在二维姿态平面上的样子：一条死区边界曲线。斜线区域几何上摆得到，但电机行程内到不了。几何来自第三方开源项目 feidedao/Parallel_Ankle_Joint 的 G1 简化踝模型（作者声明为个人装配参数，MIT），不代表宇树官方内部结构。
+    左图读法：横轴是左右侧倾（roll）、纵轴是前后俯仰（pitch），图上每个位置都对应这只脚的一个姿势。浅青区域摆得到；浅红区域虽然摆得到，但传动已经病态（准死区）；灰色区域摆不到——摆得到与摆不到之间的那条分界线，就是平面四连杆“死区段”在二维姿态平面上的样子。斜线区域几何上摆得到，但电机行程内到不了。青色圆圈是中立姿势，十字光标是你当前选中的姿势（右图和下方读数会跟着变）。几何来自第三方开源项目 feidedao/Parallel_Ankle_Joint 的 G1 简化踝模型（作者声明为个人装配参数，MIT），不代表宇树官方内部结构。
   </figcaption>
 </figure>
 
@@ -175,7 +175,7 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
     const W = 720;
     const H = 600;
     // 绘图区（四周留白放刻度与轴标题）
-    const PL = { x0: 88, y0: 20, x1: 704, y1: 500 };
+    const PL = { x0: 110, y0: 20, x1: 704, y1: 480 };
     const PW = PL.x1 - PL.x0;
     const PH = PL.y1 - PL.y0;
     mapCanvas.width = W;
@@ -187,12 +187,46 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
     const toRoll = (x) => ROLL_SCAN[0] + ((x - PL.x0) / PW) * (ROLL_SCAN[1] - ROLL_SCAN[0]);
     const toPitch = (y) => PITCH_SCAN[0] + ((PL.y1 - y) / PH) * (PITCH_SCAN[1] - PITCH_SCAN[0]);
 
-    // 明暗两套配色
+    // 明暗两套配色：分类底色刻意拉开色相与明度，图例色块由 applyLegend() 同步
     function theme() {
       const dark = document.documentElement.dataset.theme === 'dark';
       return dark
-        ? { bg: '#17181c', ok: '#1e3532', warn: '#3d2226', no: '#26272b', motor: '#2a2e38', hatch: 'rgba(160,170,190,0.35)', grid: '#2e3036', axis: '#5b5f6b', text: '#9aa0ae', title: '#d6dae4', glyph: '#d6dae4', glyphMotor: '#7d8496', glyphWarn: '#f87171', box: '#f87171', cross: '#ececf1', accent: '#8b83ff' }
-        : { bg: '#ffffff', ok: '#e0f0ee', warn: '#fce2e2', no: '#e8eaef', motor: '#d5d9e2', hatch: 'rgba(70,75,90,0.55)', grid: '#e2e4ea', axis: '#9aa0ae', text: '#5b5f6b', title: '#3f4351', glyph: '#3f4351', glyphMotor: '#8f95a3', glyphWarn: '#dc2626', box: '#dc2626', cross: '#23262f', accent: '#4f46e5' };
+        ? {
+            bg: '#17181c', ok: '#1a5045', okEdge: '#48a191',
+            warn: '#63262f', warnEdge: '#c06a78',
+            no: '#24252a', noEdge: '#3a3c44',
+            motor: '#3a4566', motorEdge: '#66779e',
+            hatch: 'rgba(160,170,190,0.45)', grid: '#2e3036', axis: '#5b5f6b',
+            text: '#9aa0ae', title: '#d6dae4', box: '#f87171', cross: '#ececf1', accent: '#8b83ff',
+          }
+        : {
+            bg: '#ffffff', ok: '#c9ebe0', okEdge: '#5fae9e',
+            warn: '#f7cbcb', warnEdge: '#cf6a72',
+            no: '#e4e7ee', noEdge: '#b2b7c2',
+            motor: '#bfcdea', motorEdge: '#7f8fb2',
+            hatch: 'rgba(70,75,90,0.5)', grid: '#e4e6ec', axis: '#9aa0ae',
+            text: '#5b5f6b', title: '#3f4351', box: '#dc2626', cross: '#23262f', accent: '#4f46e5',
+          };
+    }
+
+    // 图例色块与底图共用同一套配色：切换主题时一起更新，避免"图例和地图不是一个颜色"
+    function applyLegend(t) {
+      const set = (sel, bg, border) => {
+        const el = demo.querySelector(sel);
+        if (el) {
+          el.style.background = bg;
+          el.style.borderColor = border;
+        }
+      };
+      set('.ankle-chip-ok', t.ok, t.okEdge);
+      set('.ankle-chip-warn', t.warn, t.warnEdge);
+      set('.ankle-chip-no', t.no, t.noEdge);
+      set('.ankle-chip-box', 'transparent', t.box);
+      const hatchEl = demo.querySelector('.ankle-chip-hatch');
+      if (hatchEl) {
+        hatchEl.style.background = `repeating-linear-gradient(45deg, ${t.motorEdge} 0 2px, ${t.motor} 2px 4px)`;
+        hatchEl.style.borderColor = t.motorEdge;
+      }
     }
 
     // 预计算网格：0 不可达，1 电机超程，2 可达（按有效传动角存色）
@@ -225,6 +259,7 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
     ];
     function renderBase() {
       const t = theme();
+      applyLegend(t);
       const colOk = hexToRgb(t.ok);
       const colWarn = hexToRgb(t.warn);
       const colNo = hexToRgb(t.no);
@@ -282,7 +317,8 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
       // 网格线与刻度
       const rollTicks = [-45, -30, -15, 0, 15, 30, 45];
       const pitchTicks = [-75, -50, -25, 0, 25, 50];
-      ctx.font = '15px sans-serif';
+      // 画布 720px 宽、实际显示约 350px，字号按约 2 倍设置，缩到屏幕后仍清晰
+      ctx.font = '26px sans-serif';
       rollTicks.forEach((d) => {
         const x = px((d * Math.PI) / 180);
         ctx.strokeStyle = t.grid;
@@ -293,7 +329,7 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
         ctx.stroke();
         ctx.fillStyle = t.text;
         ctx.textAlign = 'center';
-        ctx.fillText(String(d), x, PL.y1 + 22);
+        ctx.fillText(String(d), x, PL.y1 + 38);
       });
       pitchTicks.forEach((d) => {
         const y = py((d * Math.PI) / 180);
@@ -305,16 +341,16 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
         ctx.stroke();
         ctx.fillStyle = t.text;
         ctx.textAlign = 'right';
-        ctx.fillText(String(d), PL.x0 - 10, y + 4.5);
+        ctx.fillText(String(d), PL.x0 - 16, y + 9);
       });
       // 外框与轴标题
       ctx.strokeStyle = t.axis;
       ctx.lineWidth = 1.5;
       ctx.strokeRect(PL.x0, PL.y0, PW, PH);
       ctx.fillStyle = t.title;
-      ctx.font = '600 16px sans-serif';
+      ctx.font = '600 30px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('roll（左右侧倾，°）', (PL.x0 + PL.x1) / 2, PL.y1 + 52);
+      ctx.fillText('roll（左右侧倾，°）', (PL.x0 + PL.x1) / 2, PL.y1 + 74);
       ctx.save();
       ctx.translate(24, (PL.y0 + PL.y1) / 2);
       ctx.rotate(-Math.PI / 2);
@@ -327,54 +363,17 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
       ctx.rect(PL.x0, PL.y0, PW, PH);
       ctx.clip();
 
-      // 姿势点阵：每隔约 12° 画一个侧视小脚印，脚尖朝向对应该姿势的 pitch
-      ctx.lineCap = 'round';
-      for (let p = -84; p <= 54; p += 12) {
-        for (let r = -42; r <= 42; r += 12) {
-          const pr = (p * Math.PI) / 180;
-          const rr = (r * Math.PI) / 180;
-          const s = solve(pr, rr);
-          const x = px(rr);
-          const y = py(pr);
-          if (!s.ok) {
-            ctx.beginPath();
-            ctx.arc(x, y, 2.2, 0, Math.PI * 2);
-            ctx.fillStyle = t.text;
-            ctx.fill();
-            continue;
-          }
-          const warn = s.motorOk && s.gEff < 20;
-          ctx.save();
-          ctx.translate(x, y);
-          ctx.rotate(pr); // pitch > 0 = 脚尖下压（顺时针）
-          ctx.strokeStyle = warn ? t.glyphWarn : s.motorOk ? t.glyph : t.glyphMotor;
-          ctx.fillStyle = ctx.strokeStyle;
-          ctx.lineWidth = 4;
-          ctx.beginPath();
-          ctx.moveTo(-13, 0);
-          ctx.lineTo(10, 0);
-          ctx.stroke();
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.moveTo(-13, 0);
-          ctx.lineTo(-13, -6);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.arc(13, 0, 3.6, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        }
-      }
+      // 图内不画脚印标记：底色分区 + 图例已经说明可达性，再叠加点阵只会干扰观感
       // 中立姿势标记
       ctx.beginPath();
       ctx.arc(px(0), py(0), 20, 0, Math.PI * 2);
       ctx.strokeStyle = t.accent;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
       ctx.stroke();
       ctx.fillStyle = t.accent;
-      ctx.font = '13px sans-serif';
+      ctx.font = '22px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('中立', px(0), py(0) + 36);
+      ctx.fillText('中立', px(0), py(0) + 44);
 
       // 限位红框
       ctx.strokeStyle = t.box;
@@ -385,15 +384,15 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
       const x = px(selRoll);
       const y = py(selPitch);
       ctx.strokeStyle = t.cross;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.moveTo(x - 14, y);
-      ctx.lineTo(x + 14, y);
-      ctx.moveTo(x, y - 14);
-      ctx.lineTo(x, y + 14);
+      ctx.moveTo(x - 18, y);
+      ctx.lineTo(x + 18, y);
+      ctx.moveTo(x, y - 18);
+      ctx.lineTo(x, y + 18);
       ctx.stroke();
       ctx.beginPath();
-      ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+      ctx.arc(x, y, 6, 0, Math.PI * 2);
       ctx.fillStyle = t.cross;
       ctx.fill();
       ctx.restore();
@@ -515,8 +514,9 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
       three = { THREE, refs, X_AXIS, Y_AXIS, D_REF, Q_TILT, HC };
 
       function resize() {
-        const w = Math.max(viewport.clientWidth, 1);
-        const h = Math.max(viewport.clientHeight, 1);
+        // 上限兜底：即使布局意外异常，也不会让渲染器申请超大帧缓冲
+        const w = Math.min(Math.max(viewport.clientWidth, 1), 2000);
+        const h = Math.min(Math.max(viewport.clientHeight, 1), 1600);
         renderer.setSize(w, h);
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
@@ -638,17 +638,36 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
   .ankle-demo {
     margin: 1.5rem 0;
   }
-  /* 坐标图需要刻度与轴标题的空间：纵向堆叠，各自占满正文宽度 */
+  /* 左右并排：两个标题放在同一 grid 行，标题行高取两者较大值，
+     保证左右图框顶部严格对齐（此前左标题换行会把左图推下去） */
   .ankle-panels {
     display: grid;
-    gap: 1.25rem;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      'title-a title-b'
+      'map     view';
+    column-gap: 1rem;
+    row-gap: 0.4rem;
+    align-items: stretch;
   }
-  .ankle-map-wrap,
-  .ankle-view-wrap {
+  .ankle-title-a {
+    grid-area: title-a;
+  }
+  .ankle-title-b {
+    grid-area: title-b;
+  }
+  .ankle-map-wrap {
+    grid-area: map;
     min-width: 0;
   }
+  .ankle-view-wrap {
+    grid-area: view;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
   .ankle-panel-title {
-    margin: 0 0 0.4rem;
+    margin: 0;
     font-size: 0.875rem;
     font-weight: 600;
     color: var(--sl-color-gray-2);
@@ -665,13 +684,19 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
   .ankle-viewport {
     position: relative;
     width: 100%;
-    aspect-ratio: 16 / 9;
+    /* flex-basis 0：高度只由父级布局决定，绝不来自内容，
+       否则 canvas 高度会反过来撑高视口，形成无限增长的反馈循环 */
+    flex: 1 1 0;
+    min-height: 240px;
     border: 1px solid var(--sl-color-gray-5);
     border-radius: 8px;
     overflow: hidden;
     background: var(--sl-color-bg);
   }
+  /* 绝对定位：让渲染器设置的 canvas 尺寸不参与布局，彻底断开反馈回路 */
   .ankle-viewport canvas {
+    position: absolute;
+    inset: 0;
     display: block;
     width: 100% !important;
     height: 100% !important;
@@ -679,6 +704,7 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
   .ankle-loading {
     position: absolute;
     inset: 0;
+    z-index: 1; /* 画布改为绝对定位后要压在它上面 */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -721,26 +747,10 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
     width: 12px;
     height: 12px;
     border-radius: 3px;
-  }
-  .ankle-chip-ok {
-    background: #e0f0ee;
-    border: 1px solid #9ec9c4;
-  }
-  .ankle-chip-warn {
-    background: #fce2e2;
-    border: 1px solid #eba3a3;
-  }
-  .ankle-chip-no {
-    background: #e8eaef;
-    border: 1px solid #c3c6cf;
-  }
-  .ankle-chip-hatch {
-    background: repeating-linear-gradient(45deg, #969eaC 0 2px, #d5d9e2 2px 4px);
-    border: 1px solid #c3c6cf;
+    border: 1px solid transparent; /* 颜色由 applyLegend() 按当前主题写入，与底图共用同一套配色 */
   }
   .ankle-chip-box {
-    background: transparent;
-    border: 2px solid light-dark(#dc2626, #f87171);
+    border-width: 2px;
   }
 
   .ankle-readout {
@@ -772,6 +782,19 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
     color: var(--sl-color-gray-2);
   }
 
+  @media (max-width: 720px) {
+    .ankle-panels {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        'title-a'
+        'map'
+        'title-b'
+        'view';
+    }
+    .ankle-viewport {
+      min-height: 260px;
+    }
+  }
   @media (prefers-reduced-motion: reduce) {
     .ankle-spinner {
       animation: none;
