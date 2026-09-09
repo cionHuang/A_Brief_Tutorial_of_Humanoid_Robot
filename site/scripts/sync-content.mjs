@@ -11,6 +11,9 @@
  * 5. 校验每条图片引用在目标侧存在，缺失时让构建失败。
  * 6. 原地增量更新：内容未变的文件不重写，仅删除已不属于内容源的文件，
  *    避免整目录删除重建导致 dev 服务器的文件监听失效。
+ * 7. 把指向其他小节的相对 .md/.mdx 链接改写为带 base 的站点路由，
+ *    Astro 只解析 .md 正文中的 .md 链接，.mdx 来源或 .mdx 目标都会
+ *    留下不可点击的裸相对路径。
  *
  * 生成结果不入库（见 site/.gitignore），由 dev/build 前自动执行。
  */
@@ -21,6 +24,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const chaptersRoot = path.resolve(siteRoot, '..', 'chapters');
 const docsRoot = path.join(siteRoot, 'src', 'content', 'docs');
+
+// 从 astro.config.mjs 读取部署 base（如 /A_Brief_Tutorial_of_Humanoid_Robot）
+const astroConfigSrc = await readFile(path.join(siteRoot, 'astro.config.mjs'), 'utf8');
+const siteBase = astroConfigSrc.match(/siteBase\s*=\s*'([^']+)'/)?.[1] ?? '';
 
 export async function syncContent() {
   const chapterDirs = (await readdir(chaptersRoot, { withFileTypes: true }))
@@ -77,6 +84,15 @@ export async function syncContent() {
       if (section.endsWith('.mdx')) {
         body = body.replace(/<(https?:\/\/[^>\s]+)>/g, '$1');
       }
+      // 相对小节链接 → 站点路由：./xx.md、../02-mechanics/xx.md#锚点 等
+      body = body.replace(
+        /\]\((\.{1,2}\/[^)\s]+?\.mdx?)(#[^)\s]+)?\)/g,
+        (match, file, anchor = '') => {
+          const rel = file.startsWith('./') ? `${chapter}/${file.slice(2)}` : file.replace(/^\.\.\//, '');
+          const route = rel.replace(/\.mdx?$/, '');
+          return `](${siteBase}/${route}/${anchor})`;
+        },
+      );
       const frontmatter = ['---', `title: ${JSON.stringify(title)}`, '---', ''].join('\n');
       const targetFile = path.join(targetDir, section);
       const next = frontmatter + body;

@@ -16,6 +16,7 @@
 | [mujoco](https://github.com/google-deepmind/mujoco) | `44c118d712db5ca5d8c6264e4a21e3086e2ac952` | Apache 2.0 | MJCF、执行器、接触、传感器和仿真循环 |
 | [openvla](https://github.com/openvla/openvla) | `c8f03f48af692657d3060c19588038c7220e9af9` | MIT | VLA 推理、视觉语言输入、动作 token 化和策略调用 |
 | [lerobot](https://github.com/huggingface/lerobot) | `fbb811fca92504439792b97d216f0d00c2268382` | Apache 2.0 | 机器人数据集、遥操作、模仿学习和策略部署 |
+| [Parallel_Ankle_Joint](https://github.com/feidedao/Parallel_Ankle_Joint) | `1305e884a0ddfde147272985b477952cb1cc4dc6` | MIT | G1 并联踝简化模型的运动学参数、IK 解析解与踝部网格（2.1 节演示；作者声明为个人装配，非官方结构） |
 
 版本记录日期：2026-09-02。表中的提交 SHA 用于生成稳定链接；后续更新资料时应重新核对接口和许可证。
 

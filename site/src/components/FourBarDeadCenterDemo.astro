@@ -83,6 +83,10 @@
 
   <p class="fb-hint">默认恒速旋转；在左侧机构上按住曲柄即可接管，松手后从当前角度恢复恒速</p>
 
+  <p class="fb-readout">
+    θ<sub>in</sub> = <output class="fb-o-in">0</output>°　θ<sub>out</sub> = <output class="fb-o-out">0</output>°　dθ<sub>out</sub>/dθ<sub>in</sub> = <output class="fb-o-slope" aria-live="polite">0.00</output>　<span class="fb-status">正常传动</span>
+  </p>
+
   <div class="fb-gauges">
     <div class="fb-gauge">
       <span class="fb-gauge-name">输入角速度 ω<sub>in</sub></span>
@@ -101,12 +105,8 @@
     </div>
   </div>
 
-  <p class="fb-readout">
-    θ<sub>in</sub> = <output class="fb-o-in">0</output>°　θ<sub>out</sub> = <output class="fb-o-out">0</output>°　dθ<sub>out</sub>/dθ<sub>in</sub> = <output class="fb-o-slope" aria-live="polite">0.00</output>　<span class="fb-status">正常传动</span>
-  </p>
-
   <figcaption>
-    拖动输入曲柄（或观看它恒速旋转）：输出摇杆的角度完全由输入角决定——这就是 1 DoF。接近共线构型（死点）时，输出几乎不动、越过死点后方向反转；右图上同一时刻表现为切线变平、dθ<sub>out</sub>/dθ<sub>in</sub> 趋零，也就是算法语言里的速度映射病态。下方三根条把同一时刻量化：输入满格、输出归零；第三根条回答“如果控制器偏要维持输出速度会怎样”——位置模式下力矩指令 = k<sub>p</sub> × 累积误差，输出卡住时误差越攒越大，力矩一路攀升直到撞上驱动器电流上限（饱和），这就是现场问题里“电机还在输出、连杆几乎不动”和正文“不要用过大电机指令硬顶”的原因。曲线上的淡色区域是死区：死点是具体构型，死区是它周围输出响应很差的一段范围。机构尺寸与力矩关系为示意，不代表 G1 真实机构。
+    接近死点时，四个画面同时变化：摇杆停顿、曲线切线变平、输出条归零、力矩条攒到饱和。机构尺寸与力矩关系为示意。
   </figcaption>
 </figure>
 

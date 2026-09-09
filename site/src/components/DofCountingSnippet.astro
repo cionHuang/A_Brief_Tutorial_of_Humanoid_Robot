@@ -1,0 +1,57 @@
+---
+/**
+ * DoF 计数规则源码节选卡片：三条计数规则分别对应 G1 描述文件中的
+ * 真实定义——URDF 的 revolute / fixed 关节与 MJCF 的 free 关节。
+ * 逐字摘自 unitree_rl_gym 固定提交 276801e46c5d433564f24658bac64f254b7d2d4b，
+ * 保留原文件行号；规则对应的行高亮并附中文注释标签，其余行压暗。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import DofCountingSnippet from '../../../components/DofCountingSnippet.astro';
+ *   <DofCountingSnippet />
+ */
+
+import SourceSnippet from './SourceSnippet.astro';
+
+const COMMIT = '276801e46c5d433564f24658bac64f254b7d2d4b';
+const src = (file, line) =>
+  `https://github.com/unitreerobotics/unitree_rl_gym/blob/${COMMIT}/resources/robots/g1_description/${file}#L${line}`;
+
+const cards = [
+  {
+    role: '规则一 · 转动关节 = 1 DoF',
+    file: 'g1_29dof_lock_waist.urdf',
+    url: src('g1_29dof_lock_waist.urdf', 79),
+    lines: [
+      { n: 79, code: '  <joint name="left_hip_pitch_joint" type="revolute">', hl: true, ann: '转动关节 → 1 DoF' },
+      { n: 83, code: '    <axis xyz="0 1 0"/>', ann: '绕 y 轴转动' },
+      { n: 84, code: '    <limit lower="-2.5307" upper="2.8798" effort="88" velocity="32"/>', ann: '限位与力 / 速度上限' },
+      { n: 85, code: '  </joint>' },
+    ],
+  },
+  {
+    role: '规则二 · 固定关节 = 0 DoF',
+    file: 'g1_29dof_lock_waist.urdf',
+    url: src('g1_29dof_lock_waist.urdf', 621),
+    lines: [
+      { n: 621, code: '  <!-- d435 -->', ann: 'RGB-D 相机' },
+      { n: 623, code: '  <joint name="d435_joint" type="fixed">', hl: true, ann: '固定关节 → 0 DoF' },
+      { n: 625, code: '    <parent link="torso_link"/>' },
+      { n: 626, code: '    <child link="d435_link"/>', ann: '只描述安装位置，不产生运动' },
+    ],
+  },
+  {
+    role: '规则三 · 浮动基座 = 6 个广义坐标',
+    file: 'g1_29dof_with_hand.xml（MJCF）',
+    url: src('g1_29dof_with_hand.xml', 58),
+    lines: [
+      { n: 58, code: '    <body name="pelvis" pos="0 0 0.793">', ann: '骨盆（基座）' },
+      { n: 60, code: '      <joint name="floating_base_joint" type="free" limited="false" actuatorfrclimited="false"/>', hl: true, ann: 'free 关节 → 3 平移 + 3 旋转' },
+    ],
+  },
+];
+---
+
+<SourceSnippet
+  cards={cards}
+  caption={'三条计数规则在 G1 模型文件中的原文对应：URDF（锁腰变体）里的转动关节与传感器安装关节，以及 MJCF（带手变体）里的浮动基座自由关节。逐字摘自 unitree_rl_gym（提交 <code>276801e</code>），行号为原文件行号。'}
+/>

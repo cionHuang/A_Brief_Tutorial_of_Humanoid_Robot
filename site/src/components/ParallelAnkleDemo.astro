@@ -1,0 +1,780 @@
+---
+/**
+ * G1 并联踝关节可达空间与死区交互演示。
+ *
+ * 左侧：(pitch, roll) 姿态平面的传动角热图——灰色为几何不可达，
+ * 斜线为电机超程（几何可达但电机行程内到不了），红框为关节限位框；
+ * 移动十字光标选择姿态。右侧：该姿态下简化踝机构的 3D 图
+ * （两个电机摇杆 + 连杆 + 脚掌动平台），可拖拽旋转视角。
+ *
+ * 几何参数与 IK 解析解（含两支链镜像的符号约定）移植自第三方开源项目
+ * feidedao/Parallel_Ankle_Joint 的 G1 简化踝模型；该模型为作者个人装配，
+ * 不代表宇树官方内部结构。平面四连杆的死区是一维曲线上的平坦区间，
+ * 并联踝的死区是二维姿态平面上的可达边界曲线。
+ *
+ * 纯 canvas + Three.js（进视口后懒加载），遵循 prefers-reduced-motion。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import ParallelAnkleDemo from '../../../components/ParallelAnkleDemo.astro';
+ *   <ParallelAnkleDemo />
+ */
+const baseUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
+---
+
+<figure class="ankle-demo">
+  <div class="ankle-panels">
+    <div class="ankle-map-wrap">
+      <p class="ankle-panel-title">① 这只脚能摆出哪些姿势？（移动光标选姿势）</p>
+      <canvas class="ankle-map" data-ankle-map role="img" aria-label="G1 简化踝模型的姿态可达空间热图：横轴 roll、纵轴 pitch，灰色不可达，红框为关节限位"></canvas>
+      <div class="ankle-legend">
+        <span><i class="ankle-chip ankle-chip-ok"></i>摆得到</span>
+        <span><i class="ankle-chip ankle-chip-warn"></i>传动差（准死区）</span>
+        <span><i class="ankle-chip ankle-chip-hatch"></i>电机到不了</span>
+        <span><i class="ankle-chip ankle-chip-no"></i>摆不到</span>
+        <span><i class="ankle-chip ankle-chip-box"></i>官方限位框</span>
+      </div>
+    </div>
+    <div class="ankle-view-wrap">
+      <p class="ankle-panel-title">② 该姿态下的机构构型（拖拽旋转视角）</p>
+      <div class="ankle-viewport" data-ankle-viewport data-mesh-base={meshBase} role="application" tabindex="0" aria-label="G1 简化踝机构的三维示意图">
+        <div class="ankle-loading" data-ankle-loading>
+          <span class="ankle-spinner" aria-hidden="true"></span>
+          <span data-ankle-status>准备加载 3D 视图</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="ankle-readout">
+    pitch = <output data-o-pitch>0.0</output>°　roll = <output data-o-roll>0.0</output>°　γ₁ = <output data-o-g1>—</output>°　γ₂ = <output data-o-g2>—</output>°　<span class="ankle-state" data-o-state>正常传动</span>
+  </p>
+
+  <figcaption>
+    左图读法：每个小脚印是（左右侧倾, 前后俯仰）平面上的一个脚部姿势，脚印朝向就是脚尖方向。浅青区域摆得到，浅红区域虽然摆得到但传动已经病态（准死区），灰色摆不到——摆得到与摆不到之间的那条分界线，就是平面四连杆“死区段”在二维姿态平面上的样子：一条死区边界曲线。斜线区域几何上摆得到，但电机行程内到不了。几何来自第三方开源项目 feidedao/Parallel_Ankle_Joint 的 G1 简化踝模型（作者声明为个人装配参数，MIT），不代表宇树官方内部结构。
+  </figcaption>
+</figure>
+
+<script>
+  document.querySelectorAll('.ankle-demo').forEach((demo) => {
+    /* ---------- 几何与 IK：移植自 feidedao/Parallel_Ankle_Joint 的 G1 简化模型 ---------- */
+    const h0 = [0, 0, -0.01756];
+    const ra01 = [0.035, 0, 0.15087];
+    const ra02 = [0.0395, 0, 0.21587];
+    const rb01 = [0.035, 0.01653, 0.1469];
+    const rb02 = [0.0395, -0.01636, 0.21125];
+    const cz = -0.00956;
+    const lspace = 0.03;
+    const rc01 = [0.022, lspace / 2, cz];
+    const rc02 = [0.022, -lspace / 2, cz];
+    const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+    const norm = (a) => Math.hypot(a[0], a[1], a[2]);
+    const lbar1 = norm(sub(rb01, ra01));
+    const lbar2 = norm(sub(rb02, ra02));
+    const hc01 = sub(rc01, h0);
+    const hc02 = sub(rc02, h0);
+    const lrod1 = norm(sub(rb01, rc01));
+    const lrod2 = norm(sub(rb02, rc02));
+    const rab1 = [0, lbar1, 0];
+    const rab2 = [0, -lbar2, 0];
+    const m01 = -0.23570513813135086;
+    const m02 = 0.2752292097013862;
+    const MOTOR_LIM = 1.1; // rad，电机行程 ±63°
+    const PITCH_LIM = [-0.87267, 0.5236]; // 关节限位框
+    const ROLL_LIM = [-0.2618, 0.2618];
+
+    // 扫描范围（与分析报告一致）
+    const PITCH_SCAN = [-1.5, 1.0];
+    const ROLL_SCAN = [-0.8, 0.8];
+    const GRID = 220;
+
+    const Rx = (a) => {
+      const c = Math.cos(a);
+      const s = Math.sin(a);
+      return [
+        [1, 0, 0],
+        [0, c, -s],
+        [0, s, c],
+      ];
+    };
+    const Ry = (a) => {
+      const c = Math.cos(a);
+      const s = Math.sin(a);
+      return [
+        [c, 0, s],
+        [0, 1, 0],
+        [-s, 0, c],
+      ];
+    };
+    const matVec = (M, v) => [
+      M[0][0] * v[0] + M[0][1] * v[1] + M[0][2] * v[2],
+      M[1][0] * v[0] + M[1][1] * v[1] + M[1][2] * v[2],
+      M[2][0] * v[0] + M[2][1] * v[1] + M[2][2] * v[2],
+    ];
+    const matMul = (A, B) =>
+      A.map((row) => [0, 1, 2].map((k) => row[0] * B[0][k] + row[1] * B[1][k] + row[2] * B[2][k]));
+
+    // 单支链 IK + 传动角；返回 {ok, theta, gamma, rb, rc}
+    function leg(pitch, roll, which) {
+      const R = matMul(Ry(pitch), Rx(roll));
+      const rh = matVec(Ry(pitch), h0);
+      const isLeg1 = which === 1;
+      const ra = isLeg1 ? ra01 : ra02;
+      const lbar = isLeg1 ? lbar1 : lbar2;
+      const lrod = isLeg1 ? lrod1 : lrod2;
+      const m0 = isLeg1 ? m01 : m02;
+      const rab = isLeg1 ? rab1 : rab2;
+      const hc = isLeg1 ? hc01 : hc02;
+      const sign = isLeg1 ? 1 : -1; // 分子符号
+      const csign = isLeg1 ? -1 : 1; // c 的符号约定（两支链镜像）
+      const rc = [rh[0] + (R[0][0] * hc[0] + R[0][1] * hc[1] + R[0][2] * hc[2]),
+                  rh[1] + (R[1][0] * hc[0] + R[1][1] * hc[1] + R[1][2] * hc[2]),
+                  rh[2] + (R[2][0] * hc[0] + R[2][1] * hc[1] + R[2][2] * hc[2])];
+      const rac = sub(rc, ra);
+      const a = rac[1];
+      const b = rac[2];
+      const c = (csign * (lrod * lrod - lbar * lbar - (rac[0] ** 2 + rac[1] ** 2 + rac[2] ** 2))) / (2 * lbar);
+      const jjj = b * b * c * c - (a * a + b * b) * (c * c - a * a);
+      if (jjj < 0) return { ok: false, rc };
+      const ss = (b * c + sign * Math.sqrt(jjj)) / (a * a + b * b);
+      if (Math.abs(ss) > 1) return { ok: false, rc };
+      const theta = Math.asin(ss) - m0;
+      const rb = [
+        ra[0] + matVec(Rx(theta + m0), rab)[0],
+        ra[1] + matVec(Rx(theta + m0), rab)[1],
+        ra[2] + matVec(Rx(theta + m0), rab)[2],
+      ];
+      const rbar = sub(rb, ra);
+      const rrod = sub(rc, rb);
+      const cosg = Math.min(Math.max((rbar[0] * rrod[0] + rbar[1] * rrod[1] + rbar[2] * rrod[2]) / (lbar * lrod), -1), 1);
+      const gamma = (Math.acos(cosg) * 180) / Math.PI;
+      return { ok: true, theta, gamma, rb, rc, jjj };
+    }
+
+    function solve(pitch, roll) {
+      const l1 = leg(pitch, roll, 1);
+      const l2 = leg(pitch, roll, 2);
+      const ok = l1.ok && l2.ok;
+      let gEff = NaN;
+      let motorOk = false;
+      if (ok) {
+        gEff = Math.min(l1.gamma, l2.gamma, 180 - l1.gamma, 180 - l2.gamma);
+        motorOk = Math.abs(l1.theta) <= MOTOR_LIM && Math.abs(l2.theta) <= MOTOR_LIM;
+      }
+      return { l1, l2, ok, gEff, motorOk };
+    }
+
+    /* ---------- 热图 ---------- */
+    const mapCanvas = demo.querySelector('[data-ankle-map]');
+    const oPitch = demo.querySelector('[data-o-pitch]');
+    const oRoll = demo.querySelector('[data-o-roll]');
+    const oG1 = demo.querySelector('[data-o-g1]');
+    const oG2 = demo.querySelector('[data-o-g2]');
+    const oState = demo.querySelector('[data-o-state]');
+
+    const W = 720;
+    const H = 600;
+    // 绘图区（四周留白放刻度与轴标题）
+    const PL = { x0: 88, y0: 20, x1: 704, y1: 500 };
+    const PW = PL.x1 - PL.x0;
+    const PH = PL.y1 - PL.y0;
+    mapCanvas.width = W;
+    mapCanvas.height = H;
+    const ctx = mapCanvas.getContext('2d');
+
+    const px = (roll) => PL.x0 + ((roll - ROLL_SCAN[0]) / (ROLL_SCAN[1] - ROLL_SCAN[0])) * PW;
+    const py = (pitch) => PL.y1 - ((pitch - PITCH_SCAN[0]) / (PITCH_SCAN[1] - PITCH_SCAN[0])) * PH;
+    const toRoll = (x) => ROLL_SCAN[0] + ((x - PL.x0) / PW) * (ROLL_SCAN[1] - ROLL_SCAN[0]);
+    const toPitch = (y) => PITCH_SCAN[0] + ((PL.y1 - y) / PH) * (PITCH_SCAN[1] - PITCH_SCAN[0]);
+
+    // 明暗两套配色
+    function theme() {
+      const dark = document.documentElement.dataset.theme === 'dark';
+      return dark
+        ? { bg: '#17181c', ok: '#1e3532', warn: '#3d2226', no: '#26272b', motor: '#2a2e38', hatch: 'rgba(160,170,190,0.35)', grid: '#2e3036', axis: '#5b5f6b', text: '#9aa0ae', title: '#d6dae4', glyph: '#d6dae4', glyphMotor: '#7d8496', glyphWarn: '#f87171', box: '#f87171', cross: '#ececf1', accent: '#8b83ff' }
+        : { bg: '#ffffff', ok: '#e0f0ee', warn: '#fce2e2', no: '#e8eaef', motor: '#d5d9e2', hatch: 'rgba(70,75,90,0.55)', grid: '#e2e4ea', axis: '#9aa0ae', text: '#5b5f6b', title: '#3f4351', glyph: '#3f4351', glyphMotor: '#8f95a3', glyphWarn: '#dc2626', box: '#dc2626', cross: '#23262f', accent: '#4f46e5' };
+    }
+
+    // 预计算网格：0 不可达，1 电机超程，2 可达（按有效传动角存色）
+    const cellG = new Float32Array(GRID * GRID);
+    const cellCat = new Uint8Array(GRID * GRID);
+    {
+      let i = 0;
+      for (let iy = 0; iy < GRID; iy++) {
+        const pitch = PITCH_SCAN[0] + (1 - iy / (GRID - 1)) * (PITCH_SCAN[1] - PITCH_SCAN[0]);
+        for (let ix = 0; ix < GRID; ix++, i++) {
+          const roll = ROLL_SCAN[0] + (ix / (GRID - 1)) * (ROLL_SCAN[1] - ROLL_SCAN[0]);
+          const s = solve(pitch, roll);
+          if (!s.ok) cellCat[i] = 0;
+          else if (!s.motorOk) cellCat[i] = 1;
+          else cellCat[i] = 2;
+          cellG[i] = s.ok ? s.gEff : NaN;
+        }
+      }
+    }
+
+    const base = document.createElement('canvas');
+    base.width = PW;
+    base.height = PH;
+    // 十六进制颜色 → [r, g, b]。不能写成 h.match(/\d+/g)：那抓的是十进制数字串，
+    // 会把 #e0f0ee 解析成 [0, 0]，整张底色变黑。
+    const hexToRgb = (h) => [
+      parseInt(h.slice(1, 3), 16),
+      parseInt(h.slice(3, 5), 16),
+      parseInt(h.slice(5, 7), 16),
+    ];
+    function renderBase() {
+      const t = theme();
+      const colOk = hexToRgb(t.ok);
+      const colWarn = hexToRgb(t.warn);
+      const colNo = hexToRgb(t.no);
+      const colMotor = hexToRgb(t.motor);
+      const bctx = base.getContext('2d');
+      const img = bctx.createImageData(GRID, GRID);
+      for (let i = 0; i < GRID * GRID; i++) {
+        let rgb;
+        if (cellCat[i] === 0) rgb = colNo;
+        else if (cellCat[i] === 1) rgb = colMotor;
+        else rgb = cellG[i] < 20 ? colWarn : colOk;
+        img.data[i * 4] = rgb[0];
+        img.data[i * 4 + 1] = rgb[1];
+        img.data[i * 4 + 2] = rgb[2];
+        img.data[i * 4 + 3] = 255;
+      }
+      // 先画到小 canvas 再放大到绘图区（像素级网格 → 平滑放大）
+      const small = document.createElement('canvas');
+      small.width = GRID;
+      small.height = GRID;
+      small.getContext('2d').putImageData(img, 0, 0);
+      bctx.clearRect(0, 0, PW, PH);
+      bctx.imageSmoothingEnabled = true;
+      bctx.drawImage(small, 0, 0, PW, PH);
+      // 电机超程斜线
+      bctx.strokeStyle = t.hatch;
+      bctx.lineWidth = 1;
+      const cellW = PW / GRID;
+      const cellH = PH / GRID;
+      bctx.beginPath();
+      for (let iy = 0; iy < GRID; iy += 2) {
+        for (let ix = 0; ix < GRID; ix += 2) {
+          if (cellCat[iy * GRID + ix] === 1) {
+            const x = ix * cellW;
+            const y = iy * cellH;
+            bctx.moveTo(x, y + cellH * 2);
+            bctx.lineTo(x + cellW * 2, y);
+          }
+        }
+      }
+      bctx.stroke();
+    }
+    renderBase();
+
+    let selPitch = 0;
+    let selRoll = 0;
+
+    function drawMap() {
+      const t = theme();
+      ctx.fillStyle = t.bg;
+      ctx.fillRect(0, 0, W, H);
+      // 分类底色（只落在绘图区）
+      ctx.drawImage(base, PL.x0, PL.y0);
+
+      // 网格线与刻度
+      const rollTicks = [-45, -30, -15, 0, 15, 30, 45];
+      const pitchTicks = [-75, -50, -25, 0, 25, 50];
+      ctx.font = '15px sans-serif';
+      rollTicks.forEach((d) => {
+        const x = px((d * Math.PI) / 180);
+        ctx.strokeStyle = t.grid;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, PL.y0);
+        ctx.lineTo(x, PL.y1);
+        ctx.stroke();
+        ctx.fillStyle = t.text;
+        ctx.textAlign = 'center';
+        ctx.fillText(String(d), x, PL.y1 + 22);
+      });
+      pitchTicks.forEach((d) => {
+        const y = py((d * Math.PI) / 180);
+        ctx.strokeStyle = t.grid;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(PL.x0, y);
+        ctx.lineTo(PL.x1, y);
+        ctx.stroke();
+        ctx.fillStyle = t.text;
+        ctx.textAlign = 'right';
+        ctx.fillText(String(d), PL.x0 - 10, y + 4.5);
+      });
+      // 外框与轴标题
+      ctx.strokeStyle = t.axis;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(PL.x0, PL.y0, PW, PH);
+      ctx.fillStyle = t.title;
+      ctx.font = '600 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('roll（左右侧倾，°）', (PL.x0 + PL.x1) / 2, PL.y1 + 52);
+      ctx.save();
+      ctx.translate(24, (PL.y0 + PL.y1) / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('pitch（前后俯仰，°）', 0, 0);
+      ctx.restore();
+
+      // 绘图区裁剪：点阵、光标不越界
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(PL.x0, PL.y0, PW, PH);
+      ctx.clip();
+
+      // 姿势点阵：每隔约 12° 画一个侧视小脚印，脚尖朝向对应该姿势的 pitch
+      ctx.lineCap = 'round';
+      for (let p = -84; p <= 54; p += 12) {
+        for (let r = -42; r <= 42; r += 12) {
+          const pr = (p * Math.PI) / 180;
+          const rr = (r * Math.PI) / 180;
+          const s = solve(pr, rr);
+          const x = px(rr);
+          const y = py(pr);
+          if (!s.ok) {
+            ctx.beginPath();
+            ctx.arc(x, y, 2.2, 0, Math.PI * 2);
+            ctx.fillStyle = t.text;
+            ctx.fill();
+            continue;
+          }
+          const warn = s.motorOk && s.gEff < 20;
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(pr); // pitch > 0 = 脚尖下压（顺时针）
+          ctx.strokeStyle = warn ? t.glyphWarn : s.motorOk ? t.glyph : t.glyphMotor;
+          ctx.fillStyle = ctx.strokeStyle;
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(-13, 0);
+          ctx.lineTo(10, 0);
+          ctx.stroke();
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(-13, 0);
+          ctx.lineTo(-13, -6);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(13, 0, 3.6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+      // 中立姿势标记
+      ctx.beginPath();
+      ctx.arc(px(0), py(0), 20, 0, Math.PI * 2);
+      ctx.strokeStyle = t.accent;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = t.accent;
+      ctx.font = '13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('中立', px(0), py(0) + 36);
+
+      // 限位红框
+      ctx.strokeStyle = t.box;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(px(ROLL_LIM[0]), py(PITCH_LIM[1]), px(ROLL_LIM[1]) - px(ROLL_LIM[0]), py(PITCH_LIM[0]) - py(PITCH_LIM[1]));
+
+      // 十字光标
+      const x = px(selRoll);
+      const y = py(selPitch);
+      ctx.strokeStyle = t.cross;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x - 14, y);
+      ctx.lineTo(x + 14, y);
+      ctx.moveTo(x, y - 14);
+      ctx.lineTo(x, y + 14);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = t.cross;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 明暗主题切换时重绘
+    new MutationObserver(() => {
+      renderBase();
+      drawMap();
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+    /* ---------- 3D 机构视图（懒加载 Three.js） ---------- */
+    const viewport = demo.querySelector('[data-ankle-viewport]');
+    const status = demo.querySelector('[data-ankle-status]');
+    const loading = demo.querySelector('[data-ankle-loading]');
+    let three = null; // { THREE, renderer, scene, camera, controls, refs }
+    let threeStarted = false;
+
+    async function initThree() {
+      const [threeModule, orbitModule, stlModule] = await Promise.all([
+        import('three'),
+        import('three/examples/jsm/controls/OrbitControls.js'),
+        import('three/examples/jsm/loaders/STLLoader.js'),
+      ]);
+      const THREE = threeModule;
+      const { OrbitControls } = orbitModule;
+      const { STLLoader } = stlModule;
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      viewport.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 5);
+
+      const hemi = new THREE.HemisphereLight(0xffffff, 0x445066, 1.25);
+      scene.add(hemi);
+      const dir = new THREE.DirectionalLight(0xffffff, 1.1);
+      dir.position.set(0.4, 0.6, 0.3);
+      scene.add(dir);
+
+      // 模型坐标 z 向上 → three 坐标 y 向上
+      const world = new THREE.Group();
+      world.rotation.x = -Math.PI / 2;
+      scene.add(world);
+
+      // 真实拆分网格（第三方简化踝模型，MIT；来源见 third_party/parallel_ankle_g1/SOURCE.md）
+      const loader = new STLLoader();
+      const meshBase = viewport.dataset.meshBase;
+      const meshNames = [
+        'base_link', 'pitch_link', 'roll_link',
+        'left_motor_link', 'right_motor_link',
+        'left_u_link', 'right_u_link',
+        'left_connect_link', 'right_connect_link',
+      ];
+      const geos = {};
+      await Promise.all(meshNames.map(async (n) => { geos[n] = await loader.loadAsync(meshBase + n + '.STL'); }));
+
+      const matBase = new THREE.MeshStandardMaterial({ color: 0x9aa0ae, roughness: 0.65 });
+      const matFoot = new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.6 });
+      const matMotor = new THREE.MeshStandardMaterial({ color: 0x4f46e5, roughness: 0.5 });
+      const matU = new THREE.MeshStandardMaterial({ color: 0x8a8f9c, roughness: 0.6 });
+      const matRod = new THREE.MeshStandardMaterial({ color: 0x7a7f8d, roughness: 0.55 });
+
+      const mkGroup = (meshName, mat, parent) => {
+        const g = new THREE.Group();
+        g.add(new THREE.Mesh(geos[meshName], mat));
+        (parent || world).add(g);
+        return g;
+      };
+
+      // 串联链与电机（框架换算：XML 世界系 = IK 系 + z 0.15；网格局部系 = 部件坐标系）
+      mkGroup('base_link', matBase);
+      const pitchG = mkGroup('pitch_link', matBase);
+      const rollG = mkGroup('roll_link', matFoot);
+      const motorL = mkGroup('left_motor_link', matMotor);
+      const motorR = mkGroup('right_motor_link', matMotor);
+      motorL.position.set(0.022, 0, 0.15087); // 左电机关节中心（XML → IK 系）
+      motorR.position.set(0.022, 0, 0.21587); // 右电机关节中心
+      const uL = mkGroup('left_u_link', matU, rollG);
+      const uR = mkGroup('right_u_link', matU, rollG);
+      const connL = mkGroup('left_connect_link', matRod, rollG);
+      const connR = mkGroup('right_connect_link', matRod, rollG);
+
+      // 地面：中立位脚掌网格最低点下移 1 mm
+      geos.roll_link.computeBoundingBox();
+      const groundZ = h0[2] + geos.roll_link.boundingBox.min.z - 0.001;
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.6, 0.6),
+        new THREE.MeshStandardMaterial({ color: 0xe4e6ec, roughness: 0.95 }),
+      );
+      ground.position.set(0.05, 0, groundZ); // 模型坐标里 xy 平面即地面
+      world.add(ground);
+      const grid = new THREE.GridHelper(0.6, 12, 0xc6cad4, 0xdde0e8);
+      grid.rotation.x = Math.PI / 2; // GridHelper 默认 xz 平面，转到模型 xy
+      grid.position.set(0.05, 0, groundZ + 0.0005);
+      world.add(grid);
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.target.set(0.03, 0.02, 0);
+      camera.position.set(0.34, 0.14, -0.28);
+
+      // 参考位形（pitch=roll=0，电机角 0）下的连杆方向与 connect 部件的固有倾角
+      const D_REF = [
+        new THREE.Vector3(0.013, 0.00153, 0.15646).normalize(), // 左：rb01 − rc01
+        new THREE.Vector3(0.0175, -0.00136, 0.22081).normalize(), // 右：rb02 − rc02
+      ];
+      // connect 部件框架的参考倾角（XML quat 为 w,x,y,z 序）
+      const Q_TILT = [
+        new THREE.Quaternion(0.000350633, 0.0414391, -8.26912e-06, 0.999141),
+        new THREE.Quaternion(0.0030657, 0.039534, -0.00011502, 0.999214),
+      ];
+      const HC = [hc01, hc02]; // u 形件 / 连杆在平台系下的安装点
+      const X_AXIS = new THREE.Vector3(1, 0, 0);
+      const Y_AXIS = new THREE.Vector3(0, 1, 0);
+
+      const refs = { pitchG, rollG, motorL, motorR, uL, uR, connL, connR, matMotor, matRod, matFoot };
+      three = { THREE, refs, X_AXIS, Y_AXIS, D_REF, Q_TILT, HC };
+
+      function resize() {
+        const w = Math.max(viewport.clientWidth, 1);
+        const h = Math.max(viewport.clientHeight, 1);
+        renderer.setSize(w, h);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      }
+      new ResizeObserver(resize).observe(viewport);
+      resize();
+
+      // 每帧渲染：场景小，恒速渲染保证热图选择即时反映到 3D
+      (function loop() {
+        requestAnimationFrame(loop);
+        controls.update();
+        renderer.render(scene, camera);
+      })();
+
+      loading.dataset.done = 'true';
+      return three;
+    }
+
+    // 进视口才加载 three
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting) && !threeStarted) {
+        threeStarted = true;
+        status.textContent = '正在加载 3D 视图…';
+        initThree().then(updateScene).catch(() => {
+          status.textContent = '3D 视图加载失败（热图不受影响）';
+        });
+      }
+    });
+    io.observe(viewport);
+
+    function updateScene() {
+      if (!three) return;
+      const { THREE, refs, X_AXIS, Y_AXIS, D_REF, Q_TILT, HC } = three;
+      const s = solve(selPitch, selRoll);
+      const bad = !s.ok;
+      const warn = s.ok && s.gEff < 20;
+      refs.matMotor.color.set(bad || warn ? 0xdc2626 : 0x4f46e5);
+      refs.matRod.color.set(bad ? 0xdc2626 : 0x7a7f8d);
+      refs.matFoot.color.set(bad ? 0xdc2626 : 0x6b7280);
+      if (!s.ok) return; // 保持上一构型，只标红
+
+      // 平台位姿：串联链 = Ry(pitch)·Rx(roll)，与 IK 的 R 一致
+      const qPitch = new THREE.Quaternion().setFromAxisAngle(Y_AXIS, selPitch);
+      const qPlat = qPitch.clone().multiply(new THREE.Quaternion().setFromAxisAngle(X_AXIS, selRoll));
+      refs.pitchG.quaternion.copy(qPitch);
+      const rh = new THREE.Vector3(...h0).applyQuaternion(qPitch);
+      refs.rollG.position.copy(rh);
+      refs.rollG.quaternion.copy(qPlat);
+
+      // 电机摇杆：绕各自关节中心的 x 轴转 θ（与 IK 的 rb 逐点一致）
+      refs.motorL.quaternion.setFromAxisAngle(X_AXIS, s.l1.theta);
+      refs.motorR.quaternion.setFromAxisAngle(X_AXIS, s.l2.theta);
+
+      // 被动件：连杆对齐 rb−rc；U 形件只取其在平台上的俯仰分量
+      const qPlatInv = qPlat.clone().invert();
+      [s.l1, s.l2].forEach((legRes, i) => {
+        const conn = i === 0 ? refs.connL : refs.connR;
+        const u = i === 0 ? refs.uL : refs.uR;
+        conn.position.set(...HC[i]);
+        u.position.set(...HC[i]);
+        const d = new THREE.Vector3(
+          legRes.rb[0] - legRes.rc[0],
+          legRes.rb[1] - legRes.rc[1],
+          legRes.rb[2] - legRes.rc[2],
+        );
+        const dPlat = d.clone().applyQuaternion(qPlatInv); // 平台系下的连杆方向
+        const align = new THREE.Quaternion().setFromUnitVectors(D_REF[i], dPlat.clone().normalize());
+        conn.quaternion.copy(align).multiply(Q_TILT[i]);
+        const beta = Math.atan2(dPlat.x, dPlat.z) - Math.atan2(D_REF[i].x, D_REF[i].z);
+        u.quaternion.setFromAxisAngle(Y_AXIS, beta);
+      });
+    }
+
+    /* ---------- 交互与读数 ---------- */
+    function update() {
+      drawMap();
+      const s = solve(selPitch, selRoll);
+      oPitch.textContent = ((selPitch * 180) / Math.PI).toFixed(1);
+      oRoll.textContent = ((selRoll * 180) / Math.PI).toFixed(1);
+      oG1.textContent = s.ok ? s.l1.gamma.toFixed(1) : '—';
+      oG2.textContent = s.ok ? s.l2.gamma.toFixed(1) : '—';
+      let text = '正常传动';
+      let cls = '';
+      if (!s.ok) {
+        text = '不可达（判别式 jjj < 0）';
+        cls = 'is-dead';
+      } else if (!s.motorOk) {
+        text = '电机超程：几何可达，电机行程内到不了';
+        cls = 'is-motor';
+      } else if (s.gEff < 20) {
+        text = '准死区：传动角过小，传动病态';
+        cls = 'is-warn';
+      }
+      oState.textContent = text;
+      oState.className = `ankle-state ${cls}`;
+      updateScene();
+    }
+
+    function pick(e) {
+      const rect = mapCanvas.getBoundingClientRect();
+      const x = Math.min(Math.max(((e.clientX - rect.left) / rect.width) * W, PL.x0), PL.x1);
+      const y = Math.min(Math.max(((e.clientY - rect.top) / rect.height) * H, PL.y0), PL.y1);
+      selRoll = Math.min(Math.max(toRoll(x), ROLL_SCAN[0]), ROLL_SCAN[1]);
+      selPitch = Math.min(Math.max(toPitch(y), PITCH_SCAN[0]), PITCH_SCAN[1]);
+      update();
+    }
+    // 悬停即跟随（与面板标题“移动光标选姿势”一致）；按住拖动时用指针捕获持续更新
+    mapCanvas.addEventListener('pointermove', (e) => pick(e));
+    mapCanvas.addEventListener('pointerdown', (e) => {
+      mapCanvas.setPointerCapture(e.pointerId);
+      pick(e);
+    });
+
+    update();
+  });
+</script>
+
+<style>
+  .ankle-demo {
+    margin: 1.5rem 0;
+  }
+  /* 坐标图需要刻度与轴标题的空间：纵向堆叠，各自占满正文宽度 */
+  .ankle-panels {
+    display: grid;
+    gap: 1.25rem;
+  }
+  .ankle-map-wrap,
+  .ankle-view-wrap {
+    min-width: 0;
+  }
+  .ankle-panel-title {
+    margin: 0 0 0.4rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--sl-color-gray-2);
+  }
+  .ankle-map {
+    display: block;
+    width: 100%;
+    aspect-ratio: 720 / 600;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 8px;
+    cursor: crosshair;
+    touch-action: none;
+  }
+  .ankle-viewport {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--sl-color-bg);
+  }
+  .ankle-viewport canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .ankle-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--sl-color-gray-2);
+  }
+  .ankle-loading[data-done='true'] {
+    display: none;
+  }
+  .ankle-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--sl-color-gray-4);
+    border-top-color: var(--sl-color-accent);
+    border-radius: 50%;
+    animation: ankle-spin 0.9s linear infinite;
+  }
+  @keyframes ankle-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .ankle-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.9rem;
+    margin-top: 0.45rem;
+    font-size: 0.75rem;
+    color: var(--sl-color-gray-2);
+  }
+  .ankle-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .ankle-chip {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+  }
+  .ankle-chip-ok {
+    background: #e0f0ee;
+    border: 1px solid #9ec9c4;
+  }
+  .ankle-chip-warn {
+    background: #fce2e2;
+    border: 1px solid #eba3a3;
+  }
+  .ankle-chip-no {
+    background: #e8eaef;
+    border: 1px solid #c3c6cf;
+  }
+  .ankle-chip-hatch {
+    background: repeating-linear-gradient(45deg, #969eaC 0 2px, #d5d9e2 2px 4px);
+    border: 1px solid #c3c6cf;
+  }
+  .ankle-chip-box {
+    background: transparent;
+    border: 2px solid light-dark(#dc2626, #f87171);
+  }
+
+  .ankle-readout {
+    margin: 0.75rem 0 0;
+    font-size: 0.875rem;
+    color: var(--sl-color-text);
+  }
+  .ankle-readout output {
+    color: var(--sl-color-accent);
+    font-weight: 600;
+    font-family: var(--sl-font-mono, monospace);
+  }
+  .ankle-state {
+    font-weight: 600;
+  }
+  .ankle-state.is-warn {
+    color: light-dark(#b45309, #fbbf24);
+  }
+  .ankle-state.is-dead {
+    color: light-dark(#dc2626, #f87171);
+  }
+  .ankle-state.is-motor {
+    color: var(--sl-color-gray-2);
+  }
+
+  .ankle-demo figcaption {
+    margin-top: 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--sl-color-gray-2);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ankle-spinner {
+      animation: none;
+    }
+  }
+</style>
