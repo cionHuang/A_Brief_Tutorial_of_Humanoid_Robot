@@ -12,9 +12,9 @@
 
 ## URDF：用 Link 和 Joint 组织运动树
 
-### Link、Joint 与树结构
+### 从机构到字段：Link、Joint 与树结构
 
-URDF（Unified Robot Description Format）用 `link` 描述刚体，用 `joint` 描述父子 link 之间的运动关系。多个 link 和 joint 组成一棵从根部向末端展开的运动树（Kinematic Tree）。标准 URDF 的基本结构是树，而不是带闭环约束的任意机构图；四连杆等闭环机构通常需要额外插件、约束或转换后的近似模型。[1]
+2.1 节已经从机构角度讲清了连杆（Link）、关节（Joint）和运动树（Kinematic Tree）；这里把同一套概念落到文件字段上。URDF（Unified Robot Description Format）用 `link` 描述刚体、用 `joint` 描述父子 link 之间的运动关系，一串 link 和 joint 组成从根部向末端展开的运动树。标准 URDF 的基本结构是树，而不是带闭环约束的任意机构图；四连杆等闭环机构通常需要额外插件、约束或转换后的近似模型。[1]
 
 在 G1 URDF 中，`pelvis` 是主要根部 link，下方连接腿部，躯干再连接腰部、头部和双臂。每个关节通常包含：
 
@@ -62,24 +62,16 @@ MJCF（MuJoCo XML Format）以嵌套的 `body` 组织刚体层级，在 body 内
 
 这表示 MuJoCo 模型包含一个不受关节限位的自由基座，通常对应浮动基座的平移和旋转自由度。随后才是髋、膝、踝、腰、肩、肘和腕等关节。仿真状态中的 `qpos`/`qvel` 长度因此不等于“电机数量”；自由基座、可动关节和传感器状态要分别统计。
 
-## URDF 与 MJCF 的分工差异
+## 两种格式怎么分工
 
-![URDF 与 MJCF 对同一台 G1 无手模型的建模与描述对比](assets/images/07-urdf-mjcf-g1-modeling-comparison.png)
+URDF 和 MJCF 不是“谁更真实”的关系，而是边界不同：
 
-图：左侧以 URDF 的运动树和 link 属性为主，右侧以 MJCF 的 body、geom、actuator、sensor 和接触场景为主；中间强调格式转换时需要复核的坐标、惯性、限位和碰撞字段。图中 `floating_base`、`root_free` 等名称是概念示例，实际 G1 文件的根部配置应以本目录对应 URDF/MJCF 内容为准。
+- **URDF** 面向机器人结构本身，是 ROS 生态里机械与软件之间的描述接口；执行器、传感器和接触参数通常由控制器、插件或仿真器另行配置；
+- **MJCF** 面向 MuJoCo 仿真，把刚体、几何、执行器、传感器、接触参数和场景一起写进同一份 XML。
 
-| 比较项 | URDF | MJCF |
-| --- | --- | --- |
-| 主要定位 | 机器人运动树和 ROS 工具之间的描述接口 | MuJoCo 仿真模型与场景配置 |
-| 几何 | `visual`、`collision` | `geom`、`asset/mesh` |
-| 惯性 | `inertial` | `inertial` |
-| 执行器 | 通常由控制器或插件另行配置 | XML 内可直接定义 `actuator` |
-| 传感器 | 通常由 ROS 2 节点/插件提供 | XML 内可直接定义 `sensor` |
-| 接触 | 基础碰撞几何，具体行为依赖引擎 | `geom`、接触参数和场景一体化 |
-| 闭环约束 | 基本树结构，需额外扩展 | 可用约束元素表达更多仿真关系 |
-| 场景地面与灯光 | 通常不在 URDF 本体内 | 可直接写入同一 MJCF |
+把 URDF 转成 MJCF（或反向）时，必须逐项复核关节轴线与正负方向、默认位姿、惯性参数、碰撞几何、限位和执行器，不能只确认 XML 能被解析。[1][2]
 
-两种格式不是“谁更真实”的关系。URDF 适合作为 ROS 生态中的机器人结构接口；MJCF 适合把 MuJoCo 的动力学、接触、执行器和场景配置放在一起。将 URDF 转换为 MJCF 时，必须重新检查关节轴线、惯性、碰撞几何、执行器、接触和自由基座，不能只确认 XML 能被解析。
+> **一句话听懂**：URDF 管“机器人长什么样、怎么动”，MJCF 在此基础上把“在什么世界里、怎么驱动、怎么感知”也一起写了。
 
 ## G1 文件之间如何对应
 

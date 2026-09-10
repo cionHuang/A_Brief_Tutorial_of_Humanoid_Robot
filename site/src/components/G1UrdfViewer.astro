@@ -6,16 +6,31 @@
  * public/models/g1/。Three.js、urdf-loader 与 STL 均在组件进入视口后
  * 才开始加载，避免拖慢整页首屏。
  */
+const { interactive = false } = Astro.props;
 const baseUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 const urdfUrl = `${baseUrl}models/g1/g1_29dof.urdf`;
 ---
 
 <figure class="g1-urdf-demo" data-state="idle" data-urdf-url={urdfUrl}>
-  <div class="g1-viewport" data-g1-viewport role="application" tabindex="0" aria-label="Unitree G1 29 DoF 无手模型的三维 URDF 查看器">
-    <div class="g1-loading" data-g1-loading>
-      <span class="g1-spinner" aria-hidden="true"></span>
-      <span class="g1-status" data-g1-status>准备加载模型</span>
+  <div class={'g1-stage' + (interactive ? ' g1-stage-split' : '')}>
+    <div class="g1-viewport" data-g1-viewport role="application" tabindex="0" aria-label="Unitree G1 29 DoF 无手模型的三维 URDF 查看器">
+      <div class="g1-loading" data-g1-loading>
+        <span class="g1-spinner" aria-hidden="true"></span>
+        <span class="g1-status" data-g1-status>准备加载模型</span>
+      </div>
     </div>
+    {interactive && (
+      <div class="g1-source" data-g1-source>
+        <div class="g1-source-head">
+          <span class="g1-source-title" data-g1-source-title>点击左侧模型中的 link / joint</span>
+          <label class="g1-source-fold"><input type="checkbox" data-g1-fold checked /> 精简</label>
+          <span class="g1-source-file">g1_29dof.urdf</span>
+        </div>
+        <div class="g1-source-body" data-g1-source-body>
+          <div class="g1-source-empty">正在载入 URDF 源码…</div>
+        </div>
+      </div>
+    )}
   </div>
 
   <div class="g1-toolbar">
@@ -24,9 +39,17 @@ const urdfUrl = `${baseUrl}models/g1/g1_29dof.urdf`;
   </div>
 
   <figcaption>
-    这是 Unitree 官方 URDF 描述文件的浏览器渲染结果，用于观察整机外形、连杆布局和关节连接关系；
-    网格为可视化模型，不代表真实硬件的内部结构或外观细节。模型来源：
-    <a href="https://github.com/unitreerobotics/unitree_rl_gym/tree/main/resources/robots/g1_description">unitree_rl_gym</a>。
+    {interactive ? (
+      <>
+        这是 Unitree 官方 URDF 描述文件的浏览器渲染结果，用来观察整机外形与连杆布局。玩法：拖动旋转、滚轮缩放；点一下模型上的任意部件，右侧源码会跳到它的定义行并高亮整个 <code>&lt;link&gt;</code> / <code>&lt;joint&gt;</code> 块；点右侧的 <code>&lt;link&gt;</code> / <code>&lt;joint&gt;</code> 行，也会反过来高亮左侧对应部件；默认开启的“精简”会折叠超长网格行，取消勾选即可看逐字全文。网格为可视化模型，不代表真实硬件的内部结构或外观细节。模型来源：
+        <a href="https://github.com/unitreerobotics/unitree_rl_gym/tree/main/resources/robots/g1_description">unitree_rl_gym</a>。
+      </>
+    ) : (
+      <>
+        这是 Unitree 官方 URDF 描述文件的浏览器渲染结果，用于观察整机外形、连杆布局和关节连接关系；网格为可视化模型，不代表真实硬件的内部结构或外观细节。模型来源：
+        <a href="https://github.com/unitreerobotics/unitree_rl_gym/tree/main/resources/robots/g1_description">unitree_rl_gym</a>。
+      </>
+    )}
   </figcaption>
 </figure>
 
@@ -49,6 +72,7 @@ const urdfUrl = `${baseUrl}models/g1/g1_29dof.urdf`;
     let controls;
     let scene;
     let modelGroup;
+    let robotModel = null;
     let THREE_NS;
     let animationFrame = 0;
     let resizeObserver;
@@ -129,6 +153,201 @@ const urdfUrl = `${baseUrl}models/g1/g1_29dof.urdf`;
       renderer?.domElement.remove();
     };
 
+    const setupPicking = () => {
+      if (!renderer || !camera || !modelGroup || !scene || !THREE_NS || !robotModel) return;
+      const THREE = THREE_NS;
+
+      let highlight = null;
+      const highlightObject = (object) => {
+        if (highlight) {
+          scene.remove(highlight);
+          highlight.geometry?.dispose?.();
+          highlight.material?.dispose?.();
+          highlight = null;
+        }
+        if (!object) return;
+        highlight = new THREE.BoxHelper(object, 0x4f46e5);
+        highlight.material.depthTest = false;
+        highlight.material.transparent = true;
+        highlight.material.opacity = 0.9;
+        scene.add(highlight);
+        scheduleRender();
+      };
+
+      const raycaster = new THREE.Raycaster();
+      const pointer = new THREE.Vector2();
+      const pickAt = (clientX, clientY) => {
+        const rect = renderer.domElement.getBoundingClientRect();
+        pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+        pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(pointer, camera);
+        const hits = raycaster.intersectObjects(modelGroup.children, true);
+        for (const hit of hits) {
+          let object = hit.object;
+          while (object && object !== modelGroup) {
+            if (object.isURDFLink || object.isURDFJoint) return object;
+            object = object.parent;
+          }
+        }
+        return null;
+      };
+      const nameOf = (object) => (object && (object.urdfName || object.name)) || '';
+
+      let downX = 0;
+      let downY = 0;
+      let downAt = 0;
+      renderer.domElement.style.cursor = 'grab';
+      renderer.domElement.addEventListener('pointerdown', (event) => {
+        downX = event.clientX;
+        downY = event.clientY;
+        downAt = performance.now();
+      });
+      renderer.domElement.addEventListener('pointerup', (event) => {
+        if (Math.hypot(event.clientX - downX, event.clientY - downY) > 5) return;
+        if (performance.now() - downAt > 600) return;
+        const object = pickAt(event.clientX, event.clientY);
+        if (!object) return;
+        highlightObject(object);
+        demo.dispatchEvent(new CustomEvent('g1-urdf-pick', {
+          detail: { name: nameOf(object), kind: object.isURDFJoint ? 'joint' : 'link' },
+          bubbles: true,
+        }));
+      });
+
+      let hoverFrame = 0;
+      renderer.domElement.addEventListener('mousemove', (event) => {
+        const clientX = event.clientX;
+        const clientY = event.clientY;
+        if (hoverFrame) return;
+        hoverFrame = requestAnimationFrame(() => {
+          hoverFrame = 0;
+          renderer.domElement.style.cursor = pickAt(clientX, clientY) ? 'pointer' : 'grab';
+        });
+      });
+
+      demo.addEventListener('g1-urdf-select', (event) => {
+        const name = event.detail && event.detail.name;
+        if (!name) return;
+        highlightObject(robotModel.links[name] || robotModel.joints[name] || null);
+      });
+    };
+
+    const setupSource = async () => {
+      const sourceBody = demo.querySelector('[data-g1-source-body]');
+      const sourceTitle = demo.querySelector('[data-g1-source-title]');
+      const foldToggle = demo.querySelector('[data-g1-fold]');
+      if (!(sourceBody instanceof HTMLElement)) return;
+
+      let text;
+      try {
+        text = await (await fetch(urdfUrl, { cache: 'force-cache' })).text();
+      } catch {
+        sourceBody.innerHTML = '<div class="g1-source-empty">URDF 源码加载失败</div>';
+        return;
+      }
+
+      const escapeHtml = (value) =>
+        value.replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[char]);
+      const XML_TOKEN = /(<!--.*?-->)|(<\/?[A-Za-z_][\w.:-]*)|([A-Za-z_][\w.:-]*)(?=\s*=)|("[^"]*")/g;
+      const highlightXml = (lineText) => {
+        let out = '';
+        let last = 0;
+        let token;
+        XML_TOKEN.lastIndex = 0;
+        while ((token = XML_TOKEN.exec(lineText)) !== null) {
+          out += escapeHtml(lineText.slice(last, token.index));
+          if (token[1]) out += '<span class="g1-x-tag">' + escapeHtml(token[1]) + '</span>';
+          else if (token[2]) out += '<span class="g1-x-tag">' + escapeHtml(token[2]) + '</span>';
+          else if (token[3]) out += '<span class="g1-x-attr">' + escapeHtml(token[3]) + '</span>';
+          else out += '<span class="g1-x-val">' + escapeHtml(token[4]) + '</span>';
+          last = XML_TOKEN.lastIndex;
+        }
+        return out + escapeHtml(lineText.slice(last));
+      };
+
+      const lines = text.split(/\r?\n/);
+      const rows = [];
+      const blockStart = new Map();
+      const blockEnd = new Map();
+      const blockKind = new Map();
+      let openName = null;
+      let openKind = null;
+      const closeRe = { link: /<\/link>/, joint: /<\/joint>/ };
+
+      const fragment = document.createDocumentFragment();
+      lines.forEach((lineText, index) => {
+        const row = document.createElement('div');
+        row.className = 'g1-src-line';
+        const open = lineText.match(/<(link|joint)\s+name="([^"]+)"/);
+        if (open && openName === null) {
+          openName = open[2];
+          openKind = open[1];
+          row.dataset.name = openName;
+          row.classList.add('g1-src-entity');
+          blockStart.set(openName, index);
+          blockKind.set(openName, openKind);
+        } else if (openName && closeRe[openKind].test(lineText)) {
+          blockEnd.set(openName, index);
+          openName = null;
+          openKind = null;
+        }
+        if (/^\s*<(mesh|inertia)\b/.test(lineText)) row.classList.add('g1-src-detail');
+        const ln = document.createElement('span');
+        ln.className = 'g1-src-ln';
+        ln.textContent = String(index + 1);
+        const code = document.createElement('code');
+        code.className = 'g1-src-code';
+        code.innerHTML = highlightXml(lineText);
+        row.append(ln, code);
+        rows.push(row);
+        fragment.append(row);
+      });
+      sourceBody.replaceChildren(fragment);
+
+      if (foldToggle instanceof HTMLInputElement) {
+        const applyFold = () => sourceBody.classList.toggle('g1-src-compact', foldToggle.checked);
+        foldToggle.addEventListener('change', applyFold);
+        applyFold();
+      }
+
+      let hitRows = [];
+      const clearHit = () => {
+        hitRows.forEach((row) => row.classList.remove('g1-src-hit'));
+        hitRows = [];
+        sourceBody.classList.remove('g1-src-focus');
+      };
+      const selectLine = (name, scroll) => {
+        clearHit();
+        if (!name) return;
+        const start = blockStart.get(name);
+        if (start === undefined) return;
+        const end = blockEnd.get(name) === undefined ? start : blockEnd.get(name);
+        hitRows = rows.slice(start, end + 1);
+        hitRows.forEach((row) => row.classList.add('g1-src-hit'));
+        sourceBody.classList.add('g1-src-focus');
+        if (scroll) {
+          const bodyRect = sourceBody.getBoundingClientRect();
+          const rowRect = rows[start].getBoundingClientRect();
+          sourceBody.scrollTop += rowRect.top - bodyRect.top - sourceBody.clientHeight / 3;
+        }
+        if (sourceTitle) {
+          sourceTitle.textContent =
+            name + ' · ' + (blockKind.get(name) === 'joint' ? 'joint' : 'link') + ' · L' + (start + 1) + '–' + (end + 1);
+        }
+      };
+      demo.addEventListener('g1-urdf-pick', (event) => {
+        const name = event.detail && event.detail.name;
+        if (name) selectLine(name, true);
+      });
+      sourceBody.addEventListener('click', (event) => {
+        const target = event.target;
+        const row = target instanceof Element ? target.closest('.g1-src-entity') : null;
+        if (!row || !row.dataset.name) return;
+        selectLine(row.dataset.name, false);
+        demo.dispatchEvent(new CustomEvent('g1-urdf-select', { detail: { name: row.dataset.name }, bubbles: true }));
+      });
+    };
+
     const load = async () => {
       try {
         setState('loading', '加载 Three.js 与 URDF 解析器');
@@ -180,9 +399,8 @@ const urdfUrl = `${baseUrl}models/g1/g1_29dof.urdf`;
           setState('loading', total > 0 ? `加载模型资源 ${loaded}/${total}` : '加载模型资源');
         };
         manager.onError = (url) => {
-          const error = new Error(`模型资源加载失败：${url}`);
-          setState('error', error.message);
-          rejectResources(error);
+          // 个别网格缺失不应让整个模型不可用：记录后继续，其余部件照常显示
+          console.warn(`模型资源加载失败：${url}`);
         };
         // 必须在 loadAsync 之前绑定：资源命中浏览器缓存时，加载可能很快完成，
         // 后绑定 onLoad 会错过完成回调并停留在最后的进度文案。
@@ -194,6 +412,7 @@ const urdfUrl = `${baseUrl}models/g1/g1_29dof.urdf`;
 
         setState('loading', '解析 URDF 结构');
         const robot = await loader.loadAsync(urdfUrl);
+        robotModel = robot;
         robot.rotation.x = -Math.PI / 2; // URDF 为 Z-up，Three.js 场景为 Y-up
         modelGroup = new THREE.Group();
         modelGroup.add(robot);
@@ -221,6 +440,7 @@ const urdfUrl = `${baseUrl}models/g1/g1_29dof.urdf`;
         setState('ready', '');
         resize();
         fitCamera();
+        setupPicking();
       } catch (error) {
         console.error('G1 URDF 渲染失败：', error);
         setState('error', '模型加载失败，请检查网络或资源路径');
@@ -231,6 +451,9 @@ const urdfUrl = `${baseUrl}models/g1/g1_29dof.urdf`;
     const start = () => {
       if (started) return;
       started = true;
+      if (demo.querySelector('[data-g1-source]')) {
+        setupSource().catch((error) => console.error('URDF 源码面板初始化失败：', error));
+      }
       load();
     };
 
@@ -261,7 +484,9 @@ const urdfUrl = `${baseUrl}models/g1/g1_29dof.urdf`;
   });
 </script>
 
-<style>
+<!-- 源码面板的行与高亮由 JS 动态创建，不带 Astro scoped 标识，
+     因此本组件样式改为全局作用域（类名均带 g1- 前缀，不会冲突）。 -->
+<style is:global>
   .g1-urdf-demo {
     margin: 1.5rem 0;
   }
@@ -353,6 +578,177 @@ const urdfUrl = `${baseUrl}models/g1/g1_29dof.urdf`;
   .g1-reset:disabled {
     cursor: not-allowed;
     opacity: 0.55;
+  }
+
+  /* Starlight 的全局 `* + *` 会给第二个子元素加 16px margin-top，这里清零以保证两栏顶部对齐 */
+  .g1-stage > * {
+    margin-top: 0;
+  }
+
+  .g1-stage-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 0.85rem;
+  }
+
+  .g1-stage-split .g1-viewport,
+  .g1-stage-split .g1-source {
+    height: 460px;
+    min-height: 0;
+  }
+
+  .g1-source {
+    position: relative;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--sl-color-bg);
+  }
+
+  .g1-source-head {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2.4rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0 0.75rem;
+    border-bottom: 1px solid var(--sl-color-gray-5);
+    background: var(--sl-color-bg-sidebar);
+  }
+
+  .g1-source-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--sl-color-accent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .g1-source-file {
+    font-family: var(--sl-font-mono, monospace);
+    font-size: 0.75rem;
+    color: var(--sl-color-gray-2);
+    white-space: nowrap;
+  }
+
+  .g1-source-body {
+    position: absolute;
+    top: 2.4rem;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: auto;
+    padding: 0.25rem 0;
+    font-family: var(--sl-font-mono, monospace);
+    font-size: 0.8rem;
+    line-height: 1.85;
+  }
+
+  .g1-src-line {
+    display: flex;
+    align-items: baseline;
+    white-space: pre;
+    padding-right: 0.75rem;
+    border-left: 3px solid transparent;
+  }
+
+  .g1-src-ln {
+    flex: 0 0 3rem;
+    text-align: right;
+    padding-right: 0.8rem;
+    color: var(--sl-color-gray-3);
+    user-select: none;
+  }
+
+  .g1-src-code {
+    color: var(--sl-color-text);
+    white-space: pre;
+  }
+
+  .g1-x-tag {
+    color: light-dark(#4f46e5, #a5b4fc);
+  }
+
+  .g1-x-attr {
+    color: light-dark(#0f766e, #5eead4);
+  }
+
+  .g1-x-val {
+    color: light-dark(#b45309, #fbbf24);
+  }
+
+  .g1-x-comment {
+    color: var(--sl-color-gray-3);
+    font-style: italic;
+  }
+
+  .g1-src-entity {
+    cursor: pointer;
+  }
+
+  .g1-src-entity:hover {
+    background: light-dark(rgba(79, 70, 229, 0.06), rgba(139, 131, 255, 0.1));
+  }
+
+  .g1-src-hit {
+    border-left-color: var(--sl-color-accent);
+    background: light-dark(rgba(79, 70, 229, 0.16), rgba(139, 131, 255, 0.24));
+  }
+
+  .g1-src-hit .g1-src-code {
+    font-weight: 600;
+  }
+
+  .g1-src-focus .g1-src-line:not(.g1-src-hit) {
+    opacity: 0.28;
+  }
+
+  .g1-src-compact .g1-src-detail {
+    display: none;
+  }
+
+  .g1-source-fold {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-family: var(--sl-font, sans-serif);
+    font-size: 0.75rem;
+    color: var(--sl-color-gray-2);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .g1-source-fold input {
+    margin: 0;
+  }
+
+  .g1-source-empty {
+    padding: 0.75rem;
+    color: var(--sl-color-gray-2);
+    font-family: var(--sl-font, sans-serif);
+    font-size: 0.8125rem;
+  }
+
+  @media (max-width: 60rem) {
+    .g1-stage-split {
+      grid-template-columns: 1fr;
+      align-items: start;
+    }
+
+    .g1-stage-split .g1-viewport {
+      height: auto;
+      min-height: 320px;
+      aspect-ratio: 16 / 10;
+    }
+
+    .g1-stage-split .g1-source {
+      height: 360px;
+    }
   }
 
   .g1-urdf-demo figcaption {
