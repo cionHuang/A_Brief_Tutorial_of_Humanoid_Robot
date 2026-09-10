@@ -1,0 +1,363 @@
+---
+/**
+ * 3.1 电源系统：电源树 + 工况功耗 + 再生 + 保护 + 预充 交互演示（方案 1+2 合并）。
+ *
+ * - 左：电池包 / BMS → 主保险 / 接触器 / 预充电阻 → 主直流母线 → 六条支路；
+ *   支路粗细与颜色随工况电流变化，母线电压随总电流压降或抬升。
+ * - 上：上电（先预充，母线电压爬升后再闭合接触器）；“直接闭合”对比预充缺失的冲击。
+ * - 下：六种工况的电池侧平均功率与瞬时峰值（横条+峰值刻度），标出持续/峰值上限。
+ * - 再生：下蹲回收时腿部支路反向流动，母线抬升、电池转入充电。
+ * - 所有数值均为教学示意，不是 G1 真实参数。
+ *
+ * 纯 SVG + 原生 JS；样式跟随 Starlight 明暗主题，遵循 prefers-reduced-motion。
+ */
+const CFG = {
+  vbus: 48,
+  rint: 0.08,
+  mainFuse: 80,
+  keys: ['leg', 'arm', 'compute', 'sensor', 'aux', 'safety'],
+  fuse: { leg: 40, arm: 15, compute: 8, sensor: 4, aux: 8, safety: 3 },
+  actions: [
+    { key: 'stand', name: '站立', cur: { leg: 4, arm: 1, compute: 2.5, sensor: 0.5, aux: 1.5, safety: 0.2 }, peak: 1.25 },
+    { key: 'walk', name: '行走', cur: { leg: 8, arm: 2, compute: 2.5, sensor: 0.5, aux: 1.5, safety: 0.2 }, peak: 1.8 },
+    { key: 'lift', name: '抬腿', cur: { leg: 11, arm: 2, compute: 2.5, sensor: 0.5, aux: 1.5, safety: 0.2 }, peak: 2.2 },
+    { key: 'operate', name: '操作', cur: { leg: 4, arm: 7, compute: 3.5, sensor: 1.5, aux: 1.5, safety: 0.2 }, peak: 1.7 },
+    { key: 'regen', name: '下蹲回收', cur: { leg: -14, arm: 1, compute: 2.5, sensor: 0.5, aux: 1.5, safety: 0.2 }, peak: 2.4 },
+    { key: 'overload', name: '过载', cur: { leg: 55, arm: 2, compute: 2.5, sensor: 0.5, aux: 1.5, safety: 0.2 }, peak: 1.0 },
+  ],
+};
+
+const BRANCHES = [
+  { key: 'leg', name: '腿部驱动', y: 92 },
+  { key: 'arm', name: '手臂驱动', y: 168 },
+  { key: 'compute', name: '计算平台', y: 244 },
+  { key: 'sensor', name: '传感器', y: 320 },
+  { key: 'aux', name: 'DC-DC 辅助', y: 396 },
+  { key: 'safety', name: '安全回路', y: 472 },
+];
+
+// 底部功率图（教学示意）：横轴范围与缩放
+const W_MIN = -1200;
+const W_MAX = 3000;
+const X0 = 104;
+const X1 = 840;
+const SCALE = (X1 - X0) / (W_MAX - W_MIN);
+const ZERO_X = X0 + (0 - W_MIN) * SCALE;
+
+const sum = (cur) => CFG.keys.reduce((acc, k) => acc + cur[k], 0);
+const rows = CFG.actions.map((a, i) => {
+  const total = sum(a.cur);
+  const vbus = total >= 0 ? CFG.vbus - total * CFG.rint : CFG.vbus + Math.abs(total) * CFG.rint;
+  const avg = vbus * total;
+  const peak = avg * a.peak;
+  return { ...a, i, y: 602 + i * 32, total, vbus, avg, peak, avgX: ZERO_X + avg * SCALE, peakX: ZERO_X + peak * SCALE };
+});
+---
+<figure class="pt-demo" data-pt={JSON.stringify(CFG)}>
+  <svg viewBox="0 0 900 810" role="img" aria-label="电源树交互演示：选择工况，观察各支路电流、母线电压、保护跳闸与再生回流">
+    <defs>
+      <marker id="pt-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="currentColor"></path></marker>
+    </defs>
+
+    <text class="pt-title" x="24" y="26">电源树（教学示意）：电池包 → 保护/预充 → 主直流母线 → 各支路</text>
+
+    <!-- 电池包 + BMS -->
+    <g class="pt-battery">
+      <rect x="30" y="250" width="150" height="110" rx="10"></rect>
+      <text class="pt-node-name" x="105" y="288" text-anchor="middle">电池包</text>
+      <text class="pt-small" x="105" y="310" text-anchor="middle">BMS</text>
+      <text class="pt-small pt-batt-state" x="105" y="338" text-anchor="middle" data-role="battery-state">放电</text>
+    </g>
+
+    <!-- 主回路：保险 / 预充 / 接触器 -->
+    <line class="pt-wire" x1="180" y1="305" x2="196" y2="305"></line>
+    <rect class="pt-part" x="196" y="293" width="44" height="24" rx="4"></rect>
+    <text class="pt-small" x="218" y="288" text-anchor="middle">保险</text>
+    <text class="pt-small pt-main-fuse-x" x="218" y="332" text-anchor="middle" data-role="main-fuse-x"></text>
+    <line class="pt-wire" x1="240" y1="305" x2="254" y2="305"></line>
+    <rect class="pt-part" x="254" y="293" width="66" height="24" rx="4"></rect>
+    <text class="pt-small" x="287" y="288" text-anchor="middle">接触器</text>
+    <text class="pt-small" x="287" y="332" text-anchor="middle" data-role="contactor">闭合</text>
+    <line class="pt-wire" x1="320" y1="305" x2="340" y2="305"></line>
+
+    <!-- 预充支路 -->
+    <path class="pt-precharge" d="M 200 293 L 200 258 L 246 258 L 246 293"></path>
+    <rect class="pt-part pt-precharge-part" x="211" y="250" width="30" height="16" rx="3"></rect>
+    <text class="pt-small" x="226" y="244" text-anchor="middle">预充电阻</text>
+
+    <!-- 主回路流向叠加 -->
+    <line class="pt-flow" x1="180" y1="305" x2="340" y2="305" data-role="main-flow"></line>
+
+    <!-- 主直流母线 + 电压表 -->
+    <line class="pt-bus" x1="340" y1="70" x2="340" y2="500"></line>
+    <text class="pt-small" x="330" y="78" text-anchor="end">主直流母线</text>
+    <rect class="pt-bus-gauge" x="326" y="500" width="8" height="0" data-role="bus-fill"></rect>
+    <text class="pt-bus-val" x="352" y="78" data-role="bus">48.0 V</text>
+
+    <!-- 六条支路 -->
+    {BRANCHES.map((b) => (
+      <g class="pt-branch" data-branch={b.key}>
+        <line class="pt-wire" x1="340" y1={b.y} x2="470" y2={b.y} data-wire={b.key}></line>
+        <line class="pt-flow" x1="340" y1={b.y} x2="470" y2={b.y} data-flow={b.key}></line>
+        <rect class="pt-fuse" x="452" y={b.y - 9} width="16" height="18" rx="3" data-fuse={b.key}></rect>
+        <rect class="pt-load" x="470" y={b.y - 22} width="200" height="44" rx="8"></rect>
+        <text class="pt-node-name" x="484" y={b.y + 5}>{b.name}</text>
+        <text class="pt-node-cur" x="662" y={b.y + 5} text-anchor="end" data-cur={b.key}>0.0 A</text>
+      </g>
+    ))}
+
+    <!-- 底部：各工况电池侧功率（教学示意） -->
+    <text class="pt-title" x="24" y="580">各工况的电池侧功率（教学示意）：横条 = 平均，竖线 = 瞬时峰值</text>
+    <line class="pt-budget" x1={ZERO_X + 1500 * SCALE} y1="590" x2={ZERO_X + 1500 * SCALE} y2="776"></line>
+    <text class="pt-small" x={ZERO_X + 1500 * SCALE} y="798" text-anchor="middle">持续上限 1500 W</text>
+    <line class="pt-budget" x1={ZERO_X + 2600 * SCALE} y1="590" x2={ZERO_X + 2600 * SCALE} y2="776"></line>
+    <text class="pt-small" x={ZERO_X + 2600 * SCALE} y="798" text-anchor="middle">峰值上限 2600 W</text>
+    <line class="pt-axis" x1={ZERO_X} y1="590" x2={ZERO_X} y2="776"></line>
+    {rows.map((r) => (
+      <g class="pt-chart-row" data-row={r.i}>
+        <rect class="pt-row-bg" x="8" y={r.y - 15} width="880" height="30" rx="6"></rect>
+        <text class="pt-chart-name" x="16" y={r.y + 5}>{r.name}</text>
+        <rect class="pt-bar" x={Math.min(ZERO_X, r.avgX)} y={r.y - 6} width={Math.abs(r.avgX - ZERO_X)} height="12" rx="3"></rect>
+        <line class="pt-peak" x1={r.peakX} y1={r.y - 9} x2={r.peakX} y2={r.y + 9}></line>
+        <text class="pt-chart-val" x={r.avgX + (r.avg >= 0 ? 8 : -8)} y={r.y + 5} text-anchor={r.avg >= 0 ? 'start' : 'end'}>{Math.round(r.avg)} W</text>
+      </g>
+    ))}
+  </svg>
+
+  <div class="pt-controls" role="group" aria-label="选择工况">
+    {CFG.actions.map((a, i) => (
+      <button type="button" class="pt-action" data-action={i} aria-pressed={i === 0 ? 'true' : 'false'}>{a.name}</button>
+    ))}
+  </div>
+  <div class="pt-controls">
+    <button type="button" class="pt-btn" data-power>上电（先预充）</button>
+    <button type="button" class="pt-btn" data-direct>直接闭合接触器（对比）</button>
+    <button type="button" class="pt-btn" data-reset>复位</button>
+  </div>
+
+  <p class="pt-readout"><output class="pt-out" aria-live="polite"></output></p>
+
+  <figcaption>
+    玩法：先选一个工况（站立 / 行走 / 抬腿 / 操作 / 下蹲回收 / 过载），看六条支路的电流粗细、母线电压和电池侧功率；下方横条是各工况的平均功率、竖线是瞬时峰值。点“上电（先预充）”会先经预充电阻给母线电容充电、电压爬升后再闭合接触器；点“直接闭合接触器”对比跳过预充的冲击电流（会触发主保险）。下蹲回收时腿部电机发电，能量反向流回母线、电池转入充电，这就是再生能量。所有电压、电流、功率和阈值都是教学示意，不是 G1 的真实参数。
+  </figcaption>
+</figure>
+
+<script>
+  import { setParts } from '../lib/tex.js';
+
+  document.querySelectorAll('.pt-demo').forEach((demo) => {
+    const cfg = JSON.parse(demo.dataset.pt);
+    const keys = cfg.keys;
+    const wire = {};
+    const flow = {};
+    const cur = {};
+    const fuse = {};
+    const branch = {};
+    keys.forEach((k) => {
+      wire[k] = demo.querySelector('[data-wire="' + k + '"]');
+      flow[k] = demo.querySelector('[data-flow="' + k + '"]');
+      cur[k] = demo.querySelector('[data-cur="' + k + '"]');
+      fuse[k] = demo.querySelector('[data-fuse="' + k + '"]');
+      branch[k] = demo.querySelector('[data-branch="' + k + '"]');
+    });
+    const busText = demo.querySelector('[data-role="bus"]');
+    const busFill = demo.querySelector('[data-role="bus-fill"]');
+    const battState = demo.querySelector('[data-role="battery-state"]');
+    const mainFlow = demo.querySelector('[data-role="main-flow"]');
+    const contactor = demo.querySelector('[data-role="contactor"]');
+    const mainFuseX = demo.querySelector('[data-role="main-fuse-x"]');
+    const out = demo.querySelector('.pt-out');
+    const actionBtns = Array.from(demo.querySelectorAll('.pt-action'));
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const state = { action: 0, powered: true, precharging: false, phase: 1, tripped: {}, mainTripped: false };
+    let raf = 0;
+    let last = 0;
+
+    const applyTrips = () => {
+      const act = cfg.actions[state.action];
+      keys.forEach((k) => {
+        if (!state.powered || state.tripped[k]) return;
+        if (Math.abs(act.cur[k]) * act.peak > cfg.fuse[k]) state.tripped[k] = true;
+      });
+    };
+
+    const render = () => {
+      const act = cfg.actions[state.action];
+      applyTrips();
+      let total = 0;
+      keys.forEach((k) => {
+        const raw = state.powered && !state.tripped[k] ? act.cur[k] : 0;
+        total += raw;
+        const mag = Math.abs(raw);
+        const width = (1.6 + Math.min(mag, 60) / 60 * 4).toFixed(2);
+        wire[k].style.strokeWidth = width;
+        flow[k].style.strokeWidth = width;
+        wire[k].classList.toggle('pt-off', !state.powered || !!state.tripped[k]);
+        wire[k].classList.toggle('pt-regen', raw < -0.001);
+        flow[k].classList.toggle('pt-flow-on', state.powered && !state.tripped[k] && mag > 0.05);
+        flow[k].classList.toggle('pt-flow-rev', raw < -0.001);
+        branch[k].classList.toggle('pt-tripped', !!state.tripped[k]);
+        cur[k].textContent = state.tripped[k] ? '熔断' : (!state.powered ? '—' : raw.toFixed(1) + ' A');
+        cur[k].classList.toggle('pt-cur-regen', raw < -0.001);
+      });
+
+      const preV = state.precharging ? cfg.vbus * Math.min(1, state.phase * 1.05) : 0;
+      const busV = state.precharging ? preV : (state.powered ? (total >= 0 ? cfg.vbus - total * cfg.rint : cfg.vbus + Math.abs(total) * cfg.rint) : 0);
+      const pavg = busV * total;
+      const ppeak = pavg * act.peak;
+
+      const fillH = Math.max(0, Math.min(1, busV / cfg.vbus)) * 180;
+      busFill.setAttribute('y', (500 - fillH).toFixed(1));
+      busFill.setAttribute('height', fillH.toFixed(1));
+      busText.textContent = busV.toFixed(1) + ' V';
+
+      const closed = state.powered || (state.precharging && state.phase > 0.85);
+      contactor.textContent = state.mainTripped ? '断开' : (closed ? '闭合' : '断开');
+      contactor.classList.toggle('pt-closed', closed && !state.mainTripped);
+      mainFuseX.textContent = state.mainTripped ? '熔断' : '';
+      mainFuseX.classList.toggle('pt-bad', state.mainTripped);
+
+      mainFlow.classList.toggle('pt-flow-on', state.powered && !state.mainTripped && Math.abs(total) > 0.05);
+      mainFlow.classList.toggle('pt-flow-rev', total < -0.001);
+
+      if (state.mainTripped) battState.textContent = '主保险熔断';
+      else if (state.precharging) battState.textContent = '预充中…';
+      else if (!state.powered) battState.textContent = '未上电';
+      else if (total < -0.001) battState.textContent = '充电（再生）';
+      else battState.textContent = '放电';
+
+      demo.querySelectorAll('.pt-chart-row').forEach((row, i) => row.classList.toggle('pt-active', i === state.action));
+
+      const trippedNames = keys.filter((k) => state.tripped[k]).map((k) => (BRANCH_NAMES[k] || k));
+      const status = state.mainTripped
+        ? '保护触发：跳过预充导致冲击电流过大，主保险熔断'
+        : (state.precharging
+          ? '预充中：限流电阻给母线电容充电，电压爬到约 90% 后闭合接触器'
+          : (state.powered ? (trippedNames.length ? '支路保护：' + trippedNames.join('、') + ' 保险熔断' : '运行正常') : '未上电'));
+
+      setParts(out, [
+        { text: '工况：' + act.name + '　' },
+        { text: '母线 ' }, { tex: busV.toFixed(1) + '\\ \\text{V}' },
+        { text: '　总电流 ' }, { tex: total.toFixed(1) + '\\ \\text{A}' },
+        { text: '　平均功率 ' }, { tex: Math.round(pavg) + '\\ \\text{W}' },
+        { text: '　瞬时峰值 ' }, { tex: Math.round(ppeak) + '\\ \\text{W}' },
+        { text: '　电池：' + battState.textContent + '　' + status },
+      ]);
+    };
+
+    const BRANCH_NAMES = { leg: '腿部驱动', arm: '手臂驱动', compute: '计算平台', sensor: '传感器', aux: 'DC-DC 辅助', safety: '安全回路' };
+
+    const stop = () => { if (raf) cancelAnimationFrame(raf); raf = 0; last = 0; };
+    const tick = (ts) => {
+      if (!last) last = ts;
+      const dt = Math.min((ts - last) / 1000, 0.05);
+      last = ts;
+      state.phase += dt / 1.4;
+      if (state.phase >= 1) {
+        state.phase = 1;
+        state.precharging = false;
+        state.powered = true;
+        raf = 0;
+        render();
+        return;
+      }
+      render();
+      raf = requestAnimationFrame(tick);
+    };
+
+    actionBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.action = Number(btn.dataset.action);
+        actionBtns.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+        state.tripped = {};
+        render();
+      });
+    });
+
+    demo.querySelector('[data-power]').addEventListener('click', () => {
+      stop();
+      state.tripped = {};
+      state.mainTripped = false;
+      state.powered = false;
+      state.phase = 0;
+      if (reduced) { state.precharging = false; state.phase = 1; state.powered = true; render(); return; }
+      state.precharging = true;
+      raf = requestAnimationFrame(tick);
+    });
+
+    demo.querySelector('[data-direct]').addEventListener('click', () => {
+      stop();
+      state.precharging = false;
+      state.phase = 1;
+      state.powered = true;
+      state.tripped = {};
+      state.mainTripped = true;
+      render();
+    });
+
+    demo.querySelector('[data-reset]').addEventListener('click', () => {
+      stop();
+      state.action = 0;
+      actionBtns.forEach((b, i) => b.setAttribute('aria-pressed', String(i === 0)));
+      state.precharging = false;
+      state.phase = 1;
+      state.powered = true;
+      state.tripped = {};
+      state.mainTripped = false;
+      render();
+    });
+
+    render();
+  });
+</script>
+
+<style>
+  .pt-demo { margin: 1.5rem 0; }
+  .pt-demo svg { display: block; width: 100%; max-width: 900px; height: auto; margin: 0 auto; }
+  .pt-title { fill: var(--sl-color-text); font-size: 24px; font-weight: 600; }
+  .pt-small { fill: var(--sl-color-gray-2); font-size: 19px; }
+  .pt-node-name { fill: var(--sl-color-text); font-size: 21px; font-weight: 600; }
+  .pt-node-cur { fill: var(--sl-color-accent); font-size: 21px; font-weight: 600; }
+  .pt-node-cur.pt-cur-regen { fill: light-dark(#0d9488, #2dd4bf); }
+  .pt-battery rect, .pt-part, .pt-load { fill: light-dark(rgba(79, 70, 229, 0.08), rgba(139, 131, 255, 0.12)); stroke: var(--sl-color-gray-4); stroke-width: 1.5; }
+  .pt-precharge { fill: none; stroke: var(--sl-color-gray-3); stroke-width: 1.5; stroke-dasharray: 5 4; }
+  .pt-precharge-part { stroke-dasharray: 3 3; }
+  .pt-wire { stroke: var(--sl-color-accent); stroke-width: 3; stroke-linecap: round; transition: stroke-width 0.2s, stroke 0.2s, opacity 0.2s; }
+  .pt-wire.pt-off { stroke: var(--sl-color-gray-4); }
+  .pt-wire.pt-regen { stroke: light-dark(#0d9488, #2dd4bf); }
+  .pt-bus { stroke: var(--sl-color-text); stroke-width: 3; }
+  .pt-bus-gauge { fill: var(--sl-color-accent); }
+  .pt-bus-val { fill: var(--sl-color-accent); font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .pt-flow { stroke: var(--sl-color-bg); stroke-width: 3; stroke-dasharray: 3 9; opacity: 0; }
+  .pt-flow-on { opacity: 0.85; animation: pt-flow 0.9s linear infinite; }
+  .pt-flow-rev { animation-direction: reverse; }
+  .pt-fuse { fill: var(--sl-color-bg); stroke: var(--sl-color-gray-3); stroke-width: 1.5; }
+  .pt-tripped .pt-load { stroke: light-dark(#dc2626, #f87171); }
+  .pt-tripped .pt-fuse { stroke: light-dark(#dc2626, #f87171); fill: light-dark(rgba(220, 38, 38, 0.15), rgba(248, 113, 113, 0.2)); }
+  .pt-tripped .pt-node-cur { fill: light-dark(#dc2626, #f87171); }
+  .pt-closed { fill: light-dark(#0d9488, #2dd4bf) !important; }
+  .pt-bad { fill: light-dark(#dc2626, #f87171) !important; }
+  .pt-axis { stroke: var(--sl-color-gray-3); stroke-width: 1.5; }
+  .pt-budget { stroke: var(--sl-color-gray-4); stroke-width: 1; stroke-dasharray: 4 4; }
+  .pt-chart-name { fill: var(--sl-color-gray-2); font-size: 19px; }
+  .pt-chart-val { fill: var(--sl-color-gray-2); font-size: 18px; font-variant-numeric: tabular-nums; }
+  .pt-bar { fill: light-dark(rgba(79, 70, 229, 0.35), rgba(139, 131, 255, 0.4)); transition: fill 0.15s; }
+  .pt-peak { stroke: light-dark(#dc2626, #f87171); stroke-width: 2; }
+  .pt-chart-row.pt-active .pt-bar { fill: var(--sl-color-accent); }
+  .pt-row-bg { fill: transparent; }
+  .pt-chart-row.pt-active .pt-row-bg { fill: light-dark(rgba(79, 70, 229, 0.07), rgba(139, 131, 255, 0.12)); }
+  .pt-chart-row.pt-active .pt-chart-name { fill: var(--sl-color-text); }
+  .pt-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; max-width: 900px; margin: 0.55rem auto 0; }
+  .pt-action, .pt-btn { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.75rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
+  .pt-action[aria-pressed='true'] { border-color: var(--sl-color-accent); color: var(--sl-color-accent); background: light-dark(rgba(79, 70, 229, 0.08), rgba(139, 131, 255, 0.14)); font-weight: 600; }
+  .pt-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; color: var(--sl-color-text); line-height: 1.7; }
+  .pt-readout output { color: var(--sl-color-accent); font-weight: 600; }
+  .pt-demo figcaption { max-width: 900px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.9rem; line-height: 1.65; }
+  @media (prefers-reduced-motion: reduce) {
+    .pt-flow-on { animation: none; }
+  }
+  @keyframes pt-flow {
+    to { stroke-dashoffset: -12; }
+  }
+</style>

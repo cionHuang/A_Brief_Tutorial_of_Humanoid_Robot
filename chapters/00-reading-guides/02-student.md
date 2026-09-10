@@ -26,7 +26,7 @@
 
 | 小节 | 预计时间 | 前置知识 |
 | --- | --- | --- |
-| [3.1 电源系统](../03-electrical-embedded/01-power-system.md) | 15 分钟 | 无 |
+| [3.1 电源系统](../03-electrical-embedded/01-power-system.mdx) | 15 分钟 | 无 |
 | [3.2 电机、驱动器与伺服控制](../03-electrical-embedded/02-motors-drivers-servo-control.md) | 20 分钟 | 2.3 |
 | [3.3 传感器与数据采集](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 15 分钟 | 无 |
 | [3.4 实时通信与总线](../03-electrical-embedded/04-real-time-communication-and-buses.md) | 15 分钟 | 无 |
