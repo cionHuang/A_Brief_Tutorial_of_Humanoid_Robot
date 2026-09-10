@@ -15,6 +15,8 @@
  *   import FloatingBaseDemo from '../../../components/FloatingBaseDemo.astro';
  *   <FloatingBaseDemo />
  */
+import Tex from './Tex.astro';
+import { katexHtml } from '../lib/tex.js';
 
 const PITCH_MIN = -15;
 const PITCH_MAX = 15;
@@ -48,8 +50,8 @@ const PITCH_MAX = 15;
       <circle cx="121" cy="56" r="4" class="fb-inset-joint"></circle>
       <line x1="86" y1="92" x2="86" y2="62" class="fb-axis" stroke="#3e63dd" marker-end="url(#fb-ab)"></line>
       <line x1="86" y1="92" x2="112" y2="92" class="fb-axis" stroke="#e5484d" marker-end="url(#fb-ar)"></line>
-      <text x="116" y="96" class="fb-axis-label" fill="#e5484d">x</text>
-      <text x="78" y="58" class="fb-axis-label" fill="#3e63dd">z</text>
+      <Tex x={116} y={96} size={12} anchor="start" color="#e5484d" parts={[{ tex: 'x' }]} />
+      <Tex x={78} y={58} size={12} anchor="start" color="#3e63dd" parts={[{ tex: 'z' }]} />
       <text x="26" y="140" class="fb-inset-caption">机械臂基座钉在地面，位姿已知且不变</text>
     </g>
 
@@ -62,10 +64,10 @@ const PITCH_MAX = 15;
       <line class="fb-axis" stroke="#e5484d" marker-end="url(#fb-ar)"></line>
       <line class="fb-axis" stroke="#46a758" marker-end="url(#fb-ag)"></line>
       <line class="fb-axis" stroke="#3e63dd" marker-end="url(#fb-ab)"></line>
-      <text class="fb-axis-label" fill="#e5484d">x</text>
-      <text class="fb-axis-label" fill="#46a758">y</text>
-      <text class="fb-axis-label" fill="#3e63dd">z</text>
-      <text class="fb-frame-label">W（世界）</text>
+      <Tex role="axis0" x={174.1} y={275.3} size={12} anchor="start" color="#e5484d" parts={[{ tex: 'x' }]} />
+      <Tex role="axis1" x={135.8} y={275.3} size={12} anchor="start" color="#46a758" parts={[{ tex: 'y' }]} />
+      <Tex role="axis2" x={154.9} y={242.2} size={12} anchor="start" color="#3e63dd" parts={[{ tex: 'z' }]} />
+      <Tex role="frame" x={142.9} y={283.3} size={13} anchor="end" color="var(--sl-color-text)" parts={[{ tex: 'W' }, { text: '（世界）' }]} />
     </g>
 
     <!-- 机器人：脚固定，腿与身体随滑块运动 -->
@@ -97,25 +99,25 @@ const PITCH_MAX = 15;
       <line class="fb-axis" stroke="#e5484d" marker-end="url(#fb-ar)"></line>
       <line class="fb-axis" stroke="#46a758" marker-end="url(#fb-ag)"></line>
       <line class="fb-axis" stroke="#3e63dd" marker-end="url(#fb-ab)"></line>
-      <text class="fb-axis-label" fill="#e5484d">x</text>
-      <text class="fb-axis-label" fill="#46a758">y</text>
-      <text class="fb-axis-label" fill="#3e63dd">z</text>
-      <text class="fb-frame-label">P（骨盆）</text>
+      <Tex role="axis0" x={282.3} y={250.6} size={12} anchor="start" color="#e5484d" parts={[{ tex: 'x' }]} />
+      <Tex role="axis1" x={244.2} y={247.6} size={12} anchor="start" color="#46a758" parts={[{ tex: 'y' }]} />
+      <Tex role="axis2" x={266.0} y={216.2} size={12} anchor="start" color="#3e63dd" parts={[{ tex: 'z' }]} />
+      <Tex role="frame" x={251.3} y={255.5} size={13} anchor="end" color="var(--sl-color-text)" parts={[{ tex: 'P' }, { text: '（骨盆）' }]} />
     </g>
   </svg>
 
-  <p class="fb-hint">拖动滑块，观察骨盆坐标系 P 相对世界坐标系 W 的变化</p>
+  <p class="fb-hint">拖动滑块，观察骨盆坐标系 <span set:html={katexHtml('P')}></span> 相对世界坐标系 <span set:html={katexHtml('W')}></span> 的变化</p>
 
   <div class="fb-sliders">
     <label class="fb-slider-row">
-      <span class="fb-slider-name">躯干俯仰 θ</span>
+      <span class="fb-slider-name">躯干俯仰 <span set:html={katexHtml('\\theta')}></span></span>
       <input type="range" class="fb-slider-pitch" min={PITCH_MIN} max={PITCH_MAX} step="1" aria-label="躯干俯仰角">
-      <output class="fb-slider-value fb-output-pitch">8°</output>
+      <output class="fb-slider-value fb-output-pitch">8</output>
     </label>
     <label class="fb-slider-row">
       <span class="fb-slider-name">下蹲幅度</span>
       <input type="range" class="fb-slider-crouch" min="0" max="100" step="1" aria-label="下蹲幅度">
-      <output class="fb-slider-value fb-output-crouch">35%</output>
+      <output class="fb-slider-value fb-output-crouch">35</output>
     </label>
   </div>
 
@@ -125,13 +127,15 @@ const PITCH_MAX = 15;
   </p>
 
   <figcaption>
-    等轴测视角：x 向前、y 向左、z 向上。W 固定在地面，P 系在骨盆上、随身体移动和倾斜；
+    等轴测视角：<span set:html={katexHtml('x')}></span> 向前、<span set:html={katexHtml('y')}></span> 向左、<span set:html={katexHtml('z')}></span> 向上。<span set:html={katexHtml('W')}></span> 固定在地面，<span set:html={katexHtml('P')}></span> 系在骨盆上、随身体移动和倾斜；
     腿长与身高为示意比例。机械臂基座位姿已知且不变，人形机器人的基座"浮"在空中，
     它的位姿无法由关节编码器测得，必须靠状态估计实时求得。
   </figcaption>
 </figure>
 
 <script>
+  import { setParts } from '../lib/tex.js';
+
   // 等轴测投影：x 向前（屏右下），y 向左（屏左下），z 向上
   const SCALE = 85;
   const OX = 252;
@@ -182,7 +186,7 @@ const PITCH_MAX = 15;
         [st, 0, ct],
       ];
       const lines = group.querySelectorAll('line');
-      const labels = group.querySelectorAll('.fb-axis-label');
+      const labels = group.querySelectorAll('[data-role^="axis"]');
       const [oxs, oys] = px(ox, oy, oz);
       axes.forEach((ax, i) => {
         const [tx, ty] = px(ox + ax[0] * 0.26, oy + ax[1] * 0.26, oz + ax[2] * 0.26);
@@ -190,12 +194,10 @@ const PITCH_MAX = 15;
         lines[i].setAttribute('y1', oys);
         lines[i].setAttribute('x2', tx);
         lines[i].setAttribute('y2', ty);
-        labels[i].setAttribute('x', tx + 6);
-        labels[i].setAttribute('y', ty - 3);
+        labels[i].setAttribute('transform', 'translate(' + (tx + 6).toFixed(1) + ' ' + (ty - 3).toFixed(1) + ')');
       });
-      const frameLabel = group.querySelector('.fb-frame-label');
-      frameLabel.setAttribute('x', oxs - 6);
-      frameLabel.setAttribute('y', oys + 16);
+      const frameLabel = group.querySelector('[data-role="frame"]');
+      frameLabel.setAttribute('transform', 'translate(' + (oxs - 6).toFixed(1) + ' ' + (oys + 16).toFixed(1) + ')');
     };
     // 世界系 W：固定在地面，之后不再动
     setTriad($('#fbWorld'), -0.85, 0.55, 0, 0);
@@ -296,9 +298,9 @@ const PITCH_MAX = 15;
       // 读出
       sliderPitch.value = state.pitch;
       sliderCrouch.value = state.crouch;
-      outputPitch.textContent = `${Math.round(state.pitch)}°`;
-      outputCrouch.textContent = `${Math.round(state.crouch)}%`;
-      posesOut.textContent = `P 相对 W：前倾 ${Math.round(state.pitch)}° · 髋高 ${h.toFixed(2)} m（示意）`;
+      setParts(outputPitch, [{ tex: Math.round(state.pitch) + '^\\circ' }]);
+      setParts(outputCrouch, [{ tex: Math.round(state.crouch) + '\\%' }]);
+      setParts(posesOut, [{ tex: 'P' }, { text: ' 相对 ' }, { tex: 'W' }, { text: '：前倾 ' }, { tex: Math.round(state.pitch) + '^\\circ' }, { text: ' · 髋高 ' }, { tex: h.toFixed(2) + '\\ \\text{m}' }, { text: '（示意）' }]);
       dofOut.textContent = '基座位姿（3 平移 + 3 旋转，共 6 个数）编码器测不到 → 浮动基座';
     }
 

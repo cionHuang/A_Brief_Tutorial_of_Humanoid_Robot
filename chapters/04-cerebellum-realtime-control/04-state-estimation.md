@@ -16,13 +16,13 @@ G1 站在平地上时，关节编码器读数几乎不变，IMU 却显示躯干�
 
 一个用于全身控制的状态可以抽象为：
 
-```text
-x = { q_j, q_dot_j, R_WB, p_WB, v_WB, b_g, b_a, c_contact }
-```
+$$
+\boldsymbol{x} = \{\boldsymbol{q}_j, \dot{\boldsymbol{q}}_j, \boldsymbol{R}_{WB}, \boldsymbol{p}_{WB}, \boldsymbol{v}_{WB}, \boldsymbol{b}_g, \boldsymbol{b}_a, c_{\mathrm{contact}}\}
+$$
 
-其中 `q_j`、`q_dot_j` 是关节位置和速度，`R_WB`、`p_WB`、`v_WB` 是基座相对世界的姿态、位置和速度，`b_g`、`b_a` 是陀螺仪和加速度计零偏，`c_contact` 是足端接触状态或接触置信度。具体系统还可能加入足端滑移速度、IMU 外参、关节偏置和传感器延迟等扩展状态。
+其中 $\boldsymbol{q}_j$、$\dot{\boldsymbol{q}}_j$ 是关节位置和速度，$\boldsymbol{R}_{WB}$、$\boldsymbol{p}_{WB}$、$\boldsymbol{v}_{WB}$ 是基座相对世界的姿态、位置和速度，$\boldsymbol{b}_g$、$\boldsymbol{b}_a$ 是陀螺仪和加速度计零偏，$c_{\mathrm{contact}}$ 是足端接触状态或接触置信度。具体系统还可能加入足端滑移速度、IMU 外参、关节偏置和传感器延迟等扩展状态。
 
-状态不是把所有消息字段拼在一起。`MotorState` 的角度是关节测量，IMU 的加速度是传感器坐标系中的比力，足底压力是局部接触证据；估计器必须说明每一项的坐标系、单位、时间和不确定度，才能把它们组合成可供控制器使用的 `x_hat`。
+状态不是把所有消息字段拼在一起。`MotorState` 的角度是关节测量，IMU 的加速度是传感器坐标系中的比力，足底压力是局部接触证据；估计器必须说明每一项的坐标系、单位、时间和不确定度，才能把它们组合成可供控制器使用的 $\hat{\boldsymbol{x}}$。
 
 ### G1 的传感器落点
 
@@ -34,12 +34,14 @@ SDK 接口中的 `MotorState_`、`IMUState_` 和可能存在的 `PressSensorStat
 
 关节编码器通常提供位置，速度可能由驱动器估计或对位置差分得到：
 
-```text
-q_k = q_raw,k * scale + q_offset
-q_dot_k ≈ (q_k - q_{k-1}) / Δt
-```
+$$
+\begin{aligned}
+q_k &= q_{\mathrm{raw},k}\cdot\mathrm{scale} + q_{\mathrm{offset}} \\
+\dot{q}_k &\approx \frac{q_k - q_{k-1}}{\Delta t}
+\end{aligned}
+$$
 
-差分会放大量化噪声和时间抖动，因此估计器常对 `q_dot` 使用低通滤波、Savitzky–Golay 滤波或观测器。滤波窗口越长，噪声越小但延迟越大；对快速摆腿和接触切换，延迟可能比少量噪声更危险。
+差分会放大量化噪声和时间抖动，因此估计器常对 $\dot{q}$ 使用低通滤波、Savitzky–Golay 滤波或观测器。滤波窗口越长，噪声越小但延迟越大；对快速摆腿和接触切换，延迟可能比少量噪声更危险。
 
 编码器不能直接告诉系统浮动基座在世界中的位置。如果双脚都离地，单靠关节角只能计算各连杆相对基座的几何关系；基座整体如何平移和旋转，需要 IMU、外部定位或接触约束提供信息。
 
@@ -47,13 +49,13 @@ q_dot_k ≈ (q_k - q_{k-1}) / Δt
 
 ### 陀螺仪积分
 
-陀螺仪测量角速度。若已知传感器坐标系中的角速度 `omega_m`，可以在短时间内更新姿态：
+陀螺仪测量角速度。若已知传感器坐标系中的角速度 $\boldsymbol{\omega}_m$，可以在短时间内更新姿态：
 
-```text
-R_{k+1} = R_k Exp([ (omega_m - b_g) Δt ]_x)
-```
+$$
+\boldsymbol{R}_{k+1} = \boldsymbol{R}_k\, \mathrm{Exp}\!\left([(\boldsymbol{\omega}_m - \boldsymbol{b}_g)\Delta t]_\times\right)
+$$
 
-但零偏 `b_g` 会被积分成不断增长的姿态误差。陀螺仪擅长短期动态响应，不擅长长期提供绝对航向；磁力计、视觉或外部定位是否可用，需要根据环境和任务另行判断。
+但零偏 $\boldsymbol{b}_g$ 会被积分成不断增长的姿态误差。陀螺仪擅长短期动态响应，不擅长长期提供绝对航向；磁力计、视觉或外部定位是否可用，需要根据环境和任务另行判断。
 
 ### 加速度计与重力方向
 
@@ -65,12 +67,14 @@ R_{k+1} = R_k Exp([ (omega_m - b_g) Δt ]_x)
 
 互补滤波（Complementary Filter）用高频陀螺仪跟踪快速变化，用低频重力方向抑制长期漂移。对简化的单轴姿态，可写成：
 
-```text
-theta_hat_k = alpha (theta_hat_{k-1} + gyro_k Δt)
-              + (1 - alpha) theta_acc,k
-```
+$$
+\begin{aligned}
+\hat{\theta}_k &= \alpha\left(\hat{\theta}_{k-1} + \mathrm{gyro}_k\,\Delta t\right) \\
+&\quad + (1 - \alpha)\,\theta_{\mathrm{acc},k}
+\end{aligned}
+$$
 
-`alpha` 接近 1 时响应快但更依赖陀螺仪，`alpha` 较小时更依赖加速度计但容易受到动态加速度干扰。真实实现通常在旋转群上进行姿态更新，而不是直接把三个欧拉角相加；4.1 节的万向节锁说明了为什么欧拉角不适合作为内部积分状态。
+$\alpha$ 接近 1 时响应快但更依赖陀螺仪，$\alpha$ 较小时更依赖加速度计但容易受到动态加速度干扰。真实实现通常在旋转群上进行姿态更新，而不是直接把三个欧拉角相加；4.1 节的万向节锁说明了为什么欧拉角不适合作为内部积分状态。
 
 互补滤波的优点是计算量小、行为直观、调参容易，适合先验证坐标系、符号和传感器延迟。它的局限是难以自然表达多传感器不确定度、接触切换和相关噪声，因此复杂全身状态通常需要更完整的观测器或 EKF。
 
@@ -80,21 +84,25 @@ theta_hat_k = alpha (theta_hat_{k-1} + gyro_k Δt)
 
 卡尔曼滤波（Kalman Filter, KF）及其扩展形式 EKF（Extended Kalman Filter）把系统分成状态预测和观测更新：
 
-```text
-x_k^- = f(x_{k-1}^+, u_{k-1}) + w_k
-z_k   = h(x_k^-) + v_k
-```
+$$
+\begin{aligned}
+\boldsymbol{x}_k^- &= \boldsymbol{f}(\boldsymbol{x}_{k-1}^+, \boldsymbol{u}_{k-1}) + \boldsymbol{w}_k \\
+\boldsymbol{z}_k &= \boldsymbol{h}(\boldsymbol{x}_k^-) + \boldsymbol{v}_k
+\end{aligned}
+$$
 
-`f` 是动力学或运动学预测模型，`h` 是传感器观测模型，`w` 和 `v` 分别代表过程噪声和测量噪声。EKF 在当前估计附近线性化，使用协方差矩阵描述不确定度；噪声协方差不是越小越好，而应反映传感器实际噪声、模型误差和延迟。
+$\boldsymbol{f}$ 是动力学或运动学预测模型，$\boldsymbol{h}$ 是传感器观测模型，$\boldsymbol{w}$ 和 $\boldsymbol{v}$ 分别代表过程噪声和测量噪声。EKF 在当前估计附近线性化，使用协方差矩阵描述不确定度；噪声协方差不是越小越好，而应反映传感器实际噪声、模型误差和延迟。
 
 ### 足端接触作为观测约束
 
 当某只脚可靠接触地面且没有明显滑移时，可以把足端近似为世界中的固定点：
 
-```text
-p_WF(q, x_base) ≈ constant
-v_WF(q, q_dot, x_base) ≈ 0
-```
+$$
+\begin{aligned}
+\boldsymbol{p}_{WF}(\boldsymbol{q}, \boldsymbol{x}_{\mathrm{base}}) &\approx \text{constant} \\
+\boldsymbol{v}_{WF}(\boldsymbol{q}, \dot{\boldsymbol{q}}, \boldsymbol{x}_{\mathrm{base}}) &\approx \boldsymbol{0}
+\end{aligned}
+$$
 
 这个约束可以帮助估计浮动基座速度和位置漂移。若接触判断错误，估计器会把正在摆动的脚强行当作固定点，产生反向的基座速度和姿态误差；若脚底发生滑移，固定点模型同样会注入错误约束。因此接触状态不应只有布尔值，最好包含置信度、持续时间和滑移检测结果。
 
@@ -110,9 +118,9 @@ IMU 可以快速提供角速度和重力方向，适合估计基座 roll/pitch�
 
 基座速度可以由 IMU 比力积分得到，也可以通过接触脚速度约束、关节编码器和运动学雅可比反推。单独积分会受加速度计零偏和姿态误差影响，接触脚速度又会受足底滑移和模型误差影响，因此常用多源融合：
 
-```text
-v_base_hat = Fuse(v_imu_integrated, v_foot_kinematic, contact_state)
-```
+$$
+\hat{\boldsymbol{v}}_{\mathrm{base}} = \operatorname{Fuse}\!\left(\boldsymbol{v}_{\mathrm{imu,integrated}}, \boldsymbol{v}_{\mathrm{foot,kinematic}}, \boldsymbol{c}_{\mathrm{contact}}\right)
+$$
 
 ### 位置
 
@@ -134,17 +142,18 @@ v_base_hat = Fuse(v_imu_integrated, v_foot_kinematic, contact_state)
 
 接触检测可以融合压力、六维力、关节电流、足端速度和动力学残差：
 
-```text
-contact_score = Fuse(force_signal, pressure_signal,
-                      foot_speed, dynamics_residual)
-```
+$$
+\text{contact\_score} = \operatorname{Fuse}\!\left(\text{force\_signal}, \text{pressure\_signal}, \text{foot\_speed}, \text{dynamics\_residual}\right)
+$$
 
 工程上应避免单帧阈值抖动，常用进入/退出不同阈值、最小持续时间和滞回：
 
-```text
-contact_on  if score > threshold_on  for N_on samples
-contact_off if score < threshold_off for N_off samples
-```
+$$
+\begin{cases}
+\text{contact\_on}, & \text{if } \text{score} > \text{threshold}_{\mathrm{on}} \text{ for } N_{\mathrm{on}} \text{ samples} \\
+\text{contact\_off}, & \text{if } \text{score} < \text{threshold}_{\mathrm{off}} \text{ for } N_{\mathrm{off}} \text{ samples}
+\end{cases}
+$$
 
 接触估计失败时，系统应返回来源、置信度和原因，例如 `NO_FOOT_SENSOR`、`STALE_IMU`、`SLIP_DETECTED` 或 `MODEL_RESIDUAL_HIGH`。状态估计器不应在观测失效后继续输出看似正常但置信度未知的基座状态；上层控制器应根据置信度降低速度、切换支撑策略或进入安全状态。
 

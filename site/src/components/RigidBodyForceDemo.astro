@@ -12,12 +12,14 @@
  *   import RigidBodyForceDemo from '../../../components/RigidBodyForceDemo.astro';
  *   <RigidBodyForceDemo />
  */
+import Tex from './Tex.astro';
+import { katexHtml } from '../lib/tex.js';
 
 // 力系定义：作用点 a 与力 f 均为力学坐标（米 / 牛，y 向上）
 const FORCES = [
-  { name: 'F₁', a: [-0.6, 0.3], f: [50, 25], cls: 'f1' },
-  { name: 'F₂', a: [0.55, -0.35], f: [-20, 45], cls: 'f2' },
-  { name: 'F₃', a: [0.1, 0.6], f: [45, -30], cls: 'f3' },
+  { name: 'F₁', tex: 'F_1', a: [-0.6, 0.3], f: [50, 25], cls: 'f1', color: 'light-dark(#b45309, #fbbf24)' },
+  { name: 'F₂', tex: 'F_2', a: [0.55, -0.35], f: [-20, 45], cls: 'f2', color: 'light-dark(#0f766e, #5eead4)' },
+  { name: 'F₃', tex: 'F_3', a: [0.1, 0.6], f: [45, -30], cls: 'f3', color: 'light-dark(#6d28d9, #c4b5fd)' },
 ];
 
 const PX = 100; // px / m
@@ -91,7 +93,7 @@ const BLOB =
     </defs>
 
     <text x={LC[0]} y="36" class="rbf-title" text-anchor="middle">① 刚体上的任意力系</text>
-    <text x={RC[0]} y="36" class="rbf-title" text-anchor="middle">② 向任选点 P 简化</text>
+    <Tex x={RC[0]} y={36} size={15} anchor="middle" color="var(--sl-color-gray-2)" parts={[{ text: '② 向任选点 ' }, { tex: 'P' }, { text: ' 简化' }]} />
 
     {/* 左画面：力系 */}
     <use href="#rbf-blob" transform={`translate(${LC[0]} ${LC[1]})`} class="rbf-body"></use>
@@ -99,12 +101,10 @@ const BLOB =
       <g>
         <circle cx={A.sx} cy={A.sy} r="3.5" class={`rbf-dot rbf-${A.cls}`}></circle>
         <line x1={A.sx} y1={A.sy} x2={A.ex} y2={A.ey} class={`rbf-force rbf-${A.cls}`} marker-end={`url(#rbf-m-${A.cls})`}></line>
-        <text x={A.lx} y={A.ly} class={`rbf-flabel rbf-${A.cls}`} text-anchor="middle">{A.name}</text>
+        <Tex x={A.lx} y={A.ly} size={14} anchor="middle" color={A.color} parts={[{ tex: A.tex }]} />
       </g>
     ))}
-    <text x={LC[0]} y="336" class="rbf-note" text-anchor="middle">
-      <tspan class="rbf-f1">F₁ = (50, 25) N</tspan><tspan dx="12">　</tspan><tspan class="rbf-f2">F₂ = (−20, 45) N</tspan><tspan dx="12">　</tspan><tspan class="rbf-f3">F₃ = (45, −30) N</tspan>
-    </text>
+    <Tex x={LC[0]} y={336} size={13} anchor="middle" color="var(--sl-color-gray-2)" parts={[{ tex: 'F_1 = (50,\\ 25)\\ \\text{N}' }, { text: '　' }, { tex: 'F_2 = (-20,\\ 45)\\ \\text{N}' }, { text: '　' }, { tex: 'F_3 = (45,\\ -30)\\ \\text{N}' }]} />
 
     {/* 右画面：简化 */}
     <use href="#rbf-blob" transform={`translate(${RC[0]} ${RC[1]})`} class="rbf-body"></use>
@@ -115,50 +115,52 @@ const BLOB =
 
     {/* 主矢 R（位置随 P，方向大小不变） */}
     <line class="rbf-rvec" marker-end="url(#rbf-m-r)"></line>
-    <text class="rbf-rlabel">R</text>
+    <Tex role="rlabel" x={0} y={0} size={15} anchor="start" color="var(--sl-color-accent)" parts={[{ tex: 'R' }]} />
 
     {/* 主矩 M_P 圆弧 */}
     <path class="rbf-marc" fill="none" marker-end="url(#rbf-m-m)"></path>
-    <text class="rbf-mglyph">M</text>
+    <Tex role="mglyph" x={0} y={0} size={14} anchor="start" color="var(--sl-color-gray-2)" parts={[{ tex: 'M' }]} />
 
     {/* 简化中心 P */}
     <g class="rbf-p" tabindex="0" role="slider" aria-label="简化中心 P，可用方向键移动" aria-valuemin="-0.8" aria-valuemax="0.8">
       <circle class="rbf-p-ring" r="9"></circle>
       <circle class="rbf-p-dot" r="3.5"></circle>
-      <text class="rbf-plabel">P</text>
+      <Tex role="plabel" x={0} y={0} size={14} anchor="start" color="var(--sl-color-accent)" parts={[{ tex: 'P' }]} />
     </g>
 
     {/* 指针事件接收层：置于最顶层，避免被刚体等元素遮挡 */}
     <rect x="460" y="55" width="280" height="300" class="rbf-hit"></rect>
 
-    <text x={RC[0]} y="336" class="rbf-note" text-anchor="middle">虚线：合力作用线（M = 0）</text>
+    <Tex x={RC[0]} y={336} size={13} anchor="middle" color="var(--sl-color-gray-2)" parts={[{ text: '虚线：合力作用线（' }, { tex: 'M = 0' }, { text: '）' }]} />
   </svg>
 
-  <p class="rbf-hint">在右侧刚体上点击或拖动，选择简化中心 P</p>
+  <p class="rbf-hint">在右侧刚体上点击或拖动，选择简化中心 <span set:html={katexHtml('P')}></span></p>
 
   <p class="rbf-readout">
-    <strong class="rbf-rout">R = ΣFᵢ = ({R[0].toFixed(1)}, {R[1].toFixed(1)}) N</strong>（与 P 无关）
+    <strong class="rbf-rout"><span set:html={katexHtml('R = \\sum F_i = (' + R[0].toFixed(1) + ',\\ ' + R[1].toFixed(1) + ')\\ \\text{N}')}></span></strong>（与 <span set:html={katexHtml('P')}></span> 无关）
     <br />
-    M<sub>P</sub> = Σ(rᵢ − P) × Fᵢ = <output class="rbf-mout" aria-live="polite">{MO.toFixed(1)}</output> N·m（随 P 更新，逆时针为正）
+    <span set:html={katexHtml('M_P = \\sum (r_i - P) \\times F_i')}></span> = <output class="rbf-mout" aria-live="polite">{MO.toFixed(1)}</output> <span set:html={katexHtml('\\text{N}\\cdot\\text{m}')}></span>（随 <span set:html={katexHtml('P')}></span> 更新，逆时针为正）
   </p>
 
   <figcaption>
-    左：刚体上作用着三个方向、大小、作用点都不同的力；右：任意力系都可以向刚体上任选一点 P 简化为一个主矢 R 和一个主矩 M_P。主矢与简化中心无关；主矩随简化中心改变——力矩弧的大小表示 |M_P|，弧的方向表示顺/逆时针。P 落在虚线上时主矩为零，此时力系简化为一个合力。
+    左：刚体上作用着三个方向、大小、作用点都不同的力；右：任意力系都可以向刚体上任选一点 <span set:html={katexHtml('P')}></span> 简化为一个主矢 <span set:html={katexHtml('R')}></span> 和一个主矩 <span set:html={katexHtml('M_P')}></span>。主矢与简化中心无关；主矩随简化中心改变——力矩弧的大小表示 <span set:html={katexHtml('\\lvert M_P \\rvert')}></span>，弧的方向表示顺/逆时针。<span set:html={katexHtml('P')}></span> 落在虚线上时主矩为零，此时力系简化为一个合力。
   </figcaption>
 </figure>
 
 <script>
+  import { setParts } from '../lib/tex.js';
+
   document.querySelectorAll('.rbf-demo').forEach((demo) => {
     const svg = demo.querySelector('svg');
     const hit = demo.querySelector('.rbf-hit');
     const pGroup = demo.querySelector('.rbf-p');
     const pRing = demo.querySelector('.rbf-p-ring');
     const pDot = demo.querySelector('.rbf-p-dot');
-    const pLabel = demo.querySelector('.rbf-plabel');
+    const pLabel = demo.querySelector('[data-role="plabel"]');
     const rVec = demo.querySelector('.rbf-rvec');
-    const rLabel = demo.querySelector('.rbf-rlabel');
+    const rLabel = demo.querySelector('[data-role="rlabel"]');
     const mArc = demo.querySelector('.rbf-marc');
-    const mGlyph = demo.querySelector('.rbf-mglyph');
+    const mGlyph = demo.querySelector('[data-role="mglyph"]');
     const mOut = demo.querySelector('.rbf-mout');
     const zeroLine = demo.querySelector('.rbf-zeroline');
 
@@ -187,8 +189,7 @@ const BLOB =
       pRing.setAttribute('cy', cy);
       pDot.setAttribute('cx', cx);
       pDot.setAttribute('cy', cy);
-      pLabel.setAttribute('x', cx + 14);
-      pLabel.setAttribute('y', cy - 10);
+      pLabel.setAttribute('transform', 'translate(' + (cx + 14) + ' ' + (cy - 10) + ')');
 
       const rx = cx + R[0] * FS;
       const ry = cy - R[1] * FS;
@@ -196,8 +197,7 @@ const BLOB =
       rVec.setAttribute('y1', cy);
       rVec.setAttribute('x2', rx);
       rVec.setAttribute('y2', ry);
-      rLabel.setAttribute('x', rx + 12);
-      rLabel.setAttribute('y', ry - 8);
+      rLabel.setAttribute('transform', 'translate(' + (rx + 12) + ' ' + (ry - 8) + ')');
 
       // 主矩圆弧：半径随 |M| 缩放（14~44 px），M > 0 逆时针扫过顶部，M < 0 反向
       const M_MAX = 110; // |M| 的近似上限（P 取到刚体边缘时）
@@ -207,14 +207,13 @@ const BLOB =
       const pt = (a) => [cx + r * Math.cos(a), cy - r * Math.sin(a)];
       const [s, e] = m >= 0 ? [pt(a0), pt(a1)] : [pt(a1), pt(a0)];
       mArc.setAttribute('d', `M ${s[0].toFixed(1)} ${s[1].toFixed(1)} A ${r} ${r} 0 0 ${m >= 0 ? 0 : 1} ${e[0].toFixed(1)} ${e[1].toFixed(1)}`);
-      mGlyph.setAttribute('x', cx - 4);
-      mGlyph.setAttribute('y', cy - r - 12);
+      mGlyph.setAttribute('transform', 'translate(' + (cx - 4) + ' ' + (cy - r - 12) + ')');
 
       const nearZero = Math.abs(m) < ZERO_EPS;
       mArc.style.opacity = nearZero ? 0.25 : 1;
       mGlyph.style.opacity = nearZero ? 0.4 : 1;
       zeroLine.classList.toggle('rbf-zeroline-on', nearZero);
-      mOut.textContent = m.toFixed(1);
+      setParts(mOut, [{ tex: m.toFixed(1) }]);
       pGroup.setAttribute('aria-valuenow', `${p[0].toFixed(2)}, ${p[1].toFixed(2)}`);
     }
 

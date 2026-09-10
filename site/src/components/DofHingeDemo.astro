@@ -14,6 +14,9 @@
  *   <DofHingeDemo />
  */
 
+import Tex from './Tex.astro';
+import { katexHtml } from '../lib/tex.js';
+
 // 示意几何（SVG 视图坐标）。腿长比例为示意，非 G1 实际尺寸
 const HIP_X = 205;
 const HIP_Y = 82;
@@ -47,7 +50,7 @@ const L2 = 108; // 小腿
         <circle cx="0" cy={L2} r="7" class="dof-ankle"></circle>
       </g>
       <path class="dof-arc" fill="none" marker-end="url(#dof-arrow)"></path>
-      <text class="dof-glyph">θ</text>
+      <Tex role="glyph" x={28.6} y={60} size={17} anchor="middle" color="var(--sl-color-accent-high)" parts={[{ tex: '\\theta' }]} />
       <g class="dof-pivot">
         <circle r="7" class="dof-pivot-dot"></circle>
         <circle r="2.5" class="dof-pivot-core"></circle>
@@ -60,9 +63,9 @@ const L2 = 108; // 小腿
 
   <div class="dof-sliders">
     <label class="dof-slider-row">
-      <span class="dof-slider-name">膝关节 θ</span>
+      <span class="dof-slider-name">膝关节 <span set:html={katexHtml('\\theta')}></span></span>
       <input type="range" class="dof-slider" min="-5" max="165" step="1" aria-label="膝关节角度">
-      <output class="dof-slider-value">55°</output>
+      <output class="dof-slider-value" set:html={katexHtml('55^\\circ')}></output>
     </label>
   </div>
 
@@ -72,12 +75,14 @@ const L2 = 108; // 小腿
   </p>
 
   <figcaption>
-    只有一个膝关节时，用 θ 一个数字就能描述这条腿的姿势，即 1 DoF。
-    膝关节活动范围 −5°~165° 取自 G1 的 URDF 模型文件，G1 的膝关节正是这样一个 1 DoF 关节；腿长比例为示意。
+    只有一个膝关节时，用 <span set:html={katexHtml('\\theta')}></span> 一个数字就能描述这条腿的姿势，即 1 DoF。
+    膝关节活动范围 <span set:html={katexHtml('-5^\\circ \\sim 165^\\circ')}></span> 取自 G1 的 URDF 模型文件，G1 的膝关节正是这样一个 1 DoF 关节；腿长比例为示意。
   </figcaption>
 </figure>
 
 <script>
+  import { setParts } from '../lib/tex.js';
+
   // 角度约定：偏离竖直向下方向、向前为正，单位为度
   const LIMITS = [-5, 165];
   const RAD = Math.PI / 180;
@@ -86,7 +91,7 @@ const L2 = 108; // 小腿
     const shank = demo.querySelector('.dof-shank');
     const shankLabel = demo.querySelector('.dof-shank-label');
     const arc = demo.querySelector('.dof-arc');
-    const glyph = demo.querySelector('.dof-glyph');
+    const glyph = demo.querySelector('[data-role="glyph"]');
     const slider = demo.querySelector('.dof-slider');
     const output = demo.querySelector('.dof-slider-value');
     const anglesOut = demo.querySelector('.dof-angles');
@@ -113,12 +118,11 @@ const L2 = 108; // 小腿
       shankLabel.setAttribute('transform', `rotate(${-knee} 17 56)`);
       arc.setAttribute('d', arcPath(46, knee));
       const half = (knee * RAD) / 2;
-      glyph.setAttribute('x', (62 * Math.sin(half)).toFixed(1));
-      glyph.setAttribute('y', (62 * Math.cos(half) + 5).toFixed(1));
+      glyph.setAttribute('transform', `translate(${(62 * Math.sin(half)).toFixed(1)} ${(62 * Math.cos(half) + 5).toFixed(1)})`);
       slider.value = knee;
-      output.textContent = `${Math.round(knee)}°`;
-      anglesOut.textContent = `θ = ${Math.round(knee)}°`;
-      dofOut.textContent = '只用 θ 一个数字描述这条腿 → 1 DoF';
+      setParts(output, [{ tex: `${Math.round(knee)}^\\circ` }]);
+      setParts(anglesOut, [{ tex: `\\theta = ${Math.round(knee)}^\\circ` }]);
+      setParts(dofOut, [{ text: '只用 ' }, { tex: '\\theta' }, { text: ' 一个数字描述这条腿 → 1 DoF' }]);
     }
 
     slider.addEventListener('input', () => {

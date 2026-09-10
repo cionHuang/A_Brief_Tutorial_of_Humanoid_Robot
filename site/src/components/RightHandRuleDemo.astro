@@ -13,6 +13,9 @@
  *   <RightHandRuleDemo />
  */
 
+import Tex from './Tex.astro';
+import { katexHtml } from '../lib/tex.js';
+
 const CX = 340;
 const CY = 252;
 const L = 132;
@@ -26,6 +29,12 @@ const axisDefs = [
   { name: 'y', joint: '膝关节俯仰', tip: proj([0, 1, 0]), neg: proj([0, -0.36, 0]) },
   { name: 'z', joint: '腰部偏航', tip: proj([0, 0, 1]), neg: proj([0, 0, -0.36]) },
 ];
+
+const AXIS_COLOR = {
+  x: 'light-dark(#dc2626, #f87171)',
+  y: 'light-dark(#16a34a, #4ade80)',
+  z: 'light-dark(#2563eb, #60a5fa)',
+};
 ---
 
 <figure class="rhd-demo">
@@ -50,11 +59,13 @@ const axisDefs = [
       <g data-axis={a.name} class="rhd-axis-group">
         <line x1={CX} y1={CY} x2={a.tip[0]} y2={a.tip[1]} class={`rhd-axis rhd-${a.name}`}></line>
         <circle cx={a.tip[0]} cy={a.tip[1]} r="3" class={`rhd-tip rhd-fill-${a.name}`}></circle>
-        <text
+        <Tex
           x={a.tip[0] + (a.name === 'x' ? -14 : a.name === 'z' ? 0 : 14)}
           y={a.tip[1] + (a.name === 'z' ? -12 : 6)}
-          class={`rhd-label rhd-text-${a.name}`}
-          text-anchor={a.name === 'x' ? 'end' : a.name === 'z' ? 'middle' : 'start'}>{a.name}</text>
+          size={17}
+          anchor={a.name === 'x' ? 'end' : a.name === 'z' ? 'middle' : 'start'}
+          color={AXIS_COLOR[a.name]}
+          parts={[{ tex: a.name }]} />
       </g>
     ))}
 
@@ -62,23 +73,23 @@ const axisDefs = [
     <path class="rhd-near" fill="none"></path>
     <path class="rhd-curl" fill="none"></path>
     <line class="rhd-thumb"></line>
-    <text class="rhd-thumb-label" text-anchor="middle">拇指 → +轴</text>
+    <Tex role="thumb-label" x={0} y={0} size={13} anchor="middle" color="var(--sl-color-gray-2)" />
     <line class="rhd-vec"></line>
     <circle class="rhd-dot" r="5"></circle>
     <circle cx={CX} cy={CY} r="3.5" class="rhd-origin"></circle>
-    <text x={CX + 12} y={CY + 18} class="rhd-origin-label">O</text>
+    <Tex x={CX + 12} y={CY + 18} size={13} anchor="start" color="var(--sl-color-gray-2)" parts={[{ tex: 'O' }]} />
   </svg>
 
-  <p class="rhd-hint">轨道实线的一半靠近观察者、虚线的一半远离观察者；圆点越大越靠前（相机在 +x +y +z 方向俯视）。</p>
+  <p class="rhd-hint">轨道实线的一半靠近观察者、虚线的一半远离观察者；圆点越大越靠前（相机在 <span set:html={katexHtml('+x\\ +y\\ +z')}></span> 方向俯视）。</p>
 
   <div class="rhd-controls">
     <div class="rhd-axis-btns" role="group" aria-label="选择旋转轴">
-      <button type="button" class="rhd-axis-btn" data-axis="x">髋/踝侧摆 · x</button>
-      <button type="button" class="rhd-axis-btn" data-axis="y">膝关节俯仰 · y</button>
-      <button type="button" class="rhd-axis-btn" data-axis="z">腰部偏航 · z</button>
+      <button type="button" class="rhd-axis-btn" data-axis="x">髋/踝侧摆 · <span set:html={katexHtml('x')}></span></button>
+      <button type="button" class="rhd-axis-btn" data-axis="y">膝关节俯仰 · <span set:html={katexHtml('y')}></span></button>
+      <button type="button" class="rhd-axis-btn" data-axis="z">腰部偏航 · <span set:html={katexHtml('z')}></span></button>
     </div>
     <div class="rhd-row">
-      <label class="rhd-slider-label">正转角 θ
+      <label class="rhd-slider-label">正转角 <span set:html={katexHtml('\\theta')}></span>
         <input class="rhd-slider" type="range" min="0" max="360" step="1" value="0" />
       </label>
       <button type="button" class="rhd-play" aria-pressed="true">暂停</button>
@@ -88,19 +99,25 @@ const axisDefs = [
   <p class="rhd-readout"><output class="rhd-out" aria-live="polite"></output></p>
 
   <figcaption>
-    拇指沿 +轴方向，四指弯曲的方向就是正转角的方向。切换 x / y / z 轴可以看到正转方向如何随轴改变：绕 x 正转从 y 转向 z，绕 y 正转从 z 转向 x，绕 z 正转从 x 转向 y。三个轴分别对应 G1 的髋/踝侧摆、膝关节俯仰和腰部偏航；这正是 URDF 里 <code>axis</code> 取正号时关节角的转向。
+    拇指沿 +轴方向，四指弯曲的方向就是正转角的方向。切换 <span set:html={katexHtml('x')}></span> / <span set:html={katexHtml('y')}></span> / <span set:html={katexHtml('z')}></span> 轴可以看到正转方向如何随轴改变：绕 <span set:html={katexHtml('x')}></span> 正转从 <span set:html={katexHtml('y')}></span> 转向 <span set:html={katexHtml('z')}></span>，绕 <span set:html={katexHtml('y')}></span> 正转从 <span set:html={katexHtml('z')}></span> 转向 <span set:html={katexHtml('x')}></span>，绕 <span set:html={katexHtml('z')}></span> 正转从 <span set:html={katexHtml('x')}></span> 转向 <span set:html={katexHtml('y')}></span>。三个轴分别对应 G1 的髋/踝侧摆、膝关节俯仰和腰部偏航；这正是 URDF 里 <code>axis</code> 取正号时关节角的转向。
   </figcaption>
 </figure>
 
 <script>
+  import { setParts } from '../lib/tex.js';
+
   document.querySelectorAll('.rhd-demo').forEach((demo) => {
     const orbit = demo.querySelector('.rhd-orbit');
     const nearArc = demo.querySelector('.rhd-near');
     const curl = demo.querySelector('.rhd-curl');
     const thumb = demo.querySelector('.rhd-thumb');
-    const thumbLabel = demo.querySelector('.rhd-thumb-label');
     const vec = demo.querySelector('.rhd-vec');
     const dot = demo.querySelector('.rhd-dot');
+    const boxOf = (role) => {
+      const group = demo.querySelector('[data-role="' + role + '"]');
+      return { group: group, box: group ? group.querySelector('.tex-box') : null };
+    };
+    const thumbLabel = boxOf('thumb-label');
     const out = demo.querySelector('.rhd-out');
     const slider = demo.querySelector('.rhd-slider');
     const playBtn = demo.querySelector('.rhd-play');
@@ -180,13 +197,11 @@ const axisDefs = [
       thumb.setAttribute('y2', tEnd[1]);
       applyStroke(thumb, axis);
       thumb.setAttribute('marker-end', `url(#rhd-m-${axis})`);
-      thumbLabel.textContent = `拇指 → +${axis}`;
+      setParts(thumbLabel.box, [{ text: '拇指 → +' }, { tex: axis }]);
       if (axis === 'z') {
-        thumbLabel.setAttribute('x', tEnd[0] + 46);
-        thumbLabel.setAttribute('y', tEnd[1] + 4);
+        thumbLabel.group.setAttribute('transform', `translate(${tEnd[0] + 46} ${tEnd[1] + 4})`);
       } else {
-        thumbLabel.setAttribute('x', tEnd[0] + (axis === 'x' ? -34 : 34));
-        thumbLabel.setAttribute('y', tEnd[1] + 18);
+        thumbLabel.group.setAttribute('transform', `translate(${tEnd[0] + (axis === 'x' ? -34 : 34)} ${tEnd[1] + 18})`);
       }
 
       const tipP = circlePoint(axis, theta);
@@ -209,7 +224,12 @@ const axisDefs = [
       for (const b of axisBtns) b.setAttribute('aria-pressed', String(b.dataset.axis === axis));
 
       const deg = Math.round(((theta % 360) + 360) % 360);
-      out.textContent = `轴 = ${axis}（${A.joint}）　θ = ${deg}°　正转方向：${A.from} → ${A.to}`;
+      setParts(out, [
+        { text: '轴 = ' }, { tex: axis },
+        { text: `（${A.joint}）　` },
+        { tex: '\\theta' }, { text: ' = ' }, { tex: `${deg}^\\circ` },
+        { text: '　正转方向：' }, { tex: A.from }, { text: ' → ' }, { tex: A.to },
+      ]);
       slider.value = String(deg);
     }
 

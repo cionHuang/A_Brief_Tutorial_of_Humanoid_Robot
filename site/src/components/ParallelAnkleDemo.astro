@@ -18,6 +18,8 @@
  *   import ParallelAnkleDemo from '../../../components/ParallelAnkleDemo.astro';
  *   <ParallelAnkleDemo />
  */
+import { katexHtml } from '../lib/tex.js';
+
 const baseUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
 ---
@@ -47,7 +49,7 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
   </div>
 
   <p class="ankle-readout">
-    pitch = <output data-o-pitch>0.0</output>°　roll = <output data-o-roll>0.0</output>°　γ₁ = <output data-o-g1>—</output>°　γ₂ = <output data-o-g2>—</output>°　<span class="ankle-state" data-o-state>正常传动</span>
+    pitch = <output data-o-pitch>0.0</output>°　roll = <output data-o-roll>0.0</output>°　<span set:html={katexHtml('\\gamma_1')}></span> = <output data-o-g1>—</output>°　<span set:html={katexHtml('\\gamma_2')}></span> = <output data-o-g2>—</output>°　<span class="ankle-state" data-o-state>正常传动</span>
   </p>
 
   <figcaption>
@@ -56,6 +58,8 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
 </figure>
 
 <script>
+  import { setParts } from '../lib/tex.js';
+
   document.querySelectorAll('.ankle-demo').forEach((demo) => {
     /* ---------- 几何与 IK：移植自 feidedao/Parallel_Ankle_Joint 的 G1 简化模型 ---------- */
     const h0 = [0, 0, -0.01756];
@@ -598,19 +602,19 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
       oRoll.textContent = ((selRoll * 180) / Math.PI).toFixed(1);
       oG1.textContent = s.ok ? s.l1.gamma.toFixed(1) : '—';
       oG2.textContent = s.ok ? s.l2.gamma.toFixed(1) : '—';
-      let text = '正常传动';
+      let stateParts = [{ text: '正常传动' }];
       let cls = '';
       if (!s.ok) {
-        text = '不可达（判别式 jjj < 0）';
+        stateParts = [{ text: '不可达（判别式 ' }, { tex: 'jjj < 0' }, { text: '）' }];
         cls = 'is-dead';
       } else if (!s.motorOk) {
-        text = '电机超程：几何可达，电机行程内到不了';
+        stateParts = [{ text: '电机超程：几何可达，电机行程内到不了' }];
         cls = 'is-motor';
       } else if (s.gEff < 20) {
-        text = '准死区：传动角过小，传动病态';
+        stateParts = [{ text: '准死区：传动角过小，传动病态' }];
         cls = 'is-warn';
       }
-      oState.textContent = text;
+      setParts(oState, stateParts);
       oState.className = `ankle-state ${cls}`;
       updateScene();
     }

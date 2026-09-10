@@ -1,0 +1,379 @@
+---
+/**
+ * 摩擦锥（Friction Cone）交互演示。
+ *
+ * 左图：机器人受到一个水平外力 P（起步加速的惯性需求、被人侧推、斜面上的重力分量），
+ *   它想把脚的水平方向推动。脚要不动，地面就必须在接触点提供一个大小相等、方向相反的
+ *   切向力——这就是「需要的切向力」。
+ *   橙色实线是地面「实际」能提供的摩擦，虚线是「需要」的摩擦，两者等长就站得住。
+ * 右图：F_t–F_n 力空间里的摩擦锥 |F_t| <= μ F_n（斜率就是 μ）。
+ *   工作点 (F_n, |F_t|) 落在锥内 -> 需要量在能力之内；越出锥外 -> 打滑。
+ *
+ * 数学标签用 KaTeX 渲染（见 Tex.astro），动态数值在客户端用 setParts 更新。
+ * 纯 SVG + 原生 JS；样式跟随 Starlight 明暗主题，并遵循 prefers-reduced-motion。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import FrictionConeDemo from '../../../components/FrictionConeDemo.astro';
+ *   <FrictionConeDemo />
+ */
+import Tex from './Tex.astro';
+import { katexHtml } from '../lib/tex.js';
+
+const HATCH = Array.from({ length: 20 }, (_, i) => 30 + i * 19);
+const N = (tex) => ({ tex });
+---
+
+<figure class="fc-demo">
+  <svg viewBox="0 0 820 430" role="img" aria-label="摩擦锥交互演示：外力想让脚滑动，地面用摩擦平衡它；比较需要的切向力和摩擦上限，看脚是否打滑">
+    <defs>
+      <marker id="fc-mk-n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path class="fc-mk-n" d="M0 0 L10 5 L0 10 Z"></path></marker>
+      <marker id="fc-mk-p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path class="fc-mk-p" d="M0 0 L10 5 L0 10 Z"></path></marker>
+      <marker id="fc-mk-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path class="fc-mk-r" d="M0 0 L10 5 L0 10 Z"></path></marker>
+      <marker id="fc-mk-f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path class="fc-mk-f" d="M0 0 L10 5 L0 10 Z"></path></marker>
+      <marker id="fc-mk-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path class="fc-mk-a" d="M0 0 L10 5 L0 10 Z"></path></marker>
+    </defs>
+
+    <text class="fc-title" x="210" y="26" text-anchor="middle">需要的切向力 vs 地面能给的上限</text>
+    <Tex x={625} y={26} size={14} anchor="middle" parts={[{ text: '力空间：摩擦锥 ' }, { tex: '\\lVert F_t \\rVert \\le \\mu F_n' }]} />
+
+    <g class="fc-scene">
+      <line class="fc-ground" x1="20" y1="320" x2="400" y2="320"></line>
+      {HATCH.map((x) => <line class="fc-hatch" x1={x} y1="320" x2={x - 12} y2="332"></line>)}
+      <g class="fc-movable" transform="translate(200 320)">
+        <rect class="fc-body" x="-40" y="-216" width="84" height="70" rx="12"></rect>
+        <text class="fc-body-lab" x="2" y="-176" text-anchor="middle">机器人</text>
+        <path class="fc-leg" d="M -6 -146 L -6 -46 L 32 -46 L 32 -146 Z"></path>
+        <path class="fc-foot" d="M -92 0 L -92 -20 Q -92 -46 -62 -48 L 92 -48 Q 108 -48 108 -14 L 108 0 Z"></path>
+        <circle class="fc-contact" cx="0" cy="0" r="4"></circle>
+
+        <line class="fc-fn" x1="0" y1="0" x2="0" y2="-112" marker-end="url(#fc-mk-n)"></line>
+        <Tex role="fn" x={8} y={-98} size={13} anchor="start" color="light-dark(#2563eb, #60a5fa)" parts={[{ tex: 'F_n' }]} />
+
+        <line class="fc-push" x1="46" y1="-181" x2="46" y2="-181" marker-end="url(#fc-mk-p)"></line>
+        <Tex role="push" x={46} y={-190} size={13} anchor="middle" color="light-dark(#dc2626, #f87171)" />
+
+        <line class="fc-need" x1="0" y1="32" x2="0" y2="32" marker-end="url(#fc-mk-r)"></line>
+        <Tex role="need" x={0} y={21} size={13} anchor="middle" color="light-dark(#ea580c, #fb923c)" />
+
+        <line class="fc-actual" x1="0" y1="76" x2="0" y2="76" marker-end="url(#fc-mk-f)"></line>
+        <Tex role="actual" x={0} y={65} size={13} anchor="middle" color="light-dark(#ea580c, #fb923c)" />
+      </g>
+      <Tex role="slip" x={210} y={176} size={15} anchor="middle" color="light-dark(#dc2626, #f87171)" />
+      <Tex role="mu" x={20} y={420} size={13} anchor="start" color="var(--sl-color-gray-2)" parts={[{ text: '地面 ' }, { tex: '\\mu = 0.50' }]} />
+    </g>
+
+    <g class="fc-plot">
+      <line class="fc-axis" x1="475" y1="215" x2="800" y2="215" marker-end="url(#fc-mk-a)"></line>
+      <line class="fc-axis" x1="475" y1="345" x2="475" y2="86" marker-end="url(#fc-mk-a)"></line>
+      <path class="fc-cone" d=""></path>
+      <path class="fc-cone-edge" d=""></path>
+      <line class="fc-bound" x1="0" y1="0" x2="0" y2="0"></line>
+      <line class="fc-bracket" x1="0" y1="0" x2="0" y2="0"></line>
+      <line class="fc-cap-t" x1="0" y1="0" x2="0" y2="0"></line>
+      <line class="fc-cap-b" x1="0" y1="0" x2="0" y2="0"></line>
+      <line class="fc-ray" x1="475" y1="215" x2="475" y2="215"></line>
+      <line class="fc-drop-h" x1="475" y1="215" x2="475" y2="215"></line>
+      <line class="fc-drop-v" x1="475" y1="215" x2="475" y2="215"></line>
+      <circle class="fc-point" cx="475" cy="215" r="6"></circle>
+      <Tex role="alpha" x={0} y={0} size={12} anchor="start" color="var(--sl-color-gray-2)" />
+      <Tex x={798} y={242} size={13} anchor="end" color="var(--sl-color-gray-2)" parts={[{ tex: 'F_n\\ (\\text{N})' }]} />
+      <Tex x={466} y={80} size={13} anchor="end" color="var(--sl-color-gray-2)" parts={[{ text: '需要的 ' }, { tex: 'F_t\\ (\\text{N})' }]} />
+      <Tex role="note" x={637} y={410} size={12.5} anchor="middle" color="var(--sl-color-text)" />
+    </g>
+  </svg>
+
+  <div class="fc-controls">
+    <div class="fc-surfaces" role="group" aria-label="选择地面材质">
+      <button type="button" class="fc-surf" data-mu="0.05" aria-pressed="false">冰面</button>
+      <button type="button" class="fc-surf" data-mu="0.15" aria-pressed="false">抛光金属</button>
+      <button type="button" class="fc-surf" data-mu="0.5" aria-pressed="true">木地板</button>
+      <button type="button" class="fc-surf" data-mu="0.9" aria-pressed="false">橡胶</button>
+    </div>
+  </div>
+  <div class="fc-controls">
+    <label class="fc-slider-label">法向载荷 <span set:html={katexHtml('F_n')}></span>（重力 + 负载）
+      <input class="fc-fn-input" type="range" min="0" max="400" step="5" value="180" />
+    </label>
+    <output class="fc-fn-out">180 N</output>
+    <label class="fc-slider-label">水平外力 <span set:html={katexHtml('P')}></span>（= 需要的切向力）
+      <input class="fc-ft-input" type="range" min="0" max="300" step="5" value="60" />
+    </label>
+    <output class="fc-ft-out">60 N</output>
+  </div>
+
+  <p class="fc-readout"><output class="fc-out" aria-live="polite"></output></p>
+
+  <figcaption>
+    左图里，机器人受到一个水平外力 <span set:html={katexHtml('P')}></span>（例如起步加速时的惯性需求、被人侧推、或站在斜面上下滑的重力分量），它想把脚往右推。脚要停住不动，地面就必须在接触点提供一个大小相等、方向相反的切向力——这就是“需要的切向力”（橙色虚线）。地面实际能给的上限是 <span set:html={katexHtml('\\mu F_n')}></span>（橙色实线 = 需要的量与上限中较小的那个）：虚线比实线长，就说明地面给不出那么多，脚打滑。右图把这个比较画成摩擦锥：工作点（<span set:html={katexHtml('F_n')}></span>，需要的 <span set:html={katexHtml('F_t')}></span>）落在锥内就站得住，越出锥外就打滑。拖动两个滑块可以看到——需要变大（外力更猛）会逼近锥外，而加大法向载荷 <span set:html={katexHtml('F_n')}></span>（更重、负载更大）或换更粗糙的地面（<span set:html={katexHtml('\\mu')}></span> 更大）会把锥张开、上限抬高。反过来，冰面或抛光金属的 <span set:html={katexHtml('\\mu')}></span> 很小，锥很扁，一点侧向力就会让脚滑。
+  </figcaption>
+</figure>
+
+<script>
+  import { setParts } from '../lib/tex.js';
+
+  document.querySelectorAll('.fc-demo').forEach((demo) => {
+    const FN_MAX = 400;
+    const FT_MAX = 300;
+    const OX = 475, OY = 215, PW = 300, PH = 120;
+    const SURFACES = [
+      { name: '冰面', mu: 0.05 },
+      { name: '抛光金属', mu: 0.15 },
+      { name: '木地板', mu: 0.5 },
+      { name: '橡胶', mu: 0.9 },
+    ];
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const movable = demo.querySelector('.fc-movable');
+    const fnArrow = demo.querySelector('.fc-fn');
+    const pushArrow = demo.querySelector('.fc-push');
+    const needArrow = demo.querySelector('.fc-need');
+    const actualArrow = demo.querySelector('.fc-actual');
+    const cone = demo.querySelector('.fc-cone');
+    const coneEdge = demo.querySelector('.fc-cone-edge');
+    const bound = demo.querySelector('.fc-bound');
+    const bracket = demo.querySelector('.fc-bracket');
+    const capT = demo.querySelector('.fc-cap-t');
+    const capB = demo.querySelector('.fc-cap-b');
+    const ray = demo.querySelector('.fc-ray');
+    const dropH = demo.querySelector('.fc-drop-h');
+    const dropV = demo.querySelector('.fc-drop-v');
+    const point = demo.querySelector('.fc-point');
+    const fnSlider = demo.querySelector('.fc-fn-input');
+    const ftSlider = demo.querySelector('.fc-ft-input');
+    const fnOut = demo.querySelector('.fc-fn-out');
+    const ftOut = demo.querySelector('.fc-ft-out');
+    const out = demo.querySelector('.fc-out');
+    const surfBtns = Array.from(demo.querySelectorAll('.fc-surf'));
+
+    const boxOf = (role) => {
+      const group = demo.querySelector('[data-role="' + role + '"]');
+      return { group: group, box: group ? group.querySelector('.tex-box') : null };
+    };
+    const fnLab = boxOf('fn');
+    const pushLab = boxOf('push');
+    const needLab = boxOf('need');
+    const actualLab = boxOf('actual');
+    const slipLab = boxOf('slip');
+    const muLab = boxOf('mu');
+    const alphaLab = boxOf('alpha');
+    const noteLab = boxOf('note');
+
+    const X = (fn) => OX + (fn / FN_MAX) * PW;
+    const Y = (ft) => OY - (ft / FT_MAX) * PH;
+    const place = (lab, px, py) => {
+      if (lab.group) lab.group.setAttribute('transform', 'translate(' + px.toFixed(1) + ' ' + py.toFixed(1) + ')');
+    };
+    const newtons = (v) => v.toFixed(0) + '\\ \\text{N}';
+
+    let si = 2;
+    let raf = 0;
+    let last = 0;
+    let phase = 0;
+
+    const conePath = (mu) => {
+      const nTop = mu * FN_MAX;
+      let pts;
+      if (nTop <= FT_MAX) {
+        pts = [[0, 0], [FN_MAX, nTop], [FN_MAX, -nTop]];
+      } else {
+        const nEdge = FT_MAX / mu;
+        pts = [[0, 0], [nEdge, FT_MAX], [FN_MAX, FT_MAX], [FN_MAX, -FT_MAX], [nEdge, -FT_MAX]];
+      }
+      return pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join(' ') + ' Z';
+    };
+    const coneEdges = (mu) => {
+      const nTop = mu * FN_MAX;
+      let tx, ty;
+      if (nTop <= FT_MAX) { tx = FN_MAX; ty = nTop; } else { tx = FT_MAX / mu; ty = FT_MAX; }
+      return 'M' + X(0).toFixed(1) + ' ' + Y(0).toFixed(1) + ' L' + X(tx).toFixed(1) + ' ' + Y(ty).toFixed(1) +
+        ' M' + X(0).toFixed(1) + ' ' + Y(0).toFixed(1) + ' L' + X(tx).toFixed(1) + ' ' + Y(-ty).toFixed(1);
+    };
+
+    const applyOffset = (off) => {
+      movable.setAttribute('transform', 'translate(' + (200 + off).toFixed(1) + ' 320)');
+    };
+
+    const tick = (ts) => {
+      if (!last) last = ts;
+      const dt = Math.min((ts - last) / 1000, 0.05);
+      last = ts;
+      phase += dt / 1.6;
+      applyOffset((phase % 1) * 60);
+      raf = requestAnimationFrame(tick);
+    };
+    const stopAnim = () => { if (raf) { cancelAnimationFrame(raf); raf = 0; } last = 0; };
+
+    const render = () => {
+      const mu = SURFACES[si].mu;
+      const fn = Number(fnSlider.value);
+      const P = Number(ftSlider.value);
+      const lim = mu * fn;
+      const sliding = P > lim + 1e-6;
+
+      setParts(muLab.box, [{ text: '地面 ' }, { tex: '\\mu = ' + mu.toFixed(2) }, { text: '（' + SURFACES[si].name + '）' }]);
+      setParts(fnOut, [{ tex: newtons(fn) }]);
+      setParts(ftOut, [{ tex: newtons(P) }]);
+
+      // 左图
+      const hn = Math.min(fn / FN_MAX, 1) * 130;
+      fnArrow.setAttribute('y2', (-hn).toFixed(1));
+      setParts(fnLab.box, [{ tex: 'F_n = ' + newtons(fn) }]);
+      place(fnLab, 8, -hn - 8);
+
+      const hP = (P / FT_MAX) * 120;
+      const hAct = (Math.min(P, lim) / FT_MAX) * 120;
+
+      pushArrow.setAttribute('x1', '46');
+      pushArrow.setAttribute('x2', (46 + hP).toFixed(1));
+      pushArrow.classList.toggle('fc-hidden', hP < 1);
+      setParts(pushLab.box, P > 0 ? [{ tex: 'P = ' + newtons(P) }] : []);
+      place(pushLab, 46 + hP / 2, -190);
+
+      needArrow.setAttribute('x1', '0');
+      needArrow.setAttribute('x2', (-hP).toFixed(1));
+      needArrow.classList.toggle('fc-hidden', hP < 1);
+      setParts(needLab.box, P > 0 ? [{ text: '需要 ' }, { tex: newtons(P) }] : []);
+      place(needLab, -hP / 2, 21);
+
+      actualArrow.setAttribute('x1', '0');
+      actualArrow.setAttribute('x2', (-hAct).toFixed(1));
+      actualArrow.classList.toggle('fc-hidden', hAct < 1);
+      setParts(actualLab.box, P > 0 ? [{ text: '实际 ' }, { tex: newtons(Math.min(P, lim)) }] : []);
+      place(actualLab, -hAct / 2, 65);
+      actualArrow.classList.toggle('fc-arrow-hot', sliding);
+
+      setParts(slipLab.box, sliding ? [{ tex: 'P > \\mu F_n' }, { text: '：脚向右滑' }] : []);
+
+      // 右图
+      cone.setAttribute('d', conePath(mu));
+      coneEdge.setAttribute('d', coneEdges(mu));
+      const nTop = mu * FN_MAX;
+      const bLimit = Math.min(nTop, FT_MAX);
+      bound.setAttribute('x1', X(FN_MAX).toFixed(1));
+      bound.setAttribute('x2', X(FN_MAX).toFixed(1));
+      bound.setAttribute('y1', Y(bLimit).toFixed(1));
+      bound.setAttribute('y2', Y(-bLimit).toFixed(1));
+
+      const px = X(fn);
+      const py = Y(P);
+      const limDisplay = Math.min(lim, FT_MAX);
+      bracket.setAttribute('x1', px.toFixed(1));
+      bracket.setAttribute('x2', px.toFixed(1));
+      bracket.setAttribute('y1', Y(limDisplay).toFixed(1));
+      bracket.setAttribute('y2', Y(-limDisplay).toFixed(1));
+      capT.setAttribute('x1', (px - 5).toFixed(1));
+      capT.setAttribute('x2', (px + 5).toFixed(1));
+      capT.setAttribute('y1', Y(limDisplay).toFixed(1));
+      capT.setAttribute('y2', Y(limDisplay).toFixed(1));
+      capB.setAttribute('x1', (px - 5).toFixed(1));
+      capB.setAttribute('x2', (px + 5).toFixed(1));
+      capB.setAttribute('y1', Y(-limDisplay).toFixed(1));
+      capB.setAttribute('y2', Y(-limDisplay).toFixed(1));
+      ray.setAttribute('x2', px.toFixed(1));
+      ray.setAttribute('y2', py.toFixed(1));
+      dropH.setAttribute('x1', px.toFixed(1));
+      dropH.setAttribute('y1', py.toFixed(1));
+      dropH.setAttribute('x2', OX.toFixed(1));
+      dropH.setAttribute('y2', py.toFixed(1));
+      dropV.setAttribute('x1', px.toFixed(1));
+      dropV.setAttribute('y1', py.toFixed(1));
+      dropV.setAttribute('x2', px.toFixed(1));
+      dropV.setAttribute('y2', OY.toFixed(1));
+      point.setAttribute('cx', px.toFixed(1));
+      point.setAttribute('cy', py.toFixed(1));
+      point.classList.toggle('fc-point-out', sliding);
+      capT.classList.toggle('fc-bracket-out', sliding);
+      capB.classList.toggle('fc-bracket-out', sliding);
+
+      const aFn = 110;
+      if (mu >= 0.08) {
+        setParts(alphaLab.box, [{ tex: '\\alpha = ' + (Math.atan(mu) * 180 / Math.PI).toFixed(1) + '^\\circ' }]);
+        place(alphaLab, X(aFn) + 4, Y(mu * aFn) + 14);
+      } else {
+        setParts(alphaLab.box, []);
+      }
+
+      setParts(noteLab.box, sliding
+        ? [{ text: '需要 ' }, { tex: newtons(P) }, { tex: ' > \\mu F_n = ' + newtons(lim) }, { text: ' → 打滑' }]
+        : [{ text: '需要 ' }, { tex: newtons(P) }, { tex: ' \\le \\mu F_n = ' + newtons(lim) }, { text: ' → 稳定' }]);
+
+      const tail = P / mu <= FN_MAX
+        ? [{ text: '把 ' }, { tex: 'F_n' }, { text: ' 加到 ' }, { tex: newtons(Math.ceil(P / mu / 5) * 5) }, { text: ' 以上，或换更粗糙的地面，就能重新站住。' }]
+        : [{ text: '即使把法向载荷加到本演示的上限 ' }, { tex: newtons(FN_MAX) }, { text: ' 也不够，需要换更粗糙的地面（' }, { tex: '\\mu' }, { text: ' 更大）或减小外力。' }];
+
+      setParts(out, sliding
+        ? [{ text: '需要的切向力 = 水平外力 ' }, { tex: 'P' }, { text: ' = ' }, { tex: newtons(P) },
+           { text: '；地面能给的上限 ' }, { tex: '\\mu F_n' }, { text: ' = ' },
+           { tex: mu.toFixed(2) + ' \\times ' + fn.toFixed(0) + ' = ' + newtons(lim) },
+           { text: '，差 ' }, { tex: newtons(P - lim) }, { text: '，脚向右打滑。' }].concat(tail)
+        : [{ text: '需要的切向力 = 水平外力 ' }, { tex: 'P' }, { text: ' = ' }, { tex: newtons(P) },
+           { text: '；地面能给的上限 ' }, { tex: '\\mu F_n' }, { text: ' = ' },
+           { tex: mu.toFixed(2) + ' \\times ' + fn.toFixed(0) + ' = ' + newtons(lim) },
+           { text: '，够用（还剩 ' }, { tex: newtons(lim - P) }, { text: '），脚不动。' }]);
+
+      if (sliding && !reduced) {
+        if (!raf) { last = 0; raf = requestAnimationFrame(tick); }
+      } else {
+        stopAnim();
+        applyOffset(sliding ? 24 : 0);
+      }
+    };
+
+    surfBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        si = SURFACES.findIndex((s) => Math.abs(s.mu - Number(btn.dataset.mu)) < 1e-9);
+        surfBtns.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+        render();
+      });
+    });
+    fnSlider.addEventListener('input', render);
+    ftSlider.addEventListener('input', render);
+
+    render();
+  });
+</script>
+
+<style>
+  .fc-demo { margin: 1.5rem 0; }
+  .fc-demo svg { display: block; width: 100%; max-width: 820px; height: auto; margin: 0 auto; }
+  .fc-title { fill: var(--sl-color-text); font-size: 14px; font-weight: 600; }
+  .fc-ground { stroke: var(--sl-color-gray-2); stroke-width: 2.5; }
+  .fc-hatch { stroke: var(--sl-color-gray-4); stroke-width: 1.5; }
+  .fc-body { fill: light-dark(rgba(79, 70, 229, 0.1), rgba(139, 131, 255, 0.14)); stroke: light-dark(#4f46e5, #8b83ff); stroke-width: 2; }
+  .fc-body-lab { fill: light-dark(#4f46e5, #8b83ff); font-size: 12px; font-weight: 600; }
+  .fc-foot { fill: light-dark(rgba(13, 148, 136, 0.18), rgba(45, 212, 191, 0.2)); stroke: light-dark(#0d9488, #2dd4bf); stroke-width: 2.5; }
+  .fc-leg { fill: light-dark(rgba(13, 148, 136, 0.1), rgba(45, 212, 191, 0.12)); stroke: light-dark(#0d9488, #2dd4bf); stroke-width: 2; }
+  .fc-contact { fill: light-dark(#0f172a, #e2e8f0); }
+  .fc-fn { stroke: light-dark(#2563eb, #60a5fa); stroke-width: 4; stroke-linecap: round; }
+  .fc-mk-n { fill: light-dark(#2563eb, #60a5fa); }
+  .fc-push { stroke: light-dark(#dc2626, #f87171); stroke-width: 4; stroke-linecap: round; }
+  .fc-mk-p { fill: light-dark(#dc2626, #f87171); }
+  .fc-need { stroke: light-dark(#ea580c, #fb923c); stroke-width: 3; stroke-dasharray: 7 5; stroke-linecap: round; }
+  .fc-mk-r { fill: light-dark(#ea580c, #fb923c); }
+  .fc-actual { stroke: light-dark(#ea580c, #fb923c); stroke-width: 4; stroke-linecap: round; }
+  .fc-mk-f { fill: light-dark(#ea580c, #fb923c); }
+  .fc-arrow-hot { stroke: light-dark(#dc2626, #f87171); }
+  .fc-hidden { opacity: 0; }
+  .fc-axis { stroke: var(--sl-color-gray-3); stroke-width: 1.5; }
+  .fc-mk-a { fill: var(--sl-color-gray-3); }
+  .fc-cone { fill: light-dark(rgba(13, 148, 136, 0.18), rgba(45, 212, 191, 0.16)); stroke: none; }
+  .fc-cone-edge { fill: none; stroke: light-dark(#0d9488, #2dd4bf); stroke-width: 2; stroke-dasharray: 6 4; }
+  .fc-bound { stroke: var(--sl-color-gray-4); stroke-width: 1; stroke-dasharray: 3 4; }
+  .fc-bracket { stroke: light-dark(#0d9488, #2dd4bf); stroke-width: 1.5; }
+  .fc-cap-t, .fc-cap-b { stroke: light-dark(#0d9488, #2dd4bf); stroke-width: 2; }
+  .fc-bracket-out { stroke: light-dark(#dc2626, #f87171); }
+  .fc-ray { stroke: var(--sl-color-gray-2); stroke-width: 1.5; stroke-dasharray: 4 4; }
+  .fc-drop-h, .fc-drop-v { stroke: var(--sl-color-gray-4); stroke-width: 1; stroke-dasharray: 3 4; }
+  .fc-point { fill: var(--sl-color-accent); stroke: var(--sl-color-bg); stroke-width: 2; }
+  .fc-point-out { fill: light-dark(#dc2626, #f87171); }
+  .fc-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.1rem; max-width: 820px; margin: 0.55rem auto 0; }
+  .fc-surfaces { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .fc-surf { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.75rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
+  .fc-surf[aria-pressed='true'] { border-color: var(--sl-color-accent); color: var(--sl-color-accent); background: light-dark(rgba(79, 70, 229, 0.08), rgba(139, 131, 255, 0.14)); font-weight: 600; }
+  .fc-slider-label { display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 0.8125rem; color: var(--sl-color-gray-2); white-space: nowrap; }
+  .fc-slider-label input[type='range'] { width: 9rem; accent-color: var(--sl-color-accent); }
+  .fc-fn-out, .fc-ft-out { min-width: 4rem; text-align: right; color: var(--sl-color-accent); font-size: 0.8125rem; }
+  .fc-readout { max-width: 820px; margin: 0.45rem auto 0; font-size: 0.8125rem; color: var(--sl-color-text); line-height: 1.7; }
+  .fc-readout output { color: var(--sl-color-accent); font-weight: 600; }
+  .fc-demo figcaption { max-width: 820px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.875rem; line-height: 1.65; }
+</style>

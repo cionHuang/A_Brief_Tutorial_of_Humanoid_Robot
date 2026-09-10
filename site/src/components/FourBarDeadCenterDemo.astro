@@ -15,6 +15,8 @@
  *   import FourBarDeadCenterDemo from '../../../components/FourBarDeadCenterDemo.astro';
  *   <FourBarDeadCenterDemo />
  */
+import Tex from './Tex.astro';
+import { katexHtml } from '../lib/tex.js';
 ---
 
 <figure class="fb-demo">
@@ -49,7 +51,9 @@
       <circle class="fb-handle"></circle>
 
       {/* 死点状态标注 */}
-      <text x="185" y="66" class="fb-badge" text-anchor="middle">接近死点：输出几乎不动，斜率 ≈ 0</text>
+      <g class="fb-badge">
+        <Tex x={185} y={66} size={13} anchor="middle" color="light-dark(#dc2626, #f87171)" parts={[{ text: '接近死点：输出几乎不动，斜率 ' }, { tex: '\\approx 0' }]} />
+      </g>
 
       {/* 图例 */}
       <g class="fb-legend">
@@ -67,8 +71,8 @@
       {/* 坐标轴 */}
       <line x1="432" y1="302" x2="737" y2="302" class="fb-axis"></line>
       <line x1="432" y1="302" x2="432" y2="88" class="fb-axis"></line>
-      <text x="737" y="322" class="fb-note" text-anchor="end">θ<tspan class="fb-sub" dy="3">in</tspan><tspan dy="-3">（输入角）→</tspan></text>
-      <text x="424" y="92" class="fb-note" text-anchor="end">θ<tspan class="fb-sub" dy="3">out</tspan></text>
+      <Tex x={737} y={322} size={13} anchor="end" color="var(--sl-color-gray-2)" parts={[{ tex: '\\theta_{\\text{in}}' }, { text: '（输入角）→' }]} />
+      <Tex x={424} y={92} size={13} anchor="end" color="var(--sl-color-gray-2)" parts={[{ tex: '\\theta_{\\text{out}}' }]} />
       <text x="424" y="106" class="fb-note" text-anchor="end">（输出角）</text>
 
       {/* 死区淡色带（JS 填充） */}
@@ -84,24 +88,24 @@
   <p class="fb-hint">默认恒速旋转；在左侧机构上按住曲柄即可接管，松手后从当前角度恢复恒速</p>
 
   <p class="fb-readout">
-    θ<sub>in</sub> = <output class="fb-o-in">0</output>°　θ<sub>out</sub> = <output class="fb-o-out">0</output>°　dθ<sub>out</sub>/dθ<sub>in</sub> = <output class="fb-o-slope" aria-live="polite">0.00</output>　<span class="fb-status">正常传动</span>
+    <span set:html={katexHtml('\\theta_{\\text{in}}')}></span> = <output class="fb-o-in">0</output>　<span set:html={katexHtml('\\theta_{\\text{out}}')}></span> = <output class="fb-o-out">0</output>　<span set:html={katexHtml('\\mathrm{d}\\theta_{\\text{out}}/\\mathrm{d}\\theta_{\\text{in}}')}></span> = <output class="fb-o-slope" aria-live="polite">0.00</output>　<span class="fb-status">正常传动</span>
   </p>
 
   <div class="fb-gauges">
     <div class="fb-gauge">
-      <span class="fb-gauge-name">输入角速度 ω<sub>in</sub></span>
+      <span class="fb-gauge-name">输入角速度 <span set:html={katexHtml('\\omega_{\\text{in}}')}></span></span>
       <div class="fb-bar"><div class="fb-bar-fill fb-fill-in" style="width: 100%"></div></div>
-      <span class="fb-gauge-val">恒定 32°/s</span>
+      <span class="fb-gauge-val">恒定 <span set:html={katexHtml('32^\\circ/\\text{s}')}></span></span>
     </div>
     <div class="fb-gauge">
-      <span class="fb-gauge-name">输出角速度 |ω<sub>out</sub>|</span>
+      <span class="fb-gauge-name">输出角速度 <span set:html={katexHtml('\\lvert \\omega_{\\text{out}} \\rvert')}></span></span>
       <div class="fb-bar"><div class="fb-bar-fill fb-fill-out"></div></div>
-      <span class="fb-gauge-val fb-out-val">0°/s</span>
+      <span class="fb-gauge-val fb-out-val"></span>
     </div>
     <div class="fb-gauge">
       <span class="fb-gauge-name">硬顶时电机力矩指令（随卡住时间累积）</span>
       <div class="fb-bar"><div class="fb-bar-fill fb-fill-tau"></div></div>
-      <span class="fb-gauge-val fb-tau-val">上限的 0%</span>
+      <span class="fb-gauge-val fb-tau-val"></span>
     </div>
   </div>
 
@@ -111,6 +115,8 @@
 </figure>
 
 <script>
+  import { setParts } from '../lib/tex.js';
+
   document.querySelectorAll('.fb-demo').forEach((demo) => {
     // 机构参数（示意，满足 Grashof 曲柄摇杆条件：s + l ≤ p + q）
     const D = 100; // 机架
@@ -283,9 +289,9 @@
       // 死点状态
       const nearDead = Math.abs(s.slope) < SLOPE_EPS;
       demo.classList.toggle('fb-dead', nearDead);
-      oIn.textContent = inDeg.toFixed(0);
-      oOut.textContent = outDeg.toFixed(1);
-      oSlope.textContent = s.slope.toFixed(2);
+      setParts(oIn, [{ tex: inDeg.toFixed(0) + '^\\circ' }]);
+      setParts(oOut, [{ tex: outDeg.toFixed(1) + '^\\circ' }]);
+      setParts(oSlope, [{ tex: s.slope.toFixed(2) }]);
       statusEl.textContent = nearDead ? '接近死点：输出几乎不动' : '正常传动';
 
       // 仪表：输出角速度条 + 硬顶力矩指令（误差累积，饱和爆红）
@@ -298,7 +304,7 @@
       const OMEGA_DEG = 32;
       const outSpeed = Math.abs(s.slope) * OMEGA_DEG;
       outBar.style.width = `${((Math.abs(s.slope) / slopeMax) * 100).toFixed(1)}%`;
-      outVal.textContent = `${outSpeed.toFixed(0)}°/s`;
+      setParts(outVal, [{ tex: outSpeed.toFixed(0) + '^\\circ/\\text{s}' }]);
       // ω_out = 斜率 × ω_in（本帧实际输入角速度，°/s）；沿当前运动方向累积误差，
       // 回程不误判为“卡住”
       const omegaIn = dt > 0 ? (dTh * 180) / Math.PI / dt : 0;
@@ -306,7 +312,7 @@
       trackErr = Math.min(Math.max(trackErr + (TARGET_SPEED - omegaOutMag) * dt, 0), ERR_SAT);
       const demand = trackErr / ERR_SAT;
       tauBar.style.width = `${(demand * 100).toFixed(1)}%`;
-      tauVal.textContent = demand >= 1 ? '饱和：撞电流上限' : `上限的 ${(demand * 100).toFixed(0)}%`;
+      setParts(tauVal, demand >= 1 ? [{ text: '饱和：撞电流上限' }] : [{ text: '上限的 ' }, { tex: (demand * 100).toFixed(0) + '\\%' }]);
       demo.classList.toggle('fb-overload', demand >= 0.85);
     }
 

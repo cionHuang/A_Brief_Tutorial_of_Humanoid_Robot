@@ -19,7 +19,7 @@
 | [2.1 机构、关节与自由度](../02-mechanics/01-mechanisms-and-dof.mdx) | 20 分钟 | 无 |
 | [2.2 结构设计、材料与刚柔性](../02-mechanics/02-links-structure-and-materials.mdx) | 15 分钟 | 无 |
 | [2.3 传动与关节模组](../02-mechanics/03-transmission-and-joint-modules.mdx) | 20 分钟 | 2.1 |
-| [2.4 足部、接触与稳定性](../02-mechanics/04-foot-contact-and-stability.md) | 15 分钟 | 2.1 |
+| [2.4 足部、接触与稳定性](../02-mechanics/04-foot-contact-and-stability.mdx) | 15 分钟 | 2.1 |
 | [2.5 机器人描述文件](../02-mechanics/05-robot-description-files.md) | 20 分钟 | 2.1 |
 
 ## 第 3 章 电气与嵌入式（约 1.5 小时）

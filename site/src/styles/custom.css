@@ -1,3 +1,6 @@
+/* KaTeX 数学公式样式（含字体），通过 Vite 从 node_modules 解析 */
+@import 'katex/dist/katex.min.css';
+
 /* 中文长文阅读优化：放大正文字号、放宽行高 */
 .sl-markdown-content {
   font-size: 1.125rem; /* 18px，默认 16px 对中文偏小 */
@@ -7,6 +10,28 @@
 /* 表格内容跟随正文，避免字号落差 */
 .sl-markdown-content table {
   font-size: 1rem;
+}
+
+/* SVG 交互演示里的 KaTeX 标签（foreignObject 内嵌 HTML） */
+.tex-fo,
+.tex-box {
+  pointer-events: none; /* 标签不拦截拖动/点击 */
+  overflow: visible;
+}
+
+.tex-box .katex {
+  font-size: 1em; /* 字号由外层 font-size（SVG 用户单位）决定 */
+}
+
+/* 公式：长公式允许横向滚动，避免撑破正文；字号略随正文放大 */
+.sl-markdown-content .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35rem 0;
+}
+
+.sl-markdown-content .katex {
+  font-size: 1.06em;
 }
 
 /* 代码块保持紧凑，不随正文放大 */

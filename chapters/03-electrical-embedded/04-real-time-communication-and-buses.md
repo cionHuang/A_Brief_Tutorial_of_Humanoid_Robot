@@ -79,19 +79,19 @@ I2C（Inter-Integrated Circuit）使用地址化的两线总线，适合低速�
 
 一类周期消息的有效数据率可以先用下式估算：
 
-```text
-Rdata ≈ N × S × f
-```
+$$
+R_{\mathrm{data}} \approx N \times S \times f
+$$
 
-`N` 是消息数量或通道数量，`S` 是每条消息的有效字节数，`f` 是发送频率。实际链路还要加帧头、时间戳、校验、填充、仲裁间隔和协议开销。总线利用率过高时，平均带宽仍可能达标，但最坏等待时间和抖动会失控。
+$N$ 是消息数量或通道数量，$S$ 是每条消息的有效字节数，$f$ 是发送频率。实际链路还要加帧头、时间戳、校验、填充、仲裁间隔和协议开销。总线利用率过高时，平均带宽仍可能达标，但最坏等待时间和抖动会失控。
 
 ### 端到端延迟
 
 一条控制链路的延迟可以拆成：
 
-```text
-Ttotal = Tsample + Tqueue + Ttransport + Tcompute + Tpublish + Tactuator
-```
+$$
+T_{\mathrm{total}} = T_{\mathrm{sample}} + T_{\mathrm{queue}} + T_{\mathrm{transport}} + T_{\mathrm{compute}} + T_{\mathrm{publish}} + T_{\mathrm{actuator}}
+$$
 
 其中包括采样、队列等待、传输、计算、发布和执行器响应。时间戳应尽量记录采样时刻，并在日志中同时保留发送、接收和执行时间，便于区分传输延迟与调度延迟。
 

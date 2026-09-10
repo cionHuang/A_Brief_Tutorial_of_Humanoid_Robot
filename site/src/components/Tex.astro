@@ -1,0 +1,52 @@
+---
+/**
+ * SVG 内的数学标签：用 KaTeX 渲染，支持「中文纯文本 + 数学」混排。
+ *
+ * 放在 <svg> 里使用。内部用 foreignObject 嵌 HTML，因此 KaTeX 字体与页面 KaTeX
+ * 完全一致；中文部分走普通文本，跟随页面字体（不会掉进 KaTeX 的衬线回退）。
+ *
+ * props:
+ *  - parts: 片段数组，{ tex: '\\mu F_n' } 走 KaTeX，{ text: '地面 ' } 走普通文本
+ *  - x / y: SVG 用户坐标；y 默认是文字基线（与 <text> 的行为一致）
+ *  - anchor: 'start' | 'middle' | 'end'
+ *  - size: 字号（SVG 用户单位）
+ *  - color: 颜色（CSS 值，如 light-dark(...) 或 var(--sl-color-text)）
+ *  - baseline: 'auto'（y 为基线）| 'central'（y 为垂直中心）
+ *  - role: 可选标记；客户端用 [data-role="..."] 找到 G 组，可改 transform 定位、
+ *          用 .tex-box 更新内容
+ */
+import katex from 'katex';
+
+const {
+  parts = [],
+  x = 0,
+  y = 0,
+  size = 14,
+  anchor = 'middle',
+  color = 'var(--sl-color-text)',
+  baseline = 'auto',
+  role,
+} = Astro.props;
+
+const html = parts
+  .map((part) =>
+    part && part.tex != null
+      ? katex.renderToString(part.tex, { throwOnError: false, strict: false })
+      : String((part && part.text) ?? ''),
+  )
+  .join('');
+
+const W = 720;
+const H = size * 3;
+const left = anchor === 'middle' ? -W / 2 : anchor === 'end' ? -W : 0;
+const top = -H / 2 - (baseline === 'auto' ? size * 0.34 : 0);
+const justify = anchor === 'middle' ? 'center' : anchor === 'end' ? 'flex-end' : 'flex-start';
+const style =
+  'width:' + W + 'px;height:' + H + 'px;display:flex;align-items:center;justify-content:' +
+  justify + ';color:' + color + ';font-size:' + size + 'px;line-height:1;white-space:nowrap;';
+---
+<g data-role={role} transform={'translate(' + x + ' ' + y + ')'}>
+  <foreignObject x={left} y={top} width={W} height={H} class="tex-fo">
+    <div class="tex-box" style={style} set:html={html}></div>
+  </foreignObject>
+</g>

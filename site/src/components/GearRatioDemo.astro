@@ -14,45 +14,53 @@
  *   import GearRatioDemo from '../../../components/GearRatioDemo.astro';
  *   <GearRatioDemo />
  */
+import Tex from './Tex.astro';
+import { katexHtml } from '../lib/tex.js';
 ---
 
 <figure class="gr-demo">
   <svg viewBox="0 0 760 300" role="img" aria-label="传动比演示：两个啮合齿轮的齿数比决定转速与力矩的转换">
     <g class="gr-input-gear"><path class="gr-gear"></path></g>
     <g class="gr-output-gear"><path class="gr-gear"></path></g>
-    <text class="gr-gear-label" data-gr-z1 text-anchor="middle"></text>
-    <text class="gr-gear-label" data-gr-z2 text-anchor="middle"></text>
+    <Tex role="z1" x={0} y={0} size={13} anchor="middle" color="var(--sl-color-gray-2)" />
+    <Tex role="z2" x={0} y={0} size={13} anchor="middle" color="var(--sl-color-gray-2)" />
 
-    <text class="gr-title" x="440" y="54">传动比 N = z2 / z1 = ωm / ωout</text>
-    <text class="gr-live" x="440" y="104" data-gr-live1></text>
-    <text class="gr-live" x="440" y="148" data-gr-live2></text>
-    <text class="gr-live" x="440" y="192" data-gr-live3></text>
-    <text class="gr-count" x="440" y="244" data-gr-count></text>
-    <text class="gr-note" x="440" y="272">η 为传动效率，此处取 0.85</text>
+    <Tex x={440} y={54} size={15} anchor="start" color="var(--sl-color-text)" parts={[{ text: '传动比 ' }, { tex: 'N = z_2 / z_1 = \\omega_m / \\omega_{out}' }]} />
+    <Tex role="live1" x={440} y={104} size={14} anchor="start" color="var(--sl-color-accent)" />
+    <Tex role="live2" x={440} y={148} size={14} anchor="start" color="var(--sl-color-accent)" />
+    <Tex role="live3" x={440} y={192} size={14} anchor="start" color="var(--sl-color-accent)" />
+    <Tex role="count" x={440} y={244} size={13} anchor="start" color="var(--sl-color-text)" />
+    <Tex x={440} y={272} size={11} anchor="start" color="var(--sl-color-gray-3)" parts={[{ tex: '\\eta' }, { text: ' 为传动效率，此处取 0.85' }]} />
   </svg>
 
   <div class="gr-controls">
-    <label>输出齿数 z2 <input type="range" data-gr-ratio min="2" max="5" step="1" value="4" /> <output data-gr-ratio-out>4</output> 倍</label>
+    <label>输出齿数 <span set:html={katexHtml('z_2')}></span> <input type="range" data-gr-ratio min="2" max="5" step="1" value="4" /> <output data-gr-ratio-out>4</output> 倍</label>
     <button type="button" class="gr-play" data-gr-play aria-pressed="true">暂停</button>
   </div>
 
   <figcaption>
-    输入齿轮有 z1 = 10 个齿，输出齿轮有 z2 = 10N 个齿，因此传动比 N = z2 / z1：输入转 N 圈，输出才转 1 圈。转速按 ωout = ωm / N 降低，力矩按 τout ≈ η·N·τm 放大——这就是前面传动链演示里那对齿轮的定量关系。拖动滑块改变 N，可以看到齿数、转速和力矩如何一起变化。
+    输入齿轮有 <span set:html={katexHtml('z_1 = 10')}></span> 个齿，输出齿轮有 <span set:html={katexHtml('z_2 = 10N')}></span> 个齿，因此传动比 <span set:html={katexHtml('N = z_2 / z_1')}></span>：输入转 <span set:html={katexHtml('N')}></span> 圈，输出才转 1 圈。转速按 <span set:html={katexHtml('\\omega_{out} = \\omega_m / N')}></span> 降低，力矩按 <span set:html={katexHtml('\\tau_{out} \\approx \\eta \\cdot N \\cdot \\tau_m')}></span> 放大——这就是前面传动链演示里那对齿轮的定量关系。拖动滑块改变 <span set:html={katexHtml('N')}></span>，可以看到齿数、转速和力矩如何一起变化。
   </figcaption>
 </figure>
 
 <script>
+  import { setParts } from '../lib/tex.js';
+
   document.querySelectorAll('.gr-demo').forEach((demo) => {
     const inputGearG = demo.querySelector('.gr-input-gear');
     const outputGearG = demo.querySelector('.gr-output-gear');
     const inputPath = demo.querySelector('.gr-input-gear path');
     const outputPath = demo.querySelector('.gr-output-gear path');
-    const z1Label = demo.querySelector('[data-gr-z1]');
-    const z2Label = demo.querySelector('[data-gr-z2]');
-    const live1 = demo.querySelector('[data-gr-live1]');
-    const live2 = demo.querySelector('[data-gr-live2]');
-    const live3 = demo.querySelector('[data-gr-live3]');
-    const countText = demo.querySelector('[data-gr-count]');
+    const boxOf = (role) => {
+      const group = demo.querySelector('[data-role="' + role + '"]');
+      return { group: group, box: group ? group.querySelector('.tex-box') : null };
+    };
+    const z1Lab = boxOf('z1');
+    const z2Lab = boxOf('z2');
+    const live1 = boxOf('live1');
+    const live2 = boxOf('live2');
+    const live3 = boxOf('live3');
+    const countLab = boxOf('count');
     const ratioSlider = demo.querySelector('[data-gr-ratio]');
     const ratioOut = demo.querySelector('[data-gr-ratio-out]');
     const playBtn = demo.querySelector('[data-gr-play]');
@@ -85,6 +93,10 @@
       return 'M' + pts.map((p) => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L') + ' Z';
     };
 
+    const place = (lab, px, py) => {
+      if (lab.group) lab.group.setAttribute('transform', 'translate(' + px.toFixed(1) + ' ' + py.toFixed(1) + ')');
+    };
+
     const layout = () => {
       N = Number(ratioSlider.value);
       r2 = R1 * N;
@@ -93,22 +105,20 @@
       outputPath.setAttribute('d', gearPath(Z1 * N, r2 - 3, r2 + 3));
       inputGearG.setAttribute('transform', 'translate(' + CX1 + ' ' + CY + ')');
       outputGearG.setAttribute('transform', 'translate(' + cx2 + ' ' + CY + ')');
-      z1Label.setAttribute('x', String(CX1));
-      z1Label.setAttribute('y', String(CY + R1 + 34));
-      z1Label.textContent = 'z1 = ' + Z1;
-      z2Label.setAttribute('x', String(cx2));
-      z2Label.setAttribute('y', String(CY + r2 + 34));
-      z2Label.textContent = 'z2 = ' + Z1 * N;
+      place(z1Lab, CX1, CY + R1 + 34);
+      setParts(z1Lab.box, [{ tex: 'z_1 = ' + Z1 }]);
+      place(z2Lab, cx2, CY + r2 + 34);
+      setParts(z2Lab.box, [{ tex: 'z_2 = ' + Z1 * N }]);
       ratioOut.textContent = String(N);
-      live1.textContent = 'N = ' + (Z1 * N) + ' / ' + Z1 + ' = ' + N;
-      live2.textContent = 'ωout = ωm / N = ' + (1 / N).toFixed(2) + ' ωm';
-      live3.textContent = 'τout ≈ η N τm = ' + (ETA * N).toFixed(2) + ' τm';
+      setParts(live1.box, [{ tex: 'N = ' + (Z1 * N) + ' / ' + Z1 + ' = ' + N }]);
+      setParts(live2.box, [{ tex: '\\omega_{out} = \\omega_m / N = ' + (1 / N).toFixed(2) + '\\ \\omega_m' }]);
+      setParts(live3.box, [{ tex: '\\tau_{out} \\approx \\eta N \\tau_m = ' + (ETA * N).toFixed(2) + '\\ \\tau_m' }]);
     };
 
     const updateCount = () => {
       const inCycle = (thetaIn / (Math.PI * 2)) % N;
       const outCycle = inCycle / N;
-      countText.textContent = '本轮：输入 ' + inCycle.toFixed(1) + ' / ' + N + ' 圈　输出 ' + outCycle.toFixed(1) + ' / 1 圈';
+      setParts(countLab.box, [{ text: '本轮：输入 ' }, { tex: inCycle.toFixed(1) + ' / ' + N }, { text: ' 圈　输出 ' }, { tex: outCycle.toFixed(1) + ' / 1' }, { text: ' 圈' }]);
     };
 
     const loop = (ts) => {

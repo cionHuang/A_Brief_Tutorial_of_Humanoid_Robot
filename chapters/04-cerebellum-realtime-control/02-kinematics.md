@@ -14,21 +14,21 @@
 
 ### 关节链与变换相乘
 
-正运动学（Forward Kinematics, FK）回答的是：给定关节变量 `q`，末端坐标系相对基座或世界坐标系的位姿是什么？对一条串联链，可以把每个关节的局部变换依次相乘：
+正运动学（Forward Kinematics, FK）回答的是：给定关节变量 $\boldsymbol{q}$，末端坐标系相对基座或世界坐标系的位姿是什么？对一条串联链，可以把每个关节的局部变换依次相乘：
 
-```text
-T_WF(q) = T_WP T_PL1(q1) T_L1L2(q2) ... T_LnF(qn)
-```
+$$
+\boldsymbol{T}_{WF}(\boldsymbol{q}) = \boldsymbol{T}_{WP} \boldsymbol{T}_{PL_1}(q_1) \boldsymbol{T}_{L_1L_2}(q_2) \cdots \boldsymbol{T}_{L_nF}(q_n)
+$$
 
-`T_AB` 表示把坐标系 `B` 中的点变换到坐标系 `A`。因此，矩阵下标必须首尾相接；把 `T_PL` 和 `T_LP` 混用，会得到维度正确但物理方向错误的结果。[4.1 节](./01-robot-mathematics-foundations.md)中的齐次变换负责把旋转和平移放进同一矩阵，运动学则把这些变换沿实际关节链组织起来。
+$\boldsymbol{T}_{AB}$ 表示把坐标系 $B$ 中的点变换到坐标系 $A$。因此，矩阵下标必须首尾相接；把 $\boldsymbol{T}_{PL}$ 和 $\boldsymbol{T}_{LP}$ 混用，会得到维度正确但物理方向错误的结果。[4.1 节](./01-robot-mathematics-foundations.md)中的齐次变换负责把旋转和平移放进同一矩阵，运动学则把这些变换沿实际关节链组织起来。
 
 对某一个旋转关节，局部变换可抽象为：
 
-```text
-T_parent_child(qi) = T_origin Rot(axis, qi)
-```
+$$
+\boldsymbol{T}_{\text{parent} \to \text{child}}(q_i) = \boldsymbol{T}_{\text{origin}} \, \mathrm{Rot}(\text{axis}, q_i)
+$$
 
-其中 `origin` 来自模型中的父子坐标关系，`axis` 和零位决定正方向，`qi` 是相对零位的关节变量。真实模型还可能包含固定偏置、关节安装姿态和工具坐标系；不能只把一串关节角直接相加当作末端姿态。
+其中 $\text{origin}$ 来自模型中的父子坐标关系，$\text{axis}$ 和零位决定正方向，$q_i$ 是相对零位的关节变量。真实模型还可能包含固定偏置、关节安装姿态和工具坐标系；不能只把一串关节角直接相加当作末端姿态。
 
 ### G1 的正运动学落点
 
@@ -44,67 +44,73 @@ pelvis
 → left_ankle_roll_link
 ```
 
-给定 `q` 后，FK 可以计算左脚、右脚、手腕或 IMU 安装点在 `pelvis` 或 `World` 中的位姿。若要得到世界坐标中的脚端位置，还必须提供浮动基座位姿 `T_WP`；只给 29 个驱动关节角，不能唯一决定机器人在世界中的整体位置和朝向。
+给定 $\boldsymbol{q}$ 后，FK 可以计算左脚、右脚、手腕或 IMU 安装点在 `pelvis` 或 `World` 中的位姿。若要得到世界坐标中的脚端位置，还必须提供浮动基座位姿 $\boldsymbol{T}_{WP}$；只给 29 个驱动关节角，不能唯一决定机器人在世界中的整体位置和朝向。
 
 ## 逆运动学：从末端目标反求关节变量
 
 ### 位置逆解与位姿逆解
 
-逆运动学（Inverse Kinematics, IK）把期望末端位姿 `T_d` 转换为关节变量 `q`：
+逆运动学（Inverse Kinematics, IK）把期望末端位姿 $\boldsymbol{T}_d$ 转换为关节变量 $\boldsymbol{q}$：
 
-```text
-find q  such that  T(q) = T_d
-```
+$$
+\text{find } \boldsymbol{q} \ \text{ such that } \ \boldsymbol{T}(\boldsymbol{q}) = \boldsymbol{T}_d
+$$
 
 实际计算通常允许误差，并同时加入关节限位、自碰撞、姿态和接触约束：
 
-```text
-minimize  ||e_pose(q)||² + lambda_reg ||q - q_nom||²
-subject to
-    q_min <= q <= q_max
-    collision_distance(q) >= d_safe
-    contact_constraints(q) = 0
-```
+$$
+\begin{aligned}
+& \min \ \lVert \boldsymbol{e}_{\mathrm{pose}}(\boldsymbol{q}) \rVert^2 + \lambda_{\mathrm{reg}} \lVert \boldsymbol{q} - \boldsymbol{q}_{\mathrm{nom}} \rVert^2 \\
+& \text{subject to} \\
+& \quad q_{\min} \le \boldsymbol{q} \le q_{\max} \\
+& \quad \mathrm{collision\_distance}(\boldsymbol{q}) \ge d_{\mathrm{safe}} \\
+& \quad \mathrm{contact\_constraints}(\boldsymbol{q}) = 0
+\end{aligned}
+$$
 
-位置误差可以直接用 `p_d - p(q)`；姿态误差不建议简单相减欧拉角，因为角度存在跳变、轴顺序和万向节锁问题。更稳定的做法是使用旋转矩阵的对数映射，或使用四元数误差，再将位置和姿态误差按任务权重组合：
+位置误差可以直接用 $\boldsymbol{p}_d - \boldsymbol{p}(\boldsymbol{q})$；姿态误差不建议简单相减欧拉角，因为角度存在跳变、轴顺序和万向节锁问题。更稳定的做法是使用旋转矩阵的对数映射，或使用四元数误差，再将位置和姿态误差按任务权重组合：
 
-```text
-e_pose = [ p_d - p(q) ]
-         [ Log(R_d R(q)^T) ]
-```
+$$
+\boldsymbol{e}_{\mathrm{pose}} =
+\begin{bmatrix}
+\boldsymbol{p}_d - \boldsymbol{p}(\boldsymbol{q}) \\
+\operatorname{Log}\left(\boldsymbol{R}_d \boldsymbol{R}(\boldsymbol{q})^\top\right)
+\end{bmatrix}
+$$
 
-这里的 `Log` 输出局部旋转向量，单位通常是弧度。位置误差单位是米，姿态误差单位是弧度，进入优化器前应使用权重或尺度归一化；否则某一类误差会因为数值量纲不同而支配求解。
+这里的 $\operatorname{Log}$ 输出局部旋转向量，单位通常是弧度。位置误差单位是米，姿态误差单位是弧度，进入优化器前应使用权重或尺度归一化；否则某一类误差会因为数值量纲不同而支配求解。
 
 ### 解析解、数值解与冗余
 
 - **解析逆解（Analytical IK）**：利用特定结构直接写出关节角公式，速度快、分支清楚，但对结构和坐标约定敏感，换工具坐标、增加腰部自由度后通常需要重新推导。
-- **数值逆解（Numerical IK）**：从当前 `q` 迭代减小位姿误差，适用于复杂链和一般约束，但依赖初值、步长、阻尼和停止条件，可能收敛到错误分支或局部最优。
+- **数值逆解（Numerical IK）**：从当前 $\boldsymbol{q}$ 迭代减小位姿误差，适用于复杂链和一般约束，但依赖初值、步长、阻尼和停止条件，可能收敛到错误分支或局部最优。
 - **优化型逆解（Optimization-based IK）**：把限位、碰撞、接触、姿态偏好和多任务统一进约束优化，适合人形机器人的全身协调，但计算量和实时性要求更高。
 
-当关节变量多于任务维度时，系统是冗余的（Redundant）。例如只要求一只手腕的位置和朝向，G1 的腰部、肩部、肘部和躯干仍有多种组合可完成任务。`q_nom`、最小关节变化、远离限位或提高可操作性的次目标，可以帮助求解器在多个解中选择连续且易控制的一组。
+当关节变量多于任务维度时，系统是冗余的（Redundant）。例如只要求一只手腕的位置和朝向，G1 的腰部、肩部、肘部和躯干仍有多种组合可完成任务。$\boldsymbol{q}_{\mathrm{nom}}$、最小关节变化、远离限位或提高可操作性的次目标，可以帮助求解器在多个解中选择连续且易控制的一组。
 
 ## 雅可比：速度和力的局部映射
 
 ### 速度映射
 
-雅可比矩阵（Jacobian）是运动学在当前构型附近的一阶线性化。对末端空间速度（Twist）`V`，常写为：
+雅可比矩阵（Jacobian）是运动学在当前构型附近的一阶线性化。对末端空间速度（Twist）$\boldsymbol{V}$，常写为：
 
-```text
-V = [ v ] = J(q) q_dot
-    [omega]
-```
+$$
+\boldsymbol{V} =
+\begin{bmatrix} \boldsymbol{v} \\ \boldsymbol{\omega} \end{bmatrix}
+= \boldsymbol{J}(\boldsymbol{q}) \dot{\boldsymbol{q}}
+$$
 
-其中 `v` 是线速度，`omega` 是角速度。若末端任务只有三维位置，`J` 可以是 `3 x n`；若同时控制位置和姿态，通常使用 `6 x n` 的几何雅可比。`n` 是参与该末端运动的关节数，浮动基座是否纳入 `q` 和 `J` 必须在接口中明确。
+其中 $\boldsymbol{v}$ 是线速度，$\boldsymbol{\omega}$ 是角速度。若末端任务只有三维位置，$\boldsymbol{J}$ 可以是 $3 \times n$；若同时控制位置和姿态，通常使用 $6 \times n$ 的几何雅可比。$n$ 是参与该末端运动的关节数，浮动基座是否纳入 $\boldsymbol{q}$ 和 $\boldsymbol{J}$ 必须在接口中明确。
 
 ### 力矩映射
 
-在功率一致的坐标约定下，末端力/力矩 `F` 与关节力矩 `tau` 满足：
+在功率一致的坐标约定下，末端力/力矩 $\boldsymbol{F}$ 与关节力矩 $\boldsymbol{\tau}$ 满足：
 
-```text
-tau = J(q)^T F
-```
+$$
+\boldsymbol{\tau} = \boldsymbol{J}(\boldsymbol{q})^\top \boldsymbol{F}
+$$
 
-这表示末端受到的力如何反映到各关节，而不是说每个关节平均分担负载。`J` 的列由关节轴线和关节到末端的几何关系共同决定；轴线、坐标系或力的表达坐标系错一个，转置映射也会给出错误的力矩方向。
+这表示末端受到的力如何反映到各关节，而不是说每个关节平均分担负载。$\boldsymbol{J}$ 的列由关节轴线和关节到末端的几何关系共同决定；轴线、坐标系或力的表达坐标系错一个，转置映射也会给出错误的力矩方向。
 
 ## 奇异位形与阻尼最小二乘
 
@@ -112,21 +118,21 @@ tau = J(q)^T F
 
 工作空间（Workspace）描述末端能够到达的位置或位姿集合，但“可到达”不等于“在所有方向上都能灵活运动”。在某些构型，雅可比的列或行变得线性相关，系统进入奇异位形（Singular Configuration）：某些方向的末端速度趋近于零，或为了追踪很小的末端速度需要很大的关节速度。
 
-可用最小奇异值 `sigma_min(J)`、条件数 `kappa(J)` 或可操作性指标监测这一问题。下面的行列式指标适用于任务雅可比具有完整行秩的情形；如果 `J` 是降维任务或本身行秩不足，应优先看奇异值，而不是直接比较行列式：
+可用最小奇异值 $\sigma_{\min}(\boldsymbol{J})$、条件数 $\kappa(\boldsymbol{J})$ 或可操作性指标监测这一问题。下面的行列式指标适用于任务雅可比具有完整行秩的情形；如果 $\boldsymbol{J}$ 是降维任务或本身行秩不足，应优先看奇异值，而不是直接比较行列式：
 
-```text
-w(q) = sqrt(det(J J^T))
-```
+$$
+w(\boldsymbol{q}) = \sqrt{\det(\boldsymbol{J}\boldsymbol{J}^\top)}
+$$
 
-当 `w` 很小或 `kappa` 很大时，应减小步长、改变任务姿态、切换冗余姿态或停止向奇异区域推进。它与前文的四连杆死点、4.1 节的万向节锁都使用了“局部映射病态”这一数学语言，但必须继续追问退化来自机构几何、任务约束，还是姿态表示本身。
+当 $w$ 很小或 $\kappa$ 很大时，应减小步长、改变任务姿态、切换冗余姿态或停止向奇异区域推进。它与前文的四连杆死点、4.1 节的万向节锁都使用了“局部映射病态”这一数学语言，但必须继续追问退化来自机构几何、任务约束，还是姿态表示本身。
 
 速度逆解常用阻尼最小二乘（Damped Least Squares, DLS）：
 
-```text
-q_dot = J^T (J J^T + lambda^2 I)^-1 V_d
-```
+$$
+\dot{\boldsymbol{q}} = \boldsymbol{J}^\top (\boldsymbol{J}\boldsymbol{J}^\top + \lambda^2 \boldsymbol{I})^{-1} \boldsymbol{V}_d
+$$
 
-`lambda` 越大，越能抑制奇异附近的速度爆炸，但末端跟踪误差也会增大。阻尼无法“修复”奇异位形，它做的是在速度、误差和数值稳定性之间的可控折中；工程实现还应配合关节速度限幅、目标变化率限制和失败状态返回。
+$\lambda$ 越大，越能抑制奇异附近的速度爆炸，但末端跟踪误差也会增大。阻尼无法“修复”奇异位形，它做的是在速度、误差和数值稳定性之间的可控折中；工程实现还应配合关节速度限幅、目标变化率限制和失败状态返回。
 
 ## 约束、分支和连续性
 
@@ -134,8 +140,8 @@ q_dot = J^T (J J^T + lambda^2 I)^-1 V_d
 
 | 约束 | 典型检查 | 忽略后的结果 |
 | --- | --- | --- |
-| 关节范围 | `q_min <= q <= q_max` | 解在模型外，驱动器或机械限位拒绝执行 |
-| 关节速度/加速度 | `q_dot`、`q_ddot` 上限 | 相邻目标跳变，跟踪冲击和温升增加 |
+| 关节范围 | $q_{\min} \le \boldsymbol{q} \le q_{\max}$ | 解在模型外，驱动器或机械限位拒绝执行 |
+| 关节速度/加速度 | $\dot{\boldsymbol{q}}$、$\ddot{\boldsymbol{q}}$ 上限 | 相邻目标跳变，跟踪冲击和温升增加 |
 | 自碰撞 | link-link 距离、碰撞几何 | 手臂撞躯干、腿部互撞 |
 | 接触约束 | 足底位置、法向、摩擦和支撑脚 | 规划解在仿真中滑动或穿地 |
 | 姿态约束 | 旋转误差、倾角、工具轴方向 | 位置到达但脚底或手腕方向错误 |

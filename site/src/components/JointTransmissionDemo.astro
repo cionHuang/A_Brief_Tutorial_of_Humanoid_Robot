@@ -13,6 +13,8 @@
  *   import JointTransmissionDemo from '../../../components/JointTransmissionDemo.astro';
  *   <JointTransmissionDemo />
  */
+import Tex from './Tex.astro';
+import { katexHtml } from '../lib/tex.js';
 ---
 
 <figure class="jt-demo">
@@ -34,8 +36,8 @@
     <g class="jt-input-gear"><path class="jt-gear"></path></g>
     <g class="jt-output-gear"><path class="jt-gear"></path></g>
     <text class="jt-label" x="356" y="40" text-anchor="middle">减速器 Reducer</text>
-    <text class="jt-sub" x="356" y="60" text-anchor="middle">N = ωm / ωout</text>
-    <text class="jt-ratio" x="0" y="0" text-anchor="middle"></text>
+    <Tex x={356} y={60} size={13} anchor="middle" color="var(--sl-color-gray-2)" parts={[{ tex: 'N = \\omega_m / \\omega_{out}' }]} />
+    <Tex role="ratio" x={0} y={0} size={15} anchor="middle" color="var(--sl-color-accent)" />
 
     <!-- 输出轴 + 连杆 -->
     <line class="jt-shaft" x1="0" y1="200" x2="0" y2="200" data-out-shaft></line>
@@ -44,7 +46,7 @@
       <circle class="jt-link-end" cx="142" cy="0" r="9"></circle>
     </g>
     <text class="jt-label" x="650" y="40" text-anchor="middle">关节输出 Joint Output</text>
-    <text class="jt-sub" x="650" y="60" text-anchor="middle">τout</text>
+    <Tex x={650} y={60} size={13} anchor="middle" color="var(--sl-color-gray-2)" parts={[{ tex: '\\tau_{out}' }]} />
 
     <!-- 输入端 vs 输出端 对比条 -->
     <g class="jt-bars">
@@ -69,7 +71,7 @@
 
   <div class="jt-controls">
     <label>电机转速 <input type="range" data-jt-speed min="500" max="6000" step="100" value="3000" /> <output data-jt-speed-out>3000</output> rpm</label>
-    <label>减速比 N <input type="range" data-jt-ratio min="2" max="5" step="1" value="4" /> <output data-jt-ratio-out>4</output></label>
+    <label>减速比 <span set:html={katexHtml('N')}></span> <input type="range" data-jt-ratio min="2" max="5" step="1" value="4" /> <output data-jt-ratio-out>4</output></label>
     <label>负载力矩 <input type="range" data-jt-load min="0" max="60" step="1" value="20" /> <output data-jt-load-out>20</output> N·m</label>
     <button type="button" class="jt-play" data-jt-play aria-pressed="true">暂停</button>
   </div>
@@ -77,11 +79,13 @@
   <p class="jt-readout"><output data-jt-out aria-live="polite"></output></p>
 
   <figcaption>
-    电机以转速 ωm 转动，经减速比 N 的齿轮副后，输出转速降为 ωout = ωm / N，输出力矩按 τout ≈ η·N·τm 放大（η 为传动效率，这里取 0.85）。拖动滑块可以看到：减速比越大，输出越慢越有劲，但同样的负载需要的电机力矩更小；负载越大，电机力矩、电流和发热越高。齿轮转速已按比例缩放以便观察，数值按所选工况计算。
+    电机以转速 <span set:html={katexHtml('\\omega_m')}></span> 转动，经减速比 <span set:html={katexHtml('N')}></span> 的齿轮副后，输出转速降为 <span set:html={katexHtml('\\omega_{out} = \\omega_m / N')}></span>，输出力矩按 <span set:html={katexHtml('\\tau_{out} \\approx \\eta \\cdot N \\cdot \\tau_m')}></span> 放大（<span set:html={katexHtml('\\eta')}></span> 为传动效率，这里取 0.85）。拖动滑块可以看到：减速比越大，输出越慢越有劲，但同样的负载需要的电机力矩更小；负载越大，电机力矩、电流和发热越高。齿轮转速已按比例缩放以便观察，数值按所选工况计算。
   </figcaption>
 </figure>
 
 <script>
+  import { setParts } from '../lib/tex.js';
+
   document.querySelectorAll('.jt-demo').forEach((demo) => {
     const svg = demo.querySelector('svg');
     const rotorG = demo.querySelector('.jt-rotor');
@@ -92,7 +96,10 @@
     const linkG = demo.querySelector('.jt-link');
     const motorShaft = demo.querySelectorAll('.jt-shaft')[0];
     const outShaft = demo.querySelector('[data-out-shaft]');
-    const ratioText = demo.querySelector('.jt-ratio');
+    const boxOf = (role) => {
+      const group = demo.querySelector('[data-role="' + role + '"]');
+      return { group: group, box: group ? group.querySelector('.tex-box') : null };
+    };
     const speedSlider = demo.querySelector('[data-jt-speed]');
     const ratioSlider = demo.querySelector('[data-jt-ratio]');
     const loadSlider = demo.querySelector('[data-jt-load]');
@@ -100,6 +107,7 @@
     const ratioOut = demo.querySelector('[data-jt-ratio-out]');
     const loadOut = demo.querySelector('[data-jt-load-out]');
     const out = demo.querySelector('[data-jt-out]');
+    const ratioLab = boxOf('ratio');
     const playBtn = demo.querySelector('[data-jt-play]');
     const speedBarM = demo.querySelector('.jt-bar-speed-m');
     const speedBarO = demo.querySelector('.jt-bar-speed-o');
@@ -134,6 +142,10 @@
       return 'M' + pts.map((p) => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L') + ' Z';
     };
 
+    const place = (lab, px, py) => {
+      if (lab.group) lab.group.setAttribute('transform', 'translate(' + px.toFixed(1) + ' ' + py.toFixed(1) + ')');
+    };
+
     const layout = () => {
       N = Number(ratioSlider.value);
       r2 = R1 * N;
@@ -145,9 +157,8 @@
       motorShaft.setAttribute('x2', String(cx1));
       outShaft.setAttribute('x1', String(CX2));
       outShaft.setAttribute('x2', String(CX2 + 0.01));
-      ratioText.setAttribute('x', '356');
-      ratioText.setAttribute('y', '370');
-      ratioText.textContent = 'N = ' + N;
+      place(ratioLab, 356, 370);
+      setParts(ratioLab.box, [{ tex: 'N = ' + N }]);
     };
 
     const updateNumbers = () => {
@@ -169,11 +180,26 @@
       speedOut.textContent = String(rpm);
       ratioOut.textContent = String(N);
       loadOut.textContent = String(tauLoad);
-      out.textContent =
-        '电机 ωm = ' + Math.round(rpm) + ' rpm、τm = ' + tauM.toFixed(1) + ' N·m　' +
-        '输出 ωout = ' + Math.round((wout * 60) / (Math.PI * 2)) + ' rpm、τout = ' + tauOut.toFixed(1) + ' N·m　' +
-        'Pout = ' + Math.round(pOut) + ' W、Pin = ' + Math.round(pIn) + ' W、损耗 ' + Math.round(loss) + ' W　' +
-        '电机负载 ' + Math.round((tauM / 15) * 100) + '%、发热 ' + Math.round(heat * 100) + '%';
+      setParts(out, [
+        { text: '电机 ' },
+        { tex: '\\omega_m = ' + Math.round(rpm) + '\\ \\text{rpm}' },
+        { text: '、' },
+        { tex: '\\tau_m = ' + tauM.toFixed(1) + '\\ \\text{N}\\!\\cdot\\!\\text{m}' },
+        { text: '　输出 ' },
+        { tex: '\\omega_{out} = ' + Math.round((wout * 60) / (Math.PI * 2)) + '\\ \\text{rpm}' },
+        { text: '、' },
+        { tex: '\\tau_{out} = ' + tauOut.toFixed(1) + '\\ \\text{N}\\!\\cdot\\!\\text{m}' },
+        { text: '　' },
+        { tex: 'P_{out} = ' + Math.round(pOut) + '\\ \\text{W}' },
+        { text: '、' },
+        { tex: 'P_{in} = ' + Math.round(pIn) + '\\ \\text{W}' },
+        { text: '、损耗 ' },
+        { tex: Math.round(loss) + '\\ \\text{W}' },
+        { text: '　电机负载 ' },
+        { tex: Math.round((tauM / 15) * 100) + '\\%' },
+        { text: '、发热 ' },
+        { tex: Math.round(heat * 100) + '\\%' },
+      ]);
     };
 
     const loop = (ts) => {

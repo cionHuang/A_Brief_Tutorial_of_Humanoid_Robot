@@ -1,0 +1,446 @@
+---
+/**
+ * 支撑多边形（Support Polygon）与重心投影交互演示。
+ *
+ * 俯视图：脚与地面的接地区域取凸包，就是支撑多边形。整机重心（CoM）在
+ * 地面上的投影 p_CoM 可以拖拽（也可用方向键微调）。投影在多边形内时给出
+ * 稳定裕量（到边界的最小距离）；越界后显示将翻倒的方向。
+ * 切换「双脚 / 仅左脚 / 仅右脚」可以看到支撑域收缩、同一投影由稳定变越界。
+ *
+ * 纯 SVG + 原生 JS，无外部依赖；样式跟随 Starlight 明暗主题。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import SupportPolygonDemo from '../../../components/SupportPolygonDemo.astro';
+ *   <SupportPolygonDemo />
+ */
+
+import Tex from './Tex.astro';
+import { katexHtml } from '../lib/tex.js';
+
+const S = 520;          // 像素 / 米
+const OX = 280;         // 俯视图中心
+const OY = 225;
+const DX = 52;          // 两脚中心横向半距（0.10 m）
+const HX = 70;          // 脚前后半长（≈0.135 m）
+const HY = 26;          // 脚左右半宽（0.05 m）
+const GRID = 52;        // 0.10 m 一格
+const vlines = Array.from({ length: 9 }, (_, i) => OX + (i - 4) * GRID);
+const hlines = Array.from({ length: 7 }, (_, i) => OY + (i - 3) * GRID);
+const feet = [
+  { key: 'l', cx: OX - DX, cy: OY, name: '左脚' },
+  { key: 'r', cx: OX + DX, cy: OY, name: '右脚' },
+];
+---
+
+<figure class="sp-demo">
+  <svg viewBox="0 0 820 430" role="img" aria-label="支撑多边形交互演示：拖动重心投影，观察它是否落在双脚或单脚的支撑域内，并读出稳定裕量" tabindex="0">
+    <defs>
+      <marker id="sp-mk-tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="sp-mk-tip" d="M0 0 L10 5 L0 10 Z"></path></marker>
+    </defs>
+
+    <text class="sp-title" x="280" y="26" text-anchor="middle">俯视图：支撑多边形与重心投影</text>
+    <text class="sp-title" x="685" y="26" text-anchor="middle">稳定裕量</text>
+
+    <g class="sp-scene">
+      {vlines.map((x) => <line class="sp-grid" x1={x} y1="43" x2={x} y2="407"></line>)}
+      {hlines.map((y) => <line class="sp-grid" x1="60" y1={y} x2="520" y2={y}></line>)}
+      <line class="sp-axis" x1="280" y1="55" x2="280" y2="400"></line>
+      <line class="sp-axis" x1="60" y1="225" x2="516" y2="225"></line>
+      <text class="sp-dir" x="280" y="50" text-anchor="middle">前</text>
+      <text class="sp-dir" x="524" y="229">右</text>
+      <text class="sp-dir" x="44" y="229">左</text>
+      <text class="sp-dir" x="280" y="420" text-anchor="middle">后</text>
+
+      <polygon class="sp-poly" points="0,0 0,0 0,0"></polygon>
+
+      {feet.map((f) => (
+        <g class={'sp-foot sp-foot-' + f.key}>
+          <rect class="sp-foot-rect" x={f.cx - HY} y={f.cy - HX} width={HY * 2} height={HX * 2} rx="10"></rect>
+          <text class="sp-foot-lab" x={f.cx} y={f.cy + HX + 15} text-anchor="middle">{f.name}</text>
+        </g>
+      ))}
+
+      <line class="sp-dash" x1="0" y1="0" x2="0" y2="0"></line>
+      <Tex role="margin" x={0} y={0} size={12} anchor="start" color="var(--sl-color-text)" />
+      <line class="sp-tip" x1="0" y1="0" x2="0" y2="0" marker-end="url(#sp-mk-tip)"></line>
+
+      <g class="sp-com-g" transform="translate(280 225)">
+        <circle class="sp-com-halo" r="13"></circle>
+        <line class="sp-com-x" x1="-9" y1="0" x2="9" y2="0"></line>
+        <line class="sp-com-y" x1="0" y1="-9" x2="0" y2="9"></line>
+        <circle class="sp-com" r="5"></circle>
+        <Tex x={15} y={-13} size={12} anchor="start" color="light-dark(#d97706, #fbbf24)" parts={[{ tex: 'p_{\\text{CoM}}' }]} />
+      </g>
+    </g>
+
+    <g class="sp-info">
+      <text class="sp-ilab" x="685" y="76" text-anchor="middle">支撑模式</text>
+      <text class="sp-ival" x="685" y="102" text-anchor="middle" data-sp-mode>双脚支撑</text>
+
+      <Tex x={685} y={146} size={12} anchor="middle" color="var(--sl-color-gray-2)" parts={[{ text: '重心投影 ' }, { tex: 'p_{\\text{CoM}}' }, { text: '（前 / 左）' }]} />
+      <Tex role="pos" x={685} y={172} size={13} anchor="middle" color="var(--sl-color-text)" parts={[{ tex: '0.0\\ \\text{cm}' }, { text: ' / ' }, { tex: '0.0\\ \\text{cm}' }]} />
+
+      <line class="sp-sep" x1="585" y1="196" x2="785" y2="196"></line>
+
+      <text class="sp-ilab" x="685" y="224" text-anchor="middle">稳定裕量（到边界最小距离）</text>
+      <rect class="sp-gauge-bg" x="585" y="240" width="200" height="14" rx="7"></rect>
+      <rect class="sp-gauge-neg" x="585" y="240" width="100" height="14" rx="7"></rect>
+      <line class="sp-gauge-zero" x1="685" y1="236" x2="685" y2="258"></line>
+      <line class="sp-gauge-mark" x1="685" y1="234" x2="685" y2="260"></line>
+      <Tex x={585} y={278} size={11} anchor="start" color="var(--sl-color-gray-3)" parts={[{ tex: '-15\\ \\text{cm}' }]} />
+      <Tex x={685} y={278} size={11} anchor="middle" color="var(--sl-color-gray-3)" parts={[{ tex: '0' }]} />
+      <Tex x={785} y={278} size={11} anchor="end" color="var(--sl-color-gray-3)" parts={[{ tex: '+15\\ \\text{cm}' }]} />
+
+      <Tex role="margin-val" x={685} y={314} size={18} anchor="middle" color="var(--sl-color-accent)" parts={[{ tex: '+0.0\\ \\text{cm}' }]} />
+
+      <text class="sp-ilab" x="685" y="352" text-anchor="middle">支撑域面积</text>
+      <Tex role="area" x={685} y={376} size={13} anchor="middle" color="var(--sl-color-text)" parts={[{ tex: '0\\ \\text{cm}^2' }]} />
+
+      <text class="sp-status" x="685" y="412" text-anchor="middle" data-sp-status>稳定</text>
+    </g>
+  </svg>
+
+  <div class="sp-controls">
+    <div class="sp-modes" role="group" aria-label="选择支撑模式">
+      <button type="button" class="sp-mode" data-mode="0" aria-pressed="true">双脚支撑</button>
+      <button type="button" class="sp-mode" data-mode="1" aria-pressed="false">仅左脚</button>
+      <button type="button" class="sp-mode" data-mode="2" aria-pressed="false">仅右脚</button>
+    </div>
+    <button type="button" class="sp-push">推一下</button>
+    <button type="button" class="sp-reset">复位</button>
+  </div>
+
+  <p class="sp-readout"><output class="sp-out" aria-live="polite"></output></p>
+
+  <figcaption>
+    俯视图里两只脚的接地区域取凸包，就是支撑多边形（浅色区块）。拖动重心投影 <span set:html={katexHtml('p_{\\text{CoM}}')}></span>（或用方向键微调）：投影在多边形内时，虚线标出它到边界的最小距离，也就是稳定裕量；投影越出边界后，多边形和读数变红，并给出将要翻倒的方向。切到「仅左脚」或「仅右脚」，支撑域立即收缩到单脚，原本在双脚支撑域内的同一个投影就可能越界——这正是抬脚瞬间容易失稳的原因。网格每格 <span set:html={katexHtml('0.10\\ \\text{m}')}></span>，脚长约 <span set:html={katexHtml('0.27\\ \\text{m}')}></span>、宽约 <span set:html={katexHtml('0.10\\ \\text{m}')}></span>。
+  </figcaption>
+</figure>
+
+<script>
+  import { setParts } from '../lib/tex.js';
+
+  document.querySelectorAll('.sp-demo').forEach((demo) => {
+    const S = 520;
+    const OX = 280, OY = 225;
+    const DX = 52, HX = 70, HY = 26;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const svg = demo.querySelector('svg');
+    const poly = demo.querySelector('.sp-poly');
+    const comG = demo.querySelector('.sp-com-g');
+    const dash = demo.querySelector('.sp-dash');
+    const tip = demo.querySelector('.sp-tip');
+    const footG = { l: demo.querySelector('.sp-foot-l'), r: demo.querySelector('.sp-foot-r') };
+    const modeVal = demo.querySelector('[data-sp-mode]');
+    const statusVal = demo.querySelector('[data-sp-status]');
+    const gaugeMark = demo.querySelector('.sp-gauge-mark');
+    const boxOf = (role) => {
+      const group = demo.querySelector('[data-role="' + role + '"]');
+      return { group: group, box: group ? group.querySelector('.tex-box') : null };
+    };
+    const place = (lab, px, py) => {
+      if (lab.group) lab.group.setAttribute('transform', 'translate(' + px.toFixed(1) + ' ' + py.toFixed(1) + ')');
+    };
+    const posLab = boxOf('pos');
+    const marginLab = boxOf('margin');
+    const marginValLab = boxOf('margin-val');
+    const areaLab = boxOf('area');
+    const out = demo.querySelector('.sp-out');
+    const modeBtns = Array.from(demo.querySelectorAll('.sp-mode'));
+    const pushBtn = demo.querySelector('.sp-push');
+    const resetBtn = demo.querySelector('.sp-reset');
+
+    const com = { x: OX, y: OY };
+    let mode = 0;
+    let dragging = false;
+
+    const clampX = (v) => Math.max(50, Math.min(510, v));
+    const clampY = (v) => Math.max(55, Math.min(400, v));
+
+    const rectCorners = (cx, cy) => [
+      { x: cx - HY, y: cy - HX },
+      { x: cx + HY, y: cy - HX },
+      { x: cx + HY, y: cy + HX },
+      { x: cx - HY, y: cy + HX },
+    ];
+    const footCenters = () => {
+      if (mode === 0) return [{ cx: OX - DX, cy: OY }, { cx: OX + DX, cy: OY }];
+      if (mode === 1) return [{ cx: OX - DX, cy: OY }];
+      return [{ cx: OX + DX, cy: OY }];
+    };
+
+    const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+    const hull = (pts) => {
+      const p = pts.slice().sort((a, b) => a.x - b.x || a.y - b.y);
+      if (p.length < 3) return p;
+      const lower = [];
+      for (const pt of p) {
+        while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], pt) <= 0) lower.pop();
+        lower.push(pt);
+      }
+      const upper = [];
+      for (let i = p.length - 1; i >= 0; i--) {
+        const pt = p[i];
+        while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], pt) <= 0) upper.pop();
+        upper.push(pt);
+      }
+      lower.pop();
+      upper.pop();
+      return lower.concat(upper);
+    };
+    const inPoly = (p, pg) => {
+      let inside = false;
+      for (let i = 0, j = pg.length - 1; i < pg.length; j = i++) {
+        const xi = pg[i].x, yi = pg[i].y, xj = pg[j].x, yj = pg[j].y;
+        if ((yi > p.y) !== (yj > p.y) && p.x < ((xj - xi) * (p.y - yi)) / (yj - yi) + xi) inside = !inside;
+      }
+      return inside;
+    };
+    const closestOnSeg = (p, a, b) => {
+      const vx = b.x - a.x, vy = b.y - a.y;
+      const wx = p.x - a.x, wy = p.y - a.y;
+      const c1 = vx * wx + vy * wy;
+      if (c1 <= 0) return { x: a.x, y: a.y, d: Math.hypot(wx, wy) };
+      const c2 = vx * vx + vy * vy;
+      if (c2 <= c1) return { x: b.x, y: b.y, d: Math.hypot(p.x - b.x, p.y - b.y) };
+      const t = c1 / c2;
+      const qx = a.x + t * vx, qy = a.y + t * vy;
+      return { x: qx, y: qy, d: Math.hypot(p.x - qx, p.y - qy) };
+    };
+    const polyArea = (pg) => {
+      let a = 0;
+      for (let i = 0, j = pg.length - 1; i < pg.length; j = i++) a += pg[j].x * pg[i].y - pg[i].x * pg[j].y;
+      return Math.abs(a / 2);
+    };
+
+    const render = () => {
+      const centers = footCenters();
+      const corners = [];
+      centers.forEach((c) => rectCorners(c.cx, c.cy).forEach((p) => corners.push(p)));
+      const pg = hull(corners);
+
+      poly.setAttribute('points', pg.map((p) => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' '));
+      footG.l.classList.toggle('sp-foot-swing', mode === 2);
+      footG.r.classList.toggle('sp-foot-swing', mode === 1);
+
+      let best = Infinity, bp = null;
+      for (let i = 0; i < pg.length; i++) {
+        const r = closestOnSeg(com, pg[i], pg[(i + 1) % pg.length]);
+        if (r.d < best) { best = r.d; bp = r; }
+      }
+      const inside = inPoly(com, pg);
+      const marginM = (inside ? best : -best) / S;
+      const marginCm = marginM * 100;
+      const areaCm2 = (polyArea(pg) / (S * S)) * 1e4;
+
+      poly.classList.toggle('sp-poly-out', !inside);
+      comG.setAttribute('transform', 'translate(' + com.x.toFixed(1) + ' ' + com.y.toFixed(1) + ')');
+      gaugeMark.setAttribute('x1', (685 + (Math.max(-15, Math.min(15, marginCm)) / 15) * 100).toFixed(1));
+      gaugeMark.setAttribute('x2', (685 + (Math.max(-15, Math.min(15, marginCm)) / 15) * 100).toFixed(1));
+
+      if (inside) {
+        dash.classList.add('sp-dash-on');
+        dash.setAttribute('x1', com.x.toFixed(1));
+        dash.setAttribute('y1', com.y.toFixed(1));
+        dash.setAttribute('x2', bp.x.toFixed(1));
+        dash.setAttribute('y2', bp.y.toFixed(1));
+        place(marginLab, (com.x + bp.x) / 2 + 6, (com.y + bp.y) / 2 - 6);
+        setParts(marginLab.box, [{ text: '裕量 ' }, { tex: marginCm.toFixed(1) + '\\ \\text{cm}' }]);
+        tip.classList.remove('sp-tip-on');
+      } else {
+        dash.classList.remove('sp-dash-on');
+        setParts(marginLab.box, []);
+        let dx = com.x - bp.x, dy = com.y - bp.y;
+        const L = Math.hypot(dx, dy) || 1;
+        dx /= L; dy /= L;
+        tip.setAttribute('x1', com.x.toFixed(1));
+        tip.setAttribute('y1', com.y.toFixed(1));
+        tip.setAttribute('x2', (com.x + dx * 52).toFixed(1));
+        tip.setAttribute('y2', (com.y + dy * 52).toFixed(1));
+        tip.classList.add('sp-tip-on');
+      }
+
+      const fwd = ((OY - com.y) / S) * 100;
+      const lat = ((OX - com.x) / S) * 100;
+      const modeName = mode === 0 ? '双脚支撑' : (mode === 1 ? '仅左脚支撑（右脚摆动）' : '仅右脚支撑（左脚摆动）');
+      modeVal.textContent = modeName;
+      setParts(posLab.box, [
+        { tex: fwd.toFixed(1) + '\\ \\text{cm}' },
+        { text: ' / ' },
+        { tex: lat.toFixed(1) + '\\ \\text{cm}' },
+      ]);
+      setParts(marginValLab.box, [{ tex: (marginCm >= 0 ? '+' : '') + marginCm.toFixed(1) + '\\ \\text{cm}' }]);
+      setParts(areaLab.box, [{ tex: areaCm2.toFixed(0) + '\\ \\text{cm}^2' }]);
+
+      let status, detailParts;
+      if (!inside) {
+        status = '越界：需要迈步或落回支撑域';
+        detailParts = [
+          { text: '重心投影已经跑到支撑多边形外（裕量 ' },
+          { tex: marginCm.toFixed(1) + '\\ \\text{cm}' },
+          { text: '），静态近似下会绕最近的支撑边缘翻倒。' },
+        ];
+      } else if (marginCm < 3) {
+        status = '临界：裕量不足 3 cm';
+        detailParts = [
+          { text: '投影还在支撑域内，但离边界很近（裕量 ' },
+          { tex: marginCm.toFixed(1) + '\\ \\text{cm}' },
+          { text: '），轻微扰动或接触位置变化就可能越界。' },
+        ];
+      } else {
+        status = '稳定';
+        detailParts = [
+          { text: '投影落在支撑域内，裕量 ' },
+          { tex: marginCm.toFixed(1) + '\\ \\text{cm}' },
+          { text: '。' },
+        ];
+      }
+      statusVal.textContent = status;
+      statusVal.classList.toggle('sp-status-out', !inside);
+      statusVal.classList.toggle('sp-status-edge', inside && marginCm < 3);
+
+      setParts(out, detailParts.concat([
+        { text: ' 模式：' + modeName + '；' },
+        { tex: 'p_{\\text{CoM}}' },
+        { text: ' = 前 ' },
+        { tex: fwd.toFixed(1) + '\\ \\text{cm}' },
+        { text: '、左 ' },
+        { tex: lat.toFixed(1) + '\\ \\text{cm}' },
+        { text: '；支撑域面积 ' },
+        { tex: areaCm2.toFixed(0) + '\\ \\text{cm}^2' },
+        { text: '。' },
+      ]));
+    };
+
+    const localPoint = (e) => {
+      const r = svg.getBoundingClientRect();
+      const vb = svg.viewBox.baseVal;
+      const x = ((e.clientX - r.left) * vb.width) / r.width + vb.x;
+      const y = ((e.clientY - r.top) * vb.height) / r.height + vb.y;
+      return { x: x, y: y };
+    };
+
+    svg.addEventListener('pointerdown', (e) => {
+      const p = localPoint(e);
+      if (p.x > 540) return;
+      dragging = true;
+      com.x = clampX(p.x);
+      com.y = clampY(p.y);
+      render();
+      try { svg.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    svg.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const p = localPoint(e);
+      com.x = clampX(p.x);
+      com.y = clampY(p.y);
+      render();
+    });
+    const endDrag = (e) => {
+      dragging = false;
+      try { svg.releasePointerCapture(e.pointerId); } catch (err) {}
+    };
+    svg.addEventListener('pointerup', endDrag);
+    svg.addEventListener('pointercancel', endDrag);
+    svg.addEventListener('keydown', (e) => {
+      const step = e.shiftKey ? 26 : 5;
+      let used = true;
+      if (e.key === 'ArrowUp') com.y = clampY(com.y - step);
+      else if (e.key === 'ArrowDown') com.y = clampY(com.y + step);
+      else if (e.key === 'ArrowLeft') com.x = clampX(com.x - step);
+      else if (e.key === 'ArrowRight') com.x = clampX(com.x + step);
+      else used = false;
+      if (used) { e.preventDefault(); render(); }
+    });
+
+    modeBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        mode = Number(btn.dataset.mode);
+        modeBtns.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+        render();
+      });
+    });
+
+    pushBtn.addEventListener('click', () => {
+      const centers = footCenters();
+      const corners = [];
+      centers.forEach((c) => rectCorners(c.cx, c.cy).forEach((p) => corners.push(p)));
+      const pg = hull(corners);
+      const cx = pg.reduce((s, p) => s + p.x, 0) / pg.length;
+      const cy = pg.reduce((s, p) => s + p.y, 0) / pg.length;
+      let dx = com.x - cx, dy = com.y - cy;
+      if (Math.hypot(dx, dy) < 4) { dx = 0; dy = -1; }
+      const L = Math.hypot(dx, dy);
+      dx /= L; dy /= L;
+      const dist = 0.18 * S;
+      const tx = clampX(com.x + dx * dist);
+      const ty = clampY(com.y + dy * dist);
+      if (reduced) { com.x = tx; com.y = ty; render(); return; }
+      const sx = com.x, sy = com.y, t0 = performance.now();
+      const step = (now) => {
+        const k = Math.min(1, (now - t0) / 450);
+        const ease = 1 - Math.pow(1 - k, 3);
+        com.x = sx + (tx - sx) * ease;
+        com.y = sy + (ty - sy) * ease;
+        render();
+        if (k < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+
+    resetBtn.addEventListener('click', () => {
+      com.x = OX;
+      com.y = OY;
+      render();
+    });
+
+    render();
+  });
+</script>
+
+<style>
+  .sp-demo { margin: 1.5rem 0; }
+  .sp-demo svg { display: block; width: 100%; max-width: 820px; height: auto; margin: 0 auto; touch-action: none; border-radius: 8px; }
+  .sp-demo svg:focus-visible { outline: 2px solid var(--sl-color-accent); outline-offset: 2px; }
+  .sp-title { fill: var(--sl-color-text); font-size: 14px; font-weight: 600; }
+  .sp-grid { stroke: var(--sl-color-gray-5); stroke-width: 1; }
+  .sp-axis { stroke: var(--sl-color-gray-4); stroke-width: 1.5; }
+  .sp-dir { fill: var(--sl-color-gray-3); font-size: 12px; }
+  .sp-poly { fill: light-dark(rgba(13, 148, 136, 0.18), rgba(45, 212, 191, 0.18)); stroke: light-dark(#0d9488, #2dd4bf); stroke-width: 2.5; transition: fill 0.15s, stroke 0.15s; }
+  .sp-poly-out { fill: light-dark(rgba(220, 38, 38, 0.14), rgba(248, 113, 113, 0.16)); stroke: light-dark(#dc2626, #f87171); }
+  .sp-foot-rect { fill: light-dark(rgba(79, 70, 229, 0.12), rgba(139, 131, 255, 0.16)); stroke: light-dark(#4f46e5, #8b83ff); stroke-width: 2; }
+  .sp-foot-lab { fill: light-dark(#4f46e5, #8b83ff); font-size: 12px; font-weight: 600; }
+  .sp-foot-swing .sp-foot-rect { fill: none; stroke: var(--sl-color-gray-4); stroke-dasharray: 5 5; }
+  .sp-foot-swing .sp-foot-lab { fill: var(--sl-color-gray-3); }
+  .sp-dash { stroke: var(--sl-color-gray-2); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: 0; }
+  .sp-dash-on { opacity: 1; }
+  .sp-margin-lab { fill: var(--sl-color-text); font-size: 12px; font-weight: 600; }
+  .sp-tip { stroke: light-dark(#dc2626, #f87171); stroke-width: 3; opacity: 0; }
+  .sp-mk-tip { fill: light-dark(#dc2626, #f87171); }
+  .sp-tip-on { opacity: 1; }
+  .sp-com-halo { fill: light-dark(rgba(217, 119, 6, 0.18), rgba(251, 191, 36, 0.2)); }
+  .sp-com-x, .sp-com-y { stroke: light-dark(#d97706, #fbbf24); stroke-width: 2; }
+  .sp-com { fill: light-dark(#d97706, #fbbf24); stroke: var(--sl-color-bg); stroke-width: 2; }
+  .sp-com-lab { fill: light-dark(#d97706, #fbbf24); font-size: 12px; font-weight: 700; }
+  .sp-com-g { cursor: grab; }
+  .sp-ilab { fill: var(--sl-color-gray-2); font-size: 12px; }
+  .sp-ival { fill: var(--sl-color-text); font-size: 13px; font-weight: 600; }
+  .sp-sep { stroke: var(--sl-color-gray-4); stroke-width: 1; }
+  .sp-gauge-bg { fill: light-dark(rgba(13, 148, 136, 0.16), rgba(45, 212, 191, 0.16)); }
+  .sp-gauge-neg { fill: light-dark(rgba(220, 38, 38, 0.14), rgba(248, 113, 113, 0.16)); }
+  .sp-gauge-zero { stroke: var(--sl-color-gray-3); stroke-width: 1; }
+  .sp-gauge-mark { stroke: var(--sl-color-text); stroke-width: 2.5; }
+  .sp-gauge-lab { fill: var(--sl-color-gray-3); font-size: 11px; }
+  .sp-margin-val { fill: var(--sl-color-accent); font-size: 18px; font-weight: 700; }
+  .sp-status { fill: light-dark(#0d9488, #2dd4bf); font-size: 12.5px; font-weight: 600; }
+  .sp-status-edge { fill: light-dark(#d97706, #fbbf24); }
+  .sp-status-out { fill: light-dark(#dc2626, #f87171); }
+  .sp-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 0.75rem; max-width: 820px; margin: 0.55rem auto 0; }
+  .sp-modes { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .sp-mode, .sp-push, .sp-reset { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.75rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
+  .sp-mode[aria-pressed='true'] { border-color: var(--sl-color-accent); color: var(--sl-color-accent); background: light-dark(rgba(79, 70, 229, 0.08), rgba(139, 131, 255, 0.14)); font-weight: 600; }
+  .sp-readout { max-width: 820px; margin: 0.45rem auto 0; font-size: 0.8125rem; color: var(--sl-color-text); line-height: 1.7; }
+  .sp-readout output { color: var(--sl-color-accent); font-weight: 600; }
+  .sp-demo figcaption { max-width: 820px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.875rem; line-height: 1.65; }
+</style>

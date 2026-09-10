@@ -18,6 +18,8 @@
  *   <G1ArmWorkspaceDemo />
  */
 
+import { katexHtml } from '../lib/tex.js';
+
 const baseUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 // 复用 1.2 节同一份 URDF；腰部 roll/pitch 在代码里锁在 0，等价于锁腰版
 const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
@@ -49,20 +51,22 @@ const ARM_L = [
   </div>
 
   <div class="g1ws-sliders">
-    <label>x（前方）<input type="range" data-g1ws-x min="0.22" max="0.38" step="0.005" value="0.30" disabled> <output data-g1ws-xv>0.300</output> m</label>
-    <label>y（左侧）<input type="range" data-g1ws-y min="0.15" max="0.30" step="0.005" value="0.20" disabled> <output data-g1ws-yv>0.200</output> m</label>
-    <label>z（高度）<input type="range" data-g1ws-z min="0.16" max="0.34" step="0.005" value="0.25" disabled> <output data-g1ws-zv>0.250</output> m</label>
+    <label><span set:html={katexHtml('x')}></span>（前方）<input type="range" data-g1ws-x min="0.22" max="0.38" step="0.005" value="0.30" disabled> <output data-g1ws-xv>0.300</output> m</label>
+    <label><span set:html={katexHtml('y')}></span>（左侧）<input type="range" data-g1ws-y min="0.15" max="0.30" step="0.005" value="0.20" disabled> <output data-g1ws-yv>0.200</output> m</label>
+    <label><span set:html={katexHtml('z')}></span>（高度）<input type="range" data-g1ws-z min="0.16" max="0.34" step="0.005" value="0.25" disabled> <output data-g1ws-zv>0.250</output> m</label>
     <label>末端朝向<input type="range" data-g1ws-yaw min="-180" max="180" step="1" value="0" disabled> <output data-g1ws-yawv>0</output>°</label>
   </div>
 
   <p class="g1ws-readout"><output data-g1ws-out aria-live="polite">加载中…</output></p>
 
   <figcaption>
-    用 x / y / z 滑块设定目标位置（机器人坐标系，单位 m），左臂用逆运动学去够它。<b>蓝点</b>是末端能到达的所有位置，即位置工作空间；<b>橙点</b>是「同时满足当前末端姿态」的位置集合，即该姿态下的任务空间——它总是蓝点的子集。目标点上的橙色坐标架是期望姿态，手上的青色坐标架是实际姿态；拖动「末端朝向」可以看到任务空间随之缩小或移动。读数给出位置误差与姿态夹角。右臂保持静止，避免双手追同一点互相穿插。模型是 1.2 节同一份官方 <code>g1_29dof.urdf</code>（隐藏腿部、腰部 roll/pitch 锁在 0，等价锁腰），网格为可视化模型；演示不含碰撞检测。
+    用 <span set:html={katexHtml('x')}></span> / <span set:html={katexHtml('y')}></span> / <span set:html={katexHtml('z')}></span> 滑块设定目标位置（机器人坐标系，单位 m），左臂用逆运动学去够它。<b>蓝点</b>是末端能到达的所有位置，即位置工作空间；<b>橙点</b>是「同时满足当前末端姿态」的位置集合，即该姿态下的任务空间——它总是蓝点的子集。目标点上的橙色坐标架是期望姿态，手上的青色坐标架是实际姿态；拖动「末端朝向」可以看到任务空间随之缩小或移动。读数给出位置误差与姿态夹角。右臂保持静止，避免双手追同一点互相穿插。模型是 1.2 节同一份官方 <code>g1_29dof.urdf</code>（隐藏腿部、腰部 roll/pitch 锁在 0，等价锁腰），网格为可视化模型；演示不含碰撞检测。
   </figcaption>
 </figure>
 
 <script>
+  import { setParts } from '../lib/tex.js';
+
   // 用于高密度采样工作空间的局部正运动学链（与 URDF 手臂链一致；渲染仍用 URDF）
   const FK_CHAIN = [
     { xyz: [0.0039563, 0.10022, 0.23778], rpy: [0.27931, 0.000054949, -0.00019159], axis: [0, 1, 0], lo: -3.0892, hi: 2.6704 },
@@ -269,10 +273,19 @@ const ARM_L = [
       handFrame.quaternion.copy(handQuat);
       const dot = Math.abs(handQuat.dot(desiredQuat));
       const oriErrDeg = (2 * Math.acos(Math.min(1, dot)) * 180) / Math.PI;
-      out.textContent =
-        '位置 x=' + targetLocal.x.toFixed(3) + ' y=' + targetLocal.y.toFixed(3) + ' z=' + targetLocal.z.toFixed(3) +
-        ' m　位置误差 ' + (errL * 1000).toFixed(0) + ' mm' + (reach ? '（可达）' : '（超出位置工作空间）') +
-        '　姿态夹角 ' + oriErrDeg.toFixed(0) + '°';
+      setParts(out, [
+        { text: '位置 ' },
+        { tex: 'x = ' + targetLocal.x.toFixed(3) },
+        { text: ' ' },
+        { tex: 'y = ' + targetLocal.y.toFixed(3) },
+        { text: ' ' },
+        { tex: 'z = ' + targetLocal.z.toFixed(3) + '\\ \\text{m}' },
+        { text: '　位置误差 ' },
+        { tex: (errL * 1000).toFixed(0) + '\\ \\text{mm}' },
+        { text: reach ? '（可达）' : '（超出位置工作空间）' },
+        { text: '　姿态夹角 ' },
+        { tex: oriErrDeg.toFixed(0) + '^\\circ' },
+      ]);
       scheduleRender();
     };
 

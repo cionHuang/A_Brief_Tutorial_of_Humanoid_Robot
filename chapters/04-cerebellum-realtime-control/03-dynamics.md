@@ -14,19 +14,19 @@ G1 的腿已经通过逆运动学算到了目标位置，但机器人抬腿时�
 
 ### 三个最重要的参数
 
-- **质量（Mass）**：刚体对平动加速度的惯性，单位是 `kg`；
+- **质量（Mass）**：刚体对平动加速度的惯性，单位是 $\text{kg}$；
 - **质心（Center of Mass, CoM）**：质量等效集中的位置，决定重力力矩和整体平衡；
-- **转动惯量（Moment of Inertia）**：刚体对角加速度的抗拒程度，通常用 `3 x 3` 对称矩阵表示，单位是 `kg m^2`。
+- **转动惯量（Moment of Inertia）**：刚体对角加速度的抗拒程度，通常用 $3 \times 3$ 对称矩阵表示，单位是 $\text{kg}\ \text{m}^2$。
 
 同一个连杆换一个坐标系后，惯量矩阵的分量会改变，但物理刚体没有改变。模型中的惯量通常在指定的质心坐标系或 link 坐标系中给出，使用前必须确认 `inertial` 原点、旋转方向和矩阵表达坐标系。把 `diaginertia` 当成世界坐标系下永远不变的三个数，会在机器人转动后产生错误的动力学结果。
 
 对于绕固定轴的简化转动，直觉关系是：
 
-```text
-tau = I alpha
-```
+$$
+\tau = I\alpha
+$$
 
-其中 `tau` 是力矩，`I` 是转动惯量，`alpha` 是角加速度。人形机器人不是一根孤立的刚杆：每个关节的等效惯量会随着姿态变化，邻近连杆的运动还会引入科氏力、离心力和耦合项。
+其中 $\tau$ 是力矩，$I$ 是转动惯量，$\alpha$ 是角加速度。人形机器人不是一根孤立的刚杆：每个关节的等效惯量会随着姿态变化，邻近连杆的运动还会引入科氏力、离心力和耦合项。
 
 ### G1 MJCF 中的参数
 
@@ -38,32 +38,33 @@ tau = I alpha
 
 在不显式展开浮动基座细节的最小坐标中，常见的刚体动力学方程写成：
 
-```text
-M(q) q_ddot + C(q, q_dot) q_dot + g(q) + tau_fric
-    = tau_act + J_c(q)^T lambda + tau_ext
-```
+$$
+\boldsymbol{M}(\boldsymbol{q})\ddot{\boldsymbol{q}} + \boldsymbol{C}(\boldsymbol{q}, \dot{\boldsymbol{q}})\dot{\boldsymbol{q}} + \boldsymbol{g}(\boldsymbol{q}) + \boldsymbol{\tau}_{\mathrm{fric}} = \boldsymbol{\tau}_{\mathrm{act}} + \boldsymbol{J}_c(\boldsymbol{q})^\top \boldsymbol{\lambda} + \boldsymbol{\tau}_{\mathrm{ext}}
+$$
 
 各项含义如下：
 
-- `M(q)`：质量矩阵（Mass Matrix），描述平动和转动惯性以及关节间耦合；
-- `C(q, q_dot) q_dot`：科氏和离心项，随姿态和速度变化；
-- `g(q)`：重力项，站立时即使 `q_dot=0`、`q_ddot=0` 也可能不为零；
-- `tau_fric`：库仑摩擦、黏性摩擦、齿轮损耗和其他未建模阻力的等效项；
-- `tau_act`：执行器施加的关节力矩；
-- `J_c^T lambda`：接触力通过接触雅可比映射回关节的力矩；
-- `tau_ext`：其他外部力或力矩的广义表示。
+- $\boldsymbol{M}(\boldsymbol{q})$：质量矩阵（Mass Matrix），描述平动和转动惯性以及关节间耦合；
+- $\boldsymbol{C}(\boldsymbol{q}, \dot{\boldsymbol{q}})\dot{\boldsymbol{q}}$：科氏和离心项，随姿态和速度变化；
+- $\boldsymbol{g}(\boldsymbol{q})$：重力项，站立时即使 $\dot{\boldsymbol{q}} = \boldsymbol{0}$、$\ddot{\boldsymbol{q}} = \boldsymbol{0}$ 也可能不为零；
+- $\boldsymbol{\tau}_{\mathrm{fric}}$：库仑摩擦、黏性摩擦、齿轮损耗和其他未建模阻力的等效项；
+- $\boldsymbol{\tau}_{\mathrm{act}}$：执行器施加的关节力矩；
+- $\boldsymbol{J}_c^\top \boldsymbol{\lambda}$：接触力通过接触雅可比映射回关节的力矩；
+- $\boldsymbol{\tau}_{\mathrm{ext}}$：其他外部力或力矩的广义表示。
 
-不同教材可能把摩擦、重力或外力移到等式另一侧，因此不能只比较符号就判断实现错误。真正需要固定的是：每一项的坐标系、正负方向、是否包含浮动基座，以及 `lambda` 表示接触力还是约束乘子。
+不同教材可能把摩擦、重力或外力移到等式另一侧，因此不能只比较符号就判断实现错误。真正需要固定的是：每一项的坐标系、正负方向、是否包含浮动基座，以及 $\boldsymbol{\lambda}$ 表示接触力还是约束乘子。
 
 ### 浮动基座形式
 
 G1 在 MuJoCo 中使用 `free` 类型的 `floating_base_joint`。浮动基座的姿态在 `qpos` 中通常需要四元数的 4 个数，平移需要 3 个数，因此自由基座占 7 个配置量；但其速度使用 3 个线速度和 3 个角速度，共 6 个速度量。加上 29 个电机关节后，常见的维度关系是：
 
-```text
-qpos:  7 + 29
-qvel:  6 + 29
-tau:       29  actuated joints
-```
+$$
+\begin{aligned}
+\text{qpos}:&\quad 7 + 29 \\
+\text{qvel}:&\quad 6 + 29 \\
+\boldsymbol{\tau}:&\quad 29\ \text{actuated joints}
+\end{aligned}
+$$
 
 这不表示 G1 只有 29 个总自由度，也不表示浮动基座有 7 个物理自由度；四元数的 4 个分量受单位长度约束，实际基座位姿仍是 6 DoF。动力学方程中，浮动基座对应的行通常没有直接电机力矩输入，是由地面接触、外力和全身关节动作共同决定的“欠驱动”部分。
 
@@ -73,31 +74,29 @@ tau:       29  actuated joints
 
 正动力学给定当前状态、执行器力矩和外力，求下一时刻的加速度：
 
-```text
-q_ddot = M(q)^-1 [tau_act + J_c^T lambda + tau_ext
-                  - C(q, q_dot)q_dot - g(q) - tau_fric]
-```
+$$
+\ddot{\boldsymbol{q}} = \boldsymbol{M}(\boldsymbol{q})^{-1}\left[\boldsymbol{\tau}_{\mathrm{act}} + \boldsymbol{J}_c^\top \boldsymbol{\lambda} + \boldsymbol{\tau}_{\mathrm{ext}} - \boldsymbol{C}(\boldsymbol{q}, \dot{\boldsymbol{q}})\dot{\boldsymbol{q}} - \boldsymbol{g}(\boldsymbol{q}) - \boldsymbol{\tau}_{\mathrm{fric}}\right]
+$$
 
-仿真器通常在每个时间步执行类似过程，再用数值积分更新 `q` 和 `q_dot`。接触发生时，`lambda` 不能随便填：它要与接触几何、法向约束、摩擦和求解器共同确定。时间步长、接触软化和积分器会影响仿真结果，因此“仿真能站住”不等于真实机器人一定能站住。
+仿真器通常在每个时间步执行类似过程，再用数值积分更新 $\boldsymbol{q}$ 和 $\dot{\boldsymbol{q}}$。接触发生时，$\boldsymbol{\lambda}$ 不能随便填：它要与接触几何、法向约束、摩擦和求解器共同确定。时间步长、接触软化和积分器会影响仿真结果，因此“仿真能站住”不等于真实机器人一定能站住。
 
 ### 逆动力学（Inverse Dynamics）
 
-逆动力学给定期望的 `q`、`q_dot`、`q_ddot` 和外力估计，反算所需关节力矩：
+逆动力学给定期望的 $\boldsymbol{q}$、$\dot{\boldsymbol{q}}$、$\ddot{\boldsymbol{q}}$ 和外力估计，反算所需关节力矩：
 
-```text
-tau_req = M(q) q_ddot + C(q, q_dot)q_dot + g(q)
-          + tau_fric - J_c(q)^T lambda - tau_ext
-```
+$$
+\boldsymbol{\tau}_{\mathrm{req}} = \boldsymbol{M}(\boldsymbol{q})\ddot{\boldsymbol{q}} + \boldsymbol{C}(\boldsymbol{q}, \dot{\boldsymbol{q}})\dot{\boldsymbol{q}} + \boldsymbol{g}(\boldsymbol{q}) + \boldsymbol{\tau}_{\mathrm{fric}} - \boldsymbol{J}_c(\boldsymbol{q})^\top \boldsymbol{\lambda} - \boldsymbol{\tau}_{\mathrm{ext}}
+$$
 
-它常用于轨迹前馈、重力补偿、力矩限幅和动力学一致性检查。逆动力学算出的 `tau_req` 不是可以直接发送给电机的最终命令，还要经过电机常数、减速比、效率、温升、通信延迟和安全限幅等执行器层处理。
+它常用于轨迹前馈、重力补偿、力矩限幅和动力学一致性检查。逆动力学算出的 $\boldsymbol{\tau}_{\mathrm{req}}$ 不是可以直接发送给电机的最终命令，还要经过电机常数、减速比、效率、温升、通信延迟和安全限幅等执行器层处理。
 
 ### 重力补偿（Gravity Compensation）
 
 低速保持姿态时，主要负担可能来自重力项：
 
-```text
-tau_hold ~= g(q)
-```
+$$
+\boldsymbol{\tau}_{\mathrm{hold}} \approx \boldsymbol{g}(\boldsymbol{q})
+$$
 
 如果控制器完全忽略重力，电机需要靠位置误差产生额外力矩，结果可能是静态偏差、持续高电流和关节温升。重力补偿也不能盲目全量叠加：质量参数、基座姿态、接触状态和工具载荷不准确时，补偿误差会把机器人推向错误方向。实际系统通常把模型前馈与反馈控制结合，并对补偿量做限幅和状态检查。
 
@@ -105,35 +104,39 @@ tau_hold ~= g(q)
 
 ### 接触力为什么要单独建模
 
-双足站立时，脚底接触力不是某个单一关节的属性。地面反力通过足端接触点作用在整机上，再沿腿部和躯干传递。设接触点速度为 `v_c`，接触雅可比为 `J_c`，则：
+双足站立时，脚底接触力不是某个单一关节的属性。地面反力通过足端接触点作用在整机上，再沿腿部和躯干传递。设接触点速度为 $\boldsymbol{v}_c$，接触雅可比为 $\boldsymbol{J}_c$，则：
 
-```text
-v_c = J_c(q) q_dot
-tau_contact = J_c(q)^T lambda
-```
+$$
+\begin{aligned}
+\boldsymbol{v}_c &= \boldsymbol{J}_c(\boldsymbol{q})\dot{\boldsymbol{q}} \\
+\boldsymbol{\tau}_{\mathrm{contact}} &= \boldsymbol{J}_c(\boldsymbol{q})^\top \boldsymbol{\lambda}
+\end{aligned}
+$$
 
 接触约束近似固定时，还需要满足：
 
-```text
-J_c(q) q_dot = 0
-J_c(q) q_ddot + J_c_dot(q, q_dot) q_dot = 0
-```
+$$
+\begin{aligned}
+\boldsymbol{J}_c(\boldsymbol{q})\dot{\boldsymbol{q}} &= \boldsymbol{0} \\
+\boldsymbol{J}_c(\boldsymbol{q})\ddot{\boldsymbol{q}} + \dot{\boldsymbol{J}}_c(\boldsymbol{q}, \dot{\boldsymbol{q}})\dot{\boldsymbol{q}} &= \boldsymbol{0}
+\end{aligned}
+$$
 
-对平面接触，法向力通常满足单边约束 `f_n >= 0`；摩擦力不能无限增大，常用库仑摩擦锥近似：
+对平面接触，法向力通常满足单边约束 $f_n \ge 0$；摩擦力不能无限增大，常用库仑摩擦锥近似：
 
-```text
-||f_t|| <= mu f_n
-```
+$$
+\lVert \boldsymbol{f}_t \rVert \le \mu f_n
+$$
 
-其中 `f_t` 是切向力，`f_n` 是法向力，`mu` 是摩擦系数。仿真中的 `mu`、接触刚度、阻尼、碰撞几何和求解器参数都会改变滑动、冲击和支撑表现，不能把一个仿真摩擦系数直接当作真实地面材料的精确测量值。
+其中 $\boldsymbol{f}_t$ 是切向力，$f_n$ 是法向力，$\mu$ 是摩擦系数。仿真中的 $\mu$、接触刚度、阻尼、碰撞几何和求解器参数都会改变滑动、冲击和支撑表现，不能把一个仿真摩擦系数直接当作真实地面材料的精确测量值。
 
 ### 与前文足部和全身控制的联系
 
-[前文足部、接触与稳定性](../02-mechanics/04-foot-contact-and-stability.md)中，运动学可以告诉规划器“脚能否到达某个位置”，动力学还要检查“接触力是否能支撑整机且不滑动”。因此，双脚支撑时常见的约束包括：足底位姿、接触法向、摩擦锥、质心/动量变化和关节力矩上限。仅有几何上可行的脚步，如果需要的地面反力超过摩擦或某个膝关节的持续力矩能力，仍然是动力学不可行的。
+[前文足部、接触与稳定性](../02-mechanics/04-foot-contact-and-stability.mdx)中，运动学可以告诉规划器“脚能否到达某个位置”，动力学还要检查“接触力是否能支撑整机且不滑动”。因此，双脚支撑时常见的约束包括：足底位姿、接触法向、摩擦锥、质心/动量变化和关节力矩上限。仅有几何上可行的脚步，如果需要的地面反力超过摩擦或某个膝关节的持续力矩能力，仍然是动力学不可行的。
 
 ## 质量矩阵、动量与能量的工程意义
 
-质量矩阵 `M(q)` 不只是一个供公式使用的黑盒。它可以用于：
+质量矩阵 $\boldsymbol{M}(\boldsymbol{q})$ 不只是一个供公式使用的黑盒。它可以用于：
 
 - 判断某个姿态下哪些方向容易加速、哪些方向惯性很大；
 - 估计轨迹所需的峰值力矩和功率；
@@ -143,9 +146,9 @@ J_c(q) q_ddot + J_c_dot(q, q_dot) q_dot = 0
 
 理想无损系统的机械功率关系可写成：
 
-```text
-P_joint = tau^T q_dot
-```
+$$
+P_{\mathrm{joint}} = \boldsymbol{\tau}^\top \dot{\boldsymbol{q}}
+$$
 
 但真实 G1 还存在电机铜损、逆变器损耗、减速器效率、轴承摩擦、结构变形和电池侧损耗。动力学模型可以预测机械侧需求，不能单独替代电气功耗和热模型。
 

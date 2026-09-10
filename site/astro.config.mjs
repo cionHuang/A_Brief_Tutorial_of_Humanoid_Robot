@@ -1,5 +1,8 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import { unified } from '@astrojs/markdown-remark';
 
 // GitHub Pages 项目站：https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/
 const siteBase = '/A_Brief_Tutorial_of_Humanoid_Robot';
@@ -31,6 +34,12 @@ export default defineConfig({
   site: 'https://cionhuang.github.io',
   base: siteBase,
   redirects: chapterRedirects,
+  markdown: {
+    processor: unified({
+      remarkPlugins: [remarkMath],
+      rehypePlugins: [rehypeKatex],
+    }),
+  },
   integrations: [
     starlight({
       title: '《“听懂”具身智能——以人形机器人为例》',
