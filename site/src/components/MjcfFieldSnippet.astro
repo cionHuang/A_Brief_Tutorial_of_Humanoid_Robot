@@ -1,0 +1,77 @@
+---
+/**
+ * 2.5 用：MJCF 专业字段的高亮源码卡片。
+ * variant="body"  ：body / inertial / geom / site
+ * variant="motor" ：actuator 的 motor 与 sensor 的 gyro / accelerometer
+ * variant="free"  ：floating_base_joint（自由基座）
+ * 片段逐字摘自 robot_descriptions/g1/g1_29dof.xml（unitree_rl_gym 固定提交），保留原文件行号。
+ */
+import SourceSnippet from './SourceSnippet.astro';
+
+const { variant = 'body' } = Astro.props;
+const COMMIT = '276801e46c5d433564f24658bac64f254b7d2d4b';
+const FILE = 'g1_29dof.xml';
+const src = (line) =>
+  'https://github.com/unitreerobotics/unitree_rl_gym/blob/' +
+  COMMIT +
+  '/resources/robots/g1_description/' +
+  FILE +
+  '#L' +
+  line;
+
+const cards = {
+  body: [
+    {
+      role: 'body · 层级、惯量与几何',
+      file: FILE,
+      url: src(44),
+      lines: [
+        { n: 44, code: '    <body name="pelvis" pos="0 0 0.793">', hl: true, ann: 'body：刚体层级与位姿' },
+        { n: 45, code: '      <inertial pos="0 0 -0.07605" quat="1 0 -0.000399148 0" mass="3.813" diaginertia="0.010549 0.0093089 0.0079184"/>', hl: true, ann: 'inertial：质量、质心与对角惯量' },
+        { n: 47, code: '      <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.2 0.2 0.2 1" mesh="pelvis"/>', hl: true, ann: 'geom：显示 / 碰撞几何，可带接触属性' },
+        { n: 50, code: '      <site name="imu_in_pelvis" size="0.01" pos="0.04525 0 -0.08339"/>', hl: true, ann: 'site：传感器 / 参考点' },
+      ],
+    },
+  ],
+  motor: [
+    {
+      role: 'actuator · 把控制输入映射到关节',
+      file: FILE,
+      url: src(241),
+      lines: [
+        { n: 241, code: '  <actuator>', hl: true, ann: 'actuator：驱动定义' },
+        { n: 245, code: '    <motor name="left_knee_joint" joint="left_knee_joint"/>', hl: true, ann: 'motor：力矩驱动，绑定到具体关节' },
+      ],
+    },
+    {
+      role: 'sensor · 仿真传感器',
+      file: FILE,
+      url: src(273),
+      lines: [
+        { n: 273, code: '  <sensor>', hl: true, ann: 'sensor：与刚体写在同一个 MJCF 里' },
+        { n: 276, code: '    <gyro name="imu-pelvis-angular-velocity" site="imu_in_pelvis" noise="5e-4" cutoff="34.9"/>', hl: true, ann: 'gyro：角速度，绑定 site' },
+        { n: 277, code: '    <accelerometer name="imu-pelvis-linear-acceleration" site="imu_in_pelvis" noise="1e-2" cutoff="157"/>', hl: true, ann: 'accelerometer：线加速度（含噪声 / 截止频率）' },
+      ],
+    },
+  ],
+  free: [
+    {
+      role: 'joint type="free" · 浮动基座',
+      file: FILE,
+      url: src(46),
+      lines: [
+        { n: 46, code: '      <joint name="floating_base_joint" type="free" limited="false" actuatorfrclimited="false"/>', hl: true, ann: 'type="free"：6 个浮动基座自由度，不受关节限位' },
+      ],
+    },
+  ],
+};
+
+const captions = {
+  body: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为原文件行号。MJCF 用嵌套 <code>body</code> 表达父子关系，<code>geom</code>、<code>site</code> 和 <code>inertial</code> 都写在 body 内。',
+  motor: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>）。<code>actuator</code> 和 <code>sensor</code> 与刚体写在同一个 MJCF 里，这是它与 URDF 最直观的差别之一。',
+  free: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>）。<code>type="free"</code> 让 <code>pelvis</code> 相对世界有 6 个自由度；<code>qpos</code>/<code>qvel</code> 的长度因此不等于电机数量。',
+};
+
+const card = cards[variant] || cards.body;
+---
+<SourceSnippet cards={card} caption={captions[variant] || captions.body} />

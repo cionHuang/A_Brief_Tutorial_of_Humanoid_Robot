@@ -12,7 +12,7 @@
 | 2 | [2.3 传动与关节模组](../02-mechanics/03-transmission-and-joint-modules.mdx) | 减速比、回差、峰值扭矩决定你能向电机要什么性能 | 全读 |
 | 3 | [2.4 足部、接触与稳定性](../02-mechanics/04-foot-contact-and-stability.mdx) | 理解支撑多边形、摩擦锥对控制策略的约束 | 全读 |
 | 4 | [2.2 结构设计、材料与刚柔性](../02-mechanics/02-links-structure-and-materials.mdx) | 结构改动会怎样影响质量、惯量和动力学参数 | 读前半 |
-| 5 | [2.5 机器人描述文件](../02-mechanics/05-robot-description-files.md) | URDF/MJCF 是机械和软件交接的界面；格式差异与模型版本管理 | 读开头 |
+| 5 | [2.5 机器人描述文件](../02-mechanics/05-robot-description-files.mdx) | URDF/MJCF 是机械和软件交接的界面；格式差异与模型版本管理 | 读开头 |
 
 ## 你要和电气/嵌入式同学协作
 

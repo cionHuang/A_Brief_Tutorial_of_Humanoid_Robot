@@ -1,0 +1,67 @@
+---
+/**
+ * 2.5 用：URDF 专业字段的高亮源码卡片。
+ * variant="link"  ：同一个 link 里的 inertial / visual / collision
+ * variant="joint" ：一个 joint 的 type / origin / parent / child / axis / limit
+ * 片段逐字摘自本书使用的 G1 无手模型 g1_29dof.urdf（unitree_rl_gym 固定提交），
+ * 保留原文件行号；关键字段行高亮并附中文注释。
+ */
+import SourceSnippet from './SourceSnippet.astro';
+
+const { variant = 'joint' } = Astro.props;
+const COMMIT = '276801e46c5d433564f24658bac64f254b7d2d4b';
+const FILE = 'g1_29dof.urdf';
+const src = (line) =>
+  'https://github.com/unitreerobotics/unitree_rl_gym/blob/' +
+  COMMIT +
+  '/resources/robots/g1_description/' +
+  FILE +
+  '#L' +
+  line;
+
+const cards = {
+  link: [
+    {
+      role: 'link · 一个刚体里的三套信息',
+      file: FILE,
+      url: src(144),
+      lines: [
+        { n: 144, code: '  <link name="left_knee_link">', hl: true, ann: '刚体的软件标识' },
+        { n: 145, code: '    <inertial>', hl: true, ann: 'inertial：质量属性' },
+        { n: 147, code: '      <mass value="1.932"/>', ann: '质量（kg）' },
+        { n: 148, code: '      <inertia ixx="0.011329" ixy="4.82E-05" ixz="-4.49E-05" iyy="0.011277" iyz="-0.0007146" izz="0.0015168"/>', ann: '转动惯量（kg·m²）' },
+        { n: 150, code: '    <visual>', hl: true, ann: 'visual：显示网格、材质、颜色' },
+        { n: 153, code: '        <mesh filename="meshes/left_knee_link.STL"/>', ann: '显示网格' },
+        { n: 155, code: '      <material name="white">' },
+        { n: 159, code: '    <collision>', hl: true, ann: 'collision：碰撞几何，可独立简化' },
+        { n: 162, code: '        <mesh filename="meshes/left_knee_link.STL"/>', ann: '碰撞网格' },
+        { n: 165, code: '  </link>' },
+      ],
+    },
+  ],
+  joint: [
+    {
+      role: 'joint · 运动关系与限位',
+      file: FILE,
+      url: src(166),
+      lines: [
+        { n: 166, code: '  <joint name="left_knee_joint" type="revolute">', hl: true, ann: 'type：revolute 转动关节' },
+        { n: 167, code: '    <origin xyz="-0.078273 0.0021489 -0.17734" rpy="0 0.1749 0"/>', hl: true, ann: 'origin：相对父 link 的安装位姿（零位）' },
+        { n: 168, code: '    <parent link="left_hip_yaw_link"/>', hl: true, ann: 'parent / child：父子 link' },
+        { n: 169, code: '    <child link="left_knee_link"/>', hl: true },
+        { n: 170, code: '    <axis xyz="0 1 0"/>', hl: true, ann: 'axis：运动轴线' },
+        { n: 171, code: '    <limit lower="-0.087267" upper="2.8798" effort="139" velocity="20"/>', hl: true, ann: 'limit：位置 / 力 / 速度上限' },
+        { n: 172, code: '  </joint>' },
+      ],
+    },
+  ],
+};
+
+const captions = {
+  link: '片段逐字摘自 G1 无手模型 <code>g1_29dof.urdf</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为原文件行号。同一个 <code>link</code> 里 <code>inertial</code>、<code>visual</code>、<code>collision</code> 是三套互相独立的信息：显示网格精细，不代表碰撞几何同样精细。',
+  joint: '片段逐字摘自 G1 无手模型 <code>g1_29dof.urdf</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为原文件行号。<code>type</code> 决定关节能怎么动，<code>origin</code> 隐含零位，<code>axis</code> 决定正转方向，<code>limit</code> 给出范围与力 / 速度上限。',
+};
+
+const card = cards[variant] || cards.joint;
+---
+<SourceSnippet cards={card} caption={captions[variant] || captions.joint} />

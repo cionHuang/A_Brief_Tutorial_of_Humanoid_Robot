@@ -1,5 +1,8 @@
 # 2.5 机器人描述文件
 
+import UrdfFieldSnippet from '../../../components/UrdfFieldSnippet.astro';
+import MjcfFieldSnippet from '../../../components/MjcfFieldSnippet.astro';
+
 ## 先看一个现场问题
 
 同一台 G1 被加载到两个工具里，画面都能显示机器人，但一个工具的膝关节方向反了，另一个工具的碰撞检查又完全没有反应。继续排查后发现：显示网格加载成功，并不代表关节轴线、碰撞几何、质量属性和执行器都被正确解释。
@@ -24,6 +27,10 @@
 - `type`：`revolute`、`continuous`、`prismatic`、`fixed` 等运动类型；
 - `limit`：位置、速度和力矩等限制。
 
+下面把 G1 的膝关节定义逐字摘出来，每个字段都能对上：
+
+<UrdfFieldSnippet variant="joint" />
+
 ### Visual、Collision 与 Inertial
 
 一个 link 往往同时包含三套几何/物理信息：
@@ -33,6 +40,10 @@
 - `inertial`：质量、质心和转动惯量。
 
 三者可以不同。显示网格很精细，不代表碰撞网格同样精细；有碰撞几何，也不代表文件中包含真实接触力传感器。`inertial` 只表达刚体质量属性，不表达材料屈服强度、齿轮回差、结构柔性或电池热模型。[1][2]
+
+同一个 link 在文件里长这样：
+
+<UrdfFieldSnippet variant="link" />
 
 ## MJCF：把仿真世界、执行器和传感器一起写入
 
@@ -50,15 +61,21 @@ MJCF（MuJoCo XML Format）以嵌套的 `body` 组织刚体层级，在 body 内
 - `contact`：接触排除、接触对或接触参数；
 - `equality`：等式约束和耦合关系。
 
+先看 `pelvis` 这个 body 里放了什么：
+
+<MjcfFieldSnippet variant="body" />
+
 同名的 `joint` 在 URDF 和 MJCF 中不表示字段完全一一对应。URDF 的 `effort` 是关节限制字段，MJCF 的 `actuatorfrcrange` 是执行器力/力矩范围；二者都需要结合加载器和单位约定解释。
+
+执行器和传感器也直接写在同一个 MJCF 里：
+
+<MjcfFieldSnippet variant="motor" />
 
 ### 自由基座和广义坐标
 
 当前 G1 MJCF 在 `pelvis` body 下显式放置了：
 
-```xml
-<joint name="floating_base_joint" type="free" limited="false" actuatorfrclimited="false"/>
-```
+<MjcfFieldSnippet variant="free" />
 
 这表示 MuJoCo 模型包含一个不受关节限位的自由基座，通常对应浮动基座的平移和旋转自由度。随后才是髋、膝、踝、腰、肩、肘和腕等关节。仿真状态中的 `qpos`/`qvel` 长度因此不等于“电机数量”；自由基座、可动关节和传感器状态要分别统计。
 
@@ -72,18 +89,6 @@ URDF 和 MJCF 不是“谁更真实”的关系，而是边界不同：
 把 URDF 转成 MJCF（或反向）时，必须逐项复核关节轴线与正负方向、默认位姿、惯性参数、碰撞几何、限位和执行器，不能只确认 XML 能被解析。[1][2]
 
 > **一句话听懂**：URDF 管“机器人长什么样、怎么动”，MJCF 在此基础上把“在什么世界里、怎么驱动、怎么感知”也一起写了。
-
-## G1 文件之间如何对应
-
-当前目录保留三组主要 G1 变体：
-
-| 模型 | URDF | MJCF | 可动关节 | 主要用途 |
-| --- | --- | --- | ---: | --- |
-| 无手、腰部可动 | `g1_29dof.urdf` | `g1_29dof.xml` | 29 | 系统、机械、动力学与控制基础 |
-| 无手、锁腰 | `g1_29dof_lock_waist.urdf` | `g1_29dof_lock_waist.xml` | 27 | 隔离腿部或减少腰部变量 |
-| 带手、腰部可动 | `g1_29dof_with_hand.urdf` | `g1_29dof_with_hand.xml` | 43 | 双臂操作、手部与 VLA 示例 |
-
-这里的可动关节数不包含 MJCF 的 `free` 浮动基座，也不把固定关节算作 DoF。带手模型增加的是手指 revolute joint；锁腰模型把腰部 roll/pitch 关节改为 fixed，但文件仍可能保留相应 link 层级。
 
 ## 参考资料
 
