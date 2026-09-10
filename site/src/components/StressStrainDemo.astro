@@ -5,7 +5,7 @@
  * 左侧是一根两端受拉的试件（变形已放大便于观察）：滑块加大载荷时试件伸长，
  * 越过屈服后变为塑性（颜色变化），点「卸载」会沿弹性斜率回弹，保留塑性残余。
  * 右侧是应力—应变曲线：弹性段用分段轴放大，屈服点、塑性段、当前工作点和
- * 卸载线都会随载荷实时更新。材料可切换，用于对比不同刚度 E 与屈服强度。
+ * 卸载线都会随载荷实时更新。材料可切换，用于对比不同弹性模量 E 与屈服强度。
  *
  * 纯 SVG + 原生 JS，无外部依赖；样式跟随 Starlight 明暗主题。
  *
@@ -65,7 +65,7 @@ import { katexHtml } from '../lib/tex.js';
   <p class="ss-readout"><output class="ss-out" aria-live="polite">拖动滑块开始加载</output></p>
 
   <figcaption>
-    拖动「载荷 <span set:html={katexHtml('F')}></span>」滑块给试件轴向加载：应力 <span set:html={katexHtml('\\sigma = F / A')}></span>，应变 <span set:html={katexHtml('\\varepsilon = \\Delta L / L')}></span>，弹性段满足 <span set:html={katexHtml('\\sigma = E\\varepsilon')}></span>（斜率就是弹性模量 <span set:html={katexHtml('E')}></span>，也就是刚度）。应力越过屈服强度后进入塑性段，卸载只能沿弹性斜率回弹一部分，剩下的就是塑性残余变形——颜色会由青绿变为橙红。切换材料可以看到 <span set:html={katexHtml('E')}></span> 越大越“硬”（同样载荷变形更小），屈服强度越高越不容易进入塑性。试件长度 0.3 m、截面积 1 cm²，变形已放大以便观察。
+    拖动「载荷 <span set:html={katexHtml('F')}></span>」滑块给试件轴向加载：应力 <span set:html={katexHtml('\\sigma = F / A')}></span>，应变 <span set:html={katexHtml('\\varepsilon = \\Delta L / L')}></span>，弹性段满足 <span set:html={katexHtml('\\sigma = E\\varepsilon')}></span>（斜率是弹性模量 <span set:html={katexHtml('E')}></span>；结构刚度还取决于截面积和长度）。应力越过屈服强度后进入塑性段，卸载只能沿弹性斜率回弹一部分，剩下的就是塑性残余变形——颜色会由青绿变为橙红。切换材料可以看到 <span set:html={katexHtml('E')}></span> 越大越“硬”（同样载荷变形更小），屈服强度越高越不容易进入塑性。试件长度 0.3 m、截面积 1 cm²，变形已放大以便观察。
   </figcaption>
 </figure>
 

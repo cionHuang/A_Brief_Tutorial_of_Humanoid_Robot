@@ -17,9 +17,11 @@ import MjcfFieldSnippet from '../../../components/MjcfFieldSnippet.astro';
 
 ### 从机构到字段：Link、Joint 与树结构
 
-2.1 节已经从机构角度讲清了连杆（Link）、关节（Joint）和运动树（Kinematic Tree）；这里把同一套概念落到文件字段上。URDF（Unified Robot Description Format）用 `link` 描述刚体、用 `joint` 描述父子 link 之间的运动关系，一串 link 和 joint 组成从根部向末端展开的运动树。标准 URDF 的基本结构是树，而不是带闭环约束的任意机构图；四连杆等闭环机构通常需要额外插件、约束或转换后的近似模型。[1]
+2.1 节讲了连杆、关节和运动链；在 URDF 这种单一父节点的结构里，运动链就长成一棵运动树（Kinematic Tree）。这里把同一套概念落到文件字段上。URDF（Unified Robot Description Format）用 `link` 描述刚体，用 `joint` 描述父子 link 之间的运动关系。一串 link 和 joint 从根部向末端展开，构成运动树。标准 URDF 的基本结构是树，而不是带闭环约束的任意机构图；四连杆等闭环机构通常需要额外插件、约束或转换后的近似模型。[1]
 
-在 G1 URDF 中，`pelvis` 是主要根部 link，下方连接腿部，躯干再连接腰部、头部和双臂。每个关节通常包含：
+> **一句话听懂**：URDF 把机器人拆成一堆 `link`，再用 `joint` 从根往末端串成一棵没有闭环的运动树。
+
+在 G1 URDF 中，`pelvis` 是根 link，向下接双腿，向上经腰部接到 `torso_link`，再由躯干接头部和双臂。每个关节通常包含：
 
 - `parent` / `child`：父子 link；
 - `origin`：关节相对父 link 的位姿；
@@ -41,6 +43,8 @@ import MjcfFieldSnippet from '../../../components/MjcfFieldSnippet.astro';
 
 三者可以不同。显示网格很精细，不代表碰撞网格同样精细；有碰撞几何，也不代表文件中包含真实接触力传感器。`inertial` 只表达刚体质量属性，不表达材料屈服强度、齿轮回差、结构柔性或电池热模型。[1][2]
 
+> **一句话听懂**：`visual` 管好看、`collision` 管好撞、`inertial` 管重力算得对，三套信息各自独立，可以完全不一样。
+
 同一个 link 在文件里长这样：
 
 <UrdfFieldSnippet variant="link" />
@@ -61,32 +65,36 @@ MJCF（MuJoCo XML Format）以嵌套的 `body` 组织刚体层级，在 body 内
 - `contact`：接触排除、接触对或接触参数；
 - `equality`：等式约束和耦合关系。
 
+> **一句话听懂**：MJCF 用嵌套 `body` 搭好刚体骨架，再把关节、几何、执行器、传感器、接触和约束一起写进同一份 XML。
+
 先看 `pelvis` 这个 body 里放了什么：
 
 <MjcfFieldSnippet variant="body" />
 
-同名的 `joint` 在 URDF 和 MJCF 中不表示字段完全一一对应。URDF 的 `effort` 是关节限制字段，MJCF 的 `actuatorfrcrange` 是执行器力/力矩范围；二者都需要结合加载器和单位约定解释。
+同名的 `joint` 在 URDF 和 MJCF 中不表示字段完全一一对应。URDF 的 `effort` 是关节限制字段，MJCF 的 `actuatorfrcrange` 是执行器力/力矩范围；二者都需要结合加载器和单位约定解释。例如 free joint 上的 `actuatorfrclimited` 控制 `actuatorfrcrange` 这个范围是否生效。
 
 执行器和传感器也直接写在同一个 MJCF 里：
 
 <MjcfFieldSnippet variant="motor" />
 
-### 自由基座和广义坐标
+### 浮动基座和广义坐标
 
 当前 G1 MJCF 在 `pelvis` body 下显式放置了：
 
 <MjcfFieldSnippet variant="free" />
 
-这表示 MuJoCo 模型包含一个不受关节限位的自由基座，通常对应浮动基座的平移和旋转自由度。随后才是髋、膝、踝、腰、肩、肘和腕等关节。仿真状态中的 `qpos`/`qvel` 长度因此不等于“电机数量”；自由基座、可动关节和传感器状态要分别统计。
+这表示 MuJoCo 模型包含一个浮动基座（MJCF 里是 `type="free"` 的 joint）。它不受关节限位，提供基座的平移和旋转自由度。随后才是髋、膝、踝、腰、肩、肘和腕等关节。仿真状态中的 `qpos`/`qvel` 长度因此不等于“电机数量”；浮动基座、可动关节和传感器状态要分别统计。
+
+> **一句话听懂**：浮动基座就是机器人整体没被固定的 6 个自由度；数 `qpos`/`qvel` 时，要把它、电机和传感器分开算。
 
 ## 两种格式怎么分工
 
 URDF 和 MJCF 不是“谁更真实”的关系，而是边界不同：
 
-- **URDF** 面向机器人结构本身，是 ROS 生态里机械与软件之间的描述接口；执行器、传感器和接触参数通常由控制器、插件或仿真器另行配置；
+- **URDF** 面向机器人结构本身，是 ROS 生态里机械与软件之间的描述接口。执行器、传感器和接触参数通常由控制器、插件或仿真器另行配置；
 - **MJCF** 面向 MuJoCo 仿真，把刚体、几何、执行器、传感器、接触参数和场景一起写进同一份 XML。
 
-把 URDF 转成 MJCF（或反向）时，必须逐项复核关节轴线与正负方向、默认位姿、惯性参数、碰撞几何、限位和执行器，不能只确认 XML 能被解析。[1][2]
+把 URDF 转成 MJCF（或反向）时，必须逐项复核关节轴线与正负方向、默认位姿、惯性参数、碰撞几何、限位和执行器。不能只确认 XML 能被解析。[1][2]
 
 > **一句话听懂**：URDF 管“机器人长什么样、怎么动”，MJCF 在此基础上把“在什么世界里、怎么驱动、怎么感知”也一起写了。
 
