@@ -4,7 +4,8 @@
  * 手册正文在仓库根目录 chapters/ 下，不在 Astro 默认监听范围内。
  * 本脚本在 dev 期间监视 chapters/：
  *  - 只改正文内容：防抖 300ms 重新同步，由 Astro 内容集合热更新自动刷新页面；
- *  - 新增 / 改名 / 删除小节（结构变化）：清除 .astro 缓存并自动重启 Astro，
+ *  - 新增 / 改名 / 删除小节，或增删 assets/images 下的图片（结构变化）：
+ *    清除 .astro 缓存并自动重启 Astro，
  *    避免内容集合缓存过期导致的 404——以前这种情况必须手动重启 dev server；
  *  - fs.watch 在编辑器原子写入后偶发漏报，用 2s 的 mtime 扫描兜底。
  *
@@ -168,6 +169,13 @@ async function snapshotChapters() {
       if (!name.endsWith('.md') && !name.endsWith('.mdx')) continue;
       const s = await stat(path.join(dir, name)).catch(() => null);
       if (s) next.set(`${chapter.name}/${name}`, s.mtimeMs);
+    }
+    // 图片增删会让 Astro 的 content-assets 缓存失效；若不重启，页面会报
+    // ImageNotFound。所以把 chapters/*/assets/images 里的文件也纳入结构检测：
+    // 数量或文件名一变，就按“结构变化”清 .astro 并重启。
+    const imagesDir = path.join(dir, 'assets', 'images');
+    for (const name of await readdir(imagesDir).catch(() => [])) {
+      next.set(`${chapter.name}/assets/images/${name}`, 1);
     }
   }
   return next;
