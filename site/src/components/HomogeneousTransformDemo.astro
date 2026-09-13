@@ -1,256 +1,237 @@
 ---
 /**
- * 齐次变换与坐标链（Homogeneous Transform）交互演示：一条 2D 侧视的简化腿链
- * W → P → 髋 → 膝 → 踝 → F，每个关节挂一个随关节角旋转的小坐标架，脚端留下
- * 一条淡淡轨迹。
+ * 位姿与齐次变换（Homogeneous Transform）交互演示：笛卡尔世界坐标系 W 中放一个
+ * 可拖动的位姿坐标系 B，右侧用 4×4 齐次变换矩阵 T_WB 的 16 个数字同步显示它的
+ * 位置与姿态。
  *
  * 教学要点：
- *   ① 一个齐次变换一次乘法同时完成“旋转 + 平移”，所以一个矩阵就能描述一段位姿；
- *   ② 沿运动链相乘时顺序不能颠倒、下标必须首尾相接：T_WF = T_WP · T_PL1 · T_L1L2 · T_L2F；
- *   ③ 换顺序后矩阵维度仍然能相乘，但物理结果完全错误——这正是仿真里“目标跑偏”的常见原因。
+ *   ① 一个 4×4 矩阵 = 左上 3×3 的旋转 R + 右上 3×1 的位置 p + 末行 [0 0 0 1]；
+ *   ② 坐标架 B 的原点就是 p=(x,y,z)，三根短轴的方向就是 R 的三列；
+ *   ③ 一次矩阵乘法同时完成旋转和平移，所以一个矩阵就描述了一个完整位姿。
  *
- * 数据模型（教学示意，单位 m 与角度，非 G1 真实尺寸）：
- *   世界原点 W=(0,0)，骨盆相对 W 平移 (0.55, 0.86)；
- *   大腿 l1=0.44、小腿 l2=0.42、脚 l3=0.20；
- *   每段局部变换 = 绕关节旋转 θ，再沿旋转后的 x 轴平移 l（先旋转再平移），
- *   T_WF = T_WP · T_PL1 · T_L1L2 · T_L2F。
+ * 数据模型（教学示意）：
+ *   位置 x,y ∈ [−0.5, 1.0] m（默认 0.40, 0.10），z ∈ [0, 0.8] m（默认 0.30）；
+ *   姿态 roll/pitch/yaw ∈ [−180°, 180°]（默认 0°, 0°, 30°）；
+ *   R = Rz(yaw) · Ry(pitch) · Rx(roll)（URDF/ROS 常用的 ZYX 顺序），
+ *   T_WB = [[R, p], [0 0 0 1]]。
+ *   左区为等距投影：x 基 (0.866, 0.5)、y 基 (−0.866, 0.5)、z 向上 (0, −1)，
+ *   比例 140 px/m（约 150），世界原点在屏幕 (250, 273)，地面覆盖 x/y ∈ [−0.5, 1.0] m。
  *
- * 交互：默认静止不自动播放；三个滑块调髋/膝/踝角，“顺序颠倒”按钮把链式乘积
- * 换成错误排列并把脚端画到明显错误的位置，“复位”回到默认站立姿态。所有 SVG
- * 图形都写在 markup 里，JS 只用 setAttribute 改属性 / textContent / classList
- * （不改 class 属性、不写死颜色），样式跟随 Starlight 明暗主题。
+ * 交互：默认静止、无动画；拖任意滑块，坐标架 B 与矩阵 16 个数字实时更新；
+ * “只留旋转”把位置归零（右上 3×1 变 0），“只留平移”把姿态归零（左上 3×3 变
+ * 单位阵），“复位”回默认。所有 SVG 图形都写在 markup 里，JS 只改属性 /
+ * textContent / classList（不 setAttribute('class')、不写死颜色）。
  *
  * 使用方式（放在 4.1 节“### 位姿（Pose）与齐次变换（Homogeneous Transform）”下方）：
  *   import HomogeneousTransformDemo from '../../../components/HomogeneousTransformDemo.astro';
  *   <HomogeneousTransformDemo />
  */
-const WORLD = { x: 110, y: 340 };   // 世界原点 W（左下）
-const SCALE = 240;                  // 1 m = 240 px（教学示意）
+const d2r = (d) => (d * Math.PI) / 180;
 
-// 段长与骨盆相对世界的平移（m）
-const LINK = { wp: { x: 0.55, y: 0.86 }, l1: 0.44, l2: 0.42, l3: 0.2 };
+// ── 左区：等距投影的三维世界坐标系 W ─────────────────────────────────────────
+const WORLD = { x: 250, y: 273 };          // 世界原点在屏幕上的位置
+const SCALE = 140;                          // 1 m 对应的屏幕像素
+const ISO = { ax: 0.866, ay: 0.5 };         // x/y 等距基；z 用 (0, −1)
+const proj = (X, Y, Z) => ({
+  x: WORLD.x + SCALE * (ISO.ax * X - ISO.ax * Y),
+  y: WORLD.y + SCALE * (ISO.ay * X + ISO.ay * Y - Z),
+});
 
-const JOINTS = [
-  { key: 'hip', name: '髋角', min: -45, max: 45, step: 1, def: 15 },
-  { key: 'knee', name: '膝角', min: 0, max: 80, step: 1, def: 35 },
-  { key: 'ankle', name: '踝角', min: -40, max: 40, step: 1, def: 10 },
+const R_GEO = { xmin: -0.5, xmax: 1.0, ymin: -0.5, ymax: 1.0, zmin: 0, zmax: 0.8 };
+const L_AXIS = 0.2;                         // 位姿坐标架三根短轴的长度（m），约 28 px
+
+// ── 滑块（位置 3 个 + 姿态 3 个） ────────────────────────────────────────────
+const SLIDERS = [
+  { key: 'x', name: '位置 x', min: -0.5, max: 1.0, step: 0.01, def: 0.4, kind: 'pos' },
+  { key: 'y', name: '位置 y', min: -0.5, max: 1.0, step: 0.01, def: 0.1, kind: 'pos' },
+  { key: 'z', name: '位置 z', min: 0, max: 0.8, step: 0.01, def: 0.3, kind: 'pos' },
+  { key: 'roll', name: 'roll', min: -180, max: 180, step: 1, def: 0, kind: 'ang' },
+  { key: 'pitch', name: 'pitch', min: -180, max: 180, step: 1, def: 0, kind: 'ang' },
+  { key: 'yaw', name: 'yaw', min: -180, max: 180, step: 1, def: 30, kind: 'ang' },
 ];
 const DEF = {};
-JOINTS.forEach((j) => { DEF[j.key] = j.def; });
+SLIDERS.forEach((s) => { DEF[s.key] = s.def; });
 
-// 正常链各段下标首尾相接；颠倒链故意打乱后仍可相乘，但物理结果错误
-const ORDER = {
-  good: [['wp', 'T_WP'], ['pl1', 'T_PL1'], ['l1l2', 'T_L1L2'], ['l2f', 'T_L2F']],
-  bad: [['l1l2', 'T_L1L2'], ['wp', 'T_WP'], ['l2f', 'T_L2F'], ['pl1', 'T_PL1']],
+// ── 旋转与 4×4 齐次变换 ──────────────────────────────────────────────────────
+// R = Rz(yaw)·Ry(pitch)·Rx(roll)，返回行优先的 3×3（其列 = 机体轴在世界系中的方向）
+const rot = (roll, pitch, yaw) => {
+  const cr = Math.cos(d2r(roll)); const sr = Math.sin(d2r(roll));
+  const cp = Math.cos(d2r(pitch)); const sp = Math.sin(d2r(pitch));
+  const cy = Math.cos(d2r(yaw)); const sy = Math.sin(d2r(yaw));
+  return [
+    [cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr],
+    [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr],
+    [-sp, cp * sr, cp * cr],
+  ];
 };
-
-// 四个变换标签的文字锚点与引线起点（固定，引线端点随连杆中点更新）
-const LABELS = [
-  { x: 36, y: 254 },
-  { x: 350, y: 156 },
-  { x: 350, y: 262 },
-  { x: 350, y: 352 },
-];
-const LEADER_STARTS = [
-  { x: 92, y: 250 },
-  { x: 346, y: 160 },
-  { x: 346, y: 266 },
-  { x: 346, y: 348 },
-];
-
-const d2r = (d) => (d * Math.PI) / 180;
-// 3×3 齐次矩阵（数学坐标，y 向上），[a,b,c, d,e,f, g,h,i] 行优先
-const MAT = {
-  id: () => [1, 0, 0, 0, 1, 0, 0, 0, 1],
-  rot: (deg) => {
-    const c = Math.cos(d2r(deg));
-    const s = Math.sin(d2r(deg));
-    return [c, -s, 0, s, c, 0, 0, 0, 1];
-  },
-  trans: (x, y) => [1, 0, x, 0, 1, y, 0, 0, 1],
-  mul: (A, B) => [
-    A[0] * B[0] + A[1] * B[3] + A[2] * B[6], A[0] * B[1] + A[1] * B[4] + A[2] * B[7], A[0] * B[2] + A[1] * B[5] + A[2] * B[8],
-    A[3] * B[0] + A[4] * B[3] + A[5] * B[6], A[3] * B[1] + A[4] * B[4] + A[5] * B[7], A[3] * B[2] + A[4] * B[5] + A[5] * B[8],
-    A[6] * B[0] + A[7] * B[3] + A[8] * B[6], A[6] * B[1] + A[7] * B[4] + A[8] * B[7], A[6] * B[2] + A[7] * B[5] + A[8] * B[8],
-  ],
-  apply: (A, p) => [A[0] * p[0] + A[1] * p[1] + A[2], A[3] * p[0] + A[4] * p[1] + A[5]],
+const poseMatrix = (p) => {
+  const R = rot(p.roll, p.pitch, p.yaw);
+  return [
+    [R[0][0], R[0][1], R[0][2], p.x],
+    [R[1][0], R[1][1], R[1][2], p.y],
+    [R[2][0], R[2][1], R[2][2], p.z],
+    [0, 0, 0, 1],
+  ];
 };
-const toScreen = (p) => ({ x: WORLD.x + p[0] * SCALE, y: WORLD.y - p[1] * SCALE });
+const fmt2 = (v) => { const r = Math.abs(v) < 0.005 ? 0 : v; return r < 0 ? '−' + Math.abs(r).toFixed(2) : r.toFixed(2); };
 
-// 每段的局部齐次变换：先绕关节旋转 θ，再沿旋转后的 x 轴平移 l
-const parts = (hip, knee, ankle) => ({
-  wp: MAT.trans(LINK.wp.x, LINK.wp.y),
-  pl1: MAT.mul(MAT.rot(-90 + hip), MAT.trans(LINK.l1, 0)),
-  l1l2: MAT.mul(MAT.rot(-knee), MAT.trans(LINK.l2, 0)),
-  l2f: MAT.mul(MAT.rot(90 + ankle), MAT.trans(LINK.l3, 0)),
+// ── 地面网格与三根世界轴 ─────────────────────────────────────────────────────
+const GRID_N = 7;
+const GX = Array.from({ length: GRID_N }, (_, i) => {
+  const X = R_GEO.xmin + (i * (R_GEO.xmax - R_GEO.xmin)) / (GRID_N - 1);
+  return { a: proj(X, R_GEO.ymin, 0), b: proj(X, R_GEO.ymax, 0) };
 });
-const chain = (keys, P) => keys.reduce((A, k) => MAT.mul(A, P[k]), MAT.id());
-
-const pose = (hip, knee, ankle) => {
-  const P = parts(hip, knee, ankle);
-  const mWP = P.wp;
-  const mPL1 = MAT.mul(mWP, P.pl1);
-  const mL1L2 = MAT.mul(mPL1, P.l1l2);
-  const good = MAT.mul(mL1L2, P.l2f);
-  const bad = chain(ORDER.bad.map((d) => d[0]), P);
-  return {
-    W: toScreen([0, 0]),
-    P: toScreen(MAT.apply(mWP, [0, 0])),
-    knee: toScreen(MAT.apply(mPL1, [0, 0])),
-    ankle: toScreen(MAT.apply(mL1L2, [0, 0])),
-    foot: toScreen(MAT.apply(good, [0, 0])),
-    badFoot: toScreen(MAT.apply(bad, [0, 0])),
-    beta: -hip + knee - ankle,   // 末端坐标架在 SVG 里的旋转角
-  };
-};
-
-const DEF_POSE = pose(DEF.hip, DEF.knee, DEF.ankle);
-const BETA = { p: 90 - DEF.hip, knee: 90 - DEF.hip + DEF.knee, foot: DEF_POSE.beta };
-const FRAME_DEFS = [
-  { role: 'frame-p', point: 'P', beta: BETA.p },
-  { role: 'frame-knee', point: 'knee', beta: BETA.knee },
-  { role: 'frame-ankle', point: 'ankle', beta: BETA.foot },
-  { role: 'frame-foot', point: 'foot', beta: BETA.foot },
+const GY = Array.from({ length: GRID_N }, (_, i) => {
+  const Y = R_GEO.ymin + (i * (R_GEO.ymax - R_GEO.ymin)) / (GRID_N - 1);
+  return { a: proj(R_GEO.xmin, Y, 0), b: proj(R_GEO.xmax, Y, 0) };
+});
+const GROUND = [
+  proj(R_GEO.xmin, R_GEO.ymin, 0), proj(R_GEO.xmax, R_GEO.ymin, 0),
+  proj(R_GEO.xmax, R_GEO.ymax, 0), proj(R_GEO.xmin, R_GEO.ymax, 0),
 ];
-const SEGS = [
-  [DEF_POSE.W, DEF_POSE.P],
-  [DEF_POSE.P, DEF_POSE.knee],
-  [DEF_POSE.knee, DEF_POSE.ankle],
-  [DEF_POSE.ankle, DEF_POSE.foot],
-];
-const MID = SEGS.map((s) => ({ x: (s[0].x + s[1].x) / 2, y: (s[0].y + s[1].y) / 2 }));
+const groundPts = GROUND.map((p) => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
 
-// 轨迹：髋角从 min 扫到 max 时脚端的位置（顺序正确时才有物理意义）
-const TRAIL_PTS = [];
-for (let i = 0; i <= 30; i++) {
-  const h = JOINTS[0].min + ((JOINTS[0].max - JOINTS[0].min) * i) / 30;
-  const p = pose(h, DEF.knee, DEF.ankle).foot;
-  TRAIL_PTS.push(p.x.toFixed(1) + ',' + p.y.toFixed(1));
-}
-const trailPoints = TRAIL_PTS.join(' ');
+const WAX = [
+  { key: 'x', from: proj(-0.5, 0, 0), to: proj(1.0, 0, 0) },
+  { key: 'y', from: proj(0, -0.5, 0), to: proj(0, 1.0, 0) },
+  { key: 'z', from: proj(0, 0, 0), to: proj(0, 0, 0.9) },
+].map((a) => Object.assign({}, a, {
+  lx: a.key === 'y' ? a.to.x - 12 : a.to.x + 12,
+  ly: a.key === 'z' ? a.to.y + 6 : a.to.y + 20,
+  anchor: a.key === 'y' ? 'end' : 'start',
+}));
 
-const xf = (pt, deg) => 'translate(' + pt.x.toFixed(1) + ' ' + pt.y.toFixed(1) + ') rotate(' + deg.toFixed(1) + ')';
-
-const CFG = {
-  world: WORLD,
-  scale: SCALE,
-  link: LINK,
-  joints: JOINTS,
-  def: DEF,
-  order: ORDER,
-  leaderStarts: LEADER_STARTS,
+// ── 默认位姿 —— markup 的初始几何（JS 加载后会立即按同一公式刷新） ───────────
+const DEF_M = poseMatrix(DEF);
+const DEF_R = rot(DEF.roll, DEF.pitch, DEF.yaw);
+const DEF_O = proj(DEF.x, DEF.y, DEF.z);
+const DEF_TIPS = [0, 1, 2].map((i) => proj(
+  DEF.x + L_AXIS * DEF_R[0][i],
+  DEF.y + L_AXIS * DEF_R[1][i],
+  DEF.z + L_AXIS * DEF_R[2][i],
+));
+const pLabelAt = (o) => {
+  const dx = o.x - WORLD.x; const dy = o.y - WORLD.y;
+  const len = Math.hypot(dx, dy) || 1;
+  return { x: WORLD.x + dx / 2 - (dy / len) * 14, y: WORLD.y + dy / 2 + (dx / len) * 14 };
 };
+const DEF_PL = pLabelAt(DEF_O);
+const DEF_GROUND = proj(DEF.x, DEF.y, 0);
+
+// ── 右区：4×4 矩阵排版 ───────────────────────────────────────────────────────
+const M_COL = [602, 666, 730, 794];
+const M_ROW = [132, 176, 220, 264];
+const M_HEAD_Y = 94;
+const M_NOTE = { x: 546, y: 306, dy: 22 };
+const BRACKET = { top: 112, bottom: 280, left: 584, right: 812, tick: 16 };
+const bracketL = 'M ' + (BRACKET.left + BRACKET.tick) + ' ' + BRACKET.top + ' L ' + BRACKET.left + ' ' + BRACKET.top + ' L ' + BRACKET.left + ' ' + BRACKET.bottom + ' L ' + (BRACKET.left + BRACKET.tick) + ' ' + BRACKET.bottom;
+const bracketR = 'M ' + (BRACKET.right - BRACKET.tick) + ' ' + BRACKET.top + ' L ' + BRACKET.right + ' ' + BRACKET.top + ' L ' + BRACKET.right + ' ' + BRACKET.bottom + ' L ' + (BRACKET.right - BRACKET.tick) + ' ' + BRACKET.bottom;
+
+const CFG = { world: WORLD, scale: SCALE, iso: ISO, lAxis: L_AXIS, range: R_GEO, sliders: SLIDERS, def: DEF };
 ---
 
 <figure class="ht-demo" data-ht={JSON.stringify(CFG)}>
-  <svg viewBox="0 0 900 430" role="img" aria-label="齐次变换与坐标链教学示意：一条二维侧视简化腿链从世界原点 W 依次经过骨盆 P、髋、膝到踝和脚端 F，每个关节挂一个随角度旋转的坐标架；上方一行是四段变换矩阵相乘的链式表达式，可切换到顺序颠倒，此时脚端会被画到明显错误的位置">
-    <text class="ht-title" x="24" y="28">齐次变换与坐标链：顺序不能颠倒（教学示意）</text>
+  <svg viewBox="0 0 900 470" role="img" aria-label="位姿与齐次变换教学示意：左侧等距投影的世界坐标系 W 中有一个可用滑块拖动的位姿坐标系 B，右侧 4×4 齐次变换矩阵 T_WB 的十六个数字随位置 x y z 与姿态 roll pitch yaw 实时更新，左上 3×3 是旋转、右上 3×1 是位置、末行恒为 0 0 0 1">
+    <defs>
+      <marker id="ht-mk-w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+        <path class="ht-mk-w-arm" d="M0,0 L10,5 L0,10 Z"></path>
+      </marker>
+      <marker id="ht-mk-x" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto">
+        <path class="ht-mk-x-arm" d="M0,0 L10,5 L0,10 Z"></path>
+      </marker>
+      <marker id="ht-mk-y" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto">
+        <path class="ht-mk-y-arm" d="M0,0 L10,5 L0,10 Z"></path>
+      </marker>
+      <marker id="ht-mk-z" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto">
+        <path class="ht-mk-z-arm" d="M0,0 L10,5 L0,10 Z"></path>
+      </marker>
+    </defs>
 
-    <!-- 矩阵链：正常时下标首尾相接，颠倒时整行变警示色 -->
-    <g class="ht-chain" data-role="chain">
-      <rect class="ht-chain-box" x="16" y="44" width="868" height="42" rx="8"></rect>
-      <text class="ht-chain-text" data-role="chain-text" x="30" y="72">T_WF = T_WP · T_PL1 · T_L1L2 · T_L2F</text>
-      <text class="ht-chain-badge" data-role="chain-badge" x="870" y="71" text-anchor="end">✅ 首尾相接</text>
-    </g>
+    <text class="ht-title" x="24" y="28">位姿与齐次变换：一个坐标系 + 一个 4×4 矩阵（教学示意）</text>
 
-    <!-- 地面参考线 -->
-    <line class="ht-ground" x1="40" y1="340" x2="880" y2="340"></line>
+    <!-- ===== 左区：世界坐标系 W（等距投影，固定不动） ===== -->
+    <polygon class="ht-ground-fill" points={groundPts}></polygon>
+    {GX.map((l) => (
+      <line class="ht-grid" x1={l.a.x.toFixed(1)} y1={l.a.y.toFixed(1)} x2={l.b.x.toFixed(1)} y2={l.b.y.toFixed(1)}></line>
+    ))}
+    {GY.map((l) => (
+      <line class="ht-grid" x1={l.a.x.toFixed(1)} y1={l.a.y.toFixed(1)} x2={l.b.x.toFixed(1)} y2={l.b.y.toFixed(1)}></line>
+    ))}
 
-    <!-- 脚端轨迹：髋角扫过时留下的淡淡轨迹 -->
-    <polyline class="ht-trail" data-role="trail" points={trailPoints}></polyline>
+    {WAX.map((a) => (
+      <g>
+        <line class="ht-waxis" x1={a.from.x.toFixed(1)} y1={a.from.y.toFixed(1)} x2={a.to.x.toFixed(1)} y2={a.to.y.toFixed(1)} marker-end="url(#ht-mk-w)"></line>
+        <text class="ht-wax-label" x={a.lx.toFixed(1)} y={a.ly.toFixed(1)} text-anchor={a.anchor}>{a.key}</text>
+      </g>
+    ))}
+    <circle class="ht-w-origin" cx={WORLD.x} cy={WORLD.y} r="4.5"></circle>
+    <text class="ht-w-label" x={WORLD.x - 12} y={WORLD.y + 6} text-anchor="end">W</text>
 
-    <!-- 连杆：W-P、P-膝、膝-踝、踝-F -->
-    {SEGS.map((s, i) => (
+    <text class="ht-legend" x="24" y="62">W 世界坐标系（固定，等距投影）</text>
+    <text class="ht-legend" x="24" y="86">B 位姿坐标系（可动：位置 p + 姿态 R）</text>
+
+    <!-- ===== 位姿坐标系 B ===== -->
+    <!-- 从 W 原点到 B 原点的位置向量 p -->
+    <line class="ht-p" data-role="pvec" x1={WORLD.x} y1={WORLD.y} x2={DEF_O.x.toFixed(1)} y2={DEF_O.y.toFixed(1)}></line>
+    <text class="ht-p-label" data-role="plabel" x={DEF_PL.x.toFixed(1)} y={DEF_PL.y.toFixed(1)}>p</text>
+    <!-- B 原点到地面的投影虚线（帮助判断三维位置） -->
+    <line class="ht-drop" data-role="dropvec" x1={DEF_O.x.toFixed(1)} y1={DEF_O.y.toFixed(1)} x2={DEF_GROUND.x.toFixed(1)} y2={DEF_GROUND.y.toFixed(1)}></line>
+    <!-- 三根机体短轴：方向 = 旋转矩阵 R 的三列，颜色区分 -->
+    {[0, 1, 2].map((i) => (
       <line
-        class="ht-link"
-        data-role="link"
-        data-i={i}
-        x1={s[0].x.toFixed(1)}
-        y1={s[0].y.toFixed(1)}
-        x2={s[1].x.toFixed(1)}
-        y2={s[1].y.toFixed(1)}
+        class={'ht-bax ht-bax-' + ['x', 'y', 'z'][i]}
+        data-bax={i}
+        x1={DEF_O.x.toFixed(1)}
+        y1={DEF_O.y.toFixed(1)}
+        x2={DEF_TIPS[i].x.toFixed(1)}
+        y2={DEF_TIPS[i].y.toFixed(1)}
+        marker-end={'url(#ht-mk-' + ['x', 'y', 'z'][i] + ')'}
       ></line>
     ))}
+    <circle class="ht-b-origin" data-role="borigin" cx={DEF_O.x.toFixed(1)} cy={DEF_O.y.toFixed(1)} r="5"></circle>
+    <text class="ht-b-label" data-role="blabel" x={(DEF_O.x + 12).toFixed(1)} y={(DEF_O.y - 12).toFixed(1)}>B</text>
 
-    <!-- 顺序颠倒时的错误连线：踝 → 错误的脚端 -->
-    <line
-      class="ht-err-link ht-hidden"
-      data-role="err-link"
-      x1={DEF_POSE.ankle.x.toFixed(1)}
-      y1={DEF_POSE.ankle.y.toFixed(1)}
-      x2={DEF_POSE.badFoot.x.toFixed(1)}
-      y2={DEF_POSE.badFoot.y.toFixed(1)}
-    ></line>
+    <!-- ===== 右区：4×4 齐次变换矩阵的逐项数值 ===== -->
+    <text class="ht-m-label" x="556" y="64">T_WB =</text>
+    <text class="ht-m-head ht-m-head-r" x={M_COL[1]} y={M_HEAD_Y} text-anchor="middle">R</text>
+    <text class="ht-m-head ht-m-head-p" x={M_COL[3]} y={M_HEAD_Y} text-anchor="middle">p</text>
+    <path class="ht-bracket" d={bracketL}></path>
+    <path class="ht-bracket" d={bracketR}></path>
+    {Array.from({ length: 16 }, (_, i) => {
+      const r = Math.floor(i / 4);
+      const c = i % 4;
+      const cls = r === 3 ? 'ht-m ht-m-row' : c === 3 ? 'ht-m ht-m-pos' : 'ht-m ht-m-rot';
+      return (
+        <text class={cls} data-m={i} x={M_COL[c]} y={M_ROW[r]} text-anchor="middle">{fmt2(DEF_M[r][c])}</text>
+      );
+    })}
+    <text class="ht-m-note" x={M_NOTE.x} y={M_NOTE.y}>左上 3×3 是旋转 R，右上 3×1 是位置 p，</text>
+    <text class="ht-m-note" x={M_NOTE.x} y={M_NOTE.y + M_NOTE.dy}>最后一行恒为 [0 0 0 1]</text>
 
-    <!-- 世界坐标架（固定不动） -->
-    <g class="ht-frame ht-frame-w" transform={xf({ x: WORLD.x, y: WORLD.y }, 0)}>
-      <line class="ht-ax" x1="0" y1="0" x2="24" y2="0"></line>
-      <line class="ht-ax" x1="0" y1="0" x2="0" y2="-24"></line>
-      <circle class="ht-joint-dot" cx="0" cy="0" r="3.4"></circle>
-      <text class="ht-ax-label" x="28" y="6">x</text>
-      <text class="ht-ax-label" x="-6" y="-28">y</text>
-    </g>
-
-    <!-- 关节坐标架：每个随关节角旋转，transform 由 JS 更新 -->
-    {FRAME_DEFS.map((f) => (
-      <g class="ht-frame" data-role={f.role} transform={xf(DEF_POSE[f.point], f.beta)}>
-        <line class="ht-ax" x1="0" y1="0" x2="22" y2="0"></line>
-        <line class="ht-ax" x1="0" y1="0" x2="0" y2="-22"></line>
-        <circle class="ht-joint-dot" cx="0" cy="0" r="3.2"></circle>
-      </g>
-    ))}
-
-    <!-- 顺序正确时的脚端“幽灵”位置（仅颠倒模式显示） -->
-    <g class="ht-ghost" data-role="ghost" transform={xf(DEF_POSE.foot, BETA.foot)}>
-      <circle cx="0" cy="0" r="8"></circle>
-      <circle cx="0" cy="0" r="2.4"></circle>
-    </g>
-
-    <!-- 四段变换标签：文字锚点固定，引线指向当前连杆中点 -->
-    {ORDER.good.map((d, i) => (
-      <g>
-        <line
-          class="ht-leader"
-          data-role="leader"
-          data-i={i}
-          x1={LEADER_STARTS[i].x}
-          y1={LEADER_STARTS[i].y}
-          x2={MID[i].x.toFixed(1)}
-          y2={MID[i].y.toFixed(1)}
-        ></line>
-        <text class="ht-link-label" data-role="label" data-i={i} x={LABELS[i].x} y={LABELS[i].y}>{d[1]}</text>
-      </g>
-    ))}
-
-    <!-- 关节名 -->
-    <text class="ht-joint-label" x={WORLD.x} y="372" text-anchor="middle">W 世界原点</text>
-    <text class="ht-joint-label" x={(DEF_POSE.P.x + 14).toFixed(1)} y={(DEF_POSE.P.y - 16).toFixed(1)}>P 骨盆（髋关节）</text>
-    <text class="ht-joint-label" x={(DEF_POSE.knee.x + 14).toFixed(1)} y={(DEF_POSE.knee.y + 18).toFixed(1)}>膝</text>
-    <text class="ht-joint-label" x={(DEF_POSE.ankle.x - 14).toFixed(1)} y={(DEF_POSE.ankle.y + 18).toFixed(1)} text-anchor="end">踝</text>
-    <text class="ht-foot-label" data-role="foot-label" x={(DEF_POSE.foot.x + 14).toFixed(1)} y={(DEF_POSE.foot.y + 34).toFixed(1)}>F 脚端</text>
-
-    <!-- 教学要点 -->
-    <text class="ht-note" x="24" y="400">每一步都是「先旋转，再平移」；矩阵乘法不可交换。</text>
-    <text class="ht-note" x="24" y="422">换顺序后维度仍能相乘，但物理结果完全错误——这正是仿真里「目标跑偏」的常见原因。</text>
+    <!-- 页脚教学要点 -->
+    <text class="ht-note" x="24" y="452">B 的原点 = 矩阵右上 3×1 的位置 p；B 的三根短轴方向来自左上 3×3 的旋转 R。</text>
   </svg>
 
   <div class="ht-controls">
-    <button type="button" class="ht-btn ht-order" data-order aria-pressed="false">顺序颠倒 ✗</button>
     <button type="button" class="ht-btn" data-reset>复位</button>
-    {JOINTS.map((j) => (
-      <label class="ht-slider-label">{j.name} <span class="ht-val" data-val={j.key}>{j.def}°</span>
-        <input class="ht-range" type="range" data-range={j.key} min={j.min} max={j.max} step={j.step} value={j.def} />
+    <button type="button" class="ht-btn" data-rot-only>只留旋转（位置归零）</button>
+    <button type="button" class="ht-btn" data-trans-only>只留平移（姿态归零）</button>
+    {SLIDERS.map((s) => (
+      <label class="ht-slider-label">{s.name}
+        <span class="ht-val" data-val={s.key}>{s.kind === 'pos' ? fmt2(s.def) + ' m' : s.def + '°'}</span>
+        <input class="ht-range" type="range" data-range={s.key} min={s.min} max={s.max} step={s.step} value={s.def} />
       </label>
     ))}
   </div>
 
   <div class="ht-readout">
     <output class="ht-out ht-out-pose" aria-live="polite"></output>
-    <output class="ht-out ht-out-chain" aria-live="polite"></output>
+    <output class="ht-out ht-out-note" aria-live="polite"></output>
   </div>
 
   <figcaption>
-    拖动髋 / 膝 / 踝三个角度看脚端怎么走；点“顺序颠倒”把式中四段换个位置，脚端立刻跑到不可能的位置。数值为教学示意。
+    拖动位置（x / y / z）与姿态（roll / pitch / yaw）六个滑块：左边坐标架 B 实时移动和旋转，右边矩阵 16 个数字同步变化。
+    试试“只留旋转”和“只留平移”，看看矩阵里哪一块被清零。数值为教学示意。
   </figcaption>
 </figure>
 
@@ -259,181 +240,155 @@ const CFG = {
     const cfg = JSON.parse(demo.dataset.ht);
     const world = cfg.world;
     const scale = cfg.scale;
-    const link = cfg.link;
-    const joints = cfg.joints;
+    const iso = cfg.iso;
+    const L = cfg.lAxis;
+    const sliders = cfg.sliders;
     const def = cfg.def;
-    const order = cfg.order;
-    const starts = cfg.leaderStarts;
 
-    // 与 frontmatter 完全一致的 2D 齐次变换工具
+    // 与 frontmatter 完全一致的投影与旋转工具
     const d2r = (d) => (d * Math.PI) / 180;
-    const M = {
-      id: () => [1, 0, 0, 0, 1, 0, 0, 0, 1],
-      rot: (deg) => {
-        const c = Math.cos(d2r(deg));
-        const s = Math.sin(d2r(deg));
-        return [c, -s, 0, s, c, 0, 0, 0, 1];
-      },
-      trans: (x, y) => [1, 0, x, 0, 1, y, 0, 0, 1],
-      mul: (A, B) => [
-        A[0] * B[0] + A[1] * B[3] + A[2] * B[6], A[0] * B[1] + A[1] * B[4] + A[2] * B[7], A[0] * B[2] + A[1] * B[5] + A[2] * B[8],
-        A[3] * B[0] + A[4] * B[3] + A[5] * B[6], A[3] * B[1] + A[4] * B[4] + A[5] * B[7], A[3] * B[2] + A[4] * B[5] + A[5] * B[8],
-        A[6] * B[0] + A[7] * B[3] + A[8] * B[6], A[6] * B[1] + A[7] * B[4] + A[8] * B[7], A[6] * B[2] + A[7] * B[5] + A[8] * B[8],
-      ],
-      apply: (A, p) => [A[0] * p[0] + A[1] * p[1] + A[2], A[3] * p[0] + A[4] * p[1] + A[5]],
-    };
-    const toScreen = (p) => ({ x: world.x + p[0] * scale, y: world.y - p[1] * scale });
-    const parts = (hip, knee, ankle) => ({
-      wp: M.trans(link.wp.x, link.wp.y),
-      pl1: M.mul(M.rot(-90 + hip), M.trans(link.l1, 0)),
-      l1l2: M.mul(M.rot(-knee), M.trans(link.l2, 0)),
-      l2f: M.mul(M.rot(90 + ankle), M.trans(link.l3, 0)),
+    const proj = (X, Y, Z) => ({
+      x: world.x + scale * (iso.ax * X - iso.ax * Y),
+      y: world.y + scale * (iso.ay * X + iso.ay * Y - Z),
     });
-    const chain = (keys, P) => keys.reduce((A, k) => M.mul(A, P[k]), M.id());
-    const pose = (hip, knee, ankle) => {
-      const P = parts(hip, knee, ankle);
-      const mWP = P.wp;
-      const mPL1 = M.mul(mWP, P.pl1);
-      const mL1L2 = M.mul(mPL1, P.l1l2);
-      const good = M.mul(mL1L2, P.l2f);
-      const bad = chain(order.bad.map((d) => d[0]), P);
-      return {
-        W: toScreen([0, 0]),
-        P: toScreen(M.apply(mWP, [0, 0])),
-        knee: toScreen(M.apply(mPL1, [0, 0])),
-        ankle: toScreen(M.apply(mL1L2, [0, 0])),
-        foot: toScreen(M.apply(good, [0, 0])),
-        badFoot: toScreen(M.apply(bad, [0, 0])),
-        beta: -hip + knee - ankle,
-      };
+    const rot = (roll, pitch, yaw) => {
+      const cr = Math.cos(d2r(roll)); const sr = Math.sin(d2r(roll));
+      const cp = Math.cos(d2r(pitch)); const sp = Math.sin(d2r(pitch));
+      const cy = Math.cos(d2r(yaw)); const sy = Math.sin(d2r(yaw));
+      return [
+        [cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr],
+        [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr],
+        [-sp, cp * sr, cp * cr],
+      ];
     };
+    const fmt2 = (v) => { const r = Math.abs(v) < 0.005 ? 0 : v; return r < 0 ? '−' + Math.abs(r).toFixed(2) : r.toFixed(2); };
+    const fmtDeg = (v) => { const r = Math.abs(v) < 0.5 ? 0 : v; return r < 0 ? '−' + Math.abs(r).toFixed(0) : r.toFixed(0); };
 
     const el = (sel) => demo.querySelector(sel);
-    const trailEl = el('[data-role="trail"]');
-    const linkEls = [0, 1, 2, 3].map((i) => el('[data-role="link"][data-i="' + i + '"]'));
-    const errEl = el('[data-role="err-link"]');
-    const frameP = el('[data-role="frame-p"]');
-    const frameKnee = el('[data-role="frame-knee"]');
-    const frameAnkle = el('[data-role="frame-ankle"]');
-    const frameFoot = el('[data-role="frame-foot"]');
-    const ghostEl = el('[data-role="ghost"]');
-    const leaderEls = [0, 1, 2, 3].map((i) => el('[data-role="leader"][data-i="' + i + '"]'));
-    const footLabel = el('[data-role="foot-label"]');
-    const chainGroup = el('[data-role="chain"]');
-    const chainText = el('[data-role="chain-text"]');
-    const chainBadge = el('[data-role="chain-badge"]');
+    const mEls = Array.from({ length: 16 }, (_, i) => el('[data-m="' + i + '"]'));
+    const baxEls = [0, 1, 2].map((i) => el('[data-bax="' + i + '"]'));
+    const bOrigin = el('[data-role="borigin"]');
+    const pVec = el('[data-role="pvec"]');
+    const pLabel = el('[data-role="plabel"]');
+    const dropVec = el('[data-role="dropvec"]');
+    const bLabel = el('[data-role="blabel"]');
     const poseOut = el('.ht-out-pose');
-    const chainOut = el('.ht-out-chain');
-    const orderBtn = el('[data-order]');
+    const noteOut = el('.ht-out-note');
     const resetBtn = el('[data-reset]');
-    const rangeEls = joints.map((j) => el('[data-range="' + j.key + '"]'));
+    const rotOnlyBtn = el('[data-rot-only]');
+    const transOnlyBtn = el('[data-trans-only]');
+    const rangeEls = {};
     const valEls = {};
-    joints.forEach((j) => { valEls[j.key] = el('[data-val="' + j.key + '"]'); });
+    sliders.forEach((s) => {
+      rangeEls[s.key] = el('[data-range="' + s.key + '"]');
+      valEls[s.key] = el('[data-val="' + s.key + '"]');
+    });
 
-    // 状态：三个关节角 + 是否处于“顺序颠倒”
-    const state = { hip: def.hip, knee: def.knee, ankle: def.ankle, bad: false };
+    // 状态 = 3 个位置 + 3 个姿态角
+    const state = Object.assign({}, def);
 
-    const setLine = (node, a, b) => {
-      if (!node) return;
+    const setPoint = (node, a, b) => {
       node.setAttribute('x1', a.x.toFixed(1));
       node.setAttribute('y1', a.y.toFixed(1));
       node.setAttribute('x2', b.x.toFixed(1));
       node.setAttribute('y2', b.y.toFixed(1));
     };
-    const xform = (pt, deg) => 'translate(' + pt.x.toFixed(1) + ' ' + pt.y.toFixed(1) + ') rotate(' + deg.toFixed(1) + ')';
-    const fmtDeg = (v) => (v < 0 ? '−' + Math.abs(v).toFixed(0) : v.toFixed(0));
 
     const render = () => {
-      const p = pose(state.hip, state.knee, state.ankle);
-      const foot = state.bad ? p.badFoot : p.foot;
-      const names = order[state.bad ? 'bad' : 'good'].map((d) => d[1]);
-      const betaP = 90 - state.hip;
-      const betaKnee = 90 - state.hip + state.knee;
+      const R = rot(state.roll, state.pitch, state.yaw);
+      const o = proj(state.x, state.y, state.z);
 
-      // 连杆：正常时踝→F 是真实连杆；颠倒时隐藏它，改画警示虚线
-      setLine(linkEls[0], p.W, p.P);
-      setLine(linkEls[1], p.P, p.knee);
-      setLine(linkEls[2], p.knee, p.ankle);
-      setLine(linkEls[3], p.ankle, p.foot);
-      setLine(errEl, p.ankle, p.badFoot);
-      linkEls[3].classList.toggle('ht-hidden', state.bad);
-      errEl.classList.toggle('ht-hidden', !state.bad);
-
-      // 关节坐标架 + 脚端坐标架（位置随链走，姿态随累计角度转）
-      frameP.setAttribute('transform', xform(p.P, betaP));
-      frameKnee.setAttribute('transform', xform(p.knee, betaKnee));
-      frameAnkle.setAttribute('transform', xform(p.ankle, p.beta));
-      frameFoot.setAttribute('transform', xform(foot, p.beta));
-      frameFoot.classList.toggle('ht-bad', state.bad);
-      ghostEl.setAttribute('transform', xform(p.foot, p.beta));
-      ghostEl.classList.toggle('ht-show', state.bad);
-
-      // 轨迹：髋角扫过 31 个采样点的脚端位置
-      const pts = [];
-      for (let i = 0; i <= 30; i++) {
-        const h = joints[0].min + ((joints[0].max - joints[0].min) * i) / 30;
-        const fp = pose(h, state.knee, state.ankle).foot;
-        pts.push(fp.x.toFixed(1) + ',' + fp.y.toFixed(1));
+      // 位姿坐标架：三根短轴 = R 的三列（机体轴在世界系中的方向）
+      for (let i = 0; i < 3; i++) {
+        const tip = proj(
+          state.x + L * R[0][i],
+          state.y + L * R[1][i],
+          state.z + L * R[2][i],
+        );
+        setPoint(baxEls[i], o, tip);
       }
-      trailEl.setAttribute('points', pts.join(' '));
-      trailEl.classList.toggle('ht-off', state.bad);
+      bOrigin.setAttribute('cx', o.x.toFixed(1));
+      bOrigin.setAttribute('cy', o.y.toFixed(1));
 
-      // 标签引线指向当前连杆中点
-      const segs = [[p.W, p.P], [p.P, p.knee], [p.knee, p.ankle], [p.ankle, p.foot]];
-      segs.forEach((s, i) => {
-        setLine(leaderEls[i], starts[i], { x: (s[0].x + s[1].x) / 2, y: (s[0].y + s[1].y) / 2 });
-      });
+      // 位置向量 p：W 原点 → B 原点；再画一条 B 到地面的投影虚线
+      setPoint(pVec, world, o);
+      setPoint(dropVec, o, proj(state.x, state.y, 0));
 
-      // 脚端标签跟随脚端
-      footLabel.setAttribute('x', (foot.x + 14).toFixed(1));
-      footLabel.setAttribute('y', (foot.y + 34).toFixed(1));
-      footLabel.textContent = state.bad ? 'F′ 顺序错' : 'F 脚端';
-      footLabel.classList.toggle('ht-bad', state.bad);
+      // p 标签放在 W→B 中点，沿垂直方向偏 14 px
+      const dx = o.x - world.x;
+      const dy = o.y - world.y;
+      const len = Math.hypot(dx, dy) || 1;
+      pLabel.setAttribute('x', (world.x + dx / 2 - (dy / len) * 14).toFixed(1));
+      pLabel.setAttribute('y', (world.y + dy / 2 + (dx / len) * 14).toFixed(1));
+      pLabel.classList.toggle('ht-p-hidden', len < 24);
 
-      // 链式表达式与下标检查
-      chainText.textContent = 'T_WF = ' + names.join(' · ');
-      chainBadge.textContent = state.bad ? '❌ 下标断开' : '✅ 首尾相接';
-      chainGroup.classList.toggle('ht-bad', state.bad);
+      bLabel.setAttribute('x', (o.x + 12).toFixed(1));
+      bLabel.setAttribute('y', (o.y - 12).toFixed(1));
 
-      const mx = (foot.x - world.x) / scale;
-      const my = (world.y - foot.y) / scale;
-      const phi = state.hip - state.knee + state.ankle;
+      // 4×4 矩阵：左上 3×3 = R，右上 3×1 = p，末行 [0 0 0 1]
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+          const v = r === 3
+            ? (c === 3 ? 1 : 0)
+            : (c === 3 ? [state.x, state.y, state.z][r] : R[r][c]);
+          mEls[r * 4 + c].textContent = fmt2(v);
+        }
+      }
+
       poseOut.textContent =
-        (state.bad ? '脚端相对世界（顺序颠倒）：' : '脚端相对世界：') +
-        'x = ' + mx.toFixed(2) + ' m，y = ' + my.toFixed(2) + ' m，姿态角 = ' + fmtDeg(phi) + '°' +
-        (state.bad ? ' ❌' : '');
-      poseOut.classList.toggle('ht-bad', state.bad);
+        '位姿：x = ' + fmt2(state.x) + ' m，y = ' + fmt2(state.y) + ' m，z = ' + fmt2(state.z) + ' m；' +
+        'roll = ' + fmtDeg(state.roll) + '°，pitch = ' + fmtDeg(state.pitch) + '°，yaw = ' + fmtDeg(state.yaw) + '°';
 
-      chainOut.textContent =
-        '下标检查：' + names.join('·') +
-        (state.bad ? ' ❌ 下标断开，结果无物理意义' : ' ✅ 首尾相接');
-      chainOut.classList.toggle('ht-bad', state.bad);
+      const att = (state.roll === 0 && state.pitch === 0)
+        ? 'yaw=' + fmtDeg(state.yaw) + '°'
+        : 'roll=' + fmtDeg(state.roll) + '°，pitch=' + fmtDeg(state.pitch) + '°，yaw=' + fmtDeg(state.yaw) + '°';
+      noteOut.textContent = '左上 3×3 是旋转 R（当前 ' + att + '），右上 3×1 是位置 p；一次乘法同时完成旋转和平移';
 
-      orderBtn.textContent = state.bad ? '顺序正确 ✓' : '顺序颠倒 ✗';
-      orderBtn.setAttribute('aria-pressed', String(state.bad));
-      joints.forEach((j) => { valEls[j.key].textContent = state[j.key] + '°'; });
+      sliders.forEach((s) => {
+        if (valEls[s.key]) {
+          valEls[s.key].textContent = s.kind === 'pos' ? fmt2(state[s.key]) + ' m' : fmtDeg(state[s.key]) + '°';
+        }
+      });
     };
 
-    orderBtn.addEventListener('click', () => {
-      state.bad = !state.bad;
-      render();
+    // 拖任意滑块：坐标架与矩阵实时更新
+    sliders.forEach((s) => {
+      const r = rangeEls[s.key];
+      if (!r) return;
+      r.addEventListener('input', () => {
+        state[s.key] = Number(r.value);
+        render();
+      });
     });
 
     resetBtn.addEventListener('click', () => {
-      state.hip = def.hip;
-      state.knee = def.knee;
-      state.ankle = def.ankle;
-      state.bad = false;
-      rangeEls.forEach((r, i) => { if (r) r.value = def[joints[i].key]; });
+      sliders.forEach((s) => {
+        state[s.key] = def[s.key];
+        if (rangeEls[s.key]) rangeEls[s.key].value = def[s.key];
+      });
       render();
     });
 
-    rangeEls.forEach((r, i) => {
-      if (!r) return;
-      r.addEventListener('input', () => {
-        state[joints[i].key] = Number(r.value);
-        render();
-      });
+    // 只留旋转：位置归零 → 矩阵右上 3×1 变 0
+    rotOnlyBtn.addEventListener('click', () => {
+      state.x = 0;
+      state.y = 0;
+      state.z = 0;
+      rangeEls.x.value = 0;
+      rangeEls.y.value = 0;
+      rangeEls.z.value = 0;
+      render();
+    });
+
+    // 只留平移：姿态归零 → 矩阵左上 3×3 变单位阵
+    transOnlyBtn.addEventListener('click', () => {
+      state.roll = 0;
+      state.pitch = 0;
+      state.yaw = 0;
+      rangeEls.roll.value = 0;
+      rangeEls.pitch.value = 0;
+      rangeEls.yaw.value = 0;
+      render();
     });
 
     render();
@@ -442,7 +397,9 @@ const CFG = {
 
 <style>
   .ht-demo {
-    --ht-warn: light-dark(#dc2626, #f87171);
+    --ht-cy: light-dark(#0e7490, #67e8f9);
+    --ht-cz: light-dark(#b45309, #fbbf24);
+    --ht-pos: light-dark(#0d9488, #2dd4bf);
     margin: 1.5rem 0;
   }
   .ht-demo svg { display: block; width: 100%; max-width: 900px; height: auto; margin: 0 auto; }
@@ -450,49 +407,53 @@ const CFG = {
   .ht-title { fill: var(--sl-color-text); font-size: 24px; font-weight: 600; }
   .ht-note { fill: var(--sl-color-gray-2); font-size: 17px; }
 
-  .ht-chain-box { fill: light-dark(rgba(148, 163, 184, 0.12), rgba(148, 163, 184, 0.1)); stroke: var(--sl-color-gray-4); stroke-width: 1.4; }
-  .ht-chain-text { fill: var(--sl-color-text); font-size: 20px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-  .ht-chain-badge { fill: var(--sl-color-accent); font-size: 18px; font-weight: 600; }
-  .ht-chain.ht-bad .ht-chain-box { fill: light-dark(rgba(220, 38, 38, 0.08), rgba(248, 113, 113, 0.14)); stroke: var(--ht-warn); stroke-width: 2; }
-  .ht-chain.ht-bad .ht-chain-text { fill: var(--ht-warn); font-weight: 600; }
-  .ht-chain.ht-bad .ht-chain-badge { fill: var(--ht-warn); }
+  /* 左区：世界坐标系与地面 */
+  .ht-ground-fill { fill: light-dark(rgba(148, 163, 184, 0.1), rgba(148, 163, 184, 0.08)); }
+  .ht-grid { stroke: var(--sl-color-gray-4); stroke-width: 1; opacity: 0.7; }
+  .ht-waxis { stroke: var(--sl-color-gray-2); stroke-width: 2; }
+  .ht-wax-label { fill: var(--sl-color-gray-2); font-size: 18px; font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .ht-w-origin { fill: var(--sl-color-bg); stroke: var(--sl-color-gray-2); stroke-width: 1.8; }
+  .ht-w-label { fill: var(--sl-color-text); font-size: 19px; font-weight: 700; }
+  .ht-legend { fill: var(--sl-color-gray-2); font-size: 17px; }
 
-  .ht-ground { stroke: var(--sl-color-gray-4); stroke-width: 1.6; stroke-dasharray: 7 6; }
-  .ht-trail { fill: none; stroke: var(--sl-color-gray-3); stroke-width: 1.6; stroke-dasharray: 4 5; opacity: 0.75; }
-  .ht-trail.ht-off { opacity: 0; }
+  /* 左区：位姿坐标系 B 与位置向量 p */
+  .ht-bax { stroke-width: 3; stroke-linecap: round; }
+  .ht-bax-x { stroke: var(--sl-color-accent); }
+  .ht-bax-y { stroke: var(--ht-cy); }
+  .ht-bax-z { stroke: var(--ht-cz); }
+  .ht-b-origin { fill: var(--sl-color-bg); stroke: var(--sl-color-text); stroke-width: 2.2; }
+  .ht-b-label { fill: var(--sl-color-text); font-size: 18px; font-weight: 700; }
+  .ht-p { stroke: var(--ht-pos); stroke-width: 2; stroke-dasharray: 7 5; }
+  .ht-p-label { fill: var(--ht-pos); font-size: 18px; font-weight: 600; font-style: italic; }
+  .ht-p-label.ht-p-hidden { opacity: 0; }
+  .ht-drop { stroke: var(--sl-color-gray-4); stroke-width: 1.4; stroke-dasharray: 4 5; }
 
-  .ht-link { stroke: var(--sl-color-accent); stroke-width: 3.4; stroke-linecap: round; }
-  .ht-err-link { stroke: var(--ht-warn); stroke-width: 2.4; stroke-dasharray: 7 6; }
+  .ht-mk-w-arm { fill: var(--sl-color-gray-2); }
+  .ht-mk-x-arm { fill: var(--sl-color-accent); }
+  .ht-mk-y-arm { fill: var(--ht-cy); }
+  .ht-mk-z-arm { fill: var(--ht-cz); }
 
-  .ht-ax { stroke: var(--sl-color-gray-2); stroke-width: 1.8; }
-  .ht-joint-dot { fill: var(--sl-color-bg); stroke: var(--sl-color-gray-2); stroke-width: 1.6; }
-  .ht-frame-foot .ht-ax { stroke: var(--sl-color-accent); stroke-width: 2.2; }
-  .ht-frame-foot .ht-joint-dot { stroke: var(--sl-color-accent); stroke-width: 2; }
-  .ht-frame-foot.ht-bad .ht-ax { stroke: var(--ht-warn); }
-  .ht-frame-foot.ht-bad .ht-joint-dot { stroke: var(--ht-warn); fill: var(--ht-warn); }
-  .ht-ax-label { fill: var(--sl-color-gray-2); font-size: 17px; }
+  /* 右区：4×4 矩阵 */
+  .ht-m-label { fill: var(--sl-color-text); font-size: 18px; font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .ht-m-head { font-size: 18px; font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .ht-m-head-r { fill: var(--sl-color-accent); }
+  .ht-m-head-p { fill: var(--ht-pos); }
+  .ht-bracket { fill: none; stroke: var(--sl-color-gray-3); stroke-width: 1.8; }
+  .ht-m { font-size: 17px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+  .ht-m-rot { fill: var(--sl-color-accent); }
+  .ht-m-pos { fill: var(--ht-pos); font-weight: 600; }
+  .ht-m-row { fill: var(--sl-color-gray-2); }
+  .ht-m-note { fill: var(--sl-color-gray-2); font-size: 16px; }
 
-  .ht-ghost { opacity: 0; }
-  .ht-ghost.ht-show { opacity: 1; }
-  .ht-ghost circle { fill: none; stroke: var(--sl-color-gray-3); stroke-width: 1.6; stroke-dasharray: 4 4; }
-
-  .ht-link-label { fill: var(--sl-color-text); font-size: 18px; font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-  .ht-leader { stroke: var(--sl-color-gray-3); stroke-width: 1.2; stroke-dasharray: 3 3; }
-  .ht-joint-label { fill: var(--sl-color-gray-2); font-size: 17px; }
-  .ht-foot-label { fill: var(--sl-color-accent); font-size: 18px; font-weight: 600; }
-  .ht-foot-label.ht-bad { fill: var(--ht-warn); }
-  .ht-hidden { display: none; }
-
+  /* 控件与读数 */
   .ht-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.1rem; max-width: 900px; margin: 0.55rem auto 0; }
   .ht-btn { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.85rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
-  .ht-btn[aria-pressed='true'] { border-color: var(--ht-warn); color: var(--ht-warn); background: light-dark(rgba(220, 38, 38, 0.08), rgba(248, 113, 113, 0.14)); font-weight: 600; }
   .ht-slider-label { display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 0.8125rem; color: var(--sl-color-gray-2); white-space: nowrap; }
-  .ht-slider-label input[type='range'] { width: 9rem; margin: 0; accent-color: var(--sl-color-accent); }
+  .ht-slider-label input[type='range'] { width: 7.5rem; margin: 0; accent-color: var(--sl-color-accent); }
   .ht-val { color: var(--sl-color-accent); font-weight: 600; font-variant-numeric: tabular-nums; }
 
   .ht-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; color: var(--sl-color-text); line-height: 1.7; }
   .ht-out { display: block; white-space: nowrap; overflow-x: auto; height: 1.7em; line-height: 1.7; }
   .ht-readout output { color: var(--sl-color-accent); font-weight: 600; }
-  .ht-readout output.ht-bad { color: var(--ht-warn); }
   .ht-demo figcaption { max-width: 900px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.9rem; line-height: 1.65; }
 </style>
