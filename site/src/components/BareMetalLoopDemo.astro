@@ -1,0 +1,354 @@
+---
+/**
+ * 裸机主循环（Bare-metal Superloop）交互演示：一个 while(1) 按固定顺序把 4 个任务
+ * 从头跑到尾，时间条把一轮时间按任务耗时累加出来，预算刻度线是 80 µs 的周期预算。
+ *
+ * 教学要点：
+ *   ① 裸机就是一个 while(1) 按固定顺序把任务跑一遍；
+ *   ② 一轮的总时间等于各任务耗时的累加；
+ *   ③ 任何一步变慢，后面的任务全被推迟，可能顶穿周期预算。
+ *
+ * 数据模型（教学示意）：
+ *   任务序列固定 4 个，按顺序执行——
+ *     读传感器   12 µs（不可调）
+ *     控制计算   40 µs × 滑块倍率（0.5×–3.0×，步进 0.1）
+ *     更新输出    8 µs（不可调）
+ *     日志/诊断   10 µs × 滑块倍率（1.0×–8.0×，步进 0.5）
+ *   一轮总耗时 = 12 + 40·k2 + 8 + 10·k4（µs）；周期预算 T = 80 µs。
+ *
+ * 交互：默认静止（指针停在“读传感器”之前），点“播放”才按顺序执行 4 个任务并在
+ * 时间条上逐段填充，一轮结束自动开始下一轮；“单步”每点一次完成一个任务，“复位”
+ * 回到起点；拖动两个倍率滑块会立即刷新卡片耗时、总耗时读数和预算判定。所有 SVG
+ * 图形都写在 markup 里，JS 只用 requestAnimationFrame 改属性 / textContent /
+ * classList；样式跟随 Starlight 明暗主题，并遵循 prefers-reduced-motion。
+ *
+ * 使用方式（放在 3.5 节“### 裸机循环（Bare-metal Superloop）”下方）：
+ *   import BareMetalLoopDemo from '../../../components/BareMetalLoopDemo.astro';
+ *   <BareMetalLoopDemo />
+ */
+const TASKS = [
+  { key: 'sensor', name: '读传感器', base: 12, adj: false },
+  { key: 'ctrl', name: '控制计算', base: 40, adj: true, min: 0.5, max: 3, step: 0.1, def: 1, sliderLabel: '控制计算倍率' },
+  { key: 'output', name: '更新输出', base: 8, adj: false },
+  { key: 'log', name: '日志/诊断', base: 10, adj: true, min: 1, max: 8, step: 0.5, def: 1, sliderLabel: '日志/诊断倍率' },
+];
+
+const CARD = { w: 170, h: 76, y: 76, centers: [170, 370, 570, 770] };
+
+// 时间条：0–120 µs 映射到 780 px（6.5 px/µs），预算 80 µs 落在 x = 580。
+const BAR = { x: 60, y: 268, w: 780, h: 28, rx: 8, usMax: 120, budget: 80 };
+BAR.pxPerUs = BAR.w / BAR.usMax;
+const BUDGET_X = BAR.x + BAR.w * (BAR.budget / BAR.usMax);
+
+// 基线耗时下的分段起点（仅用于 markup 初始 x，JS 会按实际倍率重算）。
+let acc = BAR.x;
+const SEG0 = TASKS.map((t) => {
+  const s = { x: acc, w: t.base * BAR.pxPerUs };
+  acc += s.w;
+  return s;
+});
+
+const CFG = { tasks: TASKS, card: CARD, bar: BAR, budget: BAR.budget, budgetX: BUDGET_X };
+---
+
+<figure class="bm-demo" data-bm={JSON.stringify(CFG)}>
+  <svg viewBox="0 0 900 430" role="img" aria-label="裸机主循环教学示意：一个 while(1) 按固定顺序执行读传感器、控制计算、更新输出、日志诊断四个任务，一轮总耗时是各任务耗时之和，超过 80 微秒周期预算的部分用警示色标出">
+    <defs>
+      <clipPath id="bm-clip-bar"><rect x={BAR.x} y={BAR.y} width={BAR.w} height={BAR.h} rx={BAR.rx}></rect></clipPath>
+      <clipPath id="bm-clip-in"><rect x={BAR.x} y={BAR.y} width={BUDGET_X - BAR.x} height={BAR.h}></rect></clipPath>
+      <clipPath id="bm-clip-over"><rect x={BUDGET_X} y={BAR.y} width={BAR.x + BAR.w - BUDGET_X} height={BAR.h}></rect></clipPath>
+    </defs>
+
+    <text class="bm-title" x="24" y="28">裸机主循环：一个 while(1) 从头跑到尾（教学示意）</text>
+
+    <!-- 4 个任务卡片：中心 x = 170 / 370 / 570 / 770 -->
+    {TASKS.map((t, i) => {
+      const cx = CARD.centers[i];
+      return (
+        <g class="bm-card" data-card={i}>
+          <rect class="bm-card-bg" x={cx - CARD.w / 2} y={CARD.y} width={CARD.w} height={CARD.h} rx="10"></rect>
+          <text class="bm-card-name" x={cx} y="108" text-anchor="middle">{t.name}</text>
+          <text class="bm-card-time" data-time={i} x={cx} y="136" text-anchor="middle">{t.base.toFixed(1)} µs</text>
+        </g>
+      );
+    })}
+
+    <!-- 时间条：已填部分 accent，超过预算的一段用警示色（两组同一几何，靠裁剪分色） -->
+    <g class="bm-bar-group" data-role="bar">
+      <rect class="bm-bar-bg" x={BAR.x} y={BAR.y} width={BAR.w} height={BAR.h} rx={BAR.rx}></rect>
+      <g clip-path="url(#bm-clip-bar)">
+        <g clip-path="url(#bm-clip-in)">
+          {TASKS.map((t, i) => (
+            <rect class="bm-seg bm-seg-in" data-seg={i} x={SEG0[i].x} y={BAR.y} width="0" height={BAR.h}></rect>
+          ))}
+        </g>
+        <g clip-path="url(#bm-clip-over)">
+          {TASKS.map((t, i) => (
+            <rect class="bm-seg bm-seg-over" data-seg-over={i} x={SEG0[i].x} y={BAR.y} width="0" height={BAR.h}></rect>
+          ))}
+        </g>
+      </g>
+      <rect class="bm-bar-frame" x={BAR.x} y={BAR.y} width={BAR.w} height={BAR.h} rx={BAR.rx}></rect>
+    </g>
+
+    <!-- 预算刻度线 -->
+    <line class="bm-budget-line" x1={BUDGET_X} y1="248" x2={BUDGET_X} y2="308"></line>
+    <text class="bm-budget-label" x={BUDGET_X} y="240" text-anchor="middle">周期预算 80 µs</text>
+
+    <!-- 时间轴刻度：0 / 40 / 80 / 120 µs -->
+    <text class="bm-tick" x="60" y="316" text-anchor="middle">0</text>
+    <text class="bm-tick" x="320" y="316" text-anchor="middle">40 µs</text>
+    <text class="bm-tick" x="580" y="316" text-anchor="middle">80 µs</text>
+    <text class="bm-tick" x="840" y="316" text-anchor="middle">120 µs</text>
+
+    <text class="bm-note" x="24" y="378">一轮时间 = 所有任务耗时之和；哪一步变慢，后面的任务都被推迟，可能顶穿周期预算。</text>
+  </svg>
+
+  <div class="bm-controls">
+    <button type="button" class="bm-btn bm-play" data-play aria-pressed="false">播放</button>
+    <button type="button" class="bm-btn" data-step>单步</button>
+    <button type="button" class="bm-btn" data-reset>复位</button>
+    {TASKS.filter((t) => t.adj).map((t) => (
+      <label class="bm-slider-label">{t.sliderLabel} <span class="bm-mult" data-mult={t.key}>×{t.def.toFixed(1)}</span>
+        <input class="bm-range" type="range" data-range={t.key} min={t.min} max={t.max} step={t.step} value={t.def} />
+      </label>
+    ))}
+  </div>
+
+  <div class="bm-readout">
+    <output class="bm-out bm-out-state" aria-live="polite"></output>
+    <output class="bm-out bm-out-budget" aria-live="polite"></output>
+  </div>
+
+  <figcaption>
+    点“播放”看一轮任务怎么顺次跑完；把“控制计算”或“日志”的倍率调大，看看周期预算怎么被顶穿。数值为教学示意。
+  </figcaption>
+</figure>
+
+<script>
+  document.querySelectorAll('.bm-demo').forEach((demo) => {
+    const cfg = JSON.parse(demo.dataset.bm);
+    const tasks = cfg.tasks;
+    const bar = cfg.bar;
+    const budget = cfg.budget;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const S_PER_US = 0.03;   // 动画里“执行”一个任务的时长：30 ms/µs（教学示意，越慢的任务走得越久）
+    const GAP_SEC = 0.7;     // 一轮结束到下一轮之间的停留
+
+    const cardEls = tasks.map((t, i) => demo.querySelector('[data-card="' + i + '"]'));
+    const timeEls = tasks.map((t, i) => demo.querySelector('[data-time="' + i + '"]'));
+    const segEls = tasks.map((t, i) => demo.querySelector('[data-seg="' + i + '"]'));
+    const segOverEls = tasks.map((t, i) => demo.querySelector('[data-seg-over="' + i + '"]'));
+
+    const mult = {};
+    const multEls = {};
+    const rangeEls = {};
+    tasks.forEach((t) => {
+      if (!t.adj) return;
+      mult[t.key] = t.def;
+      multEls[t.key] = demo.querySelector('[data-mult="' + t.key + '"]');
+      rangeEls[t.key] = demo.querySelector('[data-range="' + t.key + '"]');
+    });
+
+    const barGroup = demo.querySelector('[data-role="bar"]');
+    const stateOut = demo.querySelector('.bm-out-state');
+    const budgetOut = demo.querySelector('.bm-out-budget');
+    const playBtn = demo.querySelector('[data-play]');
+    const stepBtn = demo.querySelector('[data-step]');
+    const resetBtn = demo.querySelector('[data-reset]');
+
+    // 状态机：doneCount = 本轮已完成任务数（0..4）；frac = 正在执行任务的完成比例；
+    // gap = 一轮结束后的停顿；单步时 frac 归 0，指针停在刚完成的任务上。
+    let doneCount = 0;
+    let frac = 0;
+    let gap = 0;
+    let running = false;
+    let raf = 0;
+    let last = 0;
+
+    const durations = () => tasks.map((t) => t.base * (t.adj ? mult[t.key] : 1));
+    const totalOf = (d) => d.reduce((a, b) => a + b, 0);
+
+    const highlight = () => {
+      if (running) return gap > 0 ? -1 : (doneCount < 4 ? doneCount : -1);
+      if (doneCount === 0) return -1;
+      if (doneCount < 4 && frac > 0) return doneCount;
+      return doneCount - 1;
+    };
+
+    const stateText = () => {
+      if (running) {
+        if (gap > 0 || doneCount >= 4) return '一轮结束，开始下一轮';
+        return '正在执行：' + tasks[doneCount].name + '（第 ' + (doneCount + 1) + ' / 4 步）';
+      }
+      if (doneCount === 0) return '待开始：点“播放”或“单步”，让 while(1) 从头跑一遍';
+      if (doneCount < 4 && frac > 0) {
+        return '已暂停：' + tasks[doneCount].name + '（第 ' + (doneCount + 1) + ' / 4 步）';
+      }
+      const tail = doneCount >= 4 ? '，再点“单步”或“播放”开始下一轮' : '';
+      return '已完成：' + tasks[doneCount - 1].name + '（第 ' + doneCount + ' / 4 步）' + tail;
+    };
+
+    const render = () => {
+      const d = durations();
+      const total = totalOf(d);
+      const hl = highlight();
+
+      tasks.forEach((t, i) => {
+        timeEls[i].textContent = d[i].toFixed(1) + ' µs';
+        cardEls[i].classList.toggle('bm-card-active', i === hl);
+      });
+
+      // 时间条映射：每个任务段宽 = 耗时 × 6.5 px/µs，从左向右累积；裁剪组负责分色。
+      let x = bar.x;
+      tasks.forEach((t, i) => {
+        const w = d[i] * bar.pxPerUs;
+        const f = i < doneCount ? 1 : (i === doneCount && doneCount < 4 ? frac : 0);
+        const width = Math.max(0, w * f);
+        segEls[i].setAttribute('x', x.toFixed(1));
+        segEls[i].setAttribute('width', width.toFixed(1));
+        segOverEls[i].setAttribute('x', x.toFixed(1));
+        segOverEls[i].setAttribute('width', width.toFixed(1));
+        x += w;
+      });
+
+      stateOut.textContent = stateText() + (reduced ? '（系统已开启“减弱动态效果”：播放停用，可用“单步”）' : '');
+
+      const over = total > budget + 1e-9;
+      budgetOut.textContent = over
+        ? '本轮总耗时 ' + total.toFixed(1) + ' µs，已超出预算 ' + (total - budget).toFixed(1) + ' µs'
+        : '本轮总耗时 ' + total.toFixed(1) + ' µs（预算 ' + budget + ' µs，剩余 ' + (budget - total).toFixed(1) + ' µs）';
+      budgetOut.classList.toggle('bm-over', over);
+      barGroup.classList.toggle('bm-over', over);
+    };
+
+    const syncPlayLabel = () => {
+      playBtn.textContent = running ? '暂停' : '播放';
+      playBtn.setAttribute('aria-pressed', String(running));
+    };
+
+    const stopPlay = () => {
+      running = false;
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+      last = 0;
+    };
+
+    const startPlay = () => {
+      if (doneCount >= 4) { doneCount = 0; frac = 0; gap = 0; }
+      running = true;
+      last = 0;
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+
+    const tick = (ts) => {
+      if (!running) { raf = 0; return; }
+      if (!last) last = ts;
+      let dt = (ts - last) / 1000;
+      last = ts;
+      if (dt > 0.05) dt = 0.05;
+
+      if (gap > 0) {
+        gap -= dt;
+        if (gap <= 0) { gap = 0; doneCount = 0; frac = 0; }
+      } else if (doneCount < 4) {
+        const d = durations();
+        frac += dt / (d[doneCount] * S_PER_US);
+        if (frac >= 1) {
+          frac = 0;
+          doneCount += 1;
+          if (doneCount >= 4) gap = GAP_SEC;
+        }
+      }
+
+      render();
+      if (running) raf = requestAnimationFrame(tick); else raf = 0;
+    };
+
+    playBtn.addEventListener('click', () => {
+      if (reduced) return;
+      if (running) stopPlay(); else startPlay();
+      syncPlayLabel();
+      render();
+    });
+
+    stepBtn.addEventListener('click', () => {
+      stopPlay();
+      if (doneCount >= 4) { doneCount = 0; frac = 0; gap = 0; }
+      doneCount += 1;
+      frac = 0;
+      syncPlayLabel();
+      render();
+    });
+
+    resetBtn.addEventListener('click', () => {
+      stopPlay();
+      doneCount = 0;
+      frac = 0;
+      gap = 0;
+      syncPlayLabel();
+      render();
+    });
+
+    Object.keys(rangeEls).forEach((key) => {
+      const el = rangeEls[key];
+      el.addEventListener('input', () => {
+        mult[key] = Number(el.value);
+        if (multEls[key]) multEls[key].textContent = '×' + mult[key].toFixed(1);
+        // 半截状态无法对应新倍率：回到本轮起点（播放中则从新一轮重新累积）。
+        doneCount = 0;
+        frac = 0;
+        gap = 0;
+        last = 0;
+        render();
+      });
+    });
+
+    if (reduced) playBtn.disabled = true;
+    syncPlayLabel();
+    render();
+  });
+</script>
+
+<style>
+  .bm-demo {
+    --bm-warn: light-dark(#dc2626, #f87171);
+    margin: 1.5rem 0;
+  }
+  .bm-demo svg { display: block; width: 100%; max-width: 900px; height: auto; margin: 0 auto; }
+
+  .bm-title { fill: var(--sl-color-text); font-size: 24px; font-weight: 600; }
+  .bm-note { fill: var(--sl-color-gray-2); font-size: 17px; }
+
+  .bm-card-bg { fill: light-dark(rgba(148, 163, 184, 0.14), rgba(148, 163, 184, 0.12)); stroke: var(--sl-color-gray-4); stroke-width: 1.6; }
+  .bm-card-name { fill: var(--sl-color-text); font-size: 20px; font-weight: 600; }
+  .bm-card-time { fill: var(--sl-color-gray-2); font-size: 17px; font-variant-numeric: tabular-nums; }
+  .bm-card.bm-card-active .bm-card-bg { fill: light-dark(rgba(79, 70, 229, 0.16), rgba(139, 131, 255, 0.22)); stroke: var(--sl-color-accent); stroke-width: 2.6; }
+  .bm-card.bm-card-active .bm-card-name { fill: var(--sl-color-accent); }
+  .bm-card.bm-card-active .bm-card-time { fill: var(--sl-color-accent); font-weight: 600; }
+
+  .bm-bar-bg { fill: light-dark(rgba(148, 163, 184, 0.18), rgba(148, 163, 184, 0.14)); }
+  .bm-bar-frame { fill: none; stroke: var(--sl-color-gray-4); stroke-width: 1.6; }
+  .bm-bar-group.bm-over .bm-bar-frame { stroke: var(--bm-warn); }
+  .bm-seg-in { fill: var(--sl-color-accent); opacity: 0.85; }
+  .bm-seg-over { fill: var(--bm-warn); opacity: 0.92; }
+
+  .bm-budget-line { stroke: var(--sl-color-gray-2); stroke-width: 2; stroke-dasharray: 6 5; }
+  .bm-budget-label { fill: var(--sl-color-text); font-size: 17px; font-weight: 600; }
+  .bm-tick { fill: var(--sl-color-gray-2); font-size: 17px; }
+
+  .bm-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.1rem; max-width: 900px; margin: 0.55rem auto 0; }
+  .bm-btn { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.85rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
+  .bm-btn[aria-pressed='true'] { border-color: var(--sl-color-accent); color: var(--sl-color-accent); background: light-dark(rgba(79, 70, 229, 0.08), rgba(139, 131, 255, 0.14)); font-weight: 600; }
+  .bm-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .bm-slider-label { display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 0.8125rem; color: var(--sl-color-gray-2); white-space: nowrap; }
+  .bm-slider-label input[type='range'] { width: 9rem; margin: 0; accent-color: var(--sl-color-accent); }
+  .bm-mult { color: var(--sl-color-accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .bm-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; color: var(--sl-color-text); line-height: 1.7; }
+  .bm-out { display: block; white-space: nowrap; overflow-x: auto; height: 1.7em; line-height: 1.7; }
+  .bm-readout output { color: var(--sl-color-accent); font-weight: 600; }
+  .bm-readout output.bm-out-budget.bm-over { color: var(--bm-warn); }
+  .bm-demo figcaption { max-width: 900px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.9rem; line-height: 1.65; }
+</style>

@@ -30,7 +30,7 @@
 | [3.2 电机、驱动器与伺服控制](../03-electrical-embedded/02-motors-drivers-servo-control.mdx) | 20 分钟 | 2.3 |
 | [3.3 传感器与数据采集](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 15 分钟 | 无 |
 | [3.4 实时通信与总线](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | 15 分钟 | 无 |
-| [3.5 MCU、实时系统与嵌入式软件](../03-electrical-embedded/05-mcu-realtime-embedded-software.md) | 15 分钟 | 3.4 |
+| [3.5 MCU、实时系统与嵌入式软件](../03-electrical-embedded/05-mcu-realtime-embedded-software.mdx) | 15 分钟 | 3.4 |
 | [3.6 电气安全与系统保护](../03-electrical-embedded/06-electrical-safety-and-protection.md) | 10 分钟 | 3.1、3.2 |
 
 ## 第 4 章 小脑：模型、状态估计与实时运控（约 2 小时，全书核心）
