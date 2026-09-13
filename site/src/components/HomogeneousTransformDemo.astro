@@ -42,9 +42,9 @@ const L_AXIS = 0.2;                         // 位姿坐标架三根短轴的长
 
 // ── 滑块（位置 3 个 + 姿态 3 个） ────────────────────────────────────────────
 const SLIDERS = [
-  { key: 'x', name: '位置 x', min: -0.5, max: 1.0, step: 0.01, def: 0.4, kind: 'pos' },
-  { key: 'y', name: '位置 y', min: -0.5, max: 1.0, step: 0.01, def: 0.1, kind: 'pos' },
-  { key: 'z', name: '位置 z', min: 0, max: 0.8, step: 0.01, def: 0.3, kind: 'pos' },
+  { key: 'x', name: 'x', min: -0.5, max: 1.0, step: 0.01, def: 0.4, kind: 'pos' },
+  { key: 'y', name: 'y', min: -0.5, max: 1.0, step: 0.01, def: 0.1, kind: 'pos' },
+  { key: 'z', name: 'z', min: 0, max: 0.8, step: 0.01, def: 0.3, kind: 'pos' },
   { key: 'roll', name: 'roll', min: -180, max: 180, step: 1, def: 0, kind: 'ang' },
   { key: 'pitch', name: 'pitch', min: -180, max: 180, step: 1, def: 0, kind: 'ang' },
   { key: 'yaw', name: 'yaw', min: -180, max: 180, step: 1, def: 30, kind: 'ang' },
@@ -213,15 +213,23 @@ const CFG = { world: WORLD, scale: SCALE, iso: ISO, lAxis: L_AXIS, range: R_GEO,
   </svg>
 
   <div class="ht-controls">
-    <button type="button" class="ht-btn" data-reset>复位</button>
-    <button type="button" class="ht-btn" data-rot-only>只留旋转（位置归零）</button>
-    <button type="button" class="ht-btn" data-trans-only>只留平移（姿态归零）</button>
-    {SLIDERS.map((s) => (
-      <label class="ht-slider-label">{s.name}
-        <span class="ht-val" data-val={s.key}>{s.kind === 'pos' ? fmt2(s.def) + ' m' : s.def + '°'}</span>
-        <input class="ht-range" type="range" data-range={s.key} min={s.min} max={s.max} step={s.step} value={s.def} />
-      </label>
+    {['pos', 'ang'].map((kind) => (
+      <div class="ht-row">
+        <span class="ht-row-title">{kind === 'pos' ? '位置' : '姿态'}</span>
+        {SLIDERS.filter((s) => s.kind === kind).map((s) => (
+          <label class="ht-slider-label">{s.name}
+            <input class="ht-range" type="range" data-range={s.key} min={s.min} max={s.max} step={s.step} value={s.def} />
+            <span class="ht-val" data-val={s.key}>{s.kind === 'pos' ? fmt2(s.def) + ' m' : s.def + '°'}</span>
+          </label>
+        ))}
+      </div>
     ))}
+    <div class="ht-row">
+      <span class="ht-row-title"></span>
+      <button type="button" class="ht-btn" data-reset>复位</button>
+      <button type="button" class="ht-btn" data-rot-only>只留旋转（位置归零）</button>
+      <button type="button" class="ht-btn" data-trans-only>只留平移（姿态归零）</button>
+    </div>
   </div>
 
   <div class="ht-readout">
@@ -446,10 +454,13 @@ const CFG = { world: WORLD, scale: SCALE, iso: ISO, lAxis: L_AXIS, range: R_GEO,
   .ht-m-note { fill: var(--sl-color-gray-2); font-size: 16px; }
 
   /* 控件与读数 */
-  .ht-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.1rem; max-width: 900px; margin: 0.55rem auto 0; }
+  .ht-controls { display: flex; flex-direction: column; gap: 0.55rem; max-width: 900px; margin: 0.55rem auto 0; }
+  .ht-row { display: flex; align-items: center; gap: 0.9rem; }
+  .ht-row-title { flex: 0 0 2.6rem; color: var(--sl-color-gray-2); font-size: 0.8125rem; }
   .ht-btn { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.85rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
-  .ht-slider-label { display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 0.8125rem; color: var(--sl-color-gray-2); white-space: nowrap; }
-  .ht-slider-label input[type='range'] { width: 7.5rem; margin: 0; accent-color: var(--sl-color-accent); }
+  .ht-slider-label { display: flex; flex: 1 1 0; min-width: 0; align-items: center; gap: 0.45rem; margin: 0; font-size: 0.8125rem; color: var(--sl-color-gray-2); white-space: nowrap; }
+  .ht-range { flex: 1 1 auto; width: auto; min-width: 4rem; margin: 0; accent-color: var(--sl-color-accent); }
+  .ht-val { flex: 0 0 3.4rem; text-align: right; font-variant-numeric: tabular-nums; color: var(--sl-color-accent); }
   .ht-val { color: var(--sl-color-accent); font-weight: 600; font-variant-numeric: tabular-nums; }
 
   .ht-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; color: var(--sl-color-text); line-height: 1.7; }
