@@ -1,0 +1,586 @@
+---
+/**
+ * 内积与叉乘对照演示（4.1 节“### 内积、外积与叉乘”之后）。
+ *
+ * 教学要点：
+ *   ① 内积（点乘）a·b = |a||b|cosθ 是一个“数”，量的是两个方向有多对齐；
+ *      b 在 a 上的投影长度就是 |b|cosθ，θ = 90° 时内积为 0。
+ *   ② 叉乘 a×b 是一个“向量”，垂直于 a、b 张成的平面，长度 |a×b| = |a||b|sinθ
+ *      恰好等于二者围出的平行四边形面积；a、b 平行时叉乘为 0。
+ *   ③ 交换 a、b：内积不变，叉乘反向（⊙ ↔ ⊗）。
+ *
+ * 交互：默认静止（无自动播放、无动画），拖动 a/b 角度滑块或长度滑块即时重算；
+ * “交换 a、b”互换角度与长度；“转到正交（90°）”把 b 调到与 a 垂直。所有 SVG
+ * 图形都写在 markup 里，JS 只改属性 / textContent / classList（改 class 一律走
+ * classList，绝不覆盖 class 属性）；颜色只跟随 Starlight 明暗主题。
+ *
+ * 数值说明：全部是归一化单位（教学示意），不是真实机器人数据。
+ *   2D 平面：1 归一化单位 = PX px，初始 a、b 的长度都约 15 单位。
+ *   3D 区：把 a、b 视为 z = 0 平面内的向量，沿等距坐标架投影后画平行四边形；
+ *          叉乘沿 z 轴，用 ⊙/⊗ 符号表示指向屏幕外/内，用长度条表示大小。
+ *
+ * 使用方式（放在 4.1 节“### 内积、外积与叉乘”下方）：
+ *   import VectorProductDemo from '../../../components/VectorProductDemo.astro';
+ *   <VectorProductDemo />
+ */
+const PX = 7.5;                 // 2D：1 归一化单位 = 7.5 px
+const O = { x: 120, y: 300 };   // 2D 原点
+
+const S3 = 4;                   // 3D 区：1 归一化单位 = 4 px
+const O3 = { x: 610, y: 250 };  // 3D 坐标架原点
+// 等距投影基：+x 屏幕右下、+y 屏幕左下、+z 屏幕向上（屏幕 y 向下）
+const ISO = {
+  ex: { x: 0.866, y: 0.5 },
+  ey: { x: -0.866, y: 0.5 },
+  ez: { x: 0, y: -1 },
+  psi: Math.PI / 4,             // 平面内整体旋转，让 a、b 投影后张开得更清楚
+};
+const AXIS_XY = 55;
+const AXIS_Z = 42;
+
+const INIT = { aAng: -11, bAng: -53, aLen: 15, bLen: 15 };
+const LMIN = 4;
+const LMAX = 16;
+const LSTEP = 0.5;
+const CROSS_SCALE = 0.36;               // |a×b| → 箭头像素长度
+const CROSS_MAX = LMAX * LMAX;          // 256：两向量最长且垂直时的最大叉乘
+const BAR = { x: 560, y: 422, w: 290, h: 12 };
+
+const CFG = {
+  px: PX,
+  o: O,
+  o3: O3,
+  s3: S3,
+  iso: ISO,
+  init: INIT,
+  lmin: LMIN,
+  lmax: LMAX,
+  lstep: LSTEP,
+  crossScale: CROSS_SCALE,
+  crossMax: CROSS_MAX,
+  bar: BAR,
+};
+
+const rad = (d) => (d * Math.PI) / 180;
+const makeVec = (ang, len) => ({ x: len * Math.cos(rad(ang)), y: len * Math.sin(rad(ang)) });
+const toScreen2 = (v) => ({ x: O.x + v.x * PX, y: O.y - v.y * PX });
+const proj3 = (v) => {
+  const c = Math.cos(ISO.psi);
+  const s = Math.sin(ISO.psi);
+  const rx = v.x * c - v.y * s;
+  const ry = v.x * s + v.y * c;
+  return {
+    x: O3.x + (ISO.ex.x * rx + ISO.ey.x * ry) * S3,
+    y: O3.y + (ISO.ex.y * rx + ISO.ey.y * ry) * S3,
+  };
+};
+
+// —— 初始几何（markup 的首帧坐标，脚本加载后会按同样公式重算） ——
+const initA = makeVec(INIT.aAng, INIT.aLen);
+const initB = makeVec(INIT.bAng, INIT.bLen);
+const A0 = toScreen2(initA);
+const B0 = toScreen2(initB);
+const lenA0 = Math.hypot(initA.x, initA.y);
+const lenB0 = Math.hypot(initB.x, initB.y);
+const dot0 = initA.x * initB.x + initA.y * initB.y;
+const sProj0 = dot0 / lenA0;
+const F0 = toScreen2({ x: (initA.x / lenA0) * sProj0, y: (initA.y / lenA0) * sProj0 });
+
+const angA0 = Math.atan2(A0.y - O.y, A0.x - O.x);
+const angB0 = Math.atan2(B0.y - O.y, B0.x - O.x);
+let d0 = angB0 - angA0;
+while (d0 <= -Math.PI) d0 += 2 * Math.PI;
+while (d0 > Math.PI) d0 -= 2 * Math.PI;
+const thetaDeg0 = (Math.abs(d0) * 180) / Math.PI;
+const r0 = Math.min(55, lenA0 * PX * 0.55, lenB0 * PX * 0.55);
+const arcP1 = { x: O.x + r0 * Math.cos(angA0), y: O.y + r0 * Math.sin(angA0) };
+const arcP2 = { x: O.x + r0 * Math.cos(angB0), y: O.y + r0 * Math.sin(angB0) };
+const arcD0 =
+  'M ' + arcP1.x.toFixed(1) + ' ' + arcP1.y.toFixed(1) +
+  ' A ' + r0.toFixed(1) + ' ' + r0.toFixed(1) + ' 0 0 ' + (d0 > 0 ? 1 : 0) +
+  ' ' + arcP2.x.toFixed(1) + ' ' + arcP2.y.toFixed(1);
+const midAng0 = angA0 + d0 / 2;
+const thetaPos0 = { x: O.x + (r0 + 24) * Math.cos(midAng0), y: O.y + (r0 + 24) * Math.sin(midAng0) };
+
+const degA0 = (angA0 * 180) / Math.PI;
+const degB0 = (angB0 * 180) / Math.PI;
+const aLabel0 = { x: A0.x + 18 * Math.cos(angA0), y: A0.y + 18 * Math.sin(angA0) + 6 };
+const bLabel0 = { x: B0.x + 18 * Math.cos(angB0), y: B0.y + 18 * Math.sin(angB0) + 6 };
+
+const pdx0 = B0.x - F0.x;
+const pdy0 = B0.y - F0.y;
+const pdn0 = Math.hypot(pdx0, pdy0) || 1;
+const projLabel0 = { x: F0.x + (pdx0 / pdn0) * 22, y: F0.y + (pdy0 / pdn0) * 22 + 5 };
+
+const A3_0 = proj3(initA);
+const B3_0 = proj3(initB);
+const S3_0 = proj3({ x: initA.x + initB.x, y: initA.y + initB.y });
+const para0 = [O3, A3_0, S3_0, B3_0].map((p) => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+const areaPos0 = {
+  x: (O3.x + A3_0.x + S3_0.x + B3_0.x) / 4,
+  y: (O3.y + A3_0.y + S3_0.y + B3_0.y) / 4 + 5,
+};
+const dirA30 = Math.atan2(A3_0.y - O3.y, A3_0.x - O3.x);
+const dirB30 = Math.atan2(B3_0.y - O3.y, B3_0.x - O3.x);
+const degA30 = (dirA30 * 180) / Math.PI;
+const degB30 = (dirB30 * 180) / Math.PI;
+const a3Label0 = { x: A3_0.x + 20 * Math.cos(dirA30), y: A3_0.y + 20 * Math.sin(dirA30) + 6 };
+const b3Label0 = { x: B3_0.x + 20 * Math.cos(dirB30), y: B3_0.y + 20 * Math.sin(dirB30) + 6 };
+
+const cz0 = initA.x * initB.y - initA.y * initB.x;
+const crossAbs0 = Math.abs(cz0);
+const crossLen0 = Math.min(crossAbs0 * CROSS_SCALE, 100);
+const crossUp0 = cz0 > 0;
+const crossTip0 = { x: O3.x, y: O3.y + (crossUp0 ? -crossLen0 : crossLen0) };
+const crossMark0 = { x: crossTip0.x, y: crossTip0.y + (crossUp0 ? -22 : 22) };
+const degCross0 = (Math.atan2(crossTip0.y - O3.y, 0) * 180) / Math.PI;
+const crossLabel0 = { x: O3.x - 16, y: (O3.y + crossTip0.y) / 2 + 5 };
+const barFillW0 = BAR.w * Math.min(1, crossAbs0 / CROSS_MAX);
+
+const axX = { x: O3.x + ISO.ex.x * AXIS_XY, y: O3.y + ISO.ex.y * AXIS_XY };
+const axY = { x: O3.x + ISO.ey.x * AXIS_XY, y: O3.y + ISO.ey.y * AXIS_XY };
+const axZ = { x: O3.x, y: O3.y + ISO.ez.y * AXIS_Z };
+---
+
+<figure class="vp-demo" data-vp={JSON.stringify(CFG)}>
+  <svg viewBox="0 0 900 440" role="img" aria-label="内积与叉乘对照教学示意：左图是平面内两个向量及其夹角与投影，内积是一个数；右图是三维坐标架内两向量张成的平行四边形，叉乘是垂直该平面的向量，长度等于平行四边形面积">
+    <text class="vp-title" x="24" y="28">内积与叉乘：一个给数，一个给方向（教学示意）</text>
+    <text class="vp-sub" x="30" y="58">① 平面：a、b 有多对齐（一个数）</text>
+    <text class="vp-sub" x="470" y="58">② 三维：a、b 围出多大面积（一个向量）</text>
+
+    <!-- ================= 左半区：2D 平面 ================= -->
+    <g class="vp-panel2d">
+      <line class="vp-axis2d" x1="40" y1={O.y} x2="420" y2={O.y}></line>
+      <line class="vp-axis2d" x1={O.x} y1="80" x2={O.x} y2="404"></line>
+      <text class="vp-axis2d-label" x="408" y={O.y - 10} text-anchor="end">x</text>
+      <text class="vp-axis2d-label" x={O.x + 12} y="92">y</text>
+      <text class="vp-origin" x={O.x - 10} y={O.y + 22} text-anchor="end">O</text>
+
+      <!-- b 到 a 所在直线的投影：虚线垂线在向量之下，accent 投影线段画在向量之上 -->
+      <line class="vp-proj-dash" data-role="proj-dash" x1={B0.x} y1={B0.y} x2={F0.x} y2={F0.y}></line>
+
+      <!-- 夹角 θ 的圆弧与数值 -->
+      <path class="vp-arc" data-role="theta-arc" d={arcD0}></path>
+      <text class="vp-theta" data-role="theta-label" x={thetaPos0.x} y={thetaPos0.y + 6} text-anchor="middle">θ</text>
+
+      <!-- 向量 a（主色） -->
+      <line class="vp-vec vp-vec-a" data-role="a-line" x1={O.x} y1={O.y} x2={A0.x} y2={A0.y}></line>
+      <polygon class="vp-head vp-head-a" data-role="a-head" points="0,0 -12,-6.5 -12,6.5" transform={`translate(${A0.x.toFixed(1)} ${A0.y.toFixed(1)}) rotate(${degA0.toFixed(1)})`}></polygon>
+      <text class="vp-vec-label vp-vec-label-a vp-halo" data-role="a-label" x={aLabel0.x} y={aLabel0.y}>a</text>
+
+      <!-- 向量 b（青色） -->
+      <line class="vp-vec vp-vec-b" data-role="b-line" x1={O.x} y1={O.y} x2={B0.x} y2={B0.y}></line>
+      <polygon class="vp-head vp-head-b" data-role="b-head" points="0,0 -12,-6.5 -12,6.5" transform={`translate(${B0.x.toFixed(1)} ${B0.y.toFixed(1)}) rotate(${degB0.toFixed(1)})`}></polygon>
+      <text class="vp-vec-label vp-vec-label-b vp-halo" data-role="b-label" x={bLabel0.x} y={bLabel0.y}>b</text>
+
+      <!-- accent 投影线段：画出 |b|cosθ 这一段的长度 -->
+      <line class="vp-proj-seg" data-role="proj-seg" x1={O.x} y1={O.y} x2={F0.x} y2={F0.y}></line>
+      <text class="vp-proj-label vp-halo" data-role="proj-label" x={projLabel0.x} y={projLabel0.y}>|b|cosθ</text>
+    </g>
+
+    <!-- ================= 右半区：3D 等距坐标架 ================= -->
+    <g class="vp-panel3d">
+      <!-- 坐标架 x / y / z -->
+      <line class="vp-axis3d" x1={O3.x} y1={O3.y} x2={axX.x} y2={axX.y}></line>
+      <polygon class="vp-head3d" points="0,0 -11,-6 -11,6" transform={`translate(${axX.x.toFixed(1)} ${axX.y.toFixed(1)}) rotate(30)`}></polygon>
+      <text class="vp-axis3d-label" x={axX.x + 12} y={axX.y + 12}>x</text>
+
+      <line class="vp-axis3d" x1={O3.x} y1={O3.y} x2={axY.x} y2={axY.y}></line>
+      <polygon class="vp-head3d" points="0,0 -11,-6 -11,6" transform={`translate(${axY.x.toFixed(1)} ${axY.y.toFixed(1)}) rotate(150)`}></polygon>
+      <text class="vp-axis3d-label" x={axY.x - 12} y={axY.y + 12} text-anchor="end">y</text>
+
+      <line class="vp-axis3d vp-axis3d-dash" x1={O3.x} y1={O3.y} x2={axZ.x} y2={axZ.y}></line>
+      <text class="vp-axis3d-label" x={axZ.x - 10} y={axZ.y + 2} text-anchor="end">z</text>
+
+      <!-- a、b 张成的平行四边形 -->
+      <polygon class="vp-para" data-role="para" points={para0}></polygon>
+      <text class="vp-area-label vp-halo" data-role="area-label" x={areaPos0.x} y={areaPos0.y} text-anchor="middle">面积 = |a×b|</text>
+
+      <!-- 3D 里的 a、b -->
+      <line class="vp-vec vp-vec-a" data-role="a3-line" x1={O3.x} y1={O3.y} x2={A3_0.x} y2={A3_0.y}></line>
+      <polygon class="vp-head vp-head-a" data-role="a3-head" points="0,0 -12,-6.5 -12,6.5" transform={`translate(${A3_0.x.toFixed(1)} ${A3_0.y.toFixed(1)}) rotate(${degA30.toFixed(1)})`}></polygon>
+      <text class="vp-vec-label vp-vec-label-a vp-halo" data-role="a3-label" x={a3Label0.x} y={a3Label0.y}>a</text>
+
+      <line class="vp-vec vp-vec-b" data-role="b3-line" x1={O3.x} y1={O3.y} x2={B3_0.x} y2={B3_0.y}></line>
+      <polygon class="vp-head vp-head-b" data-role="b3-head" points="0,0 -12,-6.5 -12,6.5" transform={`translate(${B3_0.x.toFixed(1)} ${B3_0.y.toFixed(1)}) rotate(${degB30.toFixed(1)})`}></polygon>
+      <text class="vp-vec-label vp-vec-label-b vp-halo" data-role="b3-label" x={b3Label0.x} y={b3Label0.y}>b</text>
+
+      <!-- 叉乘向量 a×b：沿 z 轴，⊙/⊗ 表示指向屏幕外/内 -->
+      <g class="vp-cross-group" data-role="cross-group">
+        <line class="vp-cross-line" data-role="cross-line" x1={O3.x} y1={O3.y} x2={crossTip0.x} y2={crossTip0.y}></line>
+        <polygon class="vp-cross-head" data-role="cross-head" points="0,0 -12,-6.5 -12,6.5" transform={`translate(${crossTip0.x.toFixed(1)} ${crossTip0.y.toFixed(1)}) rotate(${degCross0.toFixed(1)})`}></polygon>
+        <text class="vp-cross-label vp-halo" data-role="cross-label" x={crossLabel0.x} y={crossLabel0.y} text-anchor="end">a×b</text>
+        <g class="vp-crossmark vp-in" data-role="crossmark" transform={`translate(${crossMark0.x.toFixed(1)} ${crossMark0.y.toFixed(1)})`}>
+          <circle class="vp-mark-bg" r="11"></circle>
+          <circle class="vp-mark-ring" r="11"></circle>
+          <g class="vp-mark-out"><circle class="vp-mark-dot" r="3.2"></circle></g>
+          <g class="vp-mark-in">
+            <line x1="-6" y1="-6" x2="6" y2="6"></line>
+            <line x1="-6" y1="6" x2="6" y2="-6"></line>
+          </g>
+        </g>
+      </g>
+
+      <!-- |a×b| 长度条 -->
+      <rect class="vp-bar-bg" x={BAR.x} y={BAR.y} width={BAR.w} height={BAR.h} rx="6"></rect>
+      <rect class="vp-bar-fill" data-role="bar-fill" x={BAR.x} y={BAR.y} width={barFillW0} height={BAR.h} rx="6"></rect>
+      <text class="vp-bar-label" x={BAR.x} y={BAR.y - 8}>|a×b| 长度条</text>
+      <text class="vp-bar-label" x={BAR.x + BAR.w} y={BAR.y - 8} text-anchor="end">满格 = 16×16</text>
+    </g>
+  </svg>
+
+  <div class="vp-controls">
+    <label class="vp-slider-label">a 角度 <span class="vp-val" data-val="aAng">-11°</span>
+      <input class="vp-range" type="range" data-range="aAng" min="-180" max="180" step="1" value="-11" />
+    </label>
+    <label class="vp-slider-label">b 角度 <span class="vp-val" data-val="bAng">-53°</span>
+      <input class="vp-range" type="range" data-range="bAng" min="-180" max="180" step="1" value="-53" />
+    </label>
+    <label class="vp-slider-label">a 长度 <span class="vp-val" data-val="aLen">15.0</span>
+      <input class="vp-range" type="range" data-range="aLen" min="4" max="16" step="0.5" value="15" />
+    </label>
+    <label class="vp-slider-label">b 长度 <span class="vp-val" data-val="bLen">15.0</span>
+      <input class="vp-range" type="range" data-range="bLen" min="4" max="16" step="0.5" value="15" />
+    </label>
+    <button type="button" class="vp-btn" data-swap>交换 a、b</button>
+    <button type="button" class="vp-btn" data-ortho>转到正交（90°）</button>
+  </div>
+
+  <div class="vp-readout">
+    <output class="vp-out vp-out-dot" aria-live="polite"></output>
+    <output class="vp-out vp-out-cross" aria-live="polite"></output>
+  </div>
+
+  <figcaption>
+    拖动角度/长度滑块，看内积与叉乘此消彼长；点“交换 a、b”会发现叉乘方向翻转、内积不变。数值为教学示意。
+  </figcaption>
+</figure>
+
+<script>
+  document.querySelectorAll('.vp-demo').forEach((demo) => {
+    const cfg = JSON.parse(demo.dataset.vp);
+    const PX = cfg.px;
+    const O = cfg.o;
+    const O3 = cfg.o3;
+    const S3 = cfg.s3;
+    const ISO = cfg.iso;
+    const BAR = cfg.bar;
+
+    const rad = (d) => (d * Math.PI) / 180;
+    const makeVec = (ang, len) => ({ x: len * Math.cos(rad(ang)), y: len * Math.sin(rad(ang)) });
+    const toScreen2 = (v) => ({ x: O.x + v.x * PX, y: O.y - v.y * PX });
+    const proj3 = (v) => {
+      const c = Math.cos(ISO.psi);
+      const s = Math.sin(ISO.psi);
+      const rx = v.x * c - v.y * s;
+      const ry = v.x * s + v.y * c;
+      return {
+        x: O3.x + (ISO.ex.x * rx + ISO.ey.x * ry) * S3,
+        y: O3.y + (ISO.ex.y * rx + ISO.ey.y * ry) * S3,
+      };
+    };
+
+    const $ = (sel) => demo.querySelector(sel);
+    const aLine = $('[data-role="a-line"]');
+    const aHead = $('[data-role="a-head"]');
+    const aLabel = $('[data-role="a-label"]');
+    const bLine = $('[data-role="b-line"]');
+    const bHead = $('[data-role="b-head"]');
+    const bLabel = $('[data-role="b-label"]');
+    const projDash = $('[data-role="proj-dash"]');
+    const projSeg = $('[data-role="proj-seg"]');
+    const projLabel = $('[data-role="proj-label"]');
+    const thetaArc = $('[data-role="theta-arc"]');
+    const thetaLabel = $('[data-role="theta-label"]');
+    const a3Line = $('[data-role="a3-line"]');
+    const a3Head = $('[data-role="a3-head"]');
+    const a3Label = $('[data-role="a3-label"]');
+    const b3Line = $('[data-role="b3-line"]');
+    const b3Head = $('[data-role="b3-head"]');
+    const b3Label = $('[data-role="b3-label"]');
+    const para = $('[data-role="para"]');
+    const areaLabel = $('[data-role="area-label"]');
+    const crossGroup = $('[data-role="cross-group"]');
+    const crossLine = $('[data-role="cross-line"]');
+    const crossHead = $('[data-role="cross-head"]');
+    const crossLabel = $('[data-role="cross-label"]');
+    const crossMark = $('[data-role="crossmark"]');
+    const barFill = $('[data-role="bar-fill"]');
+    const dotOut = $('.vp-out-dot');
+    const crossOut = $('.vp-out-cross');
+    const ranges = {
+      aAng: $('[data-range="aAng"]'),
+      bAng: $('[data-range="bAng"]'),
+      aLen: $('[data-range="aLen"]'),
+      bLen: $('[data-range="bLen"]'),
+    };
+    const vals = {
+      aAng: $('[data-val="aAng"]'),
+      bAng: $('[data-val="bAng"]'),
+      aLen: $('[data-val="aLen"]'),
+      bLen: $('[data-val="bLen"]'),
+    };
+    const swapBtn = $('[data-swap]');
+    const orthoBtn = $('[data-ortho]');
+
+    let aAng = cfg.init.aAng;
+    let bAng = cfg.init.bAng;
+    let aLen = cfg.init.aLen;
+    let bLen = cfg.init.bLen;
+
+    const setArrow = (lineEl, headEl, p, q) => {
+      lineEl.setAttribute('x1', p.x.toFixed(1));
+      lineEl.setAttribute('y1', p.y.toFixed(1));
+      lineEl.setAttribute('x2', q.x.toFixed(1));
+      lineEl.setAttribute('y2', q.y.toFixed(1));
+      const ang = (Math.atan2(q.y - p.y, q.x - p.x) * 180) / Math.PI;
+      headEl.setAttribute(
+        'transform',
+        'translate(' + q.x.toFixed(1) + ' ' + q.y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ')'
+      );
+    };
+
+    const fmtSigned = (v) => (Math.abs(v) < 0.05 ? '0.0' : (v > 0 ? '+' : '') + v.toFixed(1));
+
+    const render = () => {
+      const av = makeVec(aAng, aLen);
+      const bv = makeVec(bAng, bLen);
+      const A = toScreen2(av);
+      const B = toScreen2(bv);
+      const lenA = Math.hypot(av.x, av.y);
+      const lenB = Math.hypot(bv.x, bv.y);
+      const dot = av.x * bv.x + av.y * bv.y;
+      const cross = av.x * bv.y - av.y * bv.x;
+      const crossAbs = Math.abs(cross);
+
+      // —— 2D：向量、投影、夹角 ——
+      setArrow(aLine, aHead, O, A);
+      setArrow(bLine, bHead, O, B);
+
+      const angA = Math.atan2(A.y - O.y, A.x - O.x);
+      const angB = Math.atan2(B.y - O.y, B.x - O.x);
+      aLabel.setAttribute('x', (A.x + 18 * Math.cos(angA)).toFixed(1));
+      aLabel.setAttribute('y', (A.y + 18 * Math.sin(angA) + 6).toFixed(1));
+      bLabel.setAttribute('x', (B.x + 18 * Math.cos(angB)).toFixed(1));
+      bLabel.setAttribute('y', (B.y + 18 * Math.sin(angB) + 6).toFixed(1));
+
+      // b 在 a 上的投影长度 = a·b / |a| = |b|cosθ（可为负）
+      const sProj = dot / lenA;
+      const foot = toScreen2({ x: (av.x / lenA) * sProj, y: (av.y / lenA) * sProj });
+      projDash.setAttribute('x1', B.x.toFixed(1));
+      projDash.setAttribute('y1', B.y.toFixed(1));
+      projDash.setAttribute('x2', foot.x.toFixed(1));
+      projDash.setAttribute('y2', foot.y.toFixed(1));
+      projSeg.setAttribute('x1', O.x.toFixed(1));
+      projSeg.setAttribute('y1', O.y.toFixed(1));
+      projSeg.setAttribute('x2', foot.x.toFixed(1));
+      projSeg.setAttribute('y2', foot.y.toFixed(1));
+      const pdx = B.x - foot.x;
+      const pdy = B.y - foot.y;
+      const pdn = Math.hypot(pdx, pdy) || 1;
+      projLabel.setAttribute('x', (foot.x + (pdx / pdn) * 22).toFixed(1));
+      projLabel.setAttribute('y', (foot.y + (pdy / pdn) * 22 + 5).toFixed(1));
+      projLabel.textContent = '|b|cosθ = ' + fmtSigned(sProj);
+
+      let d = angB - angA;
+      while (d <= -Math.PI) d += 2 * Math.PI;
+      while (d > Math.PI) d -= 2 * Math.PI;
+      const thetaDeg = (Math.abs(d) * 180) / Math.PI;
+      const r = Math.min(55, lenA * PX * 0.55, lenB * PX * 0.55);
+      const p1 = { x: O.x + r * Math.cos(angA), y: O.y + r * Math.sin(angA) };
+      const p2 = { x: O.x + r * Math.cos(angB), y: O.y + r * Math.sin(angB) };
+      thetaArc.setAttribute(
+        'd',
+        'M ' + p1.x.toFixed(1) + ' ' + p1.y.toFixed(1) +
+          ' A ' + r.toFixed(1) + ' ' + r.toFixed(1) + ' 0 0 ' + (d > 0 ? 1 : 0) +
+          ' ' + p2.x.toFixed(1) + ' ' + p2.y.toFixed(1)
+      );
+      thetaArc.classList.toggle('vp-hidden', thetaDeg < 0.6);
+      const midAng = angA + d / 2;
+      thetaLabel.setAttribute('x', (O.x + (r + 24) * Math.cos(midAng)).toFixed(1));
+      thetaLabel.setAttribute('y', (O.y + (r + 24) * Math.sin(midAng) + 6).toFixed(1));
+      thetaLabel.textContent = 'θ = ' + thetaDeg.toFixed(1) + '°';
+
+      // —— 3D：平行四边形、a/b、叉乘向量与长度条 ——
+      const A3 = proj3(av);
+      const B3 = proj3(bv);
+      const Sum3 = proj3({ x: av.x + bv.x, y: av.y + bv.y });
+      para.setAttribute(
+        'points',
+        [O3, A3, Sum3, B3].map((p) => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')
+      );
+      setArrow(a3Line, a3Head, O3, A3);
+      setArrow(b3Line, b3Head, O3, B3);
+      const dirA3 = Math.atan2(A3.y - O3.y, A3.x - O3.x);
+      const dirB3 = Math.atan2(B3.y - O3.y, B3.x - O3.x);
+      a3Label.setAttribute('x', (A3.x + 20 * Math.cos(dirA3)).toFixed(1));
+      a3Label.setAttribute('y', (A3.y + 20 * Math.sin(dirA3) + 6).toFixed(1));
+      b3Label.setAttribute('x', (B3.x + 20 * Math.cos(dirB3)).toFixed(1));
+      b3Label.setAttribute('y', (B3.y + 20 * Math.sin(dirB3) + 6).toFixed(1));
+      areaLabel.setAttribute('x', ((O3.x + A3.x + Sum3.x + B3.x) / 4).toFixed(1));
+      areaLabel.setAttribute('y', ((O3.y + A3.y + Sum3.y + B3.y) / 4 + 5).toFixed(1));
+      areaLabel.textContent = '面积 = |a×b| = ' + crossAbs.toFixed(1);
+
+      // 叉乘：长度 ∝ |a×b|，方向由 cz 的正负决定（屏幕外 ⊙ / 屏幕内 ⊗）
+      const up = cross > 0;
+      const crossLen = Math.min(crossAbs * cfg.crossScale, 100);
+      const tip = { x: O3.x, y: O3.y + (up ? -crossLen : crossLen) };
+      setArrow(crossLine, crossHead, O3, tip);
+      crossGroup.classList.toggle('vp-hidden', crossAbs < 0.5);
+      crossMark.setAttribute(
+        'transform',
+        'translate(' + tip.x.toFixed(1) + ' ' + (tip.y + (up ? -22 : 22)).toFixed(1) + ')'
+      );
+      crossMark.classList.toggle('vp-in', !up);
+      crossLabel.setAttribute('x', (O3.x - 16).toFixed(1));
+      crossLabel.setAttribute('y', ((O3.y + tip.y) / 2 + 5).toFixed(1));
+      crossLabel.textContent = 'a×b';
+
+      barFill.setAttribute('width', (BAR.w * Math.min(1, crossAbs / cfg.crossMax)).toFixed(1));
+
+      // —— 读数 ——
+      let dotNote;
+      if (thetaDeg < 0.6) dotNote = '（>0，方向相同：内积最大）';
+      else if (thetaDeg > 179.4) dotNote = '（<0，方向相反：内积最小）';
+      else if (Math.abs(dot) < 0.05) dotNote = '（≈0，互相垂直）';
+      else if (dot > 0) dotNote = '（>0，方向大致相同）';
+      else dotNote = '（<0，方向大致相反）';
+      dotOut.textContent = 'θ = ' + thetaDeg.toFixed(1) + '°　a·b = ' + fmtSigned(dot) + dotNote;
+
+      let crossNote;
+      if (crossAbs < 0.05) crossNote = '方向：无（a、b 平行，没有围出面积）';
+      else crossNote = '方向：指向屏幕' + (cross > 0 ? '外 ⊙' : '内 ⊗');
+      crossOut.textContent =
+        '|a×b| = ' + crossAbs.toFixed(1) + '（= 平行四边形面积）　' + crossNote;
+
+      vals.aAng.textContent = Math.round(aAng) + '°';
+      vals.bAng.textContent = Math.round(bAng) + '°';
+      vals.aLen.textContent = aLen.toFixed(1);
+      vals.bLen.textContent = bLen.toFixed(1);
+      ranges.aAng.value = String(Math.round(aAng));
+      ranges.bAng.value = String(Math.round(bAng));
+      ranges.aLen.value = String(aLen);
+      ranges.bLen.value = String(bLen);
+    };
+
+    Object.keys(ranges).forEach((key) => {
+      ranges[key].addEventListener('input', () => {
+        const v = Number(ranges[key].value);
+        if (key === 'aAng') aAng = v;
+        else if (key === 'bAng') bAng = v;
+        else if (key === 'aLen') aLen = v;
+        else bLen = v;
+        render();
+      });
+    });
+
+    swapBtn.addEventListener('click', () => {
+      const ta = aAng;
+      aAng = bAng;
+      bAng = ta;
+      const tl = aLen;
+      aLen = bLen;
+      bLen = tl;
+      render();
+    });
+
+    orthoBtn.addEventListener('click', () => {
+      let nb = aAng + 90;
+      if (nb > 180) nb -= 360;
+      if (nb < -180) nb += 360;
+      bAng = nb;
+      render();
+    });
+
+    render();
+  });
+</script>
+
+<style>
+  .vp-demo {
+    --vp-b: light-dark(#0f766e, #2dd4bf);
+    margin: 1.5rem 0;
+  }
+  .vp-demo svg { display: block; width: 100%; max-width: 900px; height: auto; margin: 0 auto; }
+  .vp-hidden { display: none; }
+
+  .vp-title { fill: var(--sl-color-text); font-size: 24px; font-weight: 600; }
+  .vp-sub { fill: var(--sl-color-gray-2); font-size: 18px; }
+  .vp-halo { paint-order: stroke; stroke: var(--sl-color-bg); stroke-width: 5; }
+
+  .vp-axis2d { stroke: var(--sl-color-gray-5); stroke-width: 1.2; }
+  .vp-axis2d-label { fill: var(--sl-color-gray-3); font-size: 17px; }
+  .vp-origin { fill: var(--sl-color-gray-2); font-size: 17px; font-weight: 600; }
+
+  .vp-vec { stroke-width: 2.6; }
+  .vp-vec-a { stroke: var(--sl-color-text); }
+  .vp-vec-b { stroke: var(--vp-b); }
+  .vp-head-a { fill: var(--sl-color-text); }
+  .vp-head-b { fill: var(--vp-b); }
+  .vp-vec-label { font-size: 21px; font-weight: 700; }
+  .vp-vec-label-a { fill: var(--sl-color-text); }
+  .vp-vec-label-b { fill: var(--vp-b); }
+
+  .vp-proj-dash { stroke: var(--sl-color-gray-3); stroke-width: 1.6; stroke-dasharray: 6 5; }
+  .vp-proj-seg { stroke: var(--sl-color-accent); stroke-width: 4.5; stroke-linecap: round; }
+  .vp-proj-label { fill: var(--sl-color-accent); font-size: 17px; font-weight: 600; }
+
+  .vp-arc { fill: none; stroke: var(--sl-color-gray-2); stroke-width: 1.6; }
+  .vp-theta { fill: var(--sl-color-text); font-size: 20px; font-weight: 600; }
+
+  .vp-axis3d { stroke: var(--sl-color-gray-4); stroke-width: 1.6; }
+  .vp-axis3d-dash { stroke-dasharray: 5 4; }
+  .vp-head3d { fill: var(--sl-color-gray-4); }
+  .vp-axis3d-label { fill: var(--sl-color-gray-3); font-size: 17px; }
+
+  .vp-para {
+    fill: light-dark(rgba(79, 70, 229, 0.14), rgba(139, 131, 255, 0.18));
+    stroke: var(--sl-color-accent);
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+  }
+  .vp-area-label { fill: var(--sl-color-accent); font-size: 17px; font-weight: 600; }
+
+  .vp-cross-line { stroke: var(--sl-color-accent); stroke-width: 3; }
+  .vp-cross-head { fill: var(--sl-color-accent); }
+  .vp-cross-label { fill: var(--sl-color-accent); font-size: 20px; font-weight: 700; }
+  .vp-mark-bg { fill: var(--sl-color-bg); }
+  .vp-mark-ring { fill: none; stroke: var(--sl-color-accent); stroke-width: 2; }
+  .vp-mark-dot { fill: var(--sl-color-accent); }
+  .vp-mark-in line { stroke: var(--sl-color-accent); stroke-width: 2.4; stroke-linecap: round; }
+  .vp-crossmark .vp-mark-in { display: none; }
+  .vp-crossmark.vp-in .vp-mark-in { display: block; }
+  .vp-crossmark.vp-in .vp-mark-out { display: none; }
+
+  .vp-bar-bg {
+    fill: light-dark(rgba(148, 163, 184, 0.18), rgba(148, 163, 184, 0.14));
+    stroke: var(--sl-color-gray-4);
+    stroke-width: 1.4;
+  }
+  .vp-bar-fill { fill: var(--sl-color-accent); opacity: 0.9; }
+  .vp-bar-label { fill: var(--sl-color-gray-2); font-size: 17px; }
+
+  .vp-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.1rem; max-width: 900px; margin: 0.55rem auto 0; }
+  .vp-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 2.1rem; margin: 0; padding: 0 0.85rem; box-sizing: border-box;
+    border: 1px solid var(--sl-color-gray-4); border-radius: 6px;
+    background: var(--sl-color-bg); color: var(--sl-color-text);
+    font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer;
+  }
+  .vp-btn:hover { border-color: var(--sl-color-accent); color: var(--sl-color-accent); }
+  .vp-slider-label {
+    display: flex; align-items: center; gap: 0.5rem; margin: 0;
+    font-size: 0.8125rem; color: var(--sl-color-gray-2); white-space: nowrap;
+  }
+  .vp-slider-label input[type='range'] { width: 8.5rem; margin: 0; accent-color: var(--sl-color-accent); }
+  .vp-val {
+    display: inline-block; min-width: 3.1rem;
+    color: var(--sl-color-accent); font-weight: 600; font-variant-numeric: tabular-nums;
+  }
+
+  .vp-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; color: var(--sl-color-text); line-height: 1.7; }
+  .vp-out { display: block; white-space: nowrap; overflow-x: auto; height: 1.7em; line-height: 1.7; }
+  .vp-readout output { color: var(--sl-color-accent); font-weight: 600; }
+  .vp-demo figcaption { max-width: 900px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.9rem; line-height: 1.65; }
+</style>

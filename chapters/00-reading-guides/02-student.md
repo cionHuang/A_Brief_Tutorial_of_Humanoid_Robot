@@ -37,7 +37,7 @@
 
 | 小节 | 预计时间 | 前置知识 |
 | --- | --- | --- |
-| [4.1 机器人数学基础](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.md) | 25 分钟 | 线性代数基础 |
+| [4.1 机器人数学基础](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) | 25 分钟 | 线性代数基础 |
 | [4.2 运动学](../04-cerebellum-realtime-control/02-kinematics.md) | 20 分钟 | 4.1 |
 | [4.3 动力学](../04-cerebellum-realtime-control/03-dynamics.md) | 20 分钟 | 4.2 |
 | [4.4 状态估计](../04-cerebellum-realtime-control/04-state-estimation.md) | 20 分钟 | 3.3、4.1 |

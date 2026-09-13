@@ -1,0 +1,516 @@
+---
+/**
+ * 万向节锁（Gimbal Lock）交互演示：ZYX 欧拉角 R = Rz(yaw)·Ry(pitch)·Rx(roll) 中，
+ * 中间角 pitch 是"铰链的中间环"。左侧用等距投影画出三根转轴——竖直的 yaw 轴（z）、
+ * 随 yaw 转的 pitch 轴（y）、随 pitch 转的 roll 轴（x），以及两个跟 yaw / roll 同步的
+ * 转动圆环；并实时画出 yaw 轴与 roll 轴之间的夹角弧。右侧画出 det(E) = cos(pitch)
+ * 随 pitch（−90°…+90°）变化的曲线与当前工作点。
+ *
+ * 教学要点：
+ *   ① 万向节锁不是机械卡死：pitch = ±90° 时外层 yaw 轴与内层 roll 轴共线，
+ *      两个转动圆环共面，三个角度不再唯一描述同一个局部旋转（参数退化）；
+ *   ② det(E) = cos(pitch) 只在 |pitch| → 90° 时趋近 0，反解随之不稳；
+ *   ③ 姿态本身（旋转矩阵 / 四元数）在该处依然连续，机器人并没有少一个自由度。
+ *
+ * 交互：默认静止在 pitch = 0°。拖三个滑块实时重算投影、曲线工作点与两条读数；
+ * "跳到奇异（pitch=90°）"直接进入退化姿态，"复位"回到 0/0/0。纯 SVG + 原生 JS，
+ * 无外部依赖、无动画；所有图形写在 markup 里，JS 只改属性 / textContent / classList
+ * （绝不 setAttribute('class', ...)，以免抹掉 Astro 作用域 class）。样式跟随
+ * Starlight 明暗主题（light-dark + CSS 变量），控件 margin 归零。
+ *
+ * 使用方式（仅限 .mdx 小节，放在 4.1 "### 万向节锁为什么会发生" 之后）：
+ *   import GimbalLockDemo from '../../../components/GimbalLockDemo.astro';
+ *   <GimbalLockDemo />
+ */
+
+// ---------- 等距投影 ----------
+const O = [258, 288];   // 轴原点（屏幕坐标）
+const S = 96;           // 世界单位 → 像素
+const proj = (v) => [
+  O[0] + S * (-0.866 * v[0] + 0.866 * v[1]),
+  O[1] + S * (0.5 * v[0] + 0.5 * v[1] - v[2]),
+];
+
+// ---------- 三维小工具 ----------
+const rad = (d) => (d * Math.PI) / 180;
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const mul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const unit = (a) => { const n = Math.hypot(a[0], a[1], a[2]) || 1; return mul(a, 1 / n); };
+const rz = (v, a) => { const c = Math.cos(a), s = Math.sin(a); return [c * v[0] - s * v[1], s * v[0] + c * v[1], v[2]]; };
+const ry = (v, a) => { const c = Math.cos(a), s = Math.sin(a); return [c * v[0] + s * v[2], v[1], -s * v[0] + c * v[2]]; };
+
+const AX = { len: 1, stub: 0.45, ring: 0.44, arc: 0.5 };
+const LBL = { yaw: [-10, 0], pitch: [0, 8], roll: [12, 0] };
+
+// ZYX 三根转轴的单位方向：yaw 绕世界 z；pitch 绕 yaw 之后的 y；roll 绕 yaw+pitch 之后的 x
+const axisDirs = (yawDeg, pitchDeg) => {
+  const y = rad(yawDeg), p = rad(pitchDeg);
+  return { yaw: [0, 0, 1], pitch: rz([0, 1, 0], y), roll: rz(ry([1, 0, 0], p), y) };
+};
+
+const pathFrom = (pts, close) =>
+  pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ') + (close ? ' Z' : '');
+
+const labelPos = (dir, off) => {
+  const p = proj(mul(dir, 1.15));
+  return [p[0] + off[0], p[1] + off[1]];
+};
+
+// 三维圆环（转动平面）：法向 u，平面基 e1，半径 r
+const ringPoints = (u, e1, r, n) => {
+  const e2 = unit(cross(u, e1));
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const t = (i / n) * Math.PI * 2;
+    pts.push(proj(mul(add(mul(e1, Math.cos(t)), mul(e2, Math.sin(t))), r)));
+  }
+  return pts;
+};
+
+// yaw 轴 → roll 轴所在直线的锐角弧（slerp；夹角 > 90° 时取反向）
+const arcPoints = (u, v, r, n) => {
+  const d = clamp(dot(u, v), -1, 1);
+  const w = d >= 0 ? v : mul(v, -1);
+  const ang = Math.acos(clamp(dot(u, w), -1, 1));
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const a = Math.sin((1 - t) * ang) / Math.sin(ang);
+    const b = Math.sin(t * ang) / Math.sin(ang);
+    pts.push(proj(mul(add(mul(u, a), mul(w, b)), r)));
+  }
+  return pts;
+};
+
+// ---------- 右侧曲线图几何 ----------
+const CH = { x0: 560, x1: 858, y0: 104, y1: 318 };
+const px = (p) => CH.x0 + ((p + 90) / 180) * (CH.x1 - CH.x0);
+const py = (det) => CH.y1 - det * (CH.y1 - CH.y0);
+const curvePts = (a, b) => {
+  const pts = [];
+  for (let p = a; p <= b + 1e-9; p += 5) pts.push([px(p), py(Math.cos(rad(p)))]);
+  return pts;
+};
+
+// ---------- 默认姿态（pitch=yaw=roll=0）的初始几何，供 markup 无 JS 渲染 ----------
+const V0 = (() => {
+  const D = axisDirs(0, 0);
+  const arc = arcPoints(D.yaw, D.roll, AX.arc, 32);
+  const bis = unit(add(D.yaw, D.roll));
+  const angP = proj(mul(bis, 0.78));
+  const e1 = rz([0, 1, 0], 0);
+  const e2 = unit(cross(D.roll, e1));
+  return {
+    O,
+    yawTip: proj(mul(D.yaw, AX.len)),
+    pitchTip: proj(mul(D.pitch, AX.len)),
+    rollTip: proj(mul(D.roll, AX.len)),
+    yawStub: proj(mul(D.yaw, -AX.stub)),
+    pitchStub: proj(mul(D.pitch, -AX.stub)),
+    rollStub: proj(mul(D.roll, -AX.stub)),
+    yawLabel: labelPos(D.yaw, LBL.yaw),
+    pitchLabel: labelPos(D.pitch, LBL.pitch),
+    rollLabel: labelPos(D.roll, LBL.roll),
+    angleLabel: [angP[0] + 16, angP[1] - 4],
+    yawRing: pathFrom(ringPoints(D.yaw, [1, 0, 0], AX.ring, 48), true),
+    rollRing: pathFrom(ringPoints(D.roll, e1, AX.ring, 48), true),
+    arc: pathFrom(arc, false),
+    yawDot: proj(mul([1, 0, 0], AX.ring)),
+    rollDot: proj(mul(e1, AX.ring)),
+    point: [px(0), py(1)],
+  };
+})();
+
+const CURVE = {
+  main: pathFrom(curvePts(-85, 85), false),
+  warn: pathFrom(curvePts(-90, -85), false) + ' ' + pathFrom(curvePts(85, 90), false),
+  grid: py(0.5),
+  zeroX: px(0),
+};
+
+const CFG = { O, S, ax: AX, ch: CH, lbl: LBL, split: 85 };
+---
+
+<figure class="gl-demo" data-gl={JSON.stringify(CFG)}>
+  <svg viewBox="0 0 900 430" role="img" aria-label="万向节锁教学示意：ZYX 三轴等距投影，pitch 转到正负 90 度时 yaw 轴与 roll 轴共线、两个转动圆环共面；右侧曲线显示 det(E)=cos(pitch) 趋近 0">
+    <defs>
+      <marker id="gl-m-yaw" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="gl-mh-yaw"></path>
+      </marker>
+      <marker id="gl-m-pitch" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="gl-mh-pitch"></path>
+      </marker>
+      <marker id="gl-m-roll" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="gl-mh-roll"></path>
+      </marker>
+    </defs>
+
+    <text class="gl-title" x="24" y="28">万向节锁：轴重合导致的参数退化（教学示意）</text>
+    <text class="gl-badge" data-role="badge" x="24" y="76">两轴重合：yaw 与 roll 已共线</text>
+
+    <!-- ===== 左半区：ZYX 三轴的等距投影 ===== -->
+    <path class="gl-ring gl-ring-yaw" data-role="ring-yaw" d={V0.yawRing}></path>
+    <path class="gl-ring gl-ring-roll" data-role="ring-roll" d={V0.rollRing}></path>
+
+    <line class="gl-stub gl-axis-yaw" data-role="stub-yaw" x1={V0.O[0]} y1={V0.O[1]} x2={V0.yawStub[0]} y2={V0.yawStub[1]}></line>
+    <line class="gl-stub gl-axis-pitch" data-role="stub-pitch" x1={V0.O[0]} y1={V0.O[1]} x2={V0.pitchStub[0]} y2={V0.pitchStub[1]}></line>
+    <line class="gl-stub gl-axis-roll" data-role="stub-roll" x1={V0.O[0]} y1={V0.O[1]} x2={V0.rollStub[0]} y2={V0.rollStub[1]}></line>
+
+    <line class="gl-axis gl-axis-yaw" data-role="ax-yaw" marker-end="url(#gl-m-yaw)" x1={V0.O[0]} y1={V0.O[1]} x2={V0.yawTip[0]} y2={V0.yawTip[1]}></line>
+    <line class="gl-axis gl-axis-pitch" data-role="ax-pitch" marker-end="url(#gl-m-pitch)" x1={V0.O[0]} y1={V0.O[1]} x2={V0.pitchTip[0]} y2={V0.pitchTip[1]}></line>
+    <line class="gl-axis gl-axis-roll" data-role="ax-roll" marker-end="url(#gl-m-roll)" x1={V0.O[0]} y1={V0.O[1]} x2={V0.rollTip[0]} y2={V0.rollTip[1]}></line>
+
+    <path class="gl-arc" data-role="arc" d={V0.arc} fill="none"></path>
+    <circle class="gl-dot gl-dot-yaw" data-role="dot-yaw" cx={V0.yawDot[0]} cy={V0.yawDot[1]} r="5"></circle>
+    <circle class="gl-dot gl-dot-roll" data-role="dot-roll" cx={V0.rollDot[0]} cy={V0.rollDot[1]} r="5"></circle>
+
+    <circle class="gl-origin" cx={V0.O[0]} cy={V0.O[1]} r="3.5"></circle>
+    <text class="gl-o" x={V0.O[0] - 16} y={V0.O[1] + 16}>O</text>
+
+    <text class="gl-axis-label gl-label-yaw" data-role="lb-yaw" text-anchor="end" x={V0.yawLabel[0]} y={V0.yawLabel[1]}>z 轴（yaw）</text>
+    <text class="gl-axis-label gl-label-pitch" data-role="lb-pitch" text-anchor="middle" x={V0.pitchLabel[0]} y={V0.pitchLabel[1]}>y 轴（pitch）</text>
+    <text class="gl-axis-label gl-label-roll" data-role="lb-roll" text-anchor="start" x={V0.rollLabel[0]} y={V0.rollLabel[1]}>x 轴（roll）</text>
+    <text class="gl-angle" data-role="angle" x={V0.angleLabel[0]} y={V0.angleLabel[1]}>夹角 90°</text>
+
+    <!-- ===== 右半区：det(E)=cos(pitch) 曲线 ===== -->
+    <g class="gl-chart">
+      <text class="gl-c-title" x="560" y="84">det(E)</text>
+      <text class="gl-c-warn-title" x="858" y="84" text-anchor="end">pitch = ±90° 时奇异</text>
+
+      <line class="gl-c-axis" x1={CH.x0} y1={CH.y0} x2={CH.x0} y2={CH.y1}></line>
+      <line class="gl-c-axis" x1={CH.x0} y1={CH.y1} x2={CH.x1} y2={CH.y1}></line>
+      <line class="gl-c-grid" x1={CH.x0} y1={CURVE.grid} x2={CH.x1} y2={CURVE.grid}></line>
+      <line class="gl-c-grid" x1={CURVE.zeroX} y1={CH.y0} x2={CURVE.zeroX} y2={CH.y1}></line>
+      <line class="gl-c-sing" x1={CH.x0} y1={CH.y0} x2={CH.x0} y2={CH.y1}></line>
+      <line class="gl-c-sing" x1={CH.x1} y1={CH.y0} x2={CH.x1} y2={CH.y1}></line>
+
+      <path class="gl-curve" d={CURVE.main}></path>
+      <path class="gl-curve-warn" d={CURVE.warn}></path>
+
+      <line class="gl-guide" data-role="drop" x1={V0.point[0]} y1={V0.point[1]} x2={V0.point[0]} y2={CH.y1}></line>
+      <line class="gl-guide" data-role="hline" x1={CH.x0} y1={V0.point[1]} x2={V0.point[0]} y2={V0.point[1]}></line>
+      <circle class="gl-point" data-role="point" cx={V0.point[0]} cy={V0.point[1]} r="6"></circle>
+
+      <text class="gl-c-label" x={CH.x0} y="338" text-anchor="middle">−90°</text>
+      <text class="gl-c-label" x={CURVE.zeroX} y="338" text-anchor="middle">0°</text>
+      <text class="gl-c-label" x={CH.x1} y="338" text-anchor="middle">+90°</text>
+      <text class="gl-c-label" x={CH.x0 - 8} y={CH.y0 + 6} text-anchor="end">1.0</text>
+      <text class="gl-c-label" x={CH.x0 - 8} y={CURVE.grid + 6} text-anchor="end">0.5</text>
+      <text class="gl-c-label" x={CH.x0 - 8} y={CH.y1 + 6} text-anchor="end">0</text>
+      <text class="gl-c-label" x={CURVE.zeroX} y="364" text-anchor="middle">pitch θ（°）</text>
+      <text class="gl-note" x="566" y="396">det(E)=cosθ 越接近 0，反解越不稳</text>
+    </g>
+
+    <text class="gl-note" x="24" y="418">pitch→±90° 时两环共面、两轴共线，只是角度参数退化；机械没有卡死，旋转矩阵/四元数依然连续。</text>
+  </svg>
+
+  <div class="gl-controls">
+    <label class="gl-slider-label">pitch <span class="gl-val" data-val="pitch">0°</span>
+      <input class="gl-range" type="range" data-range="pitch" min="-90" max="90" step="1" value="0" />
+    </label>
+    <label class="gl-slider-label">yaw <span class="gl-val" data-val="yaw">0°</span>
+      <input class="gl-range" type="range" data-range="yaw" min="-180" max="180" step="1" value="0" />
+    </label>
+    <label class="gl-slider-label">roll <span class="gl-val" data-val="roll">0°</span>
+      <input class="gl-range" type="range" data-range="roll" min="-180" max="180" step="1" value="0" />
+    </label>
+    <button type="button" class="gl-btn" data-goto>跳到奇异（pitch=90°）</button>
+    <button type="button" class="gl-btn" data-reset>复位</button>
+  </div>
+
+  <div class="gl-readout">
+    <output class="gl-out gl-out-state" aria-live="polite"></output>
+    <output class="gl-out gl-out-note" aria-live="polite"></output>
+  </div>
+
+  <figcaption>
+    玩法：拖 pitch 看 roll 轴怎样与 yaw 轴共线、两个转动圆环怎样重合；右侧曲线 det(E)=cosθ 越接近 ±90° 越接近 0。退化的是角度参数，不是机械卡死。
+  </figcaption>
+</figure>
+
+<script>
+  document.querySelectorAll('.gl-demo').forEach((demo) => {
+    const cfg = JSON.parse(demo.dataset.gl);
+    const O = cfg.O;
+    const S = cfg.S;
+    const AXIS = cfg.ax;
+    const CH = cfg.ch;
+    const LBL = cfg.lbl;
+    const SPLIT = cfg.split;
+
+    const rad = (d) => (d * Math.PI) / 180;
+    const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+    const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+    const mul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
+    const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const unit = (a) => { const n = Math.hypot(a[0], a[1], a[2]) || 1; return mul(a, 1 / n); };
+    const rz = (v, a) => { const c = Math.cos(a), s = Math.sin(a); return [c * v[0] - s * v[1], s * v[0] + c * v[1], v[2]]; };
+    const ry = (v, a) => { const c = Math.cos(a), s = Math.sin(a); return [c * v[0] + s * v[2], v[1], -s * v[0] + c * v[2]]; };
+    const proj = (v) => [O[0] + S * (-0.866 * v[0] + 0.866 * v[1]), O[1] + S * (0.5 * v[0] + 0.5 * v[1] - v[2])];
+    const pathFrom = (pts, close) =>
+      pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ') + (close ? ' Z' : '');
+
+    const axisDirs = (yawDeg, pitchDeg) => {
+      const y = rad(yawDeg), p = rad(pitchDeg);
+      return { yaw: [0, 0, 1], pitch: rz([0, 1, 0], y), roll: rz(ry([1, 0, 0], p), y) };
+    };
+    const labelPos = (dir, off) => { const p = proj(mul(dir, 1.15)); return [p[0] + off[0], p[1] + off[1]]; };
+    const ringPoints = (u, e1, r, n) => {
+      const e2 = unit(cross(u, e1));
+      const pts = [];
+      for (let i = 0; i <= n; i++) {
+        const t = (i / n) * Math.PI * 2;
+        pts.push(proj(mul(add(mul(e1, Math.cos(t)), mul(e2, Math.sin(t))), r)));
+      }
+      return pts;
+    };
+    const arcPoints = (u, v, r, n) => {
+      const d = clamp(dot(u, v), -1, 1);
+      const w = d >= 0 ? v : mul(v, -1);
+      const ang = Math.acos(clamp(dot(u, w), -1, 1));
+      const pts = [];
+      for (let i = 0; i <= n; i++) {
+        const t = i / n;
+        const a = Math.sin((1 - t) * ang) / Math.sin(ang);
+        const b = Math.sin(t * ang) / Math.sin(ang);
+        pts.push(proj(mul(add(mul(u, a), mul(w, b)), r)));
+      }
+      return pts;
+    };
+    const px = (p) => CH.x0 + ((p + 90) / 180) * (CH.x1 - CH.x0);
+    const py = (det) => CH.y1 - det * (CH.y1 - CH.y0);
+
+    const q = (sel) => demo.querySelector(sel);
+    const axYaw = q('[data-role="ax-yaw"]');
+    const axPitch = q('[data-role="ax-pitch"]');
+    const axRoll = q('[data-role="ax-roll"]');
+    const stubYaw = q('[data-role="stub-yaw"]');
+    const stubPitch = q('[data-role="stub-pitch"]');
+    const stubRoll = q('[data-role="stub-roll"]');
+    const lbYaw = q('[data-role="lb-yaw"]');
+    const lbPitch = q('[data-role="lb-pitch"]');
+    const lbRoll = q('[data-role="lb-roll"]');
+    const ringYaw = q('[data-role="ring-yaw"]');
+    const ringRoll = q('[data-role="ring-roll"]');
+    const dotYaw = q('[data-role="dot-yaw"]');
+    const dotRoll = q('[data-role="dot-roll"]');
+    const arcEl = q('[data-role="arc"]');
+    const angleTxt = q('[data-role="angle"]');
+    const pointEl = q('[data-role="point"]');
+    const dropEl = q('[data-role="drop"]');
+    const hlineEl = q('[data-role="hline"]');
+    const outState = q('.gl-out-state');
+    const outNote = q('.gl-out-note');
+
+    const ranges = {};
+    const valEls = {};
+    ['pitch', 'yaw', 'roll'].forEach((k) => {
+      ranges[k] = q('[data-range="' + k + '"]');
+      valEls[k] = q('[data-val="' + k + '"]');
+    });
+
+    let pitch = 0;
+    let yaw = 0;
+    let roll = 0;
+
+    const setLine = (el, a, b) => {
+      el.setAttribute('x1', a[0].toFixed(1));
+      el.setAttribute('y1', a[1].toFixed(1));
+      el.setAttribute('x2', b[0].toFixed(1));
+      el.setAttribute('y2', b[1].toFixed(1));
+    };
+    const setPos = (el, p) => {
+      el.setAttribute('x', p[0].toFixed(1));
+      el.setAttribute('y', p[1].toFixed(1));
+    };
+
+    const render = () => {
+      const D = axisDirs(yaw, pitch);
+      const yRad = rad(yaw);
+      const rRad = rad(roll);
+
+      setLine(axYaw, O, proj(mul(D.yaw, AXIS.len)));
+      setLine(axPitch, O, proj(mul(D.pitch, AXIS.len)));
+      setLine(axRoll, O, proj(mul(D.roll, AXIS.len)));
+      setLine(stubYaw, O, proj(mul(D.yaw, -AXIS.stub)));
+      setLine(stubPitch, O, proj(mul(D.pitch, -AXIS.stub)));
+      setLine(stubRoll, O, proj(mul(D.roll, -AXIS.stub)));
+
+      setPos(lbYaw, labelPos(D.yaw, LBL.yaw));
+      setPos(lbPitch, labelPos(D.pitch, LBL.pitch));
+      setPos(lbRoll, labelPos(D.roll, LBL.roll));
+
+      // 两个转动圆环：yaw 的圆环固定在水平面；roll 的圆环随 pitch 一起倒下来
+      const e1 = rz([0, 1, 0], yRad);
+      const e2 = unit(cross(D.roll, e1));
+      ringYaw.setAttribute('d', pathFrom(ringPoints(D.yaw, [1, 0, 0], AXIS.ring, 48), true));
+      ringRoll.setAttribute('d', pathFrom(ringPoints(D.roll, e1, AXIS.ring, 48), true));
+
+      const yawDot = proj(mul(add(mul([1, 0, 0], Math.cos(yRad)), mul([0, 1, 0], Math.sin(yRad))), AXIS.ring));
+      const rollDot = proj(mul(add(mul(e1, Math.cos(rRad)), mul(e2, Math.sin(rRad))), AXIS.ring));
+      dotYaw.setAttribute('cx', yawDot[0].toFixed(1));
+      dotYaw.setAttribute('cy', yawDot[1].toFixed(1));
+      dotRoll.setAttribute('cx', rollDot[0].toFixed(1));
+      dotRoll.setAttribute('cy', rollDot[1].toFixed(1));
+
+      // yaw 轴与 roll 轴所在直线之间的锐角（0° 表示共线）
+      const d0 = clamp(dot(D.yaw, D.roll), -1, 1);
+      const w = d0 >= 0 ? D.roll : mul(D.roll, -1);
+      const ang = Math.acos(clamp(dot(D.yaw, w), -1, 1));
+      const phiDeg = (ang * 180) / Math.PI;
+      if (ang < 1e-3) {
+        arcEl.setAttribute('d', '');
+      } else {
+        arcEl.setAttribute('d', pathFrom(arcPoints(D.yaw, w, AXIS.arc, 32), false));
+      }
+      const bis = ang < 1e-3 ? D.yaw : unit(add(D.yaw, w));
+      const angP = proj(mul(bis, 0.78));
+      setPos(angleTxt, [angP[0] + 16, angP[1] - 4]);
+      angleTxt.textContent = '夹角 ' + phiDeg.toFixed(0) + '°';
+
+      // 右侧曲线工作点
+      const det = Math.cos(rad(pitch));
+      const cx = px(pitch);
+      const cy = py(det);
+      pointEl.setAttribute('cx', cx.toFixed(1));
+      pointEl.setAttribute('cy', cy.toFixed(1));
+      setLine(dropEl, [cx, cy], [cx, CH.y1]);
+      setLine(hlineEl, [CH.x0, cy], [cx, cy]);
+
+      const near = Math.abs(pitch) > SPLIT;
+      const lock = Math.abs(pitch) >= 89.5;
+      demo.classList.toggle('gl-warn', near);
+      demo.classList.toggle('gl-lock', lock);
+
+      const stateLabel = lock ? '奇异（yaw 与 roll 轴重合）' : near ? '接近奇异' : '正常';
+      outState.textContent =
+        'pitch = ' + pitch.toFixed(1) + '°　det(E) = ' + det.toFixed(2) + '　状态：' + stateLabel;
+      outNote.textContent = near
+        ? 'yaw 与 roll 轴已几乎重合：同一个姿态对应连续多组 (yaw, roll) 解'
+        : 'yaw 与 roll 轴相互独立';
+
+      valEls.pitch.textContent = pitch.toFixed(0) + '°';
+      valEls.yaw.textContent = yaw.toFixed(0) + '°';
+      valEls.roll.textContent = roll.toFixed(0) + '°';
+    };
+
+    Object.keys(ranges).forEach((k) => {
+      ranges[k].addEventListener('input', () => {
+        const v = Number(ranges[k].value);
+        if (k === 'pitch') pitch = v;
+        else if (k === 'yaw') yaw = v;
+        else roll = v;
+        render();
+      });
+    });
+
+    q('[data-goto]').addEventListener('click', () => {
+      pitch = 90;
+      yaw = 0;
+      roll = 0;
+      ranges.pitch.value = '90';
+      ranges.yaw.value = '0';
+      ranges.roll.value = '0';
+      render();
+    });
+
+    q('[data-reset]').addEventListener('click', () => {
+      pitch = 0;
+      yaw = 0;
+      roll = 0;
+      ranges.pitch.value = '0';
+      ranges.yaw.value = '0';
+      ranges.roll.value = '0';
+      render();
+    });
+
+    render();
+  });
+</script>
+
+<style>
+  .gl-demo {
+    --gl-warn: light-dark(#dc2626, #f87171);
+    margin: 1.5rem 0;
+  }
+  .gl-demo svg { display: block; width: 100%; max-width: 900px; height: auto; margin: 0 auto; }
+
+  .gl-title { fill: var(--sl-color-text); font-size: 24px; font-weight: 600; }
+  .gl-note { fill: var(--sl-color-gray-2); font-size: 17px; }
+
+  /* 三根转轴 */
+  .gl-axis { stroke-width: 3; stroke-linecap: round; }
+  .gl-axis-yaw { stroke: var(--sl-color-text); }
+  .gl-axis-pitch { stroke: var(--sl-color-gray-3); }
+  .gl-axis-roll { stroke: var(--sl-color-accent); }
+  .gl-stub { stroke-width: 1.6; stroke-dasharray: 5 5; opacity: 0.4; }
+  .gl-mh-yaw { fill: var(--sl-color-text); }
+  .gl-mh-pitch { fill: var(--sl-color-gray-3); }
+  .gl-mh-roll { fill: var(--sl-color-accent); }
+  .gl-axis-label { font-size: 18px; font-weight: 600; }
+  .gl-label-yaw { fill: var(--sl-color-text); }
+  .gl-label-pitch { fill: var(--sl-color-gray-2); }
+  .gl-label-roll { fill: var(--sl-color-accent); }
+  .gl-origin { fill: var(--sl-color-text); }
+  .gl-o { fill: var(--sl-color-gray-2); font-size: 17px; }
+
+  /* 转动圆环（转动平面） */
+  .gl-ring { fill: none; stroke-width: 1.6; stroke-dasharray: 6 5; }
+  .gl-ring-yaw { stroke: var(--sl-color-gray-4); }
+  .gl-ring-roll { stroke: var(--sl-color-accent); opacity: 0.85; }
+  .gl-dot { stroke: var(--sl-color-bg); stroke-width: 2; }
+  .gl-dot-yaw { fill: var(--sl-color-gray-2); }
+  .gl-dot-roll { fill: var(--sl-color-accent); }
+
+  /* 夹角弧 */
+  .gl-arc { fill: none; stroke: var(--sl-color-gray-2); stroke-width: 2; }
+  .gl-angle { fill: var(--sl-color-gray-2); font-size: 17px; font-weight: 600; }
+
+  /* 接近 / 到达奇异：轴与圆环统一转警示色 */
+  .gl-badge { fill: var(--gl-warn); font-size: 18px; font-weight: 700; opacity: 0; }
+  .gl-demo.gl-warn .gl-badge { opacity: 1; }
+  .gl-demo.gl-warn .gl-axis-yaw,
+  .gl-demo.gl-warn .gl-axis-roll,
+  .gl-demo.gl-warn .gl-arc { stroke: var(--gl-warn); }
+  .gl-demo.gl-warn .gl-ring-yaw,
+  .gl-demo.gl-warn .gl-ring-roll { stroke: var(--gl-warn); opacity: 1; }
+  .gl-demo.gl-warn .gl-label-roll,
+  .gl-demo.gl-warn .gl-angle { fill: var(--gl-warn); }
+  .gl-demo.gl-warn .gl-mh-yaw,
+  .gl-demo.gl-warn .gl-mh-roll { fill: var(--gl-warn); }
+  .gl-demo.gl-warn .gl-dot-roll { fill: var(--gl-warn); }
+
+  /* 曲线图 */
+  .gl-c-axis { stroke: var(--sl-color-gray-3); stroke-width: 1.6; }
+  .gl-c-grid { stroke: var(--sl-color-gray-4); stroke-width: 1; stroke-dasharray: 4 4; opacity: 0.7; }
+  .gl-c-sing { stroke: var(--gl-warn); stroke-width: 1.4; stroke-dasharray: 5 5; opacity: 0.8; }
+  .gl-c-label { fill: var(--sl-color-gray-2); font-size: 17px; }
+  .gl-c-title { fill: var(--sl-color-text); font-size: 17px; font-weight: 600; }
+  .gl-c-warn-title { fill: var(--gl-warn); font-size: 17px; font-weight: 600; }
+  .gl-curve { fill: none; stroke: var(--sl-color-accent); stroke-width: 2.6; }
+  .gl-curve-warn { fill: none; stroke: var(--gl-warn); stroke-width: 3; }
+  .gl-guide { stroke: var(--sl-color-gray-3); stroke-width: 1.4; stroke-dasharray: 4 4; }
+  .gl-point { fill: var(--sl-color-accent); stroke: var(--sl-color-bg); stroke-width: 2; }
+  .gl-demo.gl-warn .gl-point { fill: var(--gl-warn); }
+  .gl-demo.gl-warn .gl-guide { stroke: var(--gl-warn); }
+
+  /* 控件：统一 margin: 0，抵消 Starlight 的 * + * 间距 */
+  .gl-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.1rem; max-width: 900px; margin: 0.55rem auto 0; }
+  .gl-btn { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.85rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
+  .gl-slider-label { display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 0.8125rem; color: var(--sl-color-gray-2); white-space: nowrap; }
+  .gl-slider-label input[type='range'] { width: 8.5rem; margin: 0; accent-color: var(--sl-color-accent); }
+  .gl-val { min-width: 3.1rem; color: var(--sl-color-accent); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+
+  /* 两条读数：恒定 1.7em 高度，不跳动 */
+  .gl-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; color: var(--sl-color-text); line-height: 1.7; }
+  .gl-out { display: block; margin: 0; white-space: nowrap; overflow-x: auto; height: 1.7em; line-height: 1.7; }
+  .gl-out-state { color: var(--sl-color-accent); font-weight: 600; }
+  .gl-out-note { color: var(--sl-color-gray-2); }
+  .gl-demo.gl-warn .gl-out-state,
+  .gl-demo.gl-warn .gl-out-note { color: var(--gl-warn); }
+  .gl-demo figcaption { max-width: 900px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.9rem; line-height: 1.65; }
+</style>

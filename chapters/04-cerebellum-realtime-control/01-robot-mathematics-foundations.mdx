@@ -1,5 +1,9 @@
 # 4.1 机器人数学基础
 
+import VectorProductDemo from '../../../components/VectorProductDemo.astro';
+import GimbalLockDemo from '../../../components/GimbalLockDemo.astro';
+import HomogeneousTransformDemo from '../../../components/HomogeneousTransformDemo.astro';
+
 ## 先看一个现场问题
 
 仿真中的 G1 明明只需要把左脚向前移动 10 cm，程序算出的目标却让脚向侧面运动；另一段代码把 IMU 四元数传给可视化工具后，机器人躯干突然翻转了 180°。数值没有越界，矩阵维度也能相乘，但结果就是不对。
@@ -67,6 +71,10 @@ $$
 叉乘结果垂直于 $\boldsymbol{a}$ 和 $\boldsymbol{b}$，方向由右手定则决定。力矩 $\boldsymbol{\tau} = \boldsymbol{r} \times \boldsymbol{F}$、角速度引起的线速度 $\boldsymbol{v} = \boldsymbol{\omega} \times \boldsymbol{r}$ 都依赖叉乘顺序；交换两个向量会改变符号。[1]
 
 > **一句话听懂**：内积像“两个方向有多合拍”，结果是一个数；叉乘像“从两个方向量出一个垂直方向”，结果还是向量，力矩和角速度就是这么来的。至于谁乘谁，顺序一换方向就反。
+
+下面用两个可拖动的向量看它们的区别：内积把结果压成一个数，叉乘给出一个垂直方向。
+
+<VectorProductDemo />
 
 ## 矩阵：把多条线性关系放在一起
 
@@ -164,6 +172,10 @@ $$
 
 > **一句话听懂**：万向节锁不是关节卡死，而是“这三个角度描述不了某些姿态”：中间角转到 90° 时前后两个转轴重合，同一姿态对应无穷多组角度，反算数值就会乱跳。换四元数就能避开。
 
+拖动 pitch，看 yaw 轴和 roll 轴怎么逐渐重合：
+
+<GimbalLockDemo />
+
 ### 与四连杆死点的联系
 
 前文[四连杆机构与死点](../02-mechanics/01-mechanisms-and-dof.mdx#四连杆机构与死点)讨论的是机构约束下的速度映射：输入关节速度经过机构雅可比 $\boldsymbol{J}_{\mathrm{mech}}$ 才能变成输出端速度。接近共线构型时，传动角变差，$\boldsymbol{J}_{\mathrm{mech}}$ 可能接近奇异，导致输出几乎不动、需要很大的输入速度，或越过死点后运动方向改变。万向节锁也可以写成一个局部映射：欧拉角速度经过 $\boldsymbol{E}$ 才变成真实角速度；但这里退化的是姿态参数化，不是机器人刚体或关节的机械传动能力。
@@ -251,6 +263,10 @@ $$
 位置向量、方向向量和角速度的变换规则并不完全相同：方向向量不受平移影响，空间速度和力还会用到伴随变换（Adjoint Transform）。本节先建立坐标链直觉，速度和力的完整变换将在运动学与动力学章节展开。[1]
 
 > **一句话听懂**：齐次变换就是“把旋转和平移打包进一个矩阵”：一次乘法就把点从一个坐标系搬到另一个，串运动链也是几步相乘，从脚一路算到世界。好处是不用分两步，坏处是顺序绝对不能颠倒。
+
+下面按一条腿链把这几步乘起来，试试“顺序颠倒”：
+
+<HomogeneousTransformDemo />
 
 ### 数值之外还要写清什么
 
