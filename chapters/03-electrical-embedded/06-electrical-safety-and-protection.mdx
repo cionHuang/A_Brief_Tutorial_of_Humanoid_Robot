@@ -86,19 +86,7 @@ accept = finite(q, dq, tau, kp, kd)
 
 ## 模式切换与故障状态机
 
-电气保护需要和模式管理结合。一个最小状态机可以是：
-
-```text
-OFF
-→ INIT
-→ SELF_TEST
-→ SAFE_IDLE
-→ ENABLED
-→ RUNNING
-→ DEGRADED
-→ FAULT_LATCHED
-→ RECOVERY / OFF
-```
+电气保护需要和模式管理结合。一个最小状态机包含以下状态：
 
 - `OFF`：执行器能量关闭，只有安全监控和唤醒路径工作；
 - `INIT`：初始化时钟、通信、传感器和默认输出，确认输出处于安全值；
