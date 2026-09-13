@@ -2,6 +2,7 @@
 
 import FocTransformDemo from '../../../components/FocTransformDemo.astro';
 import ServoLoopCascadeDemo from '../../../components/ServoLoopCascadeDemo.astro';
+import MotorFieldSnippet from '../../../components/MotorFieldSnippet.astro';
 
 ## 先看一个现场问题
 
@@ -164,11 +165,19 @@ Unitree SDK2 的 `MotorCmd_` 消息包含 `mode`、`q`、`dq`、`tau`、`kp` 和
 
 > **一句话听懂**：`MotorCmd_` 是下发给关节的“目标 + 增益”打包（模式、位置、速度、前馈力矩、Kp/Kd）；字段里有它，不代表这一环真的开放给用户，也别拿名字猜单位。
 
+下面把 G1 SDK 里单个关节的指令定义逐字摘出来，每个字段都能对上：
+
+<MotorFieldSnippet variant="cmd" />
+
 ### `MotorState_` 的反馈字段
 
 `MotorState_` 提供 `q`、`dq`、`ddq`、`tau_est`、温度、电压和状态码等状态信息。`tau_est` 属于估计值，可能来自电流、模型或驱动器内部观测；使用它做力控制、接触检测或安全判断前，需要核对标定、滤波、更新频率和故障语义。[4]
 
 > **一句话听懂**：`MotorState_` 是关节回报的“状态包”（位置、速度、加速度、估计力矩、温度、电压、状态码）；`tau_est` 是估出来的，不是实测的，拿它做力控或安全判断前先核对标定、滤波和故障语义。
+
+关节回报的定义同样逐字摘出：
+
+<MotorFieldSnippet variant="state" />
 
 ## 参考资料
 

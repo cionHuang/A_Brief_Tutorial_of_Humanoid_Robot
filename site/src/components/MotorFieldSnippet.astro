@@ -1,0 +1,68 @@
+---
+/**
+ * 3.2 用：Unitree SDK2 单关节消息字段的高亮源码卡片。
+ * variant="cmd"  ：MotorCmd_ 的目标 / 增益字段（算法层下发给关节）
+ * variant="state"：MotorState_ 的反馈字段（关节回报给上层）
+ * 片段逐字摘自 unitree_sdk2（本书固定提交）的 include/unitree/idl/hg/ 消息定义，
+ * 保留原文件行号；正文提到的关键字段行高亮并附中文注释，其余行压暗。
+ * 卡片头部文件路径可点击跳转到 GitHub 对应文件的对应行。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import MotorFieldSnippet from '../../../components/MotorFieldSnippet.astro';
+ *   <MotorFieldSnippet variant="cmd" />     // 或 variant="state"
+ */
+import SourceSnippet from './SourceSnippet.astro';
+
+const { variant = 'cmd' } = Astro.props;
+const COMMIT = '9754cd153af3da471b0fe5f3aa535e426fb11db3';
+const src = (file, line) =>
+  'https://github.com/unitreerobotics/unitree_sdk2/blob/' + COMMIT + '/' + file + '#L' + line;
+
+const cards = {
+  cmd: [
+    {
+      role: '下发 · MotorCmd_ 的目标与增益字段',
+      file: 'include/unitree/idl/hg/MotorCmd_.hpp',
+      url: src('include/unitree/idl/hg/MotorCmd_.hpp', 20),
+      lines: [
+        { n: 20, code: 'class MotorCmd_' },
+        { n: 23, code: ' uint8_t mode_ = 0;', ann: '使能模式' },
+        { n: 24, code: ' float q_ = 0.0f;', hl: true, ann: '目标位置' },
+        { n: 25, code: ' float dq_ = 0.0f;', hl: true, ann: '目标速度' },
+        { n: 26, code: ' float tau_ = 0.0f;', hl: true, ann: '前馈力矩' },
+        { n: 27, code: ' float kp_ = 0.0f;', hl: true, ann: '位置增益（刚度）' },
+        { n: 28, code: ' float kd_ = 0.0f;', hl: true, ann: '速度增益（阻尼）' },
+        { n: 29, code: ' uint32_t reserve_ = 0;', ann: '预留字段' },
+      ],
+    },
+  ],
+  state: [
+    {
+      role: '回报 · MotorState_ 的状态字段',
+      file: 'include/unitree/idl/hg/MotorState_.hpp',
+      url: src('include/unitree/idl/hg/MotorState_.hpp', 21),
+      lines: [
+        { n: 21, code: 'class MotorState_' },
+        { n: 24, code: ' uint8_t mode_ = 0;', ann: '关节模式' },
+        { n: 25, code: ' float q_ = 0.0f;', hl: true, ann: '关节位置' },
+        { n: 26, code: ' float dq_ = 0.0f;', hl: true, ann: '关节速度' },
+        { n: 27, code: ' float ddq_ = 0.0f;', hl: true, ann: '关节加速度' },
+        { n: 28, code: ' float tau_est_ = 0.0f;', hl: true, ann: '估计力矩，非实测' },
+        { n: 29, code: ' std::array<int16_t, 2> temperature_ = { };', hl: true, ann: '温度（2 路）' },
+        { n: 30, code: ' float vol_ = 0.0f;', hl: true, ann: '电压' },
+        { n: 31, code: ' std::array<uint32_t, 2> sensor_ = { };', ann: '传感器数据（2 路）' },
+        { n: 32, code: ' uint32_t motorstate_ = 0;', hl: true, ann: '状态码' },
+        { n: 33, code: ' std::array<uint32_t, 4> reserve_ = { };', ann: '预留字段' },
+      ],
+    },
+  ],
+};
+
+const captions = {
+  cmd: '片段逐字摘自 unitree_sdk2（提交 <code>9754cd1</code>）的 <code>MotorCmd_.hpp</code>，行号为原文件行号，不连续处为省略。<code>q_</code>、<code>dq_</code>、<code>tau_</code>、<code>kp_</code>、<code>kd_</code> 合起来就是一次阻抗 / PD 指令；字段存在不代表目标固件一定采用，单位与可用范围要以实际 SDK 版本和机器人模式为准。',
+  state: '片段逐字摘自 unitree_sdk2（提交 <code>9754cd1</code>）的 <code>MotorState_.hpp</code>，行号为原文件行号，不连续处为省略。<code>tau_est_</code> 字面就是“估计”而不是输出轴实测力矩；温度、电压和状态码的量纲与有效位也要逐项核对。',
+};
+
+const card = cards[variant] || cards.cmd;
+---
+<SourceSnippet cards={card} caption={captions[variant] || captions.cmd} />
