@@ -135,7 +135,10 @@ const rows = CFG.actions.map((a, i) => {
     <button type="button" class="pt-btn" data-reset>复位</button>
   </div>
 
-  <p class="pt-readout"><output class="pt-out" aria-live="polite"></output></p>
+  <div class="pt-readout">
+    <output class="pt-out pt-out-line1" aria-live="polite"></output>
+    <output class="pt-out pt-out-line2" aria-live="polite"></output>
+  </div>
 
   <figcaption>
     玩法：先选一个工况（站立 / 行走 / 抬腿 / 操作 / 下蹲回收 / 过载），看六条支路的电流粗细、母线电压和电池侧功率；下方横条是各工况的平均功率、竖线是瞬时峰值。点“上电（先预充）”会先经预充电阻给母线电容充电、电压爬升后再闭合接触器；点“直接闭合接触器”对比跳过预充的冲击电流（会触发主保险）。下蹲回收时腿部电机发电，能量反向流回母线、电池转入充电，这就是再生能量。所有电压、电流、功率和阈值都是教学示意，不是 G1 的真实参数。
@@ -166,7 +169,8 @@ const rows = CFG.actions.map((a, i) => {
     const mainFlow = demo.querySelector('[data-role="main-flow"]');
     const contactor = demo.querySelector('[data-role="contactor"]');
     const mainFuseX = demo.querySelector('[data-role="main-fuse-x"]');
-    const out = demo.querySelector('.pt-out');
+    const outLine1 = demo.querySelector('.pt-out-line1');
+    const outLine2 = demo.querySelector('.pt-out-line2');
     const actionBtns = Array.from(demo.querySelectorAll('.pt-action'));
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -236,11 +240,13 @@ const rows = CFG.actions.map((a, i) => {
           ? '预充中：限流电阻给母线电容充电，电压爬到约 90% 后闭合接触器'
           : (state.powered ? (trippedNames.length ? '支路保护：' + trippedNames.join('、') + ' 保险熔断' : '运行正常') : '未上电'));
 
-      setParts(out, [
+      setParts(outLine1, [
         { text: '工况：' + act.name + '　' },
         { text: '母线 ' }, { tex: busV.toFixed(1) + '\\ \\text{V}' },
         { text: '　总电流 ' }, { tex: total.toFixed(1) + '\\ \\text{A}' },
-        { text: '　平均功率 ' }, { tex: Math.round(pavg) + '\\ \\text{W}' },
+      ]);
+      setParts(outLine2, [
+        { text: '平均功率 ' }, { tex: Math.round(pavg) + '\\ \\text{W}' },
         { text: '　瞬时峰值 ' }, { tex: Math.round(ppeak) + '\\ \\text{W}' },
         { text: '　电池：' + battState.textContent + '　' + status },
       ]);
@@ -352,6 +358,7 @@ const rows = CFG.actions.map((a, i) => {
   .pt-action, .pt-btn { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.75rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
   .pt-action[aria-pressed='true'] { border-color: var(--sl-color-accent); color: var(--sl-color-accent); background: light-dark(rgba(79, 70, 229, 0.08), rgba(139, 131, 255, 0.14)); font-weight: 600; }
   .pt-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; color: var(--sl-color-text); line-height: 1.7; }
+  .pt-out { display: block; white-space: nowrap; overflow-x: auto; }
   .pt-readout output { color: var(--sl-color-accent); font-weight: 600; }
   .pt-demo figcaption { max-width: 900px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.9rem; line-height: 1.65; }
   @media (prefers-reduced-motion: reduce) {

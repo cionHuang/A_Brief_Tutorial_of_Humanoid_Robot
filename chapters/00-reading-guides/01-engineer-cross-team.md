@@ -18,7 +18,7 @@
 
 | 顺序 | 小节 | 为什么读 | 读法 |
 | --- | --- | --- | --- |
-| 1 | [3.2 电机、驱动器与伺服控制](../03-electrical-embedded/02-motors-drivers-servo-control.md) | FOC、电流环、kp/kd 在驱动器里是怎么跑的 | 全读 |
+| 1 | [3.2 电机、驱动器与伺服控制](../03-electrical-embedded/02-motors-drivers-servo-control.mdx) | FOC、电流环、kp/kd 在驱动器里是怎么跑的 | 全读 |
 | 2 | [3.4 实时通信与总线](../03-electrical-embedded/04-real-time-communication-and-buses.md) | CAN/EtherCAT/DDS 的带宽和延迟决定控制周期上限 | 全读 |
 | 3 | [3.5 MCU、实时系统与嵌入式软件](../03-electrical-embedded/05-mcu-realtime-embedded-software.md) | 为什么控制指令必须按固定周期下发，抖动意味着什么 | 全读 |
 | 4 | [3.1 电源系统](../03-electrical-embedded/01-power-system.mdx) | 峰值功率和降额为什么会限制动作幅度 | 读开头 |

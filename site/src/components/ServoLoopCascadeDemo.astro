@@ -1,0 +1,447 @@
+---
+/**
+ * 伺服三层级联（位置环 → 速度环 → 电流环）交互演示。
+ *
+ * 左：三层级联框图。位置环把角度误差变成速度指令，速度环把速度误差变成电流指令，
+ *     电流环把电流指令变成实际电流，电机/负载再输出转矩、带动关节。
+ *     运行时高亮"当前正在起作用"的环节：内环先动、外环后跟。
+ * 右：阶跃响应时间图（滚动约 4 s，纵轴归一化）。
+ *     目标（虚线）、位置 θ（主题色）、速度 ω（青绿）、电流 i（橙）。
+ *
+ * 教学要点：
+ *   - 内环（电流）最快、外环（位置）最慢，带宽必须逐级拉开；
+ *   - 电流环带宽不足、或外环增益过高，会出现超调、振荡甚至失稳；
+ *   - 加负载扰动时，内环（电流）先顶上去，把扰动力矩"吃掉"。
+ *
+ * 仿真为归一化教学模型（J = 1, Kt = 1, b = 0.1, i_max = 2），不是 G1 的真实参数。
+ * 纯 SVG + 原生 JS；样式跟随 Starlight 明暗主题，遵循 prefers-reduced-motion。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import ServoLoopCascadeDemo from '../../../components/ServoLoopCascadeDemo.astro';
+ *   <ServoLoopCascadeDemo />
+ */
+import { katexHtml } from '../lib/tex.js';
+
+// ---- 左侧三层级联框图几何（默认文字须与下方滑块默认值一致）----
+const BOX_X = 28;
+const BOX_W = 324;
+const BOX_H = 78;
+const STAGES = [
+  { key: 'pos', y: 44, name: '位置环（外环）', signal: 'ω_cmd', gain: '增益 Kp = 6 1/s', io: 'θ_ref 20.0° → ω_cmd 2.09 rad/s' },
+  { key: 'vel', y: 140, name: '速度环（中环）', signal: 'i_cmd', gain: '增益 Kv = 6 1/s', io: 'ω_cmd 2.09 → i_cmd 2.00 A' },
+  { key: 'cur', y: 236, name: '电流环（内环）', signal: 'τ', gain: '带宽 ωc = 200 rad/s（5.0 ms）', io: 'i_cmd 2.00 A → i 0.00 A' },
+  { key: 'motor', y: 332, name: '电机 + 负载', signal: '', gain: 'J = 1, Kt = 1, b = 0.1', io: 'τ 0.00 N·m → θ 0.0°，ω 0.00' },
+];
+
+// ---- 右侧时间图几何（须与脚本中的常量一致）----
+const LX0 = 424;
+const LX1 = 874;
+const LY0 = 58;
+const LY1 = 362;
+const VMIN = -1.2;
+const VMAX = 2.2;
+const Y = (v) => (LY1 - ((v - VMIN) / (VMAX - VMIN)) * (LY1 - LY0)).toFixed(1);
+const TX = (k) => (LX0 + (k / 4) * (LX1 - LX0)).toFixed(1);
+---
+
+<figure class="sc-demo">
+  <svg viewBox="0 0 900 470" role="img" aria-label="伺服三层级联交互演示：位置环驱动速度环、速度环驱动电流环，右侧是位置、速度、电流的阶跃响应曲线">
+    <defs>
+      <marker id="sc-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="sc-arrow-head" d="M 0 1 L 9 5 L 0 9 Z"></path>
+      </marker>
+    </defs>
+
+    <text class="sc-title" x="24" y="26">三层级联（教学示意）：位置环 → 速度环 → 电流环 → 电机</text>
+    <text class="sc-title" x="424" y="26">阶跃响应（纵轴归一化，最近 4 s）</text>
+
+    <!-- 左：三层级联框图，运行时高亮当前起作用的环节 -->
+    {STAGES.map((s, i) => (
+      <g class="sc-stage" data-box={s.key}>
+        <rect class="sc-box" x={BOX_X} y={s.y} width={BOX_W} height={BOX_H} rx="10"></rect>
+        <text class="sc-box-name" x={BOX_X + 16} y={s.y + 27}>{s.name}</text>
+        <text class="sc-box-gain" x={BOX_X + 16} y={s.y + 50} data-role={s.key + '-gain'}>{s.gain}</text>
+        <text class="sc-box-io" x={BOX_X + 16} y={s.y + 70} data-role={s.key + '-io'}>{s.io}</text>
+        {i < STAGES.length - 1 && (
+          <>
+            <line class="sc-link" x1={BOX_X + BOX_W / 2} y1={s.y + BOX_H} x2={BOX_X + BOX_W / 2} y2={s.y + BOX_H + 12} marker-end="url(#sc-arrow)"></line>
+            <text class="sc-link-label" x={BOX_X + BOX_W / 2 + 12} y={s.y + BOX_H + 15}>{s.signal}</text>
+          </>
+        )}
+      </g>
+    ))}
+
+    <!-- 右：时间序列图 -->
+    <g class="sc-plot">
+      <line class="sc-axis" x1={LX0} y1={LY0 - 4} x2={LX0} y2={LY1}></line>
+      <line class="sc-axis" x1={LX0} y1={LY1} x2={LX1} y2={LY1}></line>
+
+      {[0, 1, 2, 3, 4].map((k) => (
+        <line class="sc-vgrid" x1={TX(k)} y1={LY0} x2={TX(k)} y2={LY1}></line>
+      ))}
+      {[-1, 0, 1, 2].map((v) => (
+        <>
+          <line class={v === 0 ? 'sc-grid sc-zero' : 'sc-grid'} x1={LX0} y1={Y(v)} x2={LX1} y2={Y(v)}></line>
+          <text class="sc-ytick" x={LX0 - 8} y={Number(Y(v)) + 6} text-anchor="end">{v}</text>
+        </>
+      ))}
+      {[0, 1, 2, 3, 4].map((k) => (
+        <text class="sc-xtick" x={TX(k)} y="380" text-anchor="middle">{k === 4 ? '现在' : (k - 4) + ' s'}</text>
+      ))}
+
+      <line class="sc-ref" data-role="ref" x1={LX0} y1={Y(1)} x2={LX1} y2={Y(1)}></line>
+
+      <path class="sc-path sc-path-cur" data-role="path-cur" d=""></path>
+      <path class="sc-path sc-path-vel" data-role="path-vel" d=""></path>
+      <path class="sc-path sc-path-pos" data-role="path-pos" d=""></path>
+      <circle class="sc-head sc-head-cur" data-role="head-cur" cx={LX0} cy={Y(0)} r="4.5"></circle>
+      <circle class="sc-head sc-head-vel" data-role="head-vel" cx={LX0} cy={Y(0)} r="4.5"></circle>
+      <circle class="sc-head sc-head-pos" data-role="head-pos" cx={LX0} cy={Y(0)} r="4.5"></circle>
+
+      <g class="sc-legend">
+        <line class="sc-ref" x1="424" y1="402" x2="450" y2="402"></line>
+        <text class="sc-legend-text" x="456" y="408">目标</text>
+        <line class="sc-path sc-path-pos" x1="530" y1="402" x2="556" y2="402"></line>
+        <text class="sc-legend-text" x="562" y="408">位置 θ</text>
+        <line class="sc-path sc-path-vel" x1="648" y1="402" x2="674" y2="402"></line>
+        <text class="sc-legend-text" x="680" y="408">速度 ω</text>
+        <line class="sc-path sc-path-cur" x1="762" y1="402" x2="788" y2="402"></line>
+        <text class="sc-legend-text" x="794" y="408">电流 i</text>
+      </g>
+
+      <text class="sc-note" x="424" y="438">归一化：位置 ÷ 目标角，速度 ÷ 1.2 rad/s，电流 ÷ 2 A（±1 即限幅）</text>
+    </g>
+
+    <text class="sc-note" x="28" y="430">内环最快，外环最慢。</text>
+    <text class="sc-note" x="28" y="452">教学示意，非 G1 真实参数。</text>
+  </svg>
+
+  <div class="sc-controls">
+    <label class="sc-slider-label">目标角度
+      <input class="sc-deg-input" type="range" min="5" max="30" step="1" value="20" />
+    </label>
+    <output class="sc-deg-out">20°</output>
+    <button type="button" class="sc-btn" data-step>给阶跃目标</button>
+    <button type="button" class="sc-btn" data-dist>加负载扰动</button>
+    <button type="button" class="sc-btn" data-reset>复位</button>
+  </div>
+
+  <div class="sc-controls">
+    <label class="sc-slider-label">位置环增益 <span set:html={katexHtml('K_p')}></span>
+      <input class="sc-kp-input" type="range" min="2" max="40" step="1" value="6" />
+    </label>
+    <output class="sc-kp-out">6 1/s</output>
+    <label class="sc-slider-label">速度环增益 <span set:html={katexHtml('K_v')}></span>
+      <input class="sc-kv-input" type="range" min="2" max="30" step="1" value="6" />
+    </label>
+    <output class="sc-kv-out">6 1/s</output>
+    <label class="sc-slider-label">电流环带宽 <span set:html={katexHtml('\\omega_c')}></span>
+      <input class="sc-wc-input" type="range" min="50" max="400" step="10" value="200" />
+    </label>
+    <output class="sc-wc-out">200 rad/s</output>
+  </div>
+
+  <div class="sc-readout">
+    <output class="sc-out sc-out-metrics" aria-live="polite"></output>
+    <output class="sc-out sc-out-state" aria-live="polite"></output>
+  </div>
+
+  <figcaption>
+    玩法：点“给阶跃目标”，看三个环依次接管——电流环最快、速度环居中、位置环最后收尾，右边三条曲线分别是位置 <span set:html={katexHtml('\\theta')}></span>、速度 <span set:html={katexHtml('\\omega')}></span>、电流 <span set:html={katexHtml('i')}></span>；拖三个增益滑块（<span set:html={katexHtml('K_p')}></span>、<span set:html={katexHtml('K_v')}></span>、<span set:html={katexHtml('\\omega_c')}></span>）能现场把曲线调出超调、或调回干净；点“加负载扰动”看内环怎么把扰动顶回去。数值为教学示意，不是 G1 的真实参数。
+  </figcaption>
+</figure>
+
+<script>
+  import { setParts } from '../lib/tex.js';
+
+  document.querySelectorAll('.sc-demo').forEach((demo) => {
+    // ---- 模型与显示常量 ----
+    const J = 1, KT = 1, B = 0.1, I_MAX = 2;   // 归一化教学模型
+    const D2R = Math.PI / 180;
+    const WS = 4;                              // 时间窗（秒）
+    const LX0 = 424, LX1 = 874, LY0 = 58, LY1 = 362;
+    const VMIN = -1.2, VMAX = 2.2;
+    const W_SCALE = 1.2;                       // 速度显示归一化：1.0 = 1.2 rad/s
+    const TAU_LOAD = 1.5;                      // 负载扰动幅值（0.3 s 脉冲）
+    const DIST_DUR = 0.3;
+    const SAMPLE_DT = 1 / 70;                  // 抽点间隔（4 s 约 240 点）
+    const MAX_POINTS = 400;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // ---- DOM ----
+    const boxes = Array.from(demo.querySelectorAll('.sc-stage'));
+    const gainEl = {}, ioEl = {};
+    ['pos', 'vel', 'cur', 'motor'].forEach((k) => {
+      gainEl[k] = demo.querySelector('[data-role="' + k + '-gain"]');
+      ioEl[k] = demo.querySelector('[data-role="' + k + '-io"]');
+    });
+    const refLine = demo.querySelector('[data-role="ref"]');
+    const curves = [
+      { el: demo.querySelector('[data-role="path-pos"]'), head: demo.querySelector('[data-role="head-pos"]'), f: (p) => p.th / st.normRef },
+      { el: demo.querySelector('[data-role="path-vel"]'), head: demo.querySelector('[data-role="head-vel"]'), f: (p) => p.om / W_SCALE },
+      { el: demo.querySelector('[data-role="path-cur"]'), head: demo.querySelector('[data-role="head-cur"]'), f: (p) => p.i / I_MAX },
+    ];
+    const outMetrics = demo.querySelector('.sc-out-metrics');
+    const outState = demo.querySelector('.sc-out-state');
+    const degIn = demo.querySelector('.sc-deg-input');
+    const kpIn = demo.querySelector('.sc-kp-input');
+    const kvIn = demo.querySelector('.sc-kv-input');
+    const wcIn = demo.querySelector('.sc-wc-input');
+    const degOut = demo.querySelector('.sc-deg-out');
+    const kpOut = demo.querySelector('.sc-kp-out');
+    const kvOut = demo.querySelector('.sc-kv-out');
+    const wcOut = demo.querySelector('.sc-wc-out');
+
+    // ---- 状态 ----
+    const st = {
+      th: 0, om: 0, i: 0, t: 0,
+      ref: 0, normRef: 1,
+      distAt: Infinity, distUntil: -1,
+      peak: 0, t10: -1, t90: -1,
+      hist: [], recent: [], lastSample: -1e9,
+      running: false,
+    };
+    let raf = 0, last = 0;
+
+    const num = (el) => Number(el.value);
+    const clampI = (v) => (v > I_MAX ? I_MAX : (v < -I_MAX ? -I_MAX : v));
+    const yOf = (v) => LY1 - ((v - VMIN) / (VMAX - VMIN)) * (LY1 - LY0);
+
+    // ---- 物理积分：每帧再分 10 个子步，避免高频环数值发散 ----
+    const step = (dt) => {
+      const kp = num(kpIn), kv = num(kvIn), wc = num(wcIn);
+      const sub = 10, h = dt / sub;
+      for (let s = 0; s < sub; s++) {
+        const omCmd = kp * (st.ref - st.th);          // 位置环
+        const iCmd = clampI(kv * (omCmd - st.om));    // 速度环 + 电流限幅
+        st.i += wc * (iCmd - st.i) * h;               // 电流环（一阶带宽 wc）
+        const load = st.t >= st.distAt && st.t < st.distUntil ? TAU_LOAD : 0;
+        st.om += (KT * st.i - B * st.om - load) / J * h;  // 电机 + 负载
+        st.th += st.om * h;
+        st.t += h;
+      }
+      if (st.t - st.lastSample >= SAMPLE_DT) {
+        st.lastSample = st.t;
+        st.hist.push({ t: st.t, th: st.th, om: st.om, i: st.i });
+        while (st.hist.length > MAX_POINTS) st.hist.shift();
+      }
+      if (st.normRef > 1e-9) {
+        if (st.th > st.peak) st.peak = st.th;
+        if (st.t10 < 0 && st.th >= 0.1 * st.normRef) st.t10 = st.t;
+        if (st.t90 < 0 && st.th >= 0.9 * st.normRef) st.t90 = st.t;
+        st.recent.push({ t: st.t, e: st.normRef - st.th });
+        while (st.recent.length && st.t - st.recent[0].t > 0.4) st.recent.shift();
+      }
+    };
+
+    const simulate = (seconds) => {
+      const n = Math.round(seconds * 60);
+      for (let k = 0; k < n; k++) step(1 / 60);
+    };
+
+    const render = () => {
+      const kp = num(kpIn), kv = num(kvIn), wc = num(wcIn);
+      const now = st.t;
+      const winStart = Math.max(0, now - WS);
+      const xOf = (t) => LX0 + ((t - winStart) / WS) * (LX1 - LX0);
+
+      // 框图：增益/带宽 + 当前输入输出
+      const err = st.ref - st.th;
+      const omCmd = kp * err;
+      const iCmdRaw = kv * (omCmd - st.om);
+      const iCmd = clampI(iCmdRaw);
+      gainEl.pos.textContent = '增益 Kp = ' + kp.toFixed(0) + ' 1/s';
+      gainEl.vel.textContent = '增益 Kv = ' + kv.toFixed(0) + ' 1/s';
+      gainEl.cur.textContent = '带宽 ωc = ' + wc.toFixed(0) + ' rad/s（' + (1000 / wc).toFixed(1) + ' ms）';
+      ioEl.pos.textContent = 'θ_ref ' + (st.ref / D2R).toFixed(1) + '° → ω_cmd ' + omCmd.toFixed(2) + ' rad/s';
+      ioEl.vel.textContent = 'ω_cmd ' + omCmd.toFixed(2) + ' → i_cmd ' + iCmd.toFixed(2) + ' A';
+      ioEl.cur.textContent = 'i_cmd ' + iCmd.toFixed(2) + ' A → i ' + st.i.toFixed(2) + ' A';
+      ioEl.motor.textContent = 'τ ' + (KT * st.i).toFixed(2) + ' N·m → θ ' + (st.th / D2R).toFixed(1) + '°，ω ' + st.om.toFixed(2);
+
+      // 高亮当前起作用的环节：内环先动、外环后跟
+      const ePos = st.normRef > 1e-9 ? Math.abs(err) / st.normRef : 0;
+      const eVel = Math.abs(omCmd - st.om) / W_SCALE;
+      const eCur = Math.abs(iCmd - st.i) / I_MAX;
+      const loadFighting = now < st.distUntil && Math.abs(st.i) > 0.1 * I_MAX;
+      let active = '';
+      if (st.running) {
+        if (eCur > 0.05 || loadFighting) active = 'cur';
+        else if (eVel > 0.08) active = 'vel';
+        else if (ePos > 0.02) active = 'pos';
+      }
+      boxes.forEach((b) => b.classList.toggle('sc-active', b.dataset.box === active));
+
+      // 时间曲线
+      const yRef = yOf(st.normRef > 1e-9 ? st.ref / st.normRef : 0);
+      refLine.setAttribute('y1', yRef.toFixed(1));
+      refLine.setAttribute('y2', yRef.toFixed(1));
+      curves.forEach((c) => {
+        let d = '';
+        let hx = LX0, hy = yOf(0), has = false;
+        for (let k = 0; k < st.hist.length; k++) {
+          const p = st.hist[k];
+          if (p.t < winStart) continue;
+          const x = xOf(p.t);
+          const y = yOf(c.f(p));
+          d += (d ? ' L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+          hx = x; hy = y; has = true;
+        }
+        c.el.setAttribute('d', d);
+        c.head.setAttribute('cx', hx.toFixed(1));
+        c.head.setAttribute('cy', hy.toFixed(1));
+        c.head.classList.toggle('sc-head-off', !has);
+      });
+
+      // 读数（KaTeX）
+      const riseParts = st.t10 >= 0 && st.t90 >= 0
+        ? [{ text: '上升时间（10–90%）' }, { tex: 't_r = ' + (st.t90 - st.t10).toFixed(2) + '\\ \\text{s}' }]
+        : [{ text: '上升时间（10–90%）' }, { text: '—' }];
+      const overPct = st.normRef > 1e-9 ? Math.max(0, (st.peak / st.normRef - 1) * 100) : 0;
+      const sseOk = st.normRef > 1e-9 && st.t > 1.2 && st.recent.length > 3;
+      const sseMean = st.recent.length ? st.recent.reduce((a, r) => a + r.e, 0) / st.recent.length : 0;
+      setParts(outMetrics, riseParts.concat([
+        { text: '　超调 ' }, { tex: '\\sigma = ' + overPct.toFixed(0) + '\\%' },
+        { text: '　稳态误差 ' },
+        sseOk ? { tex: 'e_{ss} = ' + (sseMean / st.normRef * 100).toFixed(1) + '\\%' } : { text: '—（未稳定）' },
+      ]));
+      setParts(outState, [
+        { text: '当前 ' }, { tex: '\\theta = ' + (st.th / D2R).toFixed(1) + '^\\circ' },
+        { text: '，' }, { tex: '\\omega = ' + st.om.toFixed(2) + '\\ \\text{rad/s}' },
+        { text: '，' }, { tex: 'i = ' + st.i.toFixed(2) + '\\ \\text{A}' },
+      ]);
+    };
+
+    const syncControls = () => {
+      degOut.textContent = num(degIn).toFixed(0) + '°';
+      kpOut.textContent = num(kpIn).toFixed(0) + ' 1/s';
+      kvOut.textContent = num(kvIn).toFixed(0) + ' 1/s';
+      wcOut.textContent = num(wcIn).toFixed(0) + ' rad/s';
+    };
+
+    const stop = () => { if (raf) cancelAnimationFrame(raf); raf = 0; last = 0; };
+
+    const startRun = (opts) => {
+      stop();
+      st.th = 0; st.om = 0; st.i = 0; st.t = 0;
+      st.ref = num(degIn) * D2R;
+      st.normRef = st.ref > 1e-9 ? st.ref : 1;
+      st.peak = 0; st.t10 = -1; st.t90 = -1;
+      st.hist = []; st.recent = []; st.lastSample = -1e9;
+      st.distAt = Infinity; st.distUntil = -1;
+      if (opts && opts.distAt != null) { st.distAt = opts.distAt; st.distUntil = opts.distAt + DIST_DUR; }
+      st.running = true;
+      if (reduced) {
+        // 减弱动态效果：不自动播放，直接给出完整 4 s 阶跃响应
+        simulate(WS);
+        render();
+      } else {
+        last = 0;
+        raf = requestAnimationFrame(tick);
+      }
+    };
+
+    const tick = (ts) => {
+      if (!last) last = ts;
+      let dt = (ts - last) / 1000;
+      last = ts;
+      if (dt < 0) dt = 0;
+      dt = Math.min(dt, 0.05);          // 帧间隔上限
+      if (dt > 0) step(dt);
+      render();
+      const pulseOn = st.t < st.distUntil;
+      const settled = Math.abs(st.ref - st.th) < 1e-3 && Math.abs(st.om) < 1e-3 && Math.abs(st.i) < 1e-3;
+      if (st.running && (st.t < WS + 0.6 || pulseOn || !settled)) {
+        raf = requestAnimationFrame(tick);
+      } else {
+        raf = 0;
+        st.running = false;
+        render();
+      }
+    };
+
+    demo.querySelector('[data-step]').addEventListener('click', () => { syncControls(); startRun(); });
+
+    demo.querySelector('[data-dist]').addEventListener('click', () => {
+      if (reduced) {
+        startRun({ distAt: 1.5 });       // 静态模式：扰动安排在 1.5 s，重算整段
+      } else if (st.running) {
+        st.distAt = st.t;
+        st.distUntil = st.t + DIST_DUR;
+      } else {
+        startRun({ distAt: 1.5 });
+      }
+      render();
+    });
+
+    demo.querySelector('[data-reset]').addEventListener('click', () => {
+      stop();
+      st.th = 0; st.om = 0; st.i = 0; st.t = 0;
+      st.ref = 0; st.normRef = 1;
+      st.distAt = Infinity; st.distUntil = -1;
+      st.peak = 0; st.t10 = -1; st.t90 = -1;
+      st.hist = []; st.recent = [];
+      st.running = false;
+      render();
+    });
+
+    // 目标角在点“给阶跃目标”时才施加
+    degIn.addEventListener('input', syncControls);
+
+    [kpIn, kvIn, wcIn].forEach((el) => el.addEventListener('input', () => {
+      syncControls();
+      if (reduced || !st.running) startRun();   // 静态或已停下：重算一次新的阶跃响应
+      else render();                            // 动画中：实时改变控制器参数
+    }));
+
+    syncControls();
+    startRun();
+  });
+</script>
+
+<style>
+  .sc-demo { margin: 1.5rem 0; }
+  .sc-demo svg { display: block; width: 100%; max-width: 900px; height: auto; margin: 0 auto; }
+  .sc-title { fill: var(--sl-color-text); font-size: 24px; font-weight: 600; }
+
+  .sc-box { fill: light-dark(rgba(79, 70, 229, 0.07), rgba(139, 131, 255, 0.11)); stroke: var(--sl-color-gray-4); stroke-width: 1.8; transition: stroke 0.15s, fill 0.15s; }
+  .sc-stage.sc-active .sc-box { stroke: var(--sl-color-accent); stroke-width: 3; fill: light-dark(rgba(79, 70, 229, 0.15), rgba(139, 131, 255, 0.21)); }
+  .sc-box-name { fill: var(--sl-color-text); font-size: 22px; font-weight: 600; }
+  .sc-stage.sc-active .sc-box-name { fill: var(--sl-color-accent); }
+  .sc-box-gain { fill: var(--sl-color-gray-2); font-size: 19px; font-variant-numeric: tabular-nums; }
+  .sc-box-io { fill: var(--sl-color-gray-2); font-size: 18px; font-variant-numeric: tabular-nums; }
+  .sc-link { stroke: var(--sl-color-gray-3); stroke-width: 2.5; }
+  .sc-stage.sc-active .sc-link { stroke: var(--sl-color-accent); }
+  .sc-arrow-head { fill: var(--sl-color-gray-3); }
+  .sc-link-label { fill: var(--sl-color-gray-2); font-size: 17px; }
+
+  .sc-grid { stroke: var(--sl-color-gray-4); stroke-width: 1; }
+  .sc-grid.sc-zero { stroke: var(--sl-color-gray-3); stroke-width: 1.8; }
+  .sc-vgrid { stroke: var(--sl-color-gray-4); stroke-width: 1; stroke-dasharray: 3 5; }
+  .sc-axis { stroke: var(--sl-color-gray-3); stroke-width: 1.8; }
+  .sc-ytick, .sc-xtick { fill: var(--sl-color-gray-2); font-size: 17px; font-variant-numeric: tabular-nums; }
+  .sc-ref { stroke: var(--sl-color-gray-3); stroke-width: 2; stroke-dasharray: 8 6; }
+  .sc-path { fill: none; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+  .sc-path-pos { stroke: var(--sl-color-accent); }
+  .sc-path-vel { stroke: light-dark(#0d9488, #2dd4bf); }
+  .sc-path-cur { stroke: light-dark(#ea580c, #fb923c); }
+  .sc-head { stroke: var(--sl-color-bg); stroke-width: 2; }
+  .sc-head-pos { fill: var(--sl-color-accent); }
+  .sc-head-vel { fill: light-dark(#0d9488, #2dd4bf); }
+  .sc-head-cur { fill: light-dark(#ea580c, #fb923c); }
+  .sc-head-off { opacity: 0; }
+  .sc-legend-text { fill: var(--sl-color-gray-2); font-size: 18px; }
+  .sc-note { fill: var(--sl-color-gray-2); font-size: 17px; }
+
+  .sc-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; max-width: 900px; margin: 0.55rem auto 0; }
+  .sc-controls > * { margin: 0; }
+  .sc-btn { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.85rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
+  .sc-btn:hover { border-color: var(--sl-color-accent); color: var(--sl-color-accent); }
+  .sc-btn[data-step] { border-color: var(--sl-color-accent); color: var(--sl-color-accent); font-weight: 600; }
+  .sc-slider-label { display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 0.8125rem; color: var(--sl-color-gray-2); white-space: nowrap; }
+  .sc-slider-label input[type='range'] { width: 8.5rem; accent-color: var(--sl-color-accent); }
+  .sc-deg-out, .sc-kp-out, .sc-kv-out, .sc-wc-out { min-width: 4.2rem; text-align: right; color: var(--sl-color-accent); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+  .sc-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; color: var(--sl-color-text); line-height: 1.7; }
+  .sc-out { display: block; white-space: nowrap; overflow-x: auto; }
+  .sc-readout output { color: var(--sl-color-accent); font-weight: 600; }
+  .sc-demo figcaption { max-width: 900px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.9rem; line-height: 1.65; }
+</style>
