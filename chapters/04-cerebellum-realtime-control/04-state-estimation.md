@@ -55,6 +55,8 @@ $$
 \boldsymbol{R}_{k+1} = \boldsymbol{R}_k\, \mathrm{Exp}\!\left([(\boldsymbol{\omega}_m - \boldsymbol{b}_g)\Delta t]_\times\right)
 $$
 
+这就是 3.3 节曾用文字描述过的“角速度积分估计姿态”，这里只是把它写成了矩阵形式。
+
 但零偏 $\boldsymbol{b}_g$ 会被积分成不断增长的姿态误差。陀螺仪擅长短期动态响应，不擅长长期提供绝对航向；磁力计、视觉或外部定位是否可用，需要根据环境和任务另行判断。
 
 ### 加速度计与重力方向

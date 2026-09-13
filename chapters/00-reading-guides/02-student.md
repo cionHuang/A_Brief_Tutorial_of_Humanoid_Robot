@@ -17,7 +17,7 @@
 | 小节 | 预计时间 | 前置知识 |
 | --- | --- | --- |
 | [2.1 机构、关节与自由度](../02-mechanics/01-mechanisms-and-dof.mdx) | 20 分钟 | 1.2 |
-| [2.2 结构设计、材料与刚柔性](../02-mechanics/02-links-structure-and-materials.mdx) | 15 分钟 | 无 |
+| [2.2 结构设计、材料与刚柔性](../02-mechanics/02-links-structure-and-materials.mdx) | 15 分钟 | 2.1 |
 | [2.3 传动与关节模组](../02-mechanics/03-transmission-and-joint-modules.mdx) | 20 分钟 | 2.1 |
 | [2.4 足部、接触与稳定性](../02-mechanics/04-foot-contact-and-stability.mdx) | 15 分钟 | 2.1 |
 | [2.5 机器人描述文件](../02-mechanics/05-robot-description-files.mdx) | 20 分钟 | 2.1 |
@@ -26,9 +26,9 @@
 
 | 小节 | 预计时间 | 前置知识 |
 | --- | --- | --- |
-| [3.1 电源系统](../03-electrical-embedded/01-power-system.mdx) | 15 分钟 | 无 |
+| [3.1 电源系统](../03-electrical-embedded/01-power-system.mdx) | 15 分钟 | 无（个别词会指向 3.5/3.6，可先跳过） |
 | [3.2 电机、驱动器与伺服控制](../03-electrical-embedded/02-motors-drivers-servo-control.mdx) | 20 分钟 | 2.3 |
-| [3.3 传感器与数据采集](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 15 分钟 | 无 |
+| [3.3 传感器与数据采集](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 15 分钟 | 无（个别术语会指向 4.1/4.3/4.4，可先跳过） |
 | [3.4 实时通信与总线](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | 15 分钟 | 无 |
 | [3.5 MCU、实时系统与嵌入式软件](../03-electrical-embedded/05-mcu-realtime-embedded-software.mdx) | 15 分钟 | 3.4 |
 | [3.6 电气安全与系统保护](../03-electrical-embedded/06-electrical-safety-and-protection.mdx) | 10 分钟 | 3.1、3.2 |

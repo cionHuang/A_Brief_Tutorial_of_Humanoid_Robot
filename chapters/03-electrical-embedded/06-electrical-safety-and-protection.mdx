@@ -86,6 +86,8 @@ accept = finite(q, dq, tau, kp, kd)
 
 ## 模式切换与故障状态机
 
+G1 低层用 `LowCmd_` 下发、`LowState_` 回报；`LowCmd_` 里 `mode_pr_`、`mode_machine_` 是模式字段，`motor_cmd_` 是 35 个电机槽位的指令数组，末尾 `crc_` 是校验；`LowState_` 对应有 `tick_`、`imu_state_`、`motor_state_` 和 `crc_`。所以“模式字段匹配、CRC 正确”不是抽象要求，而是这两个消息里真实存在的字段。（来源：unitree_sdk2 提交 9754cd1 的 include/unitree/idl/hg/LowCmd_.hpp、LowState_.hpp。）
+
 电气保护需要和模式管理结合。一个最小状态机包含以下状态：
 
 - `OFF`：执行器能量关闭，只有安全监控和唤醒路径工作；
@@ -116,4 +118,4 @@ accept = finite(q, dq, tau, kp, kd)
 
 [4] Unitree Robotics. *unitree_rl_gym: G1 robot description*. 官方 G1 URDF/MJCF 模型；本文使用提交 `276801e46c5d433564f24658bac64f254b7d2d4b`，用于说明仿真关节范围、执行器约束与真实硬件安全边界的差异。<https://github.com/unitreerobotics/unitree_rl_gym/tree/276801e46c5d433564f24658bac64f254b7d2d4b/resources/robots/g1_description>
 
-[5] ISO. *ISO 13482: Robots and robotic devices — Safety requirements for personal care robots*. 非工业机器人风险降低、保护措施和安全相关设计的参考标准；人形机器人具体适用性仍需结合实际风险评估。<https://www.iso.org/standard/53820.html>
+[5] ISO. *ISO 13482: Robots and robotic devices — Safety requirements for personal care robots*. 非工业机器人风险降低、保护措施和安全相关设计的参考标准；人形机器人具体适用性仍需结合实际风险评估。注意：该标准面向个人护理机器人，双足人形是否适用、适用到什么程度要结合具体风险评估，不能直接照搬。<https://www.iso.org/standard/53820.html>

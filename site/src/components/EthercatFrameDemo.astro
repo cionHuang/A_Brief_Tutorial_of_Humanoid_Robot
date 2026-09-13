@@ -18,6 +18,7 @@
  *   <EthercatFrameDemo />
  */
 const STATIONS = [330, 470, 610, 750];
+const STATION_NAMES = ['左髋俯仰', '左膝', '左踝俯仰', '左踝侧摆'];
 
 const GEOM = {
   masterX: 104,
@@ -35,7 +36,7 @@ const NODES = STATIONS.map((cx, i) => ({
   slotX: cx - GEOM.slot.w / 2,
 }));
 
-const CFG = { stations: STATIONS, geom: GEOM };
+const CFG = { stations: STATIONS, names: STATION_NAMES, geom: GEOM };
 ---
 
 <figure class="ec-demo" data-ec={JSON.stringify(CFG)}>
@@ -57,7 +58,7 @@ const CFG = { stations: STATIONS, geom: GEOM };
     {NODES.map((n) => (
       <g class="ec-node-g" data-node={n.i}>
         <rect class="ec-box ec-node" x={n.boxX} y={GEOM.node.y} width={GEOM.node.w} height={GEOM.node.h} rx="10"></rect>
-        <text class="ec-node-name" x={n.cx} y="121" text-anchor="middle">从站 {n.i + 1}</text>
+        <text class="ec-node-name" x={n.cx} y="121" text-anchor="middle">{STATION_NAMES[n.i]}</text>
         <text class="ec-node-status" data-status={n.i} x={n.cx} y="150" text-anchor="middle">待访问</text>
       </g>
     ))}
@@ -78,7 +79,7 @@ const CFG = { stations: STATIONS, geom: GEOM };
       <text class="ec-frame-tag" x="44" y="216">OUT+IN</text>
     </g>
 
-    <text class="ec-note" x="24" y="352">主站只发一帧，所有从站按顺序在同一帧上读写，无需逐点点对点连接。</text>
+    <text class="ec-note" x="24" y="352">四个从站（左腿关节驱动器）：主站只发一帧，所有从站按顺序在同一帧上读写。</text>
   </svg>
 
   <div class="ec-controls">
@@ -101,6 +102,7 @@ const CFG = { stations: STATIONS, geom: GEOM };
   document.querySelectorAll('.ec-demo').forEach((demo) => {
     const cfg = JSON.parse(demo.dataset.ec);
     const stations = cfg.stations;
+    const names = cfg.names;
     const geom = cfg.geom;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -147,11 +149,11 @@ const CFG = { stations: STATIONS, geom: GEOM };
       for (let i = 0; i < stations.length; i++) {
         const c = stations[i];
         if (fx >= c - ZONE && fx <= c + ZONE) {
-          return '帧到达 从站 ' + (i + 1) + '：' + phaseLabel(stateOf(i));
+          return '帧到达 ' + names[i] + '：' + phaseLabel(stateOf(i));
         }
       }
       const next = stations.find((c) => c > fx);
-      if (next != null) return '帧在链路中，前往 从站 ' + (stations.indexOf(next) + 1);
+      if (next != null) return '帧在链路中，前往 ' + names[stations.indexOf(next)];
       return '帧即将返回主站';
     };
 
