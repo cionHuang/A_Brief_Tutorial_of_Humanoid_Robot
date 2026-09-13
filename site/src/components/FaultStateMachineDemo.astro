@@ -1,0 +1,284 @@
+---
+/**
+ * 模式切换与故障状态机（Mode Switch & Fault Latch）交互演示。
+ *
+ * 教学要点（配合 3.6 节“模式切换与故障状态机”）：
+ *   ① 正常运行是一条有顺序的上工流程，不能跳步：
+ *      OFF → INIT → SELF_TEST → SAFE_IDLE → ENABLED → RUNNING；
+ *   ② 出现异常先降级（RUNNING / ENABLED → DEGRADED），严重故障要“锁存”到
+ *      FAULT_LATCHED，必须人工“清除故障并恢复”后重新自检，才能回到待命；
+ *   ③ 锁存状态下再点“推进正常流程”会被拒绝，不会自动偷偷恢复。
+ *
+ * 数据模型（教学示意）：
+ *   9 个状态按 3×3 网格摆放（卡片 w=260 / h=88 / rx=10，列 x=30/320/610，
+ *   行 y=70/178/286）。事件共 5 个：推进正常流程、轻微异常（降级）、
+ *   急停 / 严重故障、清除故障并恢复、复位。
+ *
+ * 交互：纯点击驱动，不需要 requestAnimationFrame。所有 SVG 图形都写在 markup 里，
+ * JS 只改 textContent 与 classList（不使用 setAttribute('class', ...)）；样式跟随
+ * Starlight 明暗主题（只用 --sl-color-* 与 light-dark()）。
+ *
+ * 使用方式（放在 3.6 节“## 模式切换与故障状态机”的一句话听懂下方）：
+ *   import FaultStateMachineDemo from '../../../components/FaultStateMachineDemo.astro';
+ *   <FaultStateMachineDemo />
+ */
+const COL_X = [30, 320, 610];
+const ROW_Y = [70, 178, 286];
+const CARD = { w: 260, h: 88, rx: 10 };
+
+const STATES = [
+  { id: 'OFF',           col: 0, row: 0, desc: '能量关闭，只有安全监控与唤醒路径工作' },
+  { id: 'INIT',          col: 1, row: 0, desc: '初始化时钟、通信、传感器与默认输出' },
+  { id: 'SELF_TEST',     col: 2, row: 0, desc: '检查急停回路、驱动器、编码器与时间基准' },
+  { id: 'SAFE_IDLE',     col: 0, row: 1, desc: '通信已建立但禁止运动，等待使能请求' },
+  { id: 'ENABLED',       col: 1, row: 1, desc: '驱动器已使能，只接受通过各项检查的命令' },
+  { id: 'RUNNING',       col: 2, row: 1, desc: '周期控制、状态回传与保护监测均正常' },
+  { id: 'DEGRADED',      col: 0, row: 2, desc: '已限制速度、力矩或工作空间，持续评估是否升级' },
+  { id: 'FAULT_LATCHED', col: 1, row: 2, desc: '故障已锁存，等待人工确认与重新自检' },
+  { id: 'RECOVERY',      col: 2, row: 2, desc: '清理旧命令并重建安全状态，需重新自检' },
+];
+
+const NORMAL_FLOW = ['OFF', 'INIT', 'SELF_TEST', 'SAFE_IDLE', 'ENABLED', 'RUNNING'];
+
+const CFG = {
+  states: STATES,
+  normalFlow: NORMAL_FLOW,
+  layout: { colX: COL_X, rowY: ROW_Y, card: CARD },
+};
+---
+
+<figure class="fsm-demo" data-fsm={JSON.stringify(CFG)}>
+  <svg viewBox="0 0 900 470" role="img" aria-label="模式切换与故障锁存教学示意：9 个状态按 3×3 网格摆放，正常上工流程为 OFF、INIT、SELF_TEST、SAFE_IDLE、ENABLED、RUNNING，异常先降级到 DEGRADED，严重故障锁存到 FAULT_LATCHED，须清除故障并重新自检才能回到待命">
+    <text class="fsm-title" x="24" y="28">模式切换与故障锁存（教学示意）</text>
+
+    <!-- 9 个状态卡片：列 x=30/320/610，行 y=70/178/286 -->
+    {STATES.map((s) => (
+      <g class="fsm-card" data-state={s.id}>
+        <rect class="fsm-card-bg" x={COL_X[s.col]} y={ROW_Y[s.row]} width={CARD.w} height={CARD.h} rx={CARD.rx}></rect>
+        <text class="fsm-card-name" x={COL_X[s.col] + CARD.w / 2} y={ROW_Y[s.row] + 51} text-anchor="middle">{s.id}</text>
+      </g>
+    ))}
+
+    <!-- 正常流程的相邻箭头：第一行 OFF → INIT → SELF_TEST -->
+    <text class="fsm-arrow" x="305" y="121" text-anchor="middle">→</text>
+    <text class="fsm-arrow" x="595" y="121" text-anchor="middle">→</text>
+    <!-- 第二行 SAFE_IDLE → ENABLED → RUNNING -->
+    <text class="fsm-arrow" x="305" y="229" text-anchor="middle">→</text>
+    <text class="fsm-arrow" x="595" y="229" text-anchor="middle">→</text>
+    <!-- 换行：SELF_TEST 之后回到第二行行首 SAFE_IDLE -->
+    <polyline class="fsm-wrap-line" points="740,158 740,168 160,168"></polyline>
+    <polygon class="fsm-wrap-head" points="154,168 166,168 160,177"></polygon>
+
+    <!-- 底部流程箭头带：正常上工顺序 -->
+    <text class="fsm-flow" x="24" y="398">正常上工顺序：{NORMAL_FLOW.join(' → ')}（必须按顺序，不能跳步）</text>
+    <text class="fsm-note" x="24" y="424">故障一旦锁存，系统不会自动恢复；必须先清除故障、重新自检，才能回到待命。</text>
+  </svg>
+
+  <div class="fsm-controls">
+    <button type="button" class="fsm-btn" data-advance>推进正常流程</button>
+    <button type="button" class="fsm-btn" data-degrade>轻微异常（降级）</button>
+    <button type="button" class="fsm-btn fsm-btn-estop" data-estop>急停 / 严重故障</button>
+    <button type="button" class="fsm-btn" data-clear>清除故障并恢复</button>
+    <button type="button" class="fsm-btn" data-reset>复位</button>
+  </div>
+
+  <div class="fsm-readout">
+    <output class="fsm-out fsm-out-state" aria-live="polite"></output>
+    <output class="fsm-out fsm-out-log" aria-live="polite"></output>
+  </div>
+
+  <figcaption>
+    点五个按钮走一遍上工流程；试试在故障锁存时点“推进正常流程”，看它怎么被拒绝。状态与阈值均为教学示意。
+  </figcaption>
+</figure>
+
+<script>
+  document.querySelectorAll('.fsm-demo').forEach((demo) => {
+    const cfg = JSON.parse(demo.dataset.fsm);
+    const states = cfg.states;
+    const flow = cfg.normalFlow;
+
+    const idxOf = {};
+    flow.forEach((id, i) => { idxOf[id] = i; });
+
+    const cardEls = {};
+    states.forEach((s) => { cardEls[s.id] = demo.querySelector('[data-state="' + s.id + '"]'); });
+
+    const stateOut = demo.querySelector('.fsm-out-state');
+    const logOut = demo.querySelector('.fsm-out-log');
+    const advanceBtn = demo.querySelector('[data-advance]');
+    const degradeBtn = demo.querySelector('[data-degrade]');
+    const estopBtn = demo.querySelector('[data-estop]');
+    const clearBtn = demo.querySelector('[data-clear]');
+    const resetBtn = demo.querySelector('[data-reset]');
+
+    const descOf = (id) => {
+      const s = states.find((x) => x.id === id);
+      return s ? s.desc : '';
+    };
+
+    let state = 'OFF';                 // 当前状态
+    let visited = { OFF: true };        // 只记录“正常流程”里走过的状态（浅色底）
+    let log = '就绪：点“推进正常流程”，从 OFF 开始上工。';
+
+    const markVisited = (id) => {
+      if (idxOf[id] != null) visited[id] = true;
+    };
+
+    const commit = (next, msg) => {
+      state = next;
+      markVisited(next);
+      log = msg;
+    };
+
+    const reject = (reason) => {
+      log = '操作被拒绝：' + reason;
+    };
+
+    // ① 推进正常流程：OFF → INIT → SELF_TEST → SAFE_IDLE → ENABLED → RUNNING
+    const onAdvance = () => {
+      if (state === 'FAULT_LATCHED') {
+        reject('故障已锁存，请先清除故障并重新自检');
+        return;
+      }
+      if (state === 'RUNNING') {
+        log = '已在运行：RUNNING，无需继续推进';
+        return;
+      }
+      if (state === 'DEGRADED') {
+        commit('RUNNING', '尝试恢复运行：DEGRADED → RUNNING（限制解除，继续监测）');
+        return;
+      }
+      if (state === 'RECOVERY') {
+        commit('SELF_TEST', 'RECOVERY → SELF_TEST：重新执行自检，通过后才能回到待命');
+        return;
+      }
+      const i = idxOf[state];
+      if (i == null) {
+        reject('当前状态 ' + state + ' 不在正常上工流程中');
+        return;
+      }
+      if (i >= flow.length - 1) {
+        log = '已在运行：RUNNING，无需继续推进';
+        return;
+      }
+      const next = flow[i + 1];
+      commit(next, state + ' → ' + next + '：按顺序前进一格');
+    };
+
+    // ② 轻微异常（降级）：RUNNING / ENABLED → DEGRADED
+    const onDegrade = () => {
+      if (state === 'RUNNING') {
+        commit('DEGRADED', '触发过温 → 已降级到 DEGRADED');
+        return;
+      }
+      if (state === 'ENABLED') {
+        commit('DEGRADED', '使能后检测到异常 → 已降级到 DEGRADED');
+        return;
+      }
+      if (state === 'FAULT_LATCHED') {
+        reject('故障已锁存，需先清除故障并重新自检');
+        return;
+      }
+      if (state === 'OFF') {
+        reject('尚未上电，没有可降级的运行状态');
+        return;
+      }
+      if (state === 'DEGRADED') {
+        log = '已在 DEGRADED，正在持续评估是否需要升级为锁存故障';
+        return;
+      }
+      reject('当前状态为 ' + state + '，尚未运行，无需降级');
+    };
+
+    // ③ 急停 / 严重故障：任何非 FAULT_LATCHED 状态 → FAULT_LATCHED（OFF 除外）
+    const onEstop = () => {
+      if (state === 'FAULT_LATCHED') {
+        reject('故障已锁存，无需重复触发');
+        return;
+      }
+      if (state === 'OFF') {
+        reject('尚未上电，无能量需要切断');
+        return;
+      }
+      commit('FAULT_LATCHED', '急停 / 严重故障 → 已锁存到 FAULT_LATCHED（需人工确认后重新自检）');
+    };
+
+    // ④ 清除故障并恢复：FAULT_LATCHED → RECOVERY
+    const onClear = () => {
+      if (state !== 'FAULT_LATCHED') {
+        reject('当前没有锁存故障');
+        return;
+      }
+      commit('RECOVERY', '已清除故障 → RECOVERY：需重新自检');
+    };
+
+    // ⑤ 复位：任何状态 → OFF，并清空历史
+    const onReset = () => {
+      state = 'OFF';
+      visited = { OFF: true };
+      log = '已复位 → OFF：状态与历史已清空';
+    };
+
+    const render = () => {
+      states.forEach((s) => {
+        const el = cardEls[s.id];
+        if (!el) return;
+        el.classList.toggle('fsm-card-active', s.id === state);
+        el.classList.toggle('fsm-card-fault', s.id === 'FAULT_LATCHED' && state === 'FAULT_LATCHED');
+        el.classList.toggle('fsm-card-visited', !!visited[s.id] && s.id !== state);
+      });
+      stateOut.textContent = '当前状态：' + state + '（' + descOf(state) + '）';
+      logOut.textContent = log;
+    };
+
+    advanceBtn.addEventListener('click', () => { onAdvance(); render(); });
+    degradeBtn.addEventListener('click', () => { onDegrade(); render(); });
+    estopBtn.addEventListener('click', () => { onEstop(); render(); });
+    clearBtn.addEventListener('click', () => { onClear(); render(); });
+    resetBtn.addEventListener('click', () => { onReset(); render(); });
+
+    render();
+  });
+</script>
+
+<style>
+  .fsm-demo {
+    --fsm-warn: light-dark(#dc2626, #f87171);
+    margin: 1.5rem 0;
+  }
+  .fsm-demo svg { display: block; width: 100%; max-width: 900px; height: auto; margin: 0 auto; }
+
+  .fsm-title { fill: var(--sl-color-text); font-size: 24px; font-weight: 600; }
+  .fsm-note { fill: var(--sl-color-gray-2); font-size: 17px; }
+  .fsm-flow { fill: var(--sl-color-gray-2); font-size: 16px; }
+  .fsm-arrow { fill: var(--sl-color-gray-4); font-size: 20px; font-weight: 600; }
+
+  .fsm-card-bg { fill: var(--sl-color-gray-5); fill-opacity: 0.16; stroke: var(--sl-color-gray-4); stroke-width: 1.6; }
+  .fsm-card-name { fill: var(--sl-color-text); font-size: 21px; font-weight: 600; }
+
+  /* 走过的正常路径：浅色底（可选） */
+  .fsm-card.fsm-card-visited .fsm-card-bg { fill: var(--sl-color-accent); fill-opacity: 0.06; }
+
+  /* 当前状态：accent 描边加粗 + 半透明 accent 填充 + 状态名变色 */
+  .fsm-card.fsm-card-active .fsm-card-bg { fill: var(--sl-color-accent); fill-opacity: 0.16; stroke: var(--sl-color-accent); stroke-width: 2.6; }
+  .fsm-card.fsm-card-active .fsm-card-name { fill: var(--sl-color-accent); }
+
+  /* 锁存故障：警示色（写在 active 之后以覆盖），直到复位或清除故障 */
+  .fsm-card.fsm-card-fault .fsm-card-bg { fill: var(--fsm-warn); fill-opacity: 0.16; stroke: var(--fsm-warn); stroke-width: 2.8; }
+  .fsm-card.fsm-card-fault .fsm-card-name { fill: var(--fsm-warn); }
+
+  .fsm-wrap-line { fill: none; stroke: var(--sl-color-gray-4); stroke-width: 1.6; stroke-dasharray: 5 4; }
+  .fsm-wrap-head { fill: var(--sl-color-gray-4); }
+
+  .fsm-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 0.9rem; max-width: 900px; margin: 0.55rem auto 0; }
+  .fsm-btn { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.85rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
+  .fsm-btn:hover { border-color: var(--sl-color-accent); color: var(--sl-color-accent); }
+  .fsm-btn-estop { border-color: var(--fsm-warn); color: var(--fsm-warn); }
+
+  .fsm-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; color: var(--sl-color-text); line-height: 1.7; }
+  .fsm-out { display: block; white-space: nowrap; overflow-x: auto; height: 1.7em; line-height: 1.7; }
+  .fsm-readout output { color: var(--sl-color-accent); font-weight: 600; }
+  .fsm-readout output.fsm-out-log { color: var(--sl-color-text); font-weight: 500; }
+  .fsm-demo figcaption { max-width: 900px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.9rem; line-height: 1.65; }
+</style>
