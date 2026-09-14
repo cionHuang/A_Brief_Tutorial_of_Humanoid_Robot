@@ -1039,10 +1039,16 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
         }
         buildGrid();
 
+        demo.dataset.stage = 'mesh';
         await Promise.race([
           resourcesLoaded,
           new Promise((resolve) => { setTimeout(resolve, IK_RESOURCE_TIMEOUT); }),
+          // 保险：无论资源计数是否触发，6 秒后都继续初始化，避免一直停在加载态。
+          new Promise((resolve) => { setTimeout(resolve, 6000); }),
         ]);
+
+        demo.dataset.stage = 'init';
+        setState('loading', '初始化视图…');
 
         let meshCount = 0;
         modelGroup.traverse((object) => { if (object.isMesh) meshCount += 1; });
