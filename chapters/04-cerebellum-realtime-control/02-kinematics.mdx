@@ -1,6 +1,7 @@
 # 4.2 运动学
 
 import G1ArmForwardKinematicsDemo from '../../../components/G1ArmForwardKinematicsDemo.astro';
+import G1ArmInverseKinematicsDemo from '../../../components/G1ArmInverseKinematicsDemo.astro';
 
 ## 先看一个现场问题
 
@@ -93,6 +94,10 @@ $$
 这里的 $\operatorname{Log}$ 输出局部旋转向量，单位通常是弧度。位置误差单位是米，姿态误差单位是弧度，进入优化器前应使用权重或尺度归一化；否则某一类误差会因为数值量纲不同而支配求解。
 
 > **一句话听懂**：逆运动学是“告诉机器人手要伸到哪，让它反推每个关节转多少”。它通常没有唯一答案，所以要一边逼近目标、一边守限位和防撞；衡量“差多少”也不能拿欧拉角直接相减。
+
+下面这个演示和上面的正运动学正好相反：拖动末端的目标位姿，让求解器反推关节角。
+
+<G1ArmInverseKinematicsDemo />
 
 ### 解析解、数值解与冗余
 

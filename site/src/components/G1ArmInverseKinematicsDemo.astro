@@ -1,0 +1,1287 @@
+---
+/**
+ * G1 左臂逆运动学（Inverse Kinematics）交互演示 —— 4.2 节“### 位置逆解与位姿逆解”之后。
+ *
+ * 与正运动学演示相反：用户改变末端的目标位姿（three 的 TransformControls 直接拖目标
+ * 坐标架，或降级为 6 个滑块），程序反求 6 个关节角并实时驱动左臂跟过去。
+ *
+ * 渲染与正运动学演示同一套：three + urdf-loader 懒加载、只显示躯干与左臂链、
+ * 网格缺失只警告、明暗主题跟随；末端 AxesHelper + 世界空间虚线轨迹（240 点）
+ * 记录的是“实际末端”走过的路径。
+ *
+ * IK：在 torso 坐标系里做阻尼最小二乘。
+ *   误差 e = [ 目标位置 − 当前末端位置 ; rotVec( R_target · R_current^T ) ]，单位 m / rad；
+ *   雅可比 J（6×6）用中心差分：对 6 个可动关节分别扰动 ±1e-5 rad，测末端位姿变化；
+ *   Δq = Jᵀ (J Jᵀ + λ² I)⁻¹ e；每步带回溯线搜索（误差不降就减半步长），
+ *   再 clamp 到 URDF limit。默认 q = [0°, 20°, 0°, 40°, 0°, 0°, 0°]（腕 yaw 固定 0°）。
+ *
+ * 关节链与 URDF 数值（与正运动学演示一致，见其注释；origin 单位 m / rad）：
+ *   ① left_shoulder_pitch_joint  ② left_shoulder_roll_joint  ③ left_shoulder_yaw_joint
+ *   ④ left_elbow_joint           ⑤ left_wrist_roll_joint     ⑥ left_wrist_pitch_joint
+ *   ⑦ left_wrist_yaw_joint（固定 0°，链末端）
+ */
+
+const D2R = Math.PI / 180;
+const R2D = 180 / Math.PI;
+const I3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+
+const mul3 = (A, B) => {
+  const C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  for (let i = 0; i < 3; i += 1) {
+    for (let j = 0; j < 3; j += 1) {
+      C[i][j] = A[i][0] * B[0][j] + A[i][1] * B[1][j] + A[i][2] * B[2][j];
+    }
+  }
+  return C;
+};
+const mulVec = (R, v) => [
+  R[0][0] * v[0] + R[0][1] * v[1] + R[0][2] * v[2],
+  R[1][0] * v[0] + R[1][1] * v[1] + R[1][2] * v[2],
+  R[2][0] * v[0] + R[2][1] * v[1] + R[2][2] * v[2],
+];
+// URDF RPY：Rz(yaw)·Ry(pitch)·Rx(roll)
+const rpyMat = (r, p, y) => {
+  const cr = Math.cos(r); const sr = Math.sin(r);
+  const cp = Math.cos(p); const sp = Math.sin(p);
+  const cy = Math.cos(y); const sy = Math.sin(y);
+  return [
+    [cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr],
+    [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr],
+    [-sp, cp * sr, cp * cr],
+  ];
+};
+const axisMat = (axis, q) => {
+  const n = Math.hypot(axis[0], axis[1], axis[2]) || 1;
+  const ux = axis[0] / n; const uy = axis[1] / n; const uz = axis[2] / n;
+  const c = Math.cos(q); const s = Math.sin(q); const t = 1 - c;
+  return [
+    [t * ux * ux + c, t * ux * uy - s * uz, t * ux * uz + s * uy],
+    [t * ux * uy + s * uz, t * uy * uy + c, t * uy * uz - s * ux],
+    [t * ux * uz - s * uy, t * uy * uz + s * ux, t * uz * uz + c],
+  ];
+};
+const chainFK = (q) => {
+  let R = I3;
+  let p = [0, 0, 0];
+  const frames = [];
+  CHAIN.forEach((j, i) => {
+    const d = mulVec(R, j.xyz);
+    p = [p[0] + d[0], p[1] + d[1], p[2] + d[2]];
+    R = mul3(mul3(R, rpyMat(j.rpy[0], j.rpy[1], j.rpy[2])), axisMat(j.axis, q[i]));
+    frames.push({ p: p.slice(), R: R.map((row) => row.slice()) });
+  });
+  return frames;
+};
+const fmt3 = (v) => {
+  const r = Math.abs(v) < 5e-4 ? 0 : v;
+  return (r < 0 ? '−' : '') + Math.abs(r).toFixed(3);
+};
+const fmtDeg1 = (v) => {
+  const r = Math.abs(v) < 0.05 ? 0 : v;
+  return (r < 0 ? '−' : '') + Math.abs(r).toFixed(1);
+};
+// 与 4.1 一致的 ZYX 欧拉角（度）：R = Rz(yaw)·Ry(pitch)·Rx(roll)
+const eulerZYXDeg = (R) => {
+  const sy = Math.hypot(R[0][0], R[1][0]);
+  if (sy < 1e-9) {
+    return { roll: 0, pitch: Math.atan2(-R[2][0], sy) * R2D, yaw: Math.atan2(-R[0][1], R[1][1]) * R2D };
+  }
+  return {
+    roll: Math.atan2(R[2][1], R[2][2]) * R2D,
+    pitch: Math.atan2(-R[2][0], sy) * R2D,
+    yaw: Math.atan2(R[1][0], R[0][0]) * R2D,
+  };
+};
+
+// ── 关节链（逐字取自 g1_29dof.urdf；def / lo / hi 单位 rad） ──────────────────
+const CHAIN = [
+  { name: 'left_shoulder_pitch_joint', short: '肩 pitch', group: 'shoulder', slider: true, xyz: [0.0039563, 0.10022, 0.23778], rpy: [0.27931, 5.4949e-05, -0.00019159], axis: [0, 1, 0], lo: -3.0892, hi: 2.6704, def: 0 },
+  { name: 'left_shoulder_roll_joint', short: '肩 roll', group: 'shoulder', slider: true, xyz: [0, 0.038, -0.013831], rpy: [-0.27925, 0, 0], axis: [1, 0, 0], lo: -1.5882, hi: 2.2515, def: 20 * D2R },
+  { name: 'left_shoulder_yaw_joint', short: '肩 yaw', group: 'shoulder', slider: true, xyz: [0, 0.00624, -0.1032], rpy: [0, 0, 0], axis: [0, 0, 1], lo: -2.618, hi: 2.618, def: 0 },
+  { name: 'left_elbow_joint', short: '肘', group: 'elbow', slider: true, xyz: [0.015783, 0, -0.080518], rpy: [0, 0, 0], axis: [0, 1, 0], lo: -1.0472, hi: 2.0944, def: 40 * D2R },
+  { name: 'left_wrist_roll_joint', short: '腕 roll', group: 'wrist', slider: true, xyz: [0.1, 0.00188791, -0.01], rpy: [0, 0, 0], axis: [1, 0, 0], lo: -1.972222054, hi: 1.972222054, def: 0 },
+  { name: 'left_wrist_pitch_joint', short: '腕 pitch', group: 'wrist', slider: true, xyz: [0.038, 0, 0], rpy: [0, 0, 0], axis: [0, 1, 0], lo: -1.614429558, hi: 1.614429558, def: 0 },
+  { name: 'left_wrist_yaw_joint', short: '腕 yaw', group: 'wrist', slider: false, xyz: [0.046, 0, 0], rpy: [0, 0, 0], axis: [0, 0, 1], lo: -1.614429558, hi: 1.614429558, def: 0 },
+];
+const SLIDERS = CHAIN.filter((c) => c.slider);
+
+const DEF_Q = CHAIN.map((c) => c.def);
+const DEF_END = chainFK(DEF_Q)[6];
+const DEF_EULER = eulerZYXDeg(DEF_END.R);
+const DEF_JOINT_TEXT = SLIDERS.map((s, i) => s.short + ' ' + fmtDeg1(R2D * DEF_Q[i]) + '°').join(' / ');
+const DEF_POSE_ROWS = [
+  {
+    head: '位置',
+    unit: 'm',
+    cells: [
+      { label: 'x', value: fmt3(DEF_END.p[0]) },
+      { label: 'y', value: fmt3(DEF_END.p[1]) },
+      { label: 'z', value: fmt3(DEF_END.p[2]) },
+    ],
+  },
+  {
+    head: '姿态',
+    unit: '°',
+    cells: [
+      { label: 'roll', value: fmtDeg1(DEF_EULER.roll) },
+      { label: 'pitch', value: fmtDeg1(DEF_EULER.pitch) },
+      { label: 'yaw', value: fmtDeg1(DEF_EULER.yaw) },
+    ],
+  },
+];
+
+// 降级滑块：目标在 torso 系里的位置 / 姿态
+const TARGET_POS = [
+  { key: 'x', min: -0.6, max: 0.6, step: 0.005, def: DEF_END.p[0] },
+  { key: 'y', min: -0.6, max: 0.6, step: 0.005, def: DEF_END.p[1] },
+  { key: 'z', min: -0.6, max: 0.6, step: 0.005, def: DEF_END.p[2] },
+];
+const TARGET_ANG = [
+  { key: 'roll', min: -180, max: 180, step: 1, def: DEF_EULER.roll },
+  { key: 'pitch', min: -180, max: 180, step: 1, def: DEF_EULER.pitch },
+  { key: 'yaw', min: -180, max: 180, step: 1, def: DEF_EULER.yaw },
+];
+
+const baseUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
+---
+
+<figure
+  class="ik-demo"
+  data-state="idle"
+  data-ik-fallback="false"
+  data-urdf-url={urdfUrl}
+  data-ik-chain={JSON.stringify(CHAIN)}
+>
+  <div
+    class="ik-3d"
+    data-ik-viewport
+    role="application"
+    tabindex="0"
+    aria-label="Unitree G1 左臂逆运动学三维演示：拖动或旋转场景里的目标坐标架（或使用降级滑块）设定目标末端位姿，阻尼最小二乘求解器反求六个关节角，真实 URDF 网格的左臂实时跟过去，末端留下虚线轨迹"
+  >
+    <div class="ik-loading" data-ik-loading>
+      <span class="ik-spinner" aria-hidden="true"></span>
+      <span class="ik-status" data-ik-status>滚动到此处加载 3D 模型</span>
+    </div>
+  </div>
+
+  <div class="ik-controls">
+    <div class="ik-row" data-ik-tc-row>
+      <span class="ik-row-title">目标</span>
+      <button type="button" class="ik-btn ik-btn-active" data-ik-mode="translate">平移</button>
+      <button type="button" class="ik-btn" data-ik-mode="rotate">旋转</button>
+      <span class="ik-hint">用鼠标拖动 / 旋转场景中的目标坐标架</span>
+    </div>
+
+    <div class="ik-row" data-ik-fallback-row>
+      <span class="ik-row-title">目标位置</span>
+      {TARGET_POS.map((s) => (
+        <label class="ik-slider-label">{s.key}
+          <input class="ik-range" type="range" data-ik-target-pos={s.key} min={s.min} max={s.max} step={s.step} value={s.def.toFixed(3)} />
+          <span class="ik-val" data-ik-target-pos-val={s.key}>{s.def.toFixed(3)} m</span>
+        </label>
+      ))}
+    </div>
+
+    <div class="ik-row" data-ik-fallback-row>
+      <span class="ik-row-title">目标姿态</span>
+      {TARGET_ANG.map((s) => (
+        <label class="ik-slider-label">{s.key}
+          <input class="ik-range" type="range" data-ik-target-ang={s.key} min={s.min} max={s.max} step={s.step} value={s.def.toFixed(1)} />
+          <span class="ik-val" data-ik-target-ang-val={s.key}>{fmtDeg1(s.def)}°</span>
+        </label>
+      ))}
+    </div>
+
+    <div class="ik-row">
+      <span class="ik-row-title">求解器</span>
+      <label class="ik-slider-label">阻尼 λ
+        <input class="ik-range" type="range" data-ik-param="lambda" min="0.001" max="0.1" step="0.001" value="0.01" />
+        <span class="ik-val" data-ik-param-val="lambda">0.010</span>
+      </label>
+      <label class="ik-slider-label">迭代 / 帧
+        <input class="ik-range" type="range" data-ik-param="steps" min="1" max="30" step="1" value="12" />
+        <span class="ik-val" data-ik-param-val="steps">12</span>
+      </label>
+      <span class="ik-hint">阻尼最小二乘 + 线搜索</span>
+    </div>
+
+    <div class="ik-row">
+      <span class="ik-row-title"></span>
+      <button type="button" class="ik-btn" data-ik-reset disabled>复位</button>
+      <span class="ik-hint" data-ik-fallback-note></span>
+    </div>
+  </div>
+
+  <div class="ik-readout">
+    <span class="ik-pose-caption">目标位姿（相对躯干）</span>
+    <div class="ik-pose" data-ik-target-pose role="group" aria-label="目标末端相对躯干的位置与 ZYX 欧拉角">
+      {DEF_POSE_ROWS.map((row, r) => (
+        <>
+          <span class="ik-pose-head">{row.head}</span>
+          {row.cells.map((cell, c) => (
+            <span class="ik-pose-cell">
+              <span class="ik-pose-k">{cell.label + ' ='}</span>
+              <span class="ik-pose-v" data-ik-target-val={r * 3 + c}>{cell.value}</span>
+              <span class="ik-pose-u">{row.unit}</span>
+            </span>
+          ))}
+        </>
+      ))}
+    </div>
+
+    <span class="ik-pose-caption">实际末端（相对躯干）</span>
+    <div class="ik-pose" data-ik-actual-pose role="group" aria-label="实际末端相对躯干的位置与 ZYX 欧拉角">
+      {DEF_POSE_ROWS.map((row, r) => (
+        <>
+          <span class="ik-pose-head">{row.head}</span>
+          {row.cells.map((cell, c) => (
+            <span class="ik-pose-cell">
+              <span class="ik-pose-k">{cell.label + ' ='}</span>
+              <span class="ik-pose-v" data-ik-actual-val={r * 3 + c}>{cell.value}</span>
+              <span class="ik-pose-u">{row.unit}</span>
+            </span>
+          ))}
+        </>
+      ))}
+    </div>
+
+    <output class="ik-out" data-ik-solve aria-live="polite">等待加载模型</output>
+    <div class="ik-joints" data-ik-joints>关节角（°）：{DEF_JOINT_TEXT}</div>
+  </div>
+
+  <figcaption>
+    拖动 / 旋转目标坐标架，看求解器反推六个关节角、手臂实时跟过去；下方给出目标位姿、实际末端位姿与剩余误差。数值为教学示意。
+  </figcaption>
+</figure>
+
+<script>
+  // 只保留躯干与左臂链的 link（其余 visible = false），与正运动学演示一致。
+  const IK_VISIBLE_LINKS = new Set([
+    'pelvis', 'pelvis_contour_link', 'waist_yaw_link', 'waist_roll_link', 'torso_link',
+    'logo_link', 'head_link', 'waist_support_link',
+    'left_shoulder_pitch_link', 'left_shoulder_roll_link', 'left_shoulder_yaw_link',
+    'left_elbow_link', 'left_wrist_roll_link', 'left_wrist_pitch_link', 'left_wrist_yaw_link',
+    'left_rubber_hand',
+  ]);
+  const IK_ARM_LINKS = [
+    'left_shoulder_pitch_link', 'left_shoulder_roll_link', 'left_shoulder_yaw_link',
+    'left_elbow_link', 'left_wrist_roll_link', 'left_wrist_pitch_link', 'left_wrist_yaw_link',
+    'left_rubber_hand',
+  ];
+  const IK_END_LINK = 'left_wrist_yaw_link';
+  const IK_TORSO_LINK = 'torso_link';
+  const IK_TRAIL_MAX = 240;
+  const IK_TRAIL_MIN_STEP = 2.5e-4;
+  const IK_RESOURCE_TIMEOUT = 15000;
+  const IK_EPS = 1e-5;
+  const IK_CONVERGE_POS = 5e-4;
+  const IK_CONVERGE_ROT = 2e-3;
+  const IK_MAX_SOLVE_FRAMES = 8;
+
+  document.querySelectorAll('.ik-demo').forEach((demo) => {
+    if (!(demo instanceof HTMLElement)) return;
+
+    const viewport = demo.querySelector('[data-ik-viewport]');
+    const statusEl = demo.querySelector('[data-ik-status]');
+    const solveOut = demo.querySelector('[data-ik-solve]');
+    const jointsEl = demo.querySelector('[data-ik-joints]');
+    const resetBtn = demo.querySelector('[data-ik-reset]');
+    const lambdaInput = demo.querySelector('[data-ik-param="lambda"]');
+    const stepsInput = demo.querySelector('[data-ik-param="steps"]');
+    const lambdaVal = demo.querySelector('[data-ik-param-val="lambda"]');
+    const stepsVal = demo.querySelector('[data-ik-param-val="steps"]');
+    const fallbackNote = demo.querySelector('[data-ik-fallback-note]');
+    const targetValEls = Array.from({ length: 6 }, (_, i) => demo.querySelector('[data-ik-target-val="' + i + '"]'));
+    const actualValEls = Array.from({ length: 6 }, (_, i) => demo.querySelector('[data-ik-actual-val="' + i + '"]'));
+    const modeBtns = Array.from(demo.querySelectorAll('[data-ik-mode]'));
+    const posKeys = ['x', 'y', 'z'];
+    const angKeys = ['roll', 'pitch', 'yaw'];
+    const posInputs = posKeys.map((k) => demo.querySelector('[data-ik-target-pos="' + k + '"]'));
+    const angInputs = angKeys.map((k) => demo.querySelector('[data-ik-target-ang="' + k + '"]'));
+    const posValEls = posKeys.map((k) => demo.querySelector('[data-ik-target-pos-val="' + k + '"]'));
+    const angValEls = angKeys.map((k) => demo.querySelector('[data-ik-target-ang-val="' + k + '"]'));
+    const chainRaw = demo.dataset.ikChain;
+    const urdfUrl = demo.dataset.urdfUrl;
+    if (
+      !(viewport instanceof HTMLElement)
+      || !(statusEl instanceof HTMLElement)
+      || !(solveOut instanceof HTMLElement)
+      || !(targetValEls[0] instanceof HTMLElement)
+      || !(actualValEls[0] instanceof HTMLElement)
+      || !(resetBtn instanceof HTMLButtonElement)
+      || !chainRaw
+      || !urdfUrl
+    ) {
+      return;
+    }
+
+    const chain = JSON.parse(chainRaw);
+    const sliders = chain.filter((c) => c.slider);
+    const state = chain.map((c) => c.def);
+    const endTrail = [];
+    const R2D = 180 / Math.PI;
+    const D2R = Math.PI / 180;
+    const fmt3 = (v) => {
+      const r = Math.abs(v) < 5e-4 ? 0 : v;
+      return (r < 0 ? '−' : '') + Math.abs(r).toFixed(3);
+    };
+    const fmtDeg1 = (v) => {
+      const r = Math.abs(v) < 0.05 ? 0 : v;
+      return (r < 0 ? '−' : '') + Math.abs(r).toFixed(1);
+    };
+
+    // ── 纯数学：torso 系正运动学 + 旋转向量 + DLS ─────────────────────────────
+    const I3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+    const mul3 = (A, B) => {
+      const C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+      for (let i = 0; i < 3; i += 1) {
+        for (let j = 0; j < 3; j += 1) {
+          C[i][j] = A[i][0] * B[0][j] + A[i][1] * B[1][j] + A[i][2] * B[2][j];
+        }
+      }
+      return C;
+    };
+    const mulVec = (R, v) => [
+      R[0][0] * v[0] + R[0][1] * v[1] + R[0][2] * v[2],
+      R[1][0] * v[0] + R[1][1] * v[1] + R[1][2] * v[2],
+      R[2][0] * v[0] + R[2][1] * v[1] + R[2][2] * v[2],
+    ];
+    const rpyMat = (r, p, y) => {
+      const cr = Math.cos(r); const sr = Math.sin(r);
+      const cp = Math.cos(p); const sp = Math.sin(p);
+      const cy = Math.cos(y); const sy = Math.sin(y);
+      return [
+        [cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr],
+        [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr],
+        [-sp, cp * sr, cp * cr],
+      ];
+    };
+    const axisMat = (axis, q) => {
+      const n = Math.hypot(axis[0], axis[1], axis[2]) || 1;
+      const ux = axis[0] / n; const uy = axis[1] / n; const uz = axis[2] / n;
+      const c = Math.cos(q); const s = Math.sin(q); const t = 1 - c;
+      return [
+        [t * ux * ux + c, t * ux * uy - s * uz, t * ux * uz + s * uy],
+        [t * ux * uy + s * uz, t * uy * uy + c, t * uy * uz - s * ux],
+        [t * ux * uz - s * uy, t * uy * uz + s * ux, t * uz * uz + c],
+      ];
+    };
+    const transpose3 = (R) => [
+      [R[0][0], R[1][0], R[2][0]],
+      [R[0][1], R[1][1], R[2][1]],
+      [R[0][2], R[1][2], R[2][2]],
+    ];
+    const poseOf = (q) => {
+      let R = I3;
+      let p = [0, 0, 0];
+      for (let i = 0; i < chain.length; i += 1) {
+        const j = chain[i];
+        const d = mulVec(R, j.xyz);
+        p = [p[0] + d[0], p[1] + d[1], p[2] + d[2]];
+        R = mul3(mul3(R, rpyMat(j.rpy[0], j.rpy[1], j.rpy[2])), axisMat(j.axis, q[i]));
+      }
+      return { p: p, R: R };
+    };
+    // SO(3) → 旋转向量（Log map）
+    const rotVecFromR = (R) => {
+      const tr = R[0][0] + R[1][1] + R[2][2];
+      const cosA = Math.max(-1, Math.min(1, (tr - 1) / 2));
+      const angle = Math.acos(cosA);
+      if (angle < 1e-6) {
+        return [0.5 * (R[2][1] - R[1][2]), 0.5 * (R[0][2] - R[2][0]), 0.5 * (R[1][0] - R[0][1])];
+      }
+      if (Math.PI - angle < 1e-4) {
+        const m = [
+          [R[0][0] + 1, R[0][1], R[0][2]],
+          [R[1][0], R[1][1] + 1, R[1][2]],
+          [R[2][0], R[2][1], R[2][2] + 1],
+        ];
+        const diag = [m[0][0], m[1][1], m[2][2]];
+        let k = 0;
+        if (diag[1] > diag[k]) k = 1;
+        if (diag[2] > diag[k]) k = 2;
+        const col = [m[0][k], m[1][k], m[2][k]];
+        const n = Math.hypot(col[0], col[1], col[2]) || 1;
+        return [col[0] / n * angle, col[1] / n * angle, col[2] / n * angle];
+      }
+      const s = Math.sin(angle);
+      const k = angle / (2 * s);
+      return [(R[2][1] - R[1][2]) * k, (R[0][2] - R[2][0]) * k, (R[1][0] - R[0][1]) * k];
+    };
+    const solveLinear = (A, b) => {
+      const n = b.length;
+      const M = A.map((row, i) => row.concat([b[i]]));
+      for (let col = 0; col < n; col += 1) {
+        let piv = col;
+        for (let r = col + 1; r < n; r += 1) {
+          if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+        }
+        if (Math.abs(M[piv][col]) < 1e-12) return null;
+        const tmp = M[col]; M[col] = M[piv]; M[piv] = tmp;
+        const pv = M[col][col];
+        for (let c = col; c <= n; c += 1) M[col][c] /= pv;
+        for (let r = 0; r < n; r += 1) {
+          if (r === col) continue;
+          const f = M[r][col];
+          if (f === 0) continue;
+          for (let c = col; c <= n; c += 1) M[r][c] -= f * M[col][c];
+        }
+      }
+      return M.map((row) => row[n]);
+    };
+    const errNorm = (q, tp, tR) => {
+      const cur = poseOf(q);
+      const rv = rotVecFromR(mul3(tR, transpose3(cur.R)));
+      const dp = [tp[0] - cur.p[0], tp[1] - cur.p[1], tp[2] - cur.p[2]];
+      return Math.hypot(dp[0], dp[1], dp[2], rv[0], rv[1], rv[2]);
+    };
+    // Δq = Jᵀ (J Jᵀ + λ² I)⁻¹ e，J 用中心差分（6 个可动关节）
+    const solveStep = (q, tp, tR, lambda) => {
+      const cur = poseOf(q);
+      const R0 = cur.R;
+      const e = [
+        tp[0] - cur.p[0], tp[1] - cur.p[1], tp[2] - cur.p[2],
+        ...rotVecFromR(mul3(tR, transpose3(R0))),
+      ];
+      const J = Array.from({ length: 6 }, () => new Array(6).fill(0));
+      for (let i = 0; i < 6; i += 1) {
+        const qp = q.slice(); qp[i] += IK_EPS;
+        const qm = q.slice(); qm[i] -= IK_EPS;
+        const pp = poseOf(qp);
+        const pm = poseOf(qm);
+        for (let r = 0; r < 3; r += 1) J[r][i] = (pp.p[r] - pm.p[r]) / (2 * IK_EPS);
+        const wp = rotVecFromR(mul3(pp.R, transpose3(R0)));
+        const wm = rotVecFromR(mul3(pm.R, transpose3(R0)));
+        for (let r = 0; r < 3; r += 1) J[3 + r][i] = (wp[r] - wm[r]) / (2 * IK_EPS);
+      }
+      const A = Array.from({ length: 6 }, () => new Array(6).fill(0));
+      for (let r = 0; r < 6; r += 1) {
+        for (let c = 0; c < 6; c += 1) {
+          let sum = 0;
+          for (let k = 0; k < 6; k += 1) sum += J[r][k] * J[c][k];
+          A[r][c] = sum + (r === c ? lambda * lambda : 0);
+        }
+      }
+      const y = solveLinear(A, e);
+      if (!y) return null;
+      const dq = new Array(6).fill(0);
+      for (let i = 0; i < 6; i += 1) {
+        let sum = 0;
+        for (let r = 0; r < 6; r += 1) sum += J[r][i] * y[r];
+        dq[i] = sum;
+      }
+      return dq;
+    };
+    // 带回溯线搜索的迭代：误差不下降就减半步长，保证单调收敛 / 在限位内停稳
+    const solveOnce = (q, tp, tR, lambda, steps) => {
+      let e0 = errNorm(q, tp, tR);
+      let iters = 0;
+      for (let it = 0; it < steps; it += 1) {
+        if (e0 < 1e-7) break;
+        const dq = solveStep(q, tp, tR, lambda);
+        if (!dq) break;
+        let alpha = 1;
+        let improved = false;
+        let bestQ = null;
+        let bestE = e0;
+        for (let t = 0; t < 10; t += 1) {
+          const qn = q.slice();
+          for (let i = 0; i < 6; i += 1) {
+            const v = q[i] + alpha * dq[i];
+            qn[i] = Math.min(chain[i].hi, Math.max(chain[i].lo, v));
+          }
+          const en = errNorm(qn, tp, tR);
+          if (en < bestE - 1e-12) { bestQ = qn; bestE = en; improved = true; break; }
+          alpha *= 0.5;
+        }
+        if (!improved) break;
+        for (let i = 0; i < 6; i += 1) q[i] = bestQ[i];
+        q[6] = chain[6].def;
+        e0 = bestE;
+        iters += 1;
+      }
+      const cur = poseOf(q);
+      const dp = [tp[0] - cur.p[0], tp[1] - cur.p[1], tp[2] - cur.p[2]];
+      const rv = rotVecFromR(mul3(tR, transpose3(cur.R)));
+      const posErr = Math.hypot(dp[0], dp[1], dp[2]);
+      const rotErr = Math.hypot(rv[0], rv[1], rv[2]);
+      return { iters: iters, posErr: posErr, rotErr: rotErr, converged: posErr < IK_CONVERGE_POS && rotErr < IK_CONVERGE_ROT };
+    };
+
+    const DEF_POSE = poseOf(chain.map((c) => c.def));
+
+    let started = false;
+    let THREE_NS = null;
+    let TransformControlsCtor = null;
+    let scene = null;
+    let camera = null;
+    let renderer = null;
+    let controls = null;
+    let transform = null;
+    let robot = null;
+    let modelGroup = null;
+    let endLink = null;
+    let torsoLink = null;
+    let targetObject = null;
+    let targetDot = null;
+    let grid = null;
+    let gridY = 0;
+    let trailLine = null;
+    let trailGeom = null;
+    let trailAttr = null;
+    let trailPositions = null;
+    let trailMat = null;
+    let endHelper = null;
+    let probe = null;
+    let animationFrame = 0;
+    let ikFrame = 0;
+    let solveFramesLeft = 0;
+    let resizeObserver = null;
+    let themeObserver = null;
+    let mediaQuery = null;
+    let meshErrors = 0;
+    let pageVisible = true;
+
+    const setState = (next, message) => {
+      demo.dataset.state = next;
+      if (message !== undefined) statusEl.textContent = message;
+    };
+    const scheduleRender = () => {
+      if (animationFrame || !renderer || !scene || !camera) return;
+      animationFrame = requestAnimationFrame(render);
+    };
+    const render = () => {
+      animationFrame = 0;
+      if (!renderer || !scene || !camera || !pageVisible) return;
+      const moving = controls ? controls.update() : false;
+      renderer.render(scene, camera);
+      demo.dataset.rendered = 'true';
+      if (moving) scheduleRender();
+    };
+    const resize = () => {
+      if (!renderer || !camera) return;
+      const width = Math.max(viewport.clientWidth, 1);
+      const height = Math.max(viewport.clientHeight, 1);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(width, height, false);
+      scheduleRender();
+    };
+    const resolveCssColor = (expr, fallback) => {
+      if (!THREE_NS) return null;
+      if (!probe) {
+        probe = document.createElement('span');
+        probe.setAttribute('aria-hidden', 'true');
+        probe.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none;';
+        demo.appendChild(probe);
+      }
+      let computed = '';
+      try {
+        probe.style.color = '';
+        probe.style.color = expr;
+        computed = (getComputedStyle(probe).color || '').trim();
+      } catch {
+        computed = '';
+      }
+      if (!/^(rgb|rgba|hsl|hsla)\(/i.test(computed) && !/^#[0-9a-f]{3,8}$/i.test(computed)) {
+        computed = fallback || '';
+      }
+      try {
+        return computed ? new THREE_NS.Color(computed) : null;
+      } catch {
+        return fallback ? new THREE_NS.Color(fallback) : null;
+      }
+    };
+    const buildGrid = () => {
+      if (!THREE_NS || !scene) return;
+      const THREE = THREE_NS;
+      const centerColor = resolveCssColor('var(--sl-color-gray-2)', '#888c96');
+      const lineColor = resolveCssColor('var(--sl-color-gray-4)', '#555962');
+      const next = new THREE.GridHelper(1.0, 10, centerColor || 0x888c96, lineColor || 0x555962);
+      next.position.y = gridY;
+      next.material.transparent = true;
+      next.material.opacity = 0.55;
+      if (grid) {
+        scene.remove(grid);
+        grid.geometry?.dispose();
+        grid.material?.dispose();
+      }
+      grid = next;
+      scene.add(grid);
+    };
+    const applyTheme = () => {
+      if (!renderer || !scene) return;
+      if (trailMat) {
+        const accent = resolveCssColor('var(--sl-color-accent)', '#3369ff');
+        if (accent) trailMat.color.copy(accent);
+      }
+      if (targetDot && targetDot.material) {
+        const targetColor = resolveCssColor('var(--ik-target)', '#b45309');
+        if (targetColor) targetDot.material.color.copy(targetColor);
+      }
+      buildGrid();
+      scheduleRender();
+    };
+    const fitCamera = () => {
+      if (!camera || !controls || !robot || !THREE_NS) return;
+      const THREE = THREE_NS;
+      const box = new THREE.Box3();
+      IK_ARM_LINKS.forEach((name) => {
+        const link = robot.links[name];
+        if (link) box.expandByObject(link);
+      });
+      if (box.isEmpty()) box.setFromObject(robot);
+      if (box.isEmpty()) return;
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const radius = Math.max(size.x, size.y, size.z, 0.12) * 0.62;
+      const fitDistance = radius / Math.tan((camera.fov * Math.PI) / 360);
+      controls.target.copy(center);
+      camera.near = Math.max(fitDistance / 100, 0.005);
+      camera.far = fitDistance * 50;
+      camera.position.set(center.x + fitDistance * 0.95, center.y + fitDistance * 0.5, center.z + fitDistance * 1.2);
+      camera.updateProjectionMatrix();
+      controls.update();
+      scheduleRender();
+    };
+
+    const applyJoints = () => {
+      if (!robot) return;
+      for (let i = 0; i < chain.length; i += 1) robot.setJointValue(chain[i].name, state[i]);
+      robot.updateMatrixWorld(true);
+    };
+    // 实际末端相对躯干：位置 + ZYX 欧拉角 + 旋转矩阵
+    const readActualTorso = () => {
+      if (!endLink || !torsoLink || !THREE_NS) return null;
+      const THREE = THREE_NS;
+      const world = new THREE.Vector3();
+      const torsoWorld = new THREE.Vector3();
+      const torsoQuat = new THREE.Quaternion();
+      const endQuat = new THREE.Quaternion();
+      endLink.getWorldPosition(world);
+      torsoLink.getWorldPosition(torsoWorld);
+      torsoLink.getWorldQuaternion(torsoQuat);
+      endLink.getWorldQuaternion(endQuat);
+      const torsoQuatInv = torsoQuat.clone().invert();
+      const relQuat = torsoQuatInv.clone().multiply(endQuat);
+      const relRot = new THREE.Matrix4().makeRotationFromQuaternion(relQuat);
+      const e = relRot.elements;
+      const R = [[e[0], e[4], e[8]], [e[1], e[5], e[9]], [e[2], e[6], e[10]]];
+      const rel = world.clone().sub(torsoWorld).applyQuaternion(torsoQuatInv);
+      return { world: world, rel: rel, R: R, euler: eulerZYXDeg(R) };
+    };
+    // 目标对象（世界）↔ torso 系
+    const targetPoseInTorso = () => {
+      if (!targetObject || !torsoLink || !THREE_NS) return null;
+      const THREE = THREE_NS;
+      const torsoWorld = new THREE.Vector3();
+      const torsoQuat = new THREE.Quaternion();
+      torsoLink.getWorldPosition(torsoWorld);
+      torsoLink.getWorldQuaternion(torsoQuat);
+      const inv = torsoQuat.clone().invert();
+      const pWorld = new THREE.Vector3();
+      const qWorld = new THREE.Quaternion();
+      targetObject.getWorldPosition(pWorld);
+      targetObject.getWorldQuaternion(qWorld);
+      const pRel = pWorld.sub(torsoWorld).applyQuaternion(inv);
+      const relQuat = inv.clone().multiply(qWorld);
+      const m = new THREE.Matrix4().makeRotationFromQuaternion(relQuat);
+      const e = m.elements;
+      const R = [[e[0], e[4], e[8]], [e[1], e[5], e[9]], [e[2], e[6], e[10]]];
+      return { p: [pRel.x, pRel.y, pRel.z], R: R };
+    };
+    const setTargetFromTorso = (p, R) => {
+      if (!targetObject || !torsoLink || !THREE_NS) return;
+      const THREE = THREE_NS;
+      const torsoWorld = new THREE.Vector3();
+      const torsoQuat = new THREE.Quaternion();
+      torsoLink.getWorldPosition(torsoWorld);
+      torsoLink.getWorldQuaternion(torsoQuat);
+      const offset = new THREE.Vector3(p[0], p[1], p[2]).applyQuaternion(torsoQuat);
+      const pWorld = offset.add(torsoWorld);
+      const m = new THREE.Matrix4().set(
+        R[0][0], R[0][1], R[0][2], 0,
+        R[1][0], R[1][1], R[1][2], 0,
+        R[2][0], R[2][1], R[2][2], 0,
+        0, 0, 0, 1,
+      );
+      const qLocal = new THREE.Quaternion().setFromRotationMatrix(m);
+      targetObject.position.copy(pWorld);
+      targetObject.quaternion.copy(torsoQuat).multiply(qLocal);
+      targetObject.updateMatrixWorld(true);
+    };
+
+    const pushTrail = (world) => {
+      const last = endTrail[endTrail.length - 1];
+      if (last && last.distanceToSquared(world) <= IK_TRAIL_MIN_STEP * IK_TRAIL_MIN_STEP) return;
+      endTrail.push(world.clone());
+      while (endTrail.length > IK_TRAIL_MAX) endTrail.shift();
+    };
+    const syncTrailGeometry = () => {
+      if (!trailLine || !trailGeom || !trailAttr || !trailPositions) return;
+      const count = endTrail.length;
+      for (let i = 0; i < count; i += 1) {
+        trailPositions[i * 3] = endTrail[i].x;
+        trailPositions[i * 3 + 1] = endTrail[i].y;
+        trailPositions[i * 3 + 2] = endTrail[i].z;
+      }
+      trailAttr.needsUpdate = true;
+      trailGeom.setDrawRange(0, count);
+      trailLine.visible = count >= 2;
+      if (count >= 2) trailLine.computeLineDistances();
+    };
+
+    const syncTargetReadout = (target) => {
+      const euler = eulerZYXDeg(target.R);
+      const values = [fmt3(target.p[0]), fmt3(target.p[1]), fmt3(target.p[2]), fmtDeg1(euler.roll), fmtDeg1(euler.pitch), fmtDeg1(euler.yaw)];
+      for (let i = 0; i < 6; i += 1) {
+        const node = targetValEls[i];
+        if (node) node.textContent = values[i];
+      }
+    };
+    const syncActualReadout = (sample) => {
+      const values = [fmt3(sample.rel.x), fmt3(sample.rel.y), fmt3(sample.rel.z), fmtDeg1(sample.euler.roll), fmtDeg1(sample.euler.pitch), fmtDeg1(sample.euler.yaw)];
+      for (let i = 0; i < 6; i += 1) {
+        const node = actualValEls[i];
+        if (node) node.textContent = values[i];
+      }
+    };
+    const syncJoints = () => {
+      if (!jointsEl) return;
+      jointsEl.textContent = '关节角（°）：' + sliders.map((s, i) => s.short + ' ' + fmtDeg1(R2D * state[i]) + '°').join(' / ');
+    };
+    const syncSolveReadout = (res) => {
+      if (!solveOut) return;
+      const status = res.converged ? '已收敛' : '未收敛（目标可能不可达）';
+      const posMm = (res.posErr * 1000).toFixed(1);
+      const rotDeg = (res.rotErr * R2D).toFixed(2);
+      solveOut.textContent = '迭代 ' + res.iters + ' 次 · 剩余误差 ' + posMm + ' mm / ' + rotDeg + '° · ' + status;
+    };
+    const syncTargetSliders = (target) => {
+      const euler = eulerZYXDeg(target.R);
+      const p = target.p;
+      const ang = [euler.roll, euler.pitch, euler.yaw];
+      p.forEach((v, i) => {
+        if (posInputs[i] instanceof HTMLInputElement) posInputs[i].value = v.toFixed(3);
+        if (posValEls[i]) posValEls[i].textContent = fmt3(v) + ' m';
+      });
+      ang.forEach((v, i) => {
+        if (angInputs[i] instanceof HTMLInputElement) angInputs[i].value = v.toFixed(1);
+        if (angValEls[i]) angValEls[i].textContent = fmtDeg1(v) + '°';
+      });
+    };
+
+    const refresh = (res, record) => {
+      if (!robot || !endLink || !torsoLink) return;
+      applyJoints();
+      const sample = readActualTorso();
+      if (sample) {
+        syncActualReadout(sample);
+        demo.dataset.endPos = fmt3(sample.rel.x) + ',' + fmt3(sample.rel.y) + ',' + fmt3(sample.rel.z);
+        if (record) pushTrail(sample.world);
+      }
+      if (res) syncSolveReadout(res);
+      syncJoints();
+      syncTrailGeometry();
+      scheduleRender();
+    };
+
+    const ikTick = () => {
+      ikFrame = 0;
+      if (!robot || !targetObject) return;
+      const target = targetPoseInTorso();
+      if (!target) return;
+      const lambda = lambdaInput instanceof HTMLInputElement ? Number(lambdaInput.value) : 0.01;
+      const steps = stepsInput instanceof HTMLInputElement ? Number(stepsInput.value) : 12;
+      const res = solveOnce(state, target.p, target.R, lambda, steps);
+      refresh(res, true);
+      solveFramesLeft -= 1;
+      if (!res.converged && solveFramesLeft > 0) ikFrame = requestAnimationFrame(ikTick);
+    };
+    const requestSolve = (frames) => {
+      solveFramesLeft = Math.max(solveFramesLeft, frames);
+      if (ikFrame) return;
+      ikFrame = requestAnimationFrame(ikTick);
+    };
+    const onTargetChanged = () => {
+      const target = targetPoseInTorso();
+      if (!target) return;
+      syncTargetReadout(target);
+      requestSolve(IK_MAX_SOLVE_FRAMES);
+    };
+
+    const onFallbackInput = () => {
+      const p = posKeys.map((k, i) => (posInputs[i] instanceof HTMLInputElement ? Number(posInputs[i].value) : 0));
+      const R = rpyMat(
+        (angInputs[0] instanceof HTMLInputElement ? Number(angInputs[0].value) : 0) * D2R,
+        (angInputs[1] instanceof HTMLInputElement ? Number(angInputs[1].value) : 0) * D2R,
+        (angInputs[2] instanceof HTMLInputElement ? Number(angInputs[2].value) : 0) * D2R,
+      );
+      setTargetFromTorso(p, R);
+      syncTargetReadout({ p: p, R: R });
+      syncTargetSliders({ p: p, R: R });
+      requestSolve(IK_MAX_SOLVE_FRAMES);
+    };
+
+    const onReset = () => {
+      for (let i = 0; i < chain.length; i += 1) state[i] = chain[i].def;
+      state[6] = 0;
+      endTrail.length = 0;
+      setTargetFromTorso(DEF_POSE.p, DEF_POSE.R);
+      syncTargetReadout(DEF_POSE);
+      syncTargetSliders(DEF_POSE);
+      const res = solveOnce(state, DEF_POSE.p, DEF_POSE.R, lambdaInput instanceof HTMLInputElement ? Number(lambdaInput.value) : 0.01, 1);
+      res.iters = 0;
+      refresh(res, false);
+    };
+
+    const dispose = () => {
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      if (ikFrame) cancelAnimationFrame(ikFrame);
+      animationFrame = 0;
+      ikFrame = 0;
+      resizeObserver?.disconnect();
+      themeObserver?.disconnect();
+      if (mediaQuery) mediaQuery.removeEventListener?.('change', applyTheme);
+      if (modelGroup) {
+        modelGroup.traverse((object) => {
+          if (object.isMesh) {
+            object.geometry?.dispose();
+            const materials = Array.isArray(object.material) ? object.material : [object.material];
+            materials.forEach((material) => {
+              material?.map?.dispose();
+              material?.dispose();
+            });
+          }
+        });
+      }
+      if (targetObject) {
+        targetObject.traverse((object) => {
+          if (object.geometry) object.geometry.dispose();
+          if (object.material) {
+            const materials = Array.isArray(object.material) ? object.material : [object.material];
+            materials.forEach((material) => material?.dispose());
+          }
+        });
+      }
+      if (endHelper) { endHelper.geometry?.dispose(); endHelper.material?.dispose(); }
+      if (trailGeom) trailGeom.dispose();
+      if (trailMat) trailMat.dispose();
+      if (grid) { grid.geometry?.dispose(); grid.material?.dispose(); }
+      transform?.dispose();
+      controls?.dispose();
+      renderer?.dispose();
+      if (renderer && renderer.domElement && renderer.domElement.parentNode) {
+        renderer.domElement.parentNode.removeChild(renderer.domElement);
+      }
+    };
+
+    const load = async () => {
+      try {
+        setState('loading', '加载 Three.js 与 URDF 解析器');
+        const [THREE, orbitModule, urdfModule] = await Promise.all([
+          import('three'),
+          import('three/examples/jsm/controls/OrbitControls.js'),
+          import('urdf-loader'),
+        ]);
+        const { OrbitControls } = orbitModule;
+        const URDFLoader = urdfModule.default;
+        THREE_NS = THREE;
+        try {
+          const tcModule = await import('three/examples/jsm/controls/TransformControls.js');
+          TransformControlsCtor = tcModule.TransformControls;
+        } catch (tcError) {
+          TransformControlsCtor = null;
+          console.warn('G1 IK：TransformControls 不可用，降级为滑块。', tcError);
+        }
+
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(38, 1, 0.01, 50);
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.setClearColor(0x000000, 0);
+        renderer.domElement.style.touchAction = 'none';
+        viewport.appendChild(renderer.domElement);
+
+        const hemisphere = new THREE.HemisphereLight(0xffffff, 0x46505f, 2.3);
+        const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);
+        const fillLight = new THREE.DirectionalLight(0xbdd7ff, 0.9);
+        keyLight.position.set(2.5, 4, 3);
+        fillLight.position.set(-3, 1.5, -2);
+        scene.add(hemisphere, keyLight, fillLight);
+
+        buildGrid();
+
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.minDistance = 0.15;
+        controls.maxDistance = 4;
+        controls.addEventListener('change', scheduleRender);
+        controls.listenToKeyEvents(viewport);
+
+        const manager = new THREE.LoadingManager();
+        let resolveResources = () => {};
+        const resourcesLoaded = new Promise((resolve) => { resolveResources = resolve; });
+        manager.onProgress = (_url, loaded, total) => {
+          setState('loading', total > 0 ? '加载模型网格 ' + loaded + '/' + total : '加载模型网格');
+        };
+        manager.onError = (url) => {
+          meshErrors += 1;
+          console.warn('G1 模型网格加载失败：' + url);
+        };
+        manager.onLoad = () => { resolveResources(); scheduleRender(); };
+
+        const loader = new URDFLoader(manager);
+        loader.workingPath = urdfUrl.slice(0, urdfUrl.lastIndexOf('/') + 1);
+        loader.fetchOptions = { cache: 'force-cache' };
+
+        setState('loading', '解析 URDF 结构');
+        const loadedRobot = await loader.loadAsync(urdfUrl);
+        robot = loadedRobot;
+        robot.rotation.x = -Math.PI / 2;
+        modelGroup = new THREE.Group();
+        modelGroup.add(robot);
+        scene.add(modelGroup);
+
+        Object.keys(robot.links).forEach((name) => {
+          const link = robot.links[name];
+          if (link) link.visible = IK_VISIBLE_LINKS.has(name);
+        });
+        endLink = robot.links[IK_END_LINK] || null;
+        torsoLink = robot.links[IK_TORSO_LINK] || null;
+        robot.updateMatrixWorld(true);
+
+        // 世界空间虚线轨迹：记录“实际末端”走过的路径
+        trailPositions = new Float32Array(IK_TRAIL_MAX * 3);
+        trailGeom = new THREE.BufferGeometry();
+        trailAttr = new THREE.BufferAttribute(trailPositions, 3);
+        trailAttr.setUsage(THREE.DynamicDrawUsage);
+        trailGeom.setAttribute('position', trailAttr);
+        trailGeom.setDrawRange(0, 0);
+        trailMat = new THREE.LineDashedMaterial({
+          color: resolveCssColor('var(--sl-color-accent)', '#3369ff') || 0x3369ff,
+          dashSize: 0.012,
+          gapSize: 0.009,
+          transparent: true,
+          opacity: 0.95,
+        });
+        trailLine = new THREE.Line(trailGeom, trailMat);
+        trailLine.frustumCulled = false;
+        trailLine.visible = false;
+        scene.add(trailLine);
+
+        // 实际末端坐标架
+        if (endLink) {
+          endHelper = new THREE.AxesHelper(0.08);
+          if (endHelper.material) {
+            endHelper.material.depthTest = false;
+            endHelper.material.transparent = true;
+          }
+          endHelper.renderOrder = 20;
+          endHelper.frustumCulled = false;
+          endLink.add(endHelper);
+        }
+
+        // 目标坐标架（0.1 m AxesHelper + 小球）与 TargetControls
+        targetObject = new THREE.Object3D();
+        const targetAxes = new THREE.AxesHelper(0.1);
+        if (targetAxes.material) {
+          targetAxes.material.depthTest = false;
+          targetAxes.material.transparent = true;
+        }
+        targetAxes.renderOrder = 30;
+        targetAxes.frustumCulled = false;
+        targetObject.add(targetAxes);
+        const dotGeom = new THREE.SphereGeometry(0.012, 20, 14);
+        const dotMat = new THREE.MeshBasicMaterial({
+          color: resolveCssColor('var(--ik-target)', '#b45309') || 0xb45309,
+          depthTest: false,
+          transparent: true,
+          opacity: 0.95,
+        });
+        targetDot = new THREE.Mesh(dotGeom, dotMat);
+        targetDot.renderOrder = 30;
+        targetObject.add(targetDot);
+        scene.add(targetObject);
+        setTargetFromTorso(DEF_POSE.p, DEF_POSE.R);
+        syncTargetReadout(DEF_POSE);
+        syncTargetSliders(DEF_POSE);
+
+        if (TransformControlsCtor && camera && renderer) {
+          transform = new TransformControlsCtor(camera, renderer.domElement);
+          transform.size = 0.7;
+          transform.setMode('translate');
+          scene.add(transform.getHelper());
+          transform.addEventListener('dragging-changed', (event) => {
+            if (controls) controls.enabled = !event.value;
+            if (!event.value) requestSolve(IK_MAX_SOLVE_FRAMES);
+          });
+          transform.addEventListener('change', scheduleRender);
+          transform.addEventListener('objectChange', onTargetChanged);
+          transform.attach(targetObject);
+          demo.dataset.ikFallback = 'false';
+        } else {
+          demo.dataset.ikFallback = 'true';
+          if (fallbackNote) fallbackNote.textContent = 'TransformControls 不可用，已降级为滑块控制目标';
+        }
+
+        if (torsoLink) {
+          const torsoWorld = new THREE.Vector3();
+          torsoLink.getWorldPosition(torsoWorld);
+          gridY = torsoWorld.y;
+        }
+        buildGrid();
+
+        await Promise.race([
+          resourcesLoaded,
+          new Promise((resolve) => { setTimeout(resolve, IK_RESOURCE_TIMEOUT); }),
+        ]);
+
+        let meshCount = 0;
+        modelGroup.traverse((object) => { if (object.isMesh) meshCount += 1; });
+        demo.dataset.linkCount = String(Object.keys(robot.links).length);
+        demo.dataset.jointCount = String(Object.keys(robot.joints).length);
+        demo.dataset.meshCount = String(meshCount);
+        demo.dataset.meshErrors = String(meshErrors);
+
+        resizeObserver = new ResizeObserver(resize);
+        resizeObserver.observe(viewport);
+        themeObserver = new MutationObserver(applyTheme);
+        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        if (window.matchMedia) {
+          mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+          mediaQuery.addEventListener('change', applyTheme);
+        }
+
+        resetBtn.disabled = false;
+        resetBtn.addEventListener('click', onReset);
+        modeBtns.forEach((btn) => {
+          btn.addEventListener('click', () => {
+            if (transform && btn.dataset.ikMode) transform.setMode(btn.dataset.ikMode);
+            modeBtns.forEach((b) => b.classList.toggle('ik-btn-active', b === btn));
+          });
+        });
+        if (lambdaInput instanceof HTMLInputElement) {
+          lambdaInput.addEventListener('input', () => {
+            if (lambdaVal) lambdaVal.textContent = Number(lambdaInput.value).toFixed(3);
+            requestSolve(IK_MAX_SOLVE_FRAMES);
+          });
+        }
+        if (stepsInput instanceof HTMLInputElement) {
+          stepsInput.addEventListener('input', () => {
+            if (stepsVal) stepsVal.textContent = String(Math.round(Number(stepsInput.value)));
+            requestSolve(IK_MAX_SOLVE_FRAMES);
+          });
+        }
+        posInputs.forEach((input) => { if (input) input.addEventListener('input', onFallbackInput); });
+        angInputs.forEach((input) => { if (input) input.addEventListener('input', onFallbackInput); });
+
+        if (meshErrors > 0) {
+          setState('warn', '模型网格未同步（' + meshErrors + ' 个 STL 未能加载），已显示的部件仍可交互');
+        } else {
+          setState('ready', '');
+        }
+
+        resize();
+        fitCamera();
+        onReset();
+        applyTheme();
+      } catch (error) {
+        console.error('G1 左臂逆运动学演示渲染失败：', error);
+        setState('error', '模型加载失败（WebGL 不可用，或 URDF / 网格无法读取）');
+        dispose();
+      }
+    };
+
+    const start = () => {
+      if (started) return;
+      started = true;
+      load();
+    };
+    if ('IntersectionObserver' in window) {
+      const loadObserver = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) {
+            loadObserver.disconnect();
+            start();
+          }
+        },
+        { rootMargin: '240px' },
+      );
+      loadObserver.observe(demo);
+    } else {
+      start();
+    }
+    document.addEventListener('visibilitychange', () => {
+      pageVisible = document.visibilityState === 'visible';
+      if (pageVisible) scheduleRender();
+    });
+  });
+</script>
+
+<!-- 结构与正运动学演示同构，类名统一 ik- 前缀，全局作用域以免动态 canvas / 数字样式被 scoped 过滤。 -->
+<style is:global>
+  .ik-demo {
+    --ik-target: light-dark(#b45309, #fbbf24);
+    margin: 1.5rem 0;
+  }
+
+  .ik-3d {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    min-height: 300px;
+    overflow: hidden;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 8px;
+    background: var(--sl-color-gray-7, var(--sl-color-gray-6));
+    touch-action: none;
+  }
+  .ik-3d canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    touch-action: none;
+  }
+  .ik-loading {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    padding: 1rem;
+    color: var(--sl-color-gray-2);
+    font-size: 0.9375rem;
+    text-align: center;
+    background: color-mix(in srgb, var(--sl-color-bg) 72%, transparent);
+    pointer-events: none;
+  }
+  .ik-spinner {
+    flex: 0 0 auto;
+    width: 1.15rem;
+    height: 1.15rem;
+    border: 2px solid var(--sl-color-gray-4);
+    border-top-color: var(--sl-color-accent);
+    border-radius: 50%;
+    animation: ik-spin 0.9s linear infinite;
+  }
+  @keyframes ik-spin {
+    to { transform: rotate(360deg); }
+  }
+  .ik-demo[data-state='idle'] .ik-spinner,
+  .ik-demo[data-state='error'] .ik-spinner,
+  .ik-demo[data-state='warn'] .ik-spinner {
+    display: none;
+  }
+  .ik-demo[data-state='ready'] .ik-loading {
+    display: none;
+  }
+  .ik-demo[data-state='warn'] .ik-loading {
+    align-items: flex-start;
+    background: transparent;
+  }
+  .ik-demo[data-state='warn'] .ik-status {
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.7rem;
+    border: 1px solid var(--sl-color-gray-4);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--sl-color-bg) 82%, transparent);
+    font-size: 0.78rem;
+  }
+
+  /* 控件：统一 margin: 0 */
+  .ik-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: 900px;
+    margin: 0.55rem auto 0;
+  }
+  .ik-row { display: flex; align-items: center; gap: 0.8rem; margin: 0; }
+  .ik-row-title { flex: 0 0 4rem; margin: 0; color: var(--sl-color-gray-2); font-size: 0.8125rem; }
+  .ik-hint { margin: 0; flex: 0 0 auto; color: var(--sl-color-gray-3); font-size: 0.75rem; white-space: nowrap; }
+  .ik-slider-label { display: flex; flex: 1 1 0; min-width: 0; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.8125rem; color: var(--sl-color-gray-2); white-space: nowrap; }
+  .ik-range { flex: 1 1 auto; width: auto; min-width: 3.5rem; margin: 0; accent-color: var(--sl-color-accent); }
+  .ik-val { flex: 0 0 4rem; margin: 0; text-align: right; color: var(--sl-color-accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .ik-btn { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.85rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
+  .ik-btn:disabled { cursor: not-allowed; opacity: 0.55; }
+  .ik-btn:hover:not(:disabled) { border-color: var(--sl-color-accent); color: var(--sl-color-accent-high, var(--sl-color-accent)); }
+  .ik-btn-active { border-color: var(--sl-color-accent); color: var(--sl-color-accent-high, var(--sl-color-accent)); background: color-mix(in srgb, var(--sl-color-accent) 14%, var(--sl-color-bg)); }
+  .ik-demo[data-ik-fallback='false'] [data-ik-fallback-row] { display: none; }
+  .ik-demo[data-ik-fallback='true'] [data-ik-tc-row] { display: none; }
+
+  /* 读数：目标 / 实际两套「位置 + ZYX 欧拉角」两行三列，列宽共用保证上下对齐 */
+  .ik-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; line-height: 1.7; }
+  .ik-pose-caption { display: block; margin: 0.45rem 0 0.1rem; color: var(--sl-color-gray-2); font-size: 0.8125rem; line-height: 1.4; }
+  .ik-pose {
+    display: grid;
+    grid-template-columns: 3rem repeat(3, minmax(7rem, 1fr));
+    grid-auto-rows: 1.7rem;
+    row-gap: 0.35rem;
+    column-gap: 0.75rem;
+    align-items: center;
+    height: 3.75rem;
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.7;
+  }
+  .ik-pose-head { margin: 0; color: var(--sl-color-gray-2); font-size: 0.8125rem; white-space: nowrap; }
+  .ik-pose-cell { display: flex; align-items: baseline; gap: 0.3rem; min-width: 0; margin: 0; white-space: nowrap; }
+  .ik-pose-k { flex: 0 0 auto; margin: 0; color: var(--sl-color-gray-2); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8125rem; }
+  .ik-pose-v { flex: 1 1 auto; min-width: 3.2rem; margin: 0; text-align: right; color: var(--sl-color-accent); font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+  .ik-pose-u { flex: 0 0 1rem; margin: 0; color: var(--sl-color-gray-2); font-size: 0.75rem; }
+  .ik-out {
+    display: block;
+    white-space: nowrap;
+    overflow-x: auto;
+    height: 1.7em;
+    line-height: 1.7;
+    margin: 0.45rem 0 0;
+    color: var(--sl-color-accent);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .ik-joints {
+    display: block;
+    white-space: nowrap;
+    overflow-x: auto;
+    height: 1.7em;
+    line-height: 1.7;
+    margin: 0.15rem 0 0;
+    color: var(--sl-color-gray-2);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ik-demo figcaption {
+    max-width: 900px;
+    margin: 0.6rem auto 0;
+    color: var(--sl-color-gray-2);
+    font-size: 0.9rem;
+    line-height: 1.65;
+  }
+
+  @media (max-width: 720px) {
+    .ik-row { flex-wrap: wrap; }
+    .ik-row-title { flex-basis: 100%; }
+    .ik-slider-label { flex: 1 1 8rem; }
+    .ik-pose {
+      grid-template-columns: 2.6rem repeat(3, minmax(6.5rem, 1fr));
+      column-gap: 0.4rem;
+      height: auto;
+      min-height: 3.75rem;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+  }
+</style>
