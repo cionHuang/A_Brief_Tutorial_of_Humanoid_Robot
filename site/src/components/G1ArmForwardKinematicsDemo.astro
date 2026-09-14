@@ -13,7 +13,9 @@
  * 逐段更新；“复位”清空。末端还挂了一个 0.08 m 的 AxesHelper，随 FK 自动移动/转向。
  *
  * 读数：位置 =（末端世界坐标 − torso_link 世界坐标）再乘 torso_link 世界旋转的逆，
- * 得到“末端相对躯干”的位置，与旧版 SVG 的数值含义一致。
+ * 得到“末端相对躯干”的位置，与旧版 SVG 的数值含义一致。读数区还给出末端位姿
+ * T_end（相对躯干）的 4×4 齐次变换矩阵：左上 3×3 = R(q_t^{-1}·q_e)，右上 3×1 = 该位置 p，
+ * 末行 [0 0 0 1]；16 个数保留 2 位小数，与 4.1 节齐次变换演示同一格式。
  *
  * 关节链（父 → 子）与 URDF 数值（origin 单位 m / rad，limit 单位 rad，axis 为本体系）：
  *
@@ -108,6 +110,11 @@ const fmtDeg1 = (v) => {
   const r = Math.abs(v) < 0.05 ? 0 : v;
   return (r < 0 ? '−' : '') + Math.abs(r).toFixed(1);
 };
+// 与 4.1 节 HomogeneousTransformDemo 同一格式：2 位小数，负号用 U+2212
+const fmt2 = (v) => {
+  const r = Math.abs(v) < 0.005 ? 0 : v;
+  return (r < 0 ? '−' : '') + Math.abs(r).toFixed(2);
+};
 
 // ── 关节链（数值逐字取自 g1_29dof.urdf；def / lo / hi 单位 rad） ──────────────
 const CHAIN = [
@@ -126,6 +133,21 @@ const DEF_END = chainFK(DEF_Q)[6];
 const DEF_POS_TEXT = '末端相对躯干：x = ' + fmt3(DEF_END.p[0]) + ' m，y = ' + fmt3(DEF_END.p[1]) + ' m，z = ' + fmt3(DEF_END.p[2]) + ' m';
 const DEF_NOTE_TEXT = SLIDERS.map((s, i) => s.short + ' ' + fmtDeg1(R2D * DEF_Q[i]) + '°').join('，')
   + '：这就是一条串联链的 T 相乘结果';
+
+// 默认姿态的末端位姿 T_end（相对躯干）：左上 3×3 = R，右上 3×1 = p，末行 [0 0 0 1]。
+// 与 three.js 侧 R(q_t^{-1}·q_e) 等价（chainFK 的 R 就是躯干系下末端系的旋转）。
+const DEF_M = [
+  [DEF_END.R[0][0], DEF_END.R[0][1], DEF_END.R[0][2], DEF_END.p[0]],
+  [DEF_END.R[1][0], DEF_END.R[1][1], DEF_END.R[1][2], DEF_END.p[1]],
+  [DEF_END.R[2][0], DEF_END.R[2][1], DEF_END.R[2][2], DEF_END.p[2]],
+  [0, 0, 0, 1],
+];
+const DEF_M_CELLS = DEF_M.flat().map((value, i) => ({
+  i: i,
+  row: Math.floor(i / 4),
+  col: i % 4,
+  text: fmt2(value),
+}));
 
 const baseUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
@@ -178,12 +200,25 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
   </div>
 
   <div class="g1fk-readout fk-readout">
-    <output class="fk-out fk-out-pos" aria-live="polite">{DEF_POS_TEXT}</output>
-    <output class="fk-out fk-out-note" aria-live="polite">{DEF_NOTE_TEXT}</output>
+    <div class="fk-readout-lines">
+      <output class="fk-out fk-out-pos" aria-live="polite">{DEF_POS_TEXT}</output>
+      <output class="fk-out fk-out-note" aria-live="polite">{DEF_NOTE_TEXT}</output>
+    </div>
+    <div class="fk-matrix" data-fk-matrix>
+      <span class="fk-matrix-title">末端位姿 T_end（相对躯干）</span>
+      <div class="fk-matrix-body">
+        <span class="fk-matrix-eq">T_end =</span>
+        <div class="fk-matrix-grid" role="group" aria-label="末端位姿 T_end 相对躯干的 4×4 齐次变换矩阵：左上 3×3 是旋转 R，右上 3×1 是位置 p，最后一行恒为 0 0 0 1">
+          {DEF_M_CELLS.map((cell) => (
+            <span class={cell.row === 3 ? 'fk-m fk-m-row' : cell.col === 3 ? 'fk-m fk-m-pos' : 'fk-m fk-m-rot'} data-fk-m={cell.i}>{cell.text}</span>
+          ))}
+        </div>
+      </div>
+    </div>
   </div>
 
   <figcaption>
-    左臂由仓库里的 G1 官方 URDF 与 STL 网格实时渲染：拖六个关节角滑块，网格会立刻更新，末端坐标架随 FK 移动与转向，末端走过的位置在空间中留下虚线轨迹（最多 240 个采样点），“复位”清空轨迹。读数为末端相对躯干的位置，由“末端世界坐标 − 躯干世界坐标”再乘躯干逆旋转得到。
+    左臂由仓库里的 G1 官方 URDF 与 STL 网格实时渲染：拖六个关节角滑块，网格会立刻更新，末端坐标架随 FK 移动与转向，末端走过的位置在空间中留下虚线轨迹（最多 240 个采样点），“复位”清空轨迹。读数为末端相对躯干的位置，由“末端世界坐标 − 躯干世界坐标”再乘躯干逆旋转得到；右侧给出末端位姿的齐次变换矩阵（左上 3×3 是旋转 R，右上 3×1 是位置 p，末行恒为 [0 0 0 1]），16 个数字随关节角同步刷新。
   </figcaption>
 </figure>
 
@@ -263,6 +298,10 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
       const r = Math.abs(v) < 0.05 ? 0 : v;
       return (r < 0 ? '−' : '') + Math.abs(r).toFixed(1);
     };
+    const fmt2 = (v) => {
+      const r = Math.abs(v) < 0.005 ? 0 : v;
+      return (r < 0 ? '−' : '') + Math.abs(r).toFixed(2);
+    };
 
     const rangeEls = {};
     const valEls = {};
@@ -270,6 +309,7 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
       rangeEls[s.name] = demo.querySelector('[data-joint="' + s.name + '"]');
       valEls[s.name] = demo.querySelector('[data-val="' + s.name + '"]');
     });
+    const mEls = Array.from({ length: 16 }, (_, i) => demo.querySelector('[data-fk-m="' + i + '"]'));
 
     let started = false;
     let THREE_NS = null;
@@ -415,18 +455,34 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
       robot.updateMatrixWorld(true);
     };
 
-    // 读数：把（末端 − 躯干）变换到躯干本体系，与旧版 SVG 的数值含义一致。
+    // 读数：位置 =（末端 − 躯干）变换到躯干本体系；旋转 = R(q_t^{-1} · q_e)。
+    // 两者合起来组成末端位姿 T_end（相对躯干）的 4×4 齐次变换矩阵。
     const readEndTorso = () => {
       if (!endLink || !torsoLink || !THREE_NS) return null;
       const THREE = THREE_NS;
       const world = new THREE.Vector3();
       const torsoWorld = new THREE.Vector3();
-      const quaternion = new THREE.Quaternion();
+      const torsoQuat = new THREE.Quaternion();
+      const endQuat = new THREE.Quaternion();
       endLink.getWorldPosition(world);
       torsoLink.getWorldPosition(torsoWorld);
-      torsoLink.getWorldQuaternion(quaternion).invert();
-      const rel = world.clone().sub(torsoWorld).applyQuaternion(quaternion);
-      return { world: world, rel: rel };
+      torsoLink.getWorldQuaternion(torsoQuat);
+      endLink.getWorldQuaternion(endQuat);
+
+      // 末端相对躯干的旋转 R = R(q_t^{-1} · q_e)
+      const torsoQuatInv = torsoQuat.clone().invert();
+      const relQuat = torsoQuatInv.clone().multiply(endQuat);
+      const relRot = new THREE.Matrix4().makeRotationFromQuaternion(relQuat);
+      const e = relRot.elements; // 列优先存储：R[r][c] = e[c * 4 + r]
+
+      const rel = world.clone().sub(torsoWorld).applyQuaternion(torsoQuatInv);
+      const matrix = [
+        [e[0], e[4], e[8], rel.x],
+        [e[1], e[5], e[9], rel.y],
+        [e[2], e[6], e[10], rel.z],
+        [0, 0, 0, 1],
+      ];
+      return { world: world, rel: rel, matrix: matrix };
     };
 
     const pushTrail = (world) => {
@@ -465,6 +521,17 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
         + '：这就是一条串联链的 T 相乘结果';
     };
 
+    // 16 个矩阵元素逐项刷新（2 位小数，与 4.1 齐次变换演示同一格式）
+    const updateMatrix = (matrix) => {
+      if (!mEls.length || !mEls[0]) return;
+      for (let row = 0; row < 4; row += 1) {
+        for (let col = 0; col < 4; col += 1) {
+          const node = mEls[row * 4 + col];
+          if (node) node.textContent = fmt2(matrix[row][col]);
+        }
+      }
+    };
+
     const updateScene = (record) => {
       if (!robot || !endLink || !torsoLink) {
         updateSliderLabels();
@@ -474,6 +541,7 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
       const sample = readEndTorso();
       if (sample) {
         updateReadout(sample.rel);
+        updateMatrix(sample.matrix);
         demo.dataset.endPos = fmt3(sample.rel.x) + ',' + fmt3(sample.rel.y) + ',' + fmt3(sample.rel.z);
         if (record) pushTrail(sample.world);
       }
@@ -771,6 +839,7 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
 <!-- 源码面板 / 画布等由 JS 动态创建，样式统一用全局作用域（类名带 fk- / g1fk- 前缀，不会冲突）。 -->
 <style is:global>
   .fk-demo {
+    --fk-pos: light-dark(#0d9488, #2dd4bf);
     margin: 1.5rem 0;
   }
 
@@ -867,11 +936,63 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
   .g1fk-btn:disabled { cursor: not-allowed; opacity: 0.55; }
   .g1fk-btn:hover:not(:disabled) { border-color: var(--sl-color-accent); color: var(--sl-color-accent-high, var(--sl-color-accent)); }
 
-  /* 两条定高读数 */
-  .g1fk-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; line-height: 1.7; }
+  /* 两条定高读数 + 末端位姿 4×4 矩阵（宽屏在读数右侧，窄屏自动换到下方） */
+  .g1fk-readout {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.4rem 1.2rem;
+    max-width: 900px;
+    margin: 0.5rem auto 0;
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+  .fk-readout-lines { flex: 1 1 20rem; min-width: 0; margin: 0; }
   .fk-out { display: block; white-space: nowrap; overflow-x: auto; height: 1.7em; line-height: 1.7; margin: 0; }
   .fk-out-pos { color: var(--sl-color-accent); font-weight: 600; }
   .fk-out-note { color: var(--sl-color-gray-2); }
+
+  /* 末端位姿 T_end：4 列 grid 对齐；行高与容器高度都写死，数字变化不会上下/左右抖动 */
+  .fk-matrix { flex: 0 0 auto; margin: 0; }
+  .fk-matrix-title { display: block; margin: 0 0 0.15rem; color: var(--sl-color-gray-2); font-size: 0.8125rem; line-height: 1.4; }
+  .fk-matrix-body { display: flex; align-items: center; gap: 0.5rem; height: 6.85rem; margin: 0; }
+  .fk-matrix-eq { margin: 0; color: var(--sl-color-text); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85rem; white-space: nowrap; }
+  .fk-matrix-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(4, 3.7rem);
+    grid-auto-rows: 1.6rem;
+    row-gap: 0.15rem;
+    column-gap: 0.5rem;
+    padding: 0 0.55rem;
+    margin: 0;
+  }
+  /* 绝对值定位的伪元素不会成为 grid item，只用来画两侧方括号 */
+  .fk-matrix-grid::before,
+  .fk-matrix-grid::after {
+    content: '';
+    position: absolute;
+    top: -0.05rem;
+    bottom: -0.05rem;
+    width: 0.42rem;
+    border: 1.5px solid var(--sl-color-gray-3);
+  }
+  .fk-matrix-grid::before { left: 0; border-right: 0; }
+  .fk-matrix-grid::after { right: 0; border-left: 0; }
+  .fk-m {
+    display: block;
+    height: 1.6rem;
+    line-height: 1.6rem;
+    margin: 0;
+    text-align: center;
+    white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .fk-m-rot { color: var(--sl-color-accent); }
+  .fk-m-pos { color: var(--fk-pos); font-weight: 600; }
+  .fk-m-row { color: var(--sl-color-gray-2); }
 
   .fk-demo figcaption {
     max-width: 900px;
