@@ -331,6 +331,18 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
       const r = Math.abs(v) < 0.05 ? 0 : v;
       return (r < 0 ? '−' : '') + Math.abs(r).toFixed(1);
     };
+    // 与 4.1 一致的 ZYX 欧拉角（度）：R = Rz(yaw)·Ry(pitch)·Rx(roll)
+    const eulerZYXDeg = (R) => {
+      const sy = Math.hypot(R[0][0], R[1][0]);
+      if (sy < 1e-9) {
+        return { roll: 0, pitch: Math.atan2(-R[2][0], sy) * R2D, yaw: Math.atan2(-R[0][1], R[1][1]) * R2D };
+      }
+      return {
+        roll: Math.atan2(R[2][1], R[2][2]) * R2D,
+        pitch: Math.atan2(-R[2][0], sy) * R2D,
+        yaw: Math.atan2(R[1][0], R[0][0]) * R2D,
+      };
+    };
 
     // ── 纯数学：torso 系正运动学 + 旋转向量 + DLS ─────────────────────────────
     const I3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
