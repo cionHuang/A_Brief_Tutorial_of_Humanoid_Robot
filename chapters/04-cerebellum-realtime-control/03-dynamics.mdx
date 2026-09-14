@@ -1,6 +1,6 @@
 # 4.3 动力学
 
-import GravityCompensationDemo from '../../../components/GravityCompensationDemo.astro';
+import G1ArmGravityCompensationDemo from '../../../components/G1ArmGravityCompensationDemo.astro';
 
 ## 先看一个现场问题
 
@@ -92,9 +92,9 @@ $$
 
 > **一句话听懂**：重力补偿就是“先把重力这份负担替电机扛掉”：站着不动时电机本来要用位置误差硬撑，补上之后电流小很多。但补多少要算准，质量、姿态或载荷估错，反而会把机器人往错的方向推。
 
-下面拖动髋 / 膝 / 踝三个角度，看这三个关节各自需要多大的重力力矩；再试试关掉重力补偿：
+下面用真实的 G1 左臂模型演示（无灵巧手，末端为 29 DoF 模型自带的橡胶手）：拖肩 3 个、肘、腕 2 个共 5 个滑块设定目标姿态，看各关节需要多大的重力力矩；再关掉重力补偿，看手臂怎么下垂：
 
-<GravityCompensationDemo />
+<G1ArmGravityCompensationDemo />
 
 ## 接触力如何进入动力学
 
