@@ -24,7 +24,11 @@
 
 ### 关节链与变换相乘
 
-正运动学（Forward Kinematics, FK）回答的是：给定关节变量 $\boldsymbol{q}$，末端坐标系相对基座或世界坐标系的位姿是什么？对一条串联链，可以把每个关节的局部变换依次相乘：
+正运动学（Forward Kinematics, FK）回答的是：
+
+> 给定关节变量 $\boldsymbol{q}$，末端坐标系相对基座或世界坐标系的位姿是什么？
+
+对一条串联链，可以把每个关节的局部变换依次相乘：
 
 $$
 \boldsymbol{T}_{WF}(\boldsymbol{q}) = \boldsymbol{T}_{WP} \boldsymbol{T}_{PL_1}(q_1) \boldsymbol{T}_{L_1L_2}(q_2) \cdots \boldsymbol{T}_{L_nF}(q_n)
