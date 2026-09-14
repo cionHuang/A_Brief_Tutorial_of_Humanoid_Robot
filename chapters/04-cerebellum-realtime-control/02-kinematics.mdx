@@ -1,5 +1,7 @@
 # 4.2 运动学
 
+import G1ArmForwardKinematicsDemo from '../../../components/G1ArmForwardKinematicsDemo.astro';
+
 ## 先看一个现场问题
 
 给 G1 的左脚一个“向前 5 cm、脚尖保持水平”的目标，程序却算出一组关节角，使脚端向侧面偏移；把手端目标再往前推一点，求解器开始输出几百 rad/s 的关节速度，或者直接报告“无解”。机械同学看关节位置没有越限，控制同学却发现目标在下一帧又跳回去了。
@@ -46,19 +48,11 @@ $$
 
 ### G1 的正运动学落点
 
-本手册使用 `robot_descriptions/g1/g1_29dof.xml` 的 G1 无手、腰部可动模型作为主要示例。模型在 `pelvis` 下挂有浮动基座，并沿腿部、腰部和双臂的 body/joint 层级组织几何关系。左腿的一条简化链可以写成：
+本手册使用的 G1 无手、腰部可动模型，把 pelvis、腿、腰和双臂组织成一棵 body/joint 树。沿这条树把局部变换逐段乘起来，就能由关节角算出左脚、手腕或 IMU 安装点在 pelvis 中的位姿。下面用左臂做一次实时正运动学——连杆尺寸和关节限位都取自 G1 的 URDF：
 
-```text
-pelvis
-→ left_hip_pitch_link
-→ left_hip_roll_link
-→ left_hip_yaw_link
-→ left_knee_link
-→ left_ankle_pitch_link
-→ left_ankle_roll_link
-```
+<G1ArmForwardKinematicsDemo />
 
-给定 $\boldsymbol{q}$ 后，FK 可以计算左脚、右脚、手腕或 IMU 安装点在 `pelvis` 或 `World` 中的位姿。若要得到世界坐标中的脚端位置，还必须提供浮动基座位姿 $\boldsymbol{T}_{WP}$；只给 29 个驱动关节角，不能唯一决定机器人在世界中的整体位置和朝向。
+要得到世界坐标中的位置，还必须提供浮动基座位姿 $\boldsymbol{T}_{WP}$：只给 29 个驱动关节角，不能唯一决定机器人在世界中的整体位置和朝向。
 
 ## 逆运动学：从末端目标反求关节变量
 

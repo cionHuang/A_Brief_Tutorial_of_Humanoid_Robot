@@ -1,0 +1,594 @@
+---
+/**
+ * G1 左臂正运动学（Forward Kinematics）交互演示 —— 4.2 节“### G1 的正运动学落点”正文。
+ *
+ * 数据来源：site/public/models/g1/g1_29dof.urdf（Unitree G1 官方 29-DoF 模型，torso_link → 左臂链）。
+ * 关节链（父 → 子）与 URDF 原始数值（origin 单位 m / rad，limit 单位 rad，axis 为本体系）：
+ *
+ *   ① left_shoulder_pitch_joint  (torso_link → left_shoulder_pitch_link)
+ *        origin xyz="0.0039563 0.10022 0.23778"  rpy="0.27931 5.4949E-05 -0.00019159"
+ *        axis  xyz="0 1 0"   limit lower="-3.0892"       upper="2.6704"        （≈ −177.00° / 153.00°）
+ *   ② left_shoulder_roll_joint   (left_shoulder_pitch_link → left_shoulder_roll_link)
+ *        origin xyz="0 0.038 -0.013831"          rpy="-0.27925 0 0"
+ *        axis  xyz="1 0 0"   limit lower="-1.5882"       upper="2.2515"        （≈ −91.00° / 129.00°）
+ *   ③ left_shoulder_yaw_joint    (left_shoulder_roll_link → left_shoulder_yaw_link)
+ *        origin xyz="0 0.00624 -0.1032"          rpy="0 0 0"
+ *        axis  xyz="0 0 1"   limit lower="-2.618"        upper="2.618"         （≈ ±150.00°）
+ *   ④ left_elbow_joint           (left_shoulder_yaw_link → left_elbow_link)
+ *        origin xyz="0.015783 0 -0.080518"       rpy="0 0 0"
+ *        axis  xyz="0 1 0"   limit lower="-1.0472"       upper="2.0944"        （≈ −60.00° / 120.00°）
+ *   ⑤ left_wrist_roll_joint      (left_elbow_link → left_wrist_roll_link)
+ *        origin xyz="0.100 0.00188791 -0.010"    rpy="0 0 0"
+ *        axis  xyz="1 0 0"   limit lower="-1.972222054" upper="1.972222054"   （≈ ±113.00°）
+ *   ⑥ left_wrist_pitch_joint     (left_wrist_roll_link → left_wrist_pitch_link)
+ *        origin xyz="0.038 0 0"                  rpy="0 0 0"
+ *        axis  xyz="0 1 0"   limit lower="-1.614429558" upper="1.614429558"   （≈ ±92.50°）
+ *   ⑦ left_wrist_yaw_joint       (left_wrist_pitch_link → left_wrist_yaw_link，链末端 = 手腕/掌基座)
+ *        origin xyz="0.046 0 0"                  rpy="0 0 0"
+ *        axis  xyz="0 0 1"   limit lower="-1.614429558" upper="1.614429558"   （≈ ±92.50°）
+ *
+ * 正运动学：T_i = T_origin_i · R_axis_i(q_i)，T = ∏_{i=1..7} T_i（前乘，等价于 T ← T · T_i）。
+ *   · T_origin_i = Trans(xyz_i) · RPY(rpy_i)，RPY = Rz(yaw)·Ry(pitch)·Rx(roll)（URDF 固定轴约定）；
+ *   · R_axis_i(q_i) = 绕轴 axis_i 转 q_i（Rodrigues 公式），q_i 一律用弧度；
+ *   · 第 k 个关节坐标系原点 p_k = p_{k-1} + R_{k-1}·xyz_k（平移在父系里表达，与是否含 R_axis 无关），
+ *     旋转 R_k = R_{k-1}·RPY_k·R_axis_k；末端位置取 p_7，姿态取 R_7 的三列（末端坐标架在躯干系中的方向）。
+ *   · 滑块用角度（°），进出公式时 d2r 转弧度；默认姿态 q = [0°, 20°, 0°, 40°, 0°, 0°, 0°]（⑦ 腕 yaw 固定 0°，
+ *     只给 6 个滑块：肩 pitch / 肩 roll / 肩 yaw / 肘 / 腕 roll / 腕 pitch）。
+ *   · 注意 URDF 的零位不是“手臂伸直”：q=0 时肩 yaw→肘 的 origin 为 (0.0158,0,−0.0805)（上臂大致朝下），
+ *     肘→腕 roll 的 origin 为 (0.100,0,−0.010)（前臂朝 +x），两者约成 90°（肘部呈 L 形）。因此“伸直”
+ *     按钮把各腕角调到 0，再在肘 limit 内按 1° 扫描，取使 |末端 − 肩| 最大的肘角（默认肩姿下 ≈ +90°，
+ *     而非 0°），即真正的“最长伸展”。
+ *   · “复位”回默认姿态；“伸直”只改肘与腕，肩的三个角保持不动。
+ *
+ * 投影：等距投影 ax=(0.866, 0.5)（x 基）、ay=(−0.866, 0.5)（y 基）、z 向上 (0, −1)：
+ *   sx = O.x + 300·(0.866·x − 0.866·y)，sy = O.y + 300·(0.5·x + 0.5·y − z)，比例 300 px/m。
+ *   躯干原点屏幕位置 O = (320, 298)；左区 x ∈ [20, 560]，右面板 x ∈ [580, 880]，viewBox 900×470。
+ *
+ * 交互：默认静止、无动画循环、不用 requestAnimationFrame；拖滑块即时重算并更新属性 / textContent / classList。
+ * 所有 SVG 图形都写在 markup 里，JS 只改属性；颜色只用 var(--sl-color-*) 与 light-dark()。
+ */
+
+const D2R = Math.PI / 180;
+const R2D = 180 / Math.PI;
+const I3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+
+const mul3 = (A, B) => {
+  const C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  for (let i = 0; i < 3; i += 1) {
+    for (let j = 0; j < 3; j += 1) {
+      C[i][j] = A[i][0] * B[0][j] + A[i][1] * B[1][j] + A[i][2] * B[2][j];
+    }
+  }
+  return C;
+};
+const mulVec = (R, v) => [
+  R[0][0] * v[0] + R[0][1] * v[1] + R[0][2] * v[2],
+  R[1][0] * v[0] + R[1][1] * v[1] + R[1][2] * v[2],
+  R[2][0] * v[0] + R[2][1] * v[1] + R[2][2] * v[2],
+];
+// URDF RPY：Rz(yaw)·Ry(pitch)·Rx(roll)
+const rpyMat = (r, p, y) => {
+  const cr = Math.cos(r); const sr = Math.sin(r);
+  const cp = Math.cos(p); const sp = Math.sin(p);
+  const cy = Math.cos(y); const sy = Math.sin(y);
+  return [
+    [cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr],
+    [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr],
+    [-sp, cp * sr, cp * cr],
+  ];
+};
+// Rodrigues：绕单位轴 axis 转 q 弧度
+const axisMat = (axis, q) => {
+  const n = Math.hypot(axis[0], axis[1], axis[2]) || 1;
+  const ux = axis[0] / n; const uy = axis[1] / n; const uz = axis[2] / n;
+  const c = Math.cos(q); const s = Math.sin(q); const t = 1 - c;
+  return [
+    [t * ux * ux + c, t * ux * uy - s * uz, t * ux * uz + s * uy],
+    [t * ux * uy + s * uz, t * uy * uy + c, t * uy * uz - s * ux],
+    [t * ux * uz - s * uy, t * uy * uz + s * ux, t * uz * uz + c],
+  ];
+};
+// T = ∏ (T_origin_i · R_axis_i(q_i))，返回 7 个关节坐标系（位置 p_k + 旋转 R_k）
+const chainFK = (q) => {
+  let R = I3;
+  let p = [0, 0, 0];
+  const frames = [];
+  CHAIN.forEach((j, i) => {
+    p = [
+      p[0] + mulVec(R, j.xyz)[0],
+      p[1] + mulVec(R, j.xyz)[1],
+      p[2] + mulVec(R, j.xyz)[2],
+    ];
+    R = mul3(mul3(R, rpyMat(j.rpy[0], j.rpy[1], j.rpy[2])), axisMat(j.axis, q[i]));
+    frames.push({ p: p.slice(), R: R.map((row) => row.slice()) });
+  });
+  return frames;
+};
+// 从 R 反解 ZYX 欧拉角（与 URDF rpy 同序），返回弧度
+const eulerZYX = (R) => {
+  const sy = Math.hypot(R[0][0], R[1][0]);
+  if (sy < 1e-9) return { roll: 0, pitch: Math.atan2(-R[2][0], sy), yaw: Math.atan2(-R[0][1], R[1][1]) };
+  return {
+    roll: Math.atan2(R[2][1], R[2][2]),
+    pitch: Math.atan2(-R[2][0], sy),
+    yaw: Math.atan2(R[1][0], R[0][0]),
+  };
+};
+// 保留 3 位小数，负号用 U+2212；−0.000 归一为 0.000
+const fmt3 = (v) => {
+  const r = Math.abs(v) < 5e-4 ? 0 : v;
+  return (r < 0 ? '−' : '') + Math.abs(r).toFixed(3);
+};
+const fmtDeg1 = (v) => {
+  const r = Math.abs(v) < 0.05 ? 0 : v;
+  return (r < 0 ? '−' : '') + Math.abs(r).toFixed(1);
+};
+
+// ── 关节链（数值逐字取自 g1_29dof.urdf；def / lo / hi 单位 rad） ──────────────
+const CHAIN = [
+  { name: 'left_shoulder_pitch_joint', short: '肩 pitch', group: 'shoulder', slider: true, xyz: [0.0039563, 0.10022, 0.23778], rpy: [0.27931, 5.4949e-05, -0.00019159], axis: [0, 1, 0], lo: -3.0892, hi: 2.6704, def: 0 },
+  { name: 'left_shoulder_roll_joint', short: '肩 roll', group: 'shoulder', slider: true, xyz: [0, 0.038, -0.013831], rpy: [-0.27925, 0, 0], axis: [1, 0, 0], lo: -1.5882, hi: 2.2515, def: 20 * D2R },
+  { name: 'left_shoulder_yaw_joint', short: '肩 yaw', group: 'shoulder', slider: true, xyz: [0, 0.00624, -0.1032], rpy: [0, 0, 0], axis: [0, 0, 1], lo: -2.618, hi: 2.618, def: 0 },
+  { name: 'left_elbow_joint', short: '肘', group: 'elbow', slider: true, xyz: [0.015783, 0, -0.080518], rpy: [0, 0, 0], axis: [0, 1, 0], lo: -1.0472, hi: 2.0944, def: 40 * D2R },
+  { name: 'left_wrist_roll_joint', short: '腕 roll', group: 'wrist', slider: true, xyz: [0.1, 0.00188791, -0.01], rpy: [0, 0, 0], axis: [1, 0, 0], lo: -1.972222054, hi: 1.972222054, def: 0 },
+  { name: 'left_wrist_pitch_joint', short: '腕 pitch', group: 'wrist', slider: true, xyz: [0.038, 0, 0], rpy: [0, 0, 0], axis: [0, 1, 0], lo: -1.614429558, hi: 1.614429558, def: 0 },
+  { name: 'left_wrist_yaw_joint', short: '腕 yaw', group: 'wrist', slider: false, xyz: [0.046, 0, 0], rpy: [0, 0, 0], axis: [0, 0, 1], lo: -1.614429558, hi: 1.614429558, def: 0 },
+];
+const SLIDERS = CHAIN.filter((c) => c.slider);
+
+// ── 等距投影 & 画布 ──────────────────────────────────────────────────────────
+const VIEW = { w: 900, h: 470 };
+const WORLD = { x: 320, y: 298 };   // 躯干原点 (0,0,0) 的屏幕位置
+const SCALE = 300;                   // 300 px/m
+const ISO = { ax: 0.866, ay: 0.5 };  // x 基 (0.866, 0.5)、y 基 (−0.866, 0.5)、z 向上 (0, −1)
+const proj = (x, y, z) => ({
+  x: WORLD.x + SCALE * (ISO.ax * x - ISO.ax * y),
+  y: WORLD.y + SCALE * (ISO.ay * x + ISO.ay * y - z),
+});
+
+const DEF_Q = CHAIN.map((c) => c.def);
+const DEF_FRAMES = chainFK(DEF_Q);
+const DEF_END = DEF_FRAMES[DEF_FRAMES.length - 1];
+const DEF_EULER = eulerZYX(DEF_END.R);
+const AXIS_LEN = 0.07;               // 末端坐标架三根短轴长度 (m)，约 21 px
+const SEG = { mount: [0, 1, 2], upper: [2, 3], fore: [3, 4], wrist: [4, 6] };
+
+const ptsStr = (idxs) => idxs
+  .map((i) => {
+    const s = proj(DEF_FRAMES[i].p[0], DEF_FRAMES[i].p[1], DEF_FRAMES[i].p[2]);
+    return s.x.toFixed(1) + ',' + s.y.toFixed(1);
+  })
+  .join(' ');
+const DEF_DOTS = DEF_FRAMES.map((f) => proj(f.p[0], f.p[1], f.p[2]));
+const DEF_AXIS_TIPS = [0, 1, 2].map((i) => proj(
+  DEF_END.p[0] + AXIS_LEN * DEF_END.R[0][i],
+  DEF_END.p[1] + AXIS_LEN * DEF_END.R[1][i],
+  DEF_END.p[2] + AXIS_LEN * DEF_END.R[2][i],
+));
+
+// 躯干/肩基座：固定不动的线框方块
+const TORSO = { x: [-0.055, 0.055], y: [-0.09, 0.09], z: [-0.02, 0.235] };
+const TORSO_CORNERS = [];
+for (const tx of TORSO.x) for (const ty of TORSO.y) for (const tz of TORSO.z) TORSO_CORNERS.push(proj(tx, ty, tz));
+const TORSO_EDGES = [[0, 1], [0, 2], [0, 4], [1, 3], [1, 5], [2, 3], [2, 6], [3, 7], [4, 5], [4, 6], [5, 7], [6, 7]];
+
+// 躯干本体系三根短轴（x 右下 / y 左下 / z 上），帮助建立三维方向感
+const BASE_ORIGIN = proj(0, 0, 0);
+const BASE_AXES = [
+  { key: 'x', tip: proj(0.09, 0, 0) },
+  { key: 'y', tip: proj(0, 0.09, 0) },
+  { key: 'z', tip: proj(0, 0, 0.135) },
+];
+const BASE_LABELS = [
+  { key: 'x', x: BASE_AXES[0].tip.x + 8, y: BASE_AXES[0].tip.y + 16, anchor: 'start' },
+  { key: 'y', x: BASE_AXES[1].tip.x - 8, y: BASE_AXES[1].tip.y + 16, anchor: 'end' },
+  { key: 'z', x: BASE_AXES[2].tip.x - 6, y: BASE_AXES[2].tip.y - 6, anchor: 'end' },
+];
+
+const CFG = { view: VIEW, world: WORLD, scale: SCALE, iso: ISO, chain: CHAIN, seg: SEG, axisLen: AXIS_LEN, trailMax: 48 };
+---
+
+<figure class="g1fk-demo" data-g1fk={JSON.stringify(CFG)}>
+  <svg viewBox="0 0 900 470" role="img" aria-label="G1 左臂正运动学教学示意：拖动肩 pitch、肩 roll、肩 yaw、肘、腕 roll、腕 pitch 六个角度滑块，左侧等距投影中的左臂实时改变位姿，右侧面板给出末端相对躯干的位置与姿态角">
+    <text class="fk-title" x="24" y="28">G1 左臂正运动学：改关节角，看末端跑到哪（教学示意）</text>
+
+    <!-- ===== 左区：等距投影（x 基 (0.866,0.5)、y 基 (−0.866,0.5)、z 向上 (0,−1)，300 px/m） ===== -->
+    <!-- 躯干/肩基座：固定不动的线框方块 -->
+    {TORSO_EDGES.map(([a, b]) => (
+      <line class="fk-torso" x1={TORSO_CORNERS[a].x.toFixed(1)} y1={TORSO_CORNERS[a].y.toFixed(1)} x2={TORSO_CORNERS[b].x.toFixed(1)} y2={TORSO_CORNERS[b].y.toFixed(1)}></line>
+    ))}
+    <!-- 躯干本体系三根短轴 -->
+    {BASE_AXES.map((a) => (
+      <line class={'fk-bax fk-bax-' + a.key} x1={BASE_ORIGIN.x.toFixed(1)} y1={BASE_ORIGIN.y.toFixed(1)} x2={a.tip.x.toFixed(1)} y2={a.tip.y.toFixed(1)}></line>
+    ))}
+    {BASE_LABELS.map((l) => (
+      <text class={'fk-bax-label fk-bax-label-' + l.key} x={l.x.toFixed(1)} y={l.y.toFixed(1)} text-anchor={l.anchor}>{l.key}</text>
+    ))}
+
+    <!-- 肩基座段（肩 pitch → 肩 roll → 肩 yaw） -->
+    <polyline class="fk-mount" data-role="mount" points={ptsStr(SEG.mount)}></polyline>
+
+    <!-- 末端轨迹：拖滑块时记录最近若干末端位置 -->
+    <polyline class="fk-trail" data-role="trail" points=""></polyline>
+
+    <!-- 三段线：上臂（肩 yaw → 肘）、前臂（肘 → 腕 roll）、腕/掌（腕 roll → 链末端） -->
+    <polyline class="fk-arm fk-arm-upper" data-role="upper" points={ptsStr(SEG.upper)}></polyline>
+    <polyline class="fk-arm fk-arm-fore" data-role="fore" points={ptsStr(SEG.fore)}></polyline>
+    <polyline class="fk-arm fk-arm-wrist" data-role="wrist" points={ptsStr(SEG.wrist)}></polyline>
+
+    <!-- 每个关节一个小圆点 -->
+    {DEF_DOTS.map((d, i) => (
+      <circle class="fk-joint" data-dot={i} cx={d.x.toFixed(1)} cy={d.y.toFixed(1)} r="4"></circle>
+    ))}
+
+    <!-- 末端坐标架：三根短轴方向 = 累计旋转矩阵 R 的三列 -->
+    {[0, 1, 2].map((i) => (
+      <line
+        class={'fk-eax fk-eax-' + ['x', 'y', 'z'][i]}
+        data-axis={i}
+        x1={DEF_DOTS[6].x.toFixed(1)}
+        y1={DEF_DOTS[6].y.toFixed(1)}
+        x2={DEF_AXIS_TIPS[i].x.toFixed(1)}
+        y2={DEF_AXIS_TIPS[i].y.toFixed(1)}
+      ></line>
+    ))}
+    <circle class="fk-end" data-role="end" cx={DEF_DOTS[6].x.toFixed(1)} cy={DEF_DOTS[6].y.toFixed(1)} r="5.5"></circle>
+    <text class="fk-end-label" data-role="end-label" x={(DEF_DOTS[6].x + 10).toFixed(1)} y={(DEF_DOTS[6].y + 20).toFixed(1)}>末端</text>
+
+    <text class="fk-legend" x="24" y="440">等距投影：x 向右下、y 向左下、z 向上；比例 300 px/m</text>
+    <text class="fk-legend" x="24" y="460">连杆长度 = 相邻关节 origin 之间的平移；末端坐标架方向 = 累计旋转 R 的三列</text>
+
+    <!-- ===== 右区：末端位姿（相对躯干） ===== -->
+    <rect class="fk-panel" x="580" y="58" width="300" height="266" rx="10"></rect>
+    <text class="fk-panel-title" x="596" y="84">末端位姿（相对躯干）</text>
+    <text class="fk-panel-head" x="596" y="114">位置 p（m）</text>
+    {['x', 'y', 'z'].map((k, i) => (
+      <text class="fk-row" x="612" y={140 + i * 24} data-row={k}>
+        <tspan class="fk-row-k">{k}&#160;=</tspan><tspan class="fk-row-v" dx="6" data-pos={i}>{fmt3(DEF_END.p[i])}</tspan><tspan class="fk-row-u" dx="6">m</tspan>
+      </text>
+    ))}
+    <text class="fk-panel-head" x="596" y="228">姿态（ZYX 欧拉角，°）</text>
+    {['roll', 'pitch', 'yaw'].map((k, i) => (
+      <text class="fk-row" x="612" y={254 + i * 24} data-row={k}>
+        <tspan class="fk-row-k">{k}&#160;=</tspan><tspan class="fk-row-v" dx="6" data-pose={i}>{fmtDeg1([DEF_EULER.roll, DEF_EULER.pitch, DEF_EULER.yaw][i] * R2D)}</tspan><tspan class="fk-row-u">°</tspan>
+      </text>
+    ))}
+  </svg>
+
+  <div class="g1fk-controls">
+    <div class="g1fk-row">
+      <span class="g1fk-row-title">肩 / 肘</span>
+      {SLIDERS.filter((s) => s.group !== 'wrist').map((s) => (
+        <label class="g1fk-slider-label">{s.short}
+          <input class="g1fk-range" type="range" data-joint={s.name} min={(R2D * s.lo).toFixed(2)} max={(R2D * s.hi).toFixed(2)} step="1" value={(R2D * s.def).toFixed(1)} />
+          <span class="g1fk-val" data-val={s.name}>{fmtDeg1(R2D * s.def)}°</span>
+        </label>
+      ))}
+    </div>
+    <div class="g1fk-row">
+      <span class="g1fk-row-title">腕</span>
+      {SLIDERS.filter((s) => s.group === 'wrist').map((s) => (
+        <label class="g1fk-slider-label">{s.short}
+          <input class="g1fk-range" type="range" data-joint={s.name} min={(R2D * s.lo).toFixed(2)} max={(R2D * s.hi).toFixed(2)} step="1" value={(R2D * s.def).toFixed(1)} />
+          <span class="g1fk-val" data-val={s.name}>{fmtDeg1(R2D * s.def)}°</span>
+        </label>
+      ))}
+      <span class="g1fk-hint">腕 yaw 固定 0°</span>
+    </div>
+    <div class="g1fk-row">
+      <span class="g1fk-row-title"></span>
+      <button type="button" class="g1fk-btn" data-reset>复位</button>
+      <button type="button" class="g1fk-btn" data-stretch>伸直（末端伸到最远）</button>
+    </div>
+  </div>
+
+  <div class="g1fk-readout">
+    <output class="fk-out fk-out-pos" aria-live="polite"></output>
+    <output class="fk-out fk-out-note" aria-live="polite"></output>
+  </div>
+
+  <figcaption>
+    拖六个关节角滑块，看左臂末端实时移动；右侧给出它相对躯干的位姿。连杆尺寸取自 G1 URDF，数值为教学示意。
+  </figcaption>
+</figure>
+
+<script>
+  document.querySelectorAll('.g1fk-demo').forEach((demo) => {
+    const cfg = JSON.parse(demo.dataset.g1fk);
+    const world = cfg.world;
+    const scale = cfg.scale;
+    const iso = cfg.iso;
+    const chain = cfg.chain;
+    const seg = cfg.seg;
+    const axisLen = cfg.axisLen;
+    const trailMax = cfg.trailMax;
+    const sliders = chain.filter((c) => c.slider);
+
+    // 与 frontmatter 完全一致的变换、投影与格式化工具
+    const I3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+    const mul3 = (A, B) => {
+      const C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+      for (let i = 0; i < 3; i += 1) {
+        for (let j = 0; j < 3; j += 1) {
+          C[i][j] = A[i][0] * B[0][j] + A[i][1] * B[1][j] + A[i][2] * B[2][j];
+        }
+      }
+      return C;
+    };
+    const rpyMat = (r, p, y) => {
+      const cr = Math.cos(r); const sr = Math.sin(r);
+      const cp = Math.cos(p); const sp = Math.sin(p);
+      const cy = Math.cos(y); const sy = Math.sin(y);
+      return [
+        [cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr],
+        [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr],
+        [-sp, cp * sr, cp * cr],
+      ];
+    };
+    const axisMat = (axis, q) => {
+      const n = Math.hypot(axis[0], axis[1], axis[2]) || 1;
+      const ux = axis[0] / n; const uy = axis[1] / n; const uz = axis[2] / n;
+      const c = Math.cos(q); const s = Math.sin(q); const t = 1 - c;
+      return [
+        [t * ux * ux + c, t * ux * uy - s * uz, t * ux * uz + s * uy],
+        [t * ux * uy + s * uz, t * uy * uy + c, t * uy * uz - s * ux],
+        [t * ux * uz - s * uy, t * uy * uz + s * ux, t * uz * uz + c],
+      ];
+    };
+    const chainFK = (q) => {
+      let R = I3;
+      let p = [0, 0, 0];
+      const frames = [];
+      chain.forEach((j, i) => {
+        const d = [
+          R[0][0] * j.xyz[0] + R[0][1] * j.xyz[1] + R[0][2] * j.xyz[2],
+          R[1][0] * j.xyz[0] + R[1][1] * j.xyz[1] + R[1][2] * j.xyz[2],
+          R[2][0] * j.xyz[0] + R[2][1] * j.xyz[1] + R[2][2] * j.xyz[2],
+        ];
+        p = [p[0] + d[0], p[1] + d[1], p[2] + d[2]];
+        R = mul3(mul3(R, rpyMat(j.rpy[0], j.rpy[1], j.rpy[2])), axisMat(j.axis, q[i]));
+        frames.push({ p: p.slice(), R: R.map((row) => row.slice()) });
+      });
+      return frames;
+    };
+    const eulerZYX = (R) => {
+      const sy = Math.hypot(R[0][0], R[1][0]);
+      if (sy < 1e-9) return { roll: 0, pitch: Math.atan2(-R[2][0], sy), yaw: Math.atan2(-R[0][1], R[1][1]) };
+      return {
+        roll: Math.atan2(R[2][1], R[2][2]),
+        pitch: Math.atan2(-R[2][0], sy),
+        yaw: Math.atan2(R[1][0], R[0][0]),
+      };
+    };
+    const proj = (x, y, z) => ({
+      x: world.x + scale * (iso.ax * x - iso.ax * y),
+      y: world.y + scale * (iso.ay * x + iso.ay * y - z),
+    });
+    const fmt3 = (v) => {
+      const r = Math.abs(v) < 5e-4 ? 0 : v;
+      return (r < 0 ? '−' : '') + Math.abs(r).toFixed(3);
+    };
+    const fmtDeg1 = (v) => {
+      const r = Math.abs(v) < 0.05 ? 0 : v;
+      return (r < 0 ? '−' : '') + Math.abs(r).toFixed(1);
+    };
+    const P2 = (p) => {
+      const s = proj(p[0], p[1], p[2]);
+      return s.x.toFixed(1) + ',' + s.y.toFixed(1);
+    };
+    const pts = (frames, idxs) => idxs.map((i) => P2(frames[i].p)).join(' ');
+
+    const el = (sel) => demo.querySelector(sel);
+    const mountEl = el('[data-role="mount"]');
+    const trailEl = el('[data-role="trail"]');
+    const upperEl = el('[data-role="upper"]');
+    const foreEl = el('[data-role="fore"]');
+    const wristEl = el('[data-role="wrist"]');
+    const endEl = el('[data-role="end"]');
+    const endLabel = el('[data-role="end-label"]');
+    const dotEls = chain.map((c, i) => el('[data-dot="' + i + '"]'));
+    const axisEls = [0, 1, 2].map((i) => el('[data-axis="' + i + '"]'));
+    const posEls = [0, 1, 2].map((i) => el('[data-pos="' + i + '"]'));
+    const poseEls = [0, 1, 2].map((i) => el('[data-pose="' + i + '"]'));
+    const posOut = el('.fk-out-pos');
+    const noteOut = el('.fk-out-note');
+    const resetBtn = el('[data-reset]');
+    const stretchBtn = el('[data-stretch]');
+    const rangeEls = {};
+    const valEls = {};
+    sliders.forEach((s) => {
+      rangeEls[s.name] = el('[data-joint="' + s.name + '"]');
+      valEls[s.name] = el('[data-val="' + s.name + '"]');
+    });
+
+    // 状态 = 7 个关节角（弧度），腕 yaw 恒为默认 0°
+    const state = chain.map((c) => c.def);
+    const trail = [];
+    let lastKey = '';
+
+    const setLine = (node, a, b) => {
+      node.setAttribute('x1', a.x.toFixed(1));
+      node.setAttribute('y1', a.y.toFixed(1));
+      node.setAttribute('x2', b.x.toFixed(1));
+      node.setAttribute('y2', b.y.toFixed(1));
+    };
+
+    const render = (record) => {
+      const frames = chainFK(state);
+      const end = frames[frames.length - 1];
+
+      // 三段线 + 肩基座段
+      mountEl.setAttribute('points', pts(frames, seg.mount));
+      upperEl.setAttribute('points', pts(frames, seg.upper));
+      foreEl.setAttribute('points', pts(frames, seg.fore));
+      wristEl.setAttribute('points', pts(frames, seg.wrist));
+
+      // 关节圆点
+      frames.forEach((f, i) => {
+        const s = proj(f.p[0], f.p[1], f.p[2]);
+        dotEls[i].setAttribute('cx', s.x.toFixed(1));
+        dotEls[i].setAttribute('cy', s.y.toFixed(1));
+      });
+
+      // 末端坐标架：三根短轴 = R 的三列
+      const o = proj(end.p[0], end.p[1], end.p[2]);
+      endEl.setAttribute('cx', o.x.toFixed(1));
+      endEl.setAttribute('cy', o.y.toFixed(1));
+      endLabel.setAttribute('x', (o.x + 10).toFixed(1));
+      endLabel.setAttribute('y', (o.y + 20).toFixed(1));
+      for (let i = 0; i < 3; i += 1) {
+        const tip = proj(
+          end.p[0] + axisLen * end.R[0][i],
+          end.p[1] + axisLen * end.R[1][i],
+          end.p[2] + axisLen * end.R[2][i],
+        );
+        setLine(axisEls[i], o, tip);
+      }
+
+      // 轨迹：只在拖动滑块时记录（复位 / 伸直清空）
+      const key = state.map((v) => v.toFixed(5)).join(',');
+      if (record && key !== lastKey) {
+        trail.push(o.x.toFixed(1) + ',' + o.y.toFixed(1));
+        while (trail.length > trailMax) trail.shift();
+      }
+      lastKey = key;
+      if (!record && trail.length) trail.length = 0;
+      trailEl.setAttribute('points', trail.join(' '));
+      trailEl.classList.toggle('fk-trail-on', trail.length >= 2);
+
+      // 右区：位置（m，3 位小数）与姿态（ZYX 欧拉角，°）
+      posEls.forEach((node, i) => { node.textContent = fmt3(end.p[i]); });
+      const eu = eulerZYX(end.R);
+      poseEls.forEach((node, i) => {
+        node.textContent = fmtDeg1([eu.roll, eu.pitch, eu.yaw][i] * 180 / Math.PI);
+      });
+
+      // 滑块旁的度数
+      sliders.forEach((s, i) => {
+        if (valEls[s.name]) valEls[s.name].textContent = fmtDeg1(state[i] * 180 / Math.PI) + '°';
+      });
+
+      // 两条定高读数
+      posOut.textContent = '末端相对躯干：x = ' + fmt3(end.p[0]) + ' m，y = ' + fmt3(end.p[1]) + ' m，z = ' + fmt3(end.p[2]) + ' m';
+      noteOut.textContent = sliders
+        .map((s, i) => s.short + ' ' + fmtDeg1(state[i] * 180 / Math.PI) + '°')
+        .join('，')
+        + '：这就是一条串联链的 T 相乘结果';
+    };
+
+    sliders.forEach((s, i) => {
+      const r = rangeEls[s.name];
+      if (!r) return;
+      r.addEventListener('input', () => {
+        state[i] = Number(r.value) * Math.PI / 180;
+        render(true);
+      });
+    });
+
+    resetBtn.addEventListener('click', () => {
+      chain.forEach((c, i) => {
+        state[i] = c.def;
+        if (rangeEls[c.name]) rangeEls[c.name].value = String(c.def * 180 / Math.PI);
+      });
+      render(false);
+    });
+
+    // 伸直：各腕角归零；肘在 limit 内按 1° 扫描，取使 |末端 − 肩| 最大的角度
+    // （URDF 零位下前臂与上臂约 90°，所以“伸直”并不是 0°）；肩保持不变
+    stretchBtn.addEventListener('click', () => {
+      chain.forEach((c, i) => {
+        if (c.group !== 'wrist') return;
+        state[i] = 0;
+        if (rangeEls[c.name]) rangeEls[c.name].value = '0';
+      });
+      const elbowIdx = chain.findIndex((c) => c.group === 'elbow');
+      if (elbowIdx >= 0) {
+        const j = chain[elbowIdx];
+        const q = state.slice();
+        let best = state[elbowIdx];
+        let bestD = -1;
+        for (let deg = Math.ceil(j.lo * 180 / Math.PI); deg <= Math.floor(j.hi * 180 / Math.PI); deg += 1) {
+          q[elbowIdx] = deg * Math.PI / 180;
+          const f = chainFK(q);
+          const d = Math.hypot(
+            f[6].p[0] - f[0].p[0],
+            f[6].p[1] - f[0].p[1],
+            f[6].p[2] - f[0].p[2],
+          );
+          if (d > bestD) { bestD = d; best = q[elbowIdx]; }
+        }
+        state[elbowIdx] = best;
+        if (rangeEls[j.name]) rangeEls[j.name].value = String(Math.round(best * 180 / Math.PI));
+      }
+      trail.length = 0;
+      render(false);
+    });
+
+    render(false);
+  });
+</script>
+
+<style>
+  .g1fk-demo {
+    --fk-ay: light-dark(#0e7490, #67e8f9);
+    --fk-az: light-dark(#b45309, #fbbf24);
+    --fk-end: light-dark(#0d9488, #2dd4bf);
+    margin: 1.5rem 0;
+  }
+  .g1fk-demo svg { display: block; width: 100%; max-width: 900px; height: auto; margin: 0 auto; }
+
+  /* 左区：标题、图例、躯干与坐标架 */
+  .fk-title { fill: var(--sl-color-text); font-size: 24px; font-weight: 600; }
+  .fk-legend { fill: var(--sl-color-gray-2); font-size: 17px; }
+  .fk-torso { stroke: var(--sl-color-gray-3); stroke-width: 1.6; }
+  .fk-bax { stroke-width: 2.4; stroke-linecap: round; }
+  .fk-bax-x { stroke: var(--sl-color-accent); }
+  .fk-bax-y { stroke: var(--fk-ay); }
+  .fk-bax-z { stroke: var(--fk-az); }
+  .fk-bax-label { font-size: 17px; font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .fk-bax-label-x { fill: var(--sl-color-accent); }
+  .fk-bax-label-y { fill: var(--fk-ay); }
+  .fk-bax-label-z { fill: var(--fk-az); }
+
+  /* 左区：链与末端 */
+  .fk-mount { fill: none; stroke: var(--sl-color-gray-2); stroke-width: 2; stroke-dasharray: 6 4; stroke-linejoin: round; }
+  .fk-arm { fill: none; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
+  .fk-arm-upper { stroke: var(--sl-color-accent); }
+  .fk-arm-fore { stroke: var(--fk-ay); }
+  .fk-arm-wrist { stroke: var(--fk-az); }
+  .fk-joint { fill: var(--sl-color-bg); stroke: var(--sl-color-text); stroke-width: 1.8; }
+  .fk-end { fill: var(--fk-end); stroke: var(--sl-color-bg); stroke-width: 1.6; }
+  .fk-end-label { fill: var(--sl-color-text); font-size: 17px; font-weight: 700; }
+  .fk-eax { stroke-width: 3; stroke-linecap: round; }
+  .fk-eax-x { stroke: var(--sl-color-accent); }
+  .fk-eax-y { stroke: var(--fk-ay); }
+  .fk-eax-z { stroke: var(--fk-az); }
+  .fk-trail { fill: none; stroke: var(--sl-color-gray-3); stroke-width: 1.6; stroke-dasharray: 3 4; opacity: 0; }
+  .fk-trail.fk-trail-on { opacity: 0.85; }
+
+  /* 右区：末端位姿面板 */
+  .fk-panel { fill: light-dark(rgba(148, 163, 184, 0.1), rgba(148, 163, 184, 0.08)); stroke: var(--sl-color-gray-4); stroke-width: 1.4; }
+  .fk-panel-title { fill: var(--sl-color-text); font-size: 18px; font-weight: 700; }
+  .fk-panel-head { fill: var(--sl-color-gray-2); font-size: 17px; font-weight: 600; }
+  .fk-row { font-size: 17px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+  .fk-row-k { fill: var(--sl-color-gray-2); }
+  .fk-row-v { fill: var(--fk-end); font-weight: 700; }
+  .fk-row-u { fill: var(--sl-color-gray-2); }
+
+  /* 控件：统一 margin: 0 */
+  .g1fk-controls { display: flex; flex-direction: column; gap: 0.5rem; max-width: 900px; margin: 0.55rem auto 0; }
+  .g1fk-row { display: flex; align-items: center; gap: 0.8rem; margin: 0; }
+  .g1fk-row-title { flex: 0 0 3.2rem; margin: 0; color: var(--sl-color-gray-2); font-size: 0.8125rem; }
+  .g1fk-hint { margin: 0; flex: 0 0 auto; color: var(--sl-color-gray-3); font-size: 0.75rem; white-space: nowrap; }
+  .g1fk-slider-label { display: flex; flex: 1 1 0; min-width: 0; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.8125rem; color: var(--sl-color-gray-2); white-space: nowrap; }
+  .g1fk-range { flex: 1 1 auto; width: auto; min-width: 3.5rem; margin: 0; accent-color: var(--sl-color-accent); }
+  .g1fk-val { flex: 0 0 3.2rem; margin: 0; text-align: right; color: var(--sl-color-accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .g1fk-btn { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.85rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
+
+  /* 两条定高读数 */
+  .g1fk-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; line-height: 1.7; }
+  .fk-out { display: block; white-space: nowrap; overflow-x: auto; height: 1.7em; line-height: 1.7; margin: 0; }
+  .fk-out-pos { color: var(--fk-end); font-weight: 600; }
+  .fk-out-note { color: var(--sl-color-gray-2); }
+  .g1fk-demo figcaption { max-width: 900px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.9rem; line-height: 1.65; }
+</style>

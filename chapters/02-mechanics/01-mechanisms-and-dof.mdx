@@ -82,7 +82,7 @@ import G1ArmWorkspaceDemo from '../../../components/G1ArmWorkspaceDemo.astro';
 刚才红色时刻发生的一切，两个专业各有自己的说法：
 
 - **机构语言**：这一构型叫极限位置（Limit Position），也叫输出死点——曲柄与连杆共线，输出速度为零。另外常说的传动角（Transmission Angle）是另一个指标，衡量“力能传出多少”：它是连杆与摇杆的夹角，趋近 0° 或 180° 时传力奇异，与输出死点不是同一个东西，本演示不会出现；
-- **算法语言**：同一个构型让约束方程的雅可比矩阵（Jacobian）接近奇异（Singular），dθ<sub>out</sub>/dθ<sub>in</sub> 趋零——想让输出维持速度，输入速度就得冲向极端，逆运动学（Inverse Kinematics, IK）和轨迹优化因此变得病态。雅可比矩阵的完整定义和奇异位形的量化指标见 [4.2 节“雅可比：速度和力的局部映射”](../04-cerebellum-realtime-control/02-kinematics.md#雅可比速度和力的局部映射)。[1][2][6]
+- **算法语言**：同一个构型让约束方程的雅可比矩阵（Jacobian）接近奇异（Singular），dθ<sub>out</sub>/dθ<sub>in</sub> 趋零——想让输出维持速度，输入速度就得冲向极端，逆运动学（Inverse Kinematics, IK）和轨迹优化因此变得病态。雅可比矩阵的完整定义和奇异位形的量化指标见 [4.2 节“雅可比：速度和力的局部映射”](../04-cerebellum-realtime-control/02-kinematics.mdx#雅可比速度和力的局部映射)。[1][2][6]
 
 这会影响多个上下游环节：
 
