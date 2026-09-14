@@ -33,7 +33,7 @@
 | 2 | [4.2 运动学](../04-cerebellum-realtime-control/02-kinematics.mdx) | IK 报"目标不可达"时，分清是几何问题还是代码问题 | 全读 |
 | 3 | [4.5 基础控制](../04-cerebellum-realtime-control/05-basic-control.md) | "把 kp 调大"意味着什么，机器人会有什么表现 | 全读 |
 | 4 | [4.6 双足平衡与全身控制](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.md) | ZMP、支撑域、全身控制任务栈 | 读前半 |
-| 5 | [4.4 状态估计](../04-cerebellum-realtime-control/04-state-estimation.md) | 为什么"机器人以为自己在哪里"和"实际在哪里"会不一样 | 读开头 |
+| 5 | [4.4 状态估计](../04-cerebellum-realtime-control/04-state-estimation.mdx) | 为什么"机器人以为自己在哪里"和"实际在哪里"会不一样 | 读开头 |
 | 6 | [4.3 动力学](../04-cerebellum-realtime-control/03-dynamics.mdx) | 质量、惯量参数的改动如何传导到关节力矩需求 | 读开头 |
 
 ## 你要和软件/AI 同学协作

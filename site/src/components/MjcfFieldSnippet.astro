@@ -1,21 +1,23 @@
 ---
 /**
- * 2.5 用：MJCF 专业字段的高亮源码卡片。
+ * 2.5 / 4.4 用：MJCF 专业字段的高亮源码卡片。
  * variant="body"  ：body / inertial / geom / site
  * variant="motor" ：actuator 的 motor 与 sensor 的 gyro / accelerometer
  * variant="free"  ：floating_base_joint（自由基座）
- * 片段逐字摘自 robot_descriptions/g1/g1_29dof.xml（unitree_rl_gym 固定提交），保留原文件行号。
+ * variant="state" ：4.4 状态估计用——两个 IMU 的 site / sensor 定义，以及它们对应的 URDF 固定 link/joint
+ * 片段逐字摘自 robot_descriptions/g1/ 下的 g1_29dof.xml 与 g1_29dof.urdf（unitree_rl_gym 固定提交），保留原文件行号。
  */
 import SourceSnippet from './SourceSnippet.astro';
 
 const { variant = 'body' } = Astro.props;
 const COMMIT = '276801e46c5d433564f24658bac64f254b7d2d4b';
-const FILE = 'g1_29dof.xml';
-const src = (line) =>
+const XML = 'g1_29dof.xml';
+const URDF = 'g1_29dof.urdf';
+const src = (file, line) =>
   'https://github.com/unitreerobotics/unitree_rl_gym/blob/' +
   COMMIT +
   '/resources/robots/g1_description/' +
-  FILE +
+  file +
   '#L' +
   line;
 
@@ -23,8 +25,8 @@ const cards = {
   body: [
     {
       role: 'body · 层级、惯量与几何',
-      file: FILE,
-      url: src(44),
+      file: XML,
+      url: src(XML, 44),
       lines: [
         { n: 44, code: '    <body name="pelvis" pos="0 0 0.793">', hl: true, ann: 'body：刚体层级与位姿' },
         { n: 45, code: '      <inertial pos="0 0 -0.07605" quat="1 0 -0.000399148 0" mass="3.813" diaginertia="0.010549 0.0093089 0.0079184"/>', hl: true, ann: 'inertial：质量、质心与对角惯量' },
@@ -36,8 +38,8 @@ const cards = {
   motor: [
     {
       role: 'actuator · 把控制输入映射到关节',
-      file: FILE,
-      url: src(241),
+      file: XML,
+      url: src(XML, 241),
       lines: [
         { n: 241, code: '  <actuator>', hl: true, ann: 'actuator：驱动定义' },
         { n: 245, code: '    <motor name="left_knee_joint" joint="left_knee_joint"/>', hl: true, ann: 'motor：力矩驱动，绑定到具体关节' },
@@ -45,8 +47,8 @@ const cards = {
     },
     {
       role: 'sensor · 仿真传感器',
-      file: FILE,
-      url: src(273),
+      file: XML,
+      url: src(XML, 273),
       lines: [
         { n: 273, code: '  <sensor>', hl: true, ann: 'sensor：与刚体写在同一个 MJCF 里' },
         { n: 276, code: '    <gyro name="imu-pelvis-angular-velocity" site="imu_in_pelvis" noise="5e-4" cutoff="34.9"/>', hl: true, ann: 'gyro：角速度，绑定 site' },
@@ -57,10 +59,34 @@ const cards = {
   free: [
     {
       role: 'joint type="free" · 浮动基座',
-      file: FILE,
-      url: src(46),
+      file: XML,
+      url: src(XML, 46),
       lines: [
         { n: 46, code: '      <joint name="floating_base_joint" type="free" limited="false" actuatorfrclimited="false"/>', hl: true, ann: 'type="free"：6 个浮动基座自由度，不受关节限位' },
+      ],
+    },
+  ],
+  state: [
+    {
+      role: 'MJCF · IMU 的安装点与仿真传感器',
+      file: XML,
+      url: src(XML, 50),
+      lines: [
+        { n: 50, code: '      <site name="imu_in_pelvis" size="0.01" pos="0.04525 0 -0.08339"/>', hl: true, ann: 'site：IMU 在 pelvis 上的安装点' },
+        { n: 148, code: '            <site name="imu_in_torso" size="0.01" pos="-0.03959 -0.00224 0.13792"/>', hl: true, ann: 'site：IMU 在 torso 上的安装点' },
+        { n: 274, code: '    <gyro name="imu-torso-angular-velocity" site="imu_in_torso" noise="5e-4" cutoff="34.9"/>', hl: true, ann: 'gyro：角速度，site 决定它测哪个点' },
+        { n: 277, code: '    <accelerometer name="imu-pelvis-linear-acceleration" site="imu_in_pelvis" noise="1e-2" cutoff="157"/>', hl: true, ann: 'accelerometer：线加速度，噪声 / 截止频率是仿真参数' },
+      ],
+    },
+    {
+      role: 'URDF · 同两个 IMU 的固定 link 与 joint',
+      file: URDF,
+      url: src(URDF, 607),
+      lines: [
+        { n: 607, code: '  <link name="imu_in_torso"></link>', hl: true, ann: 'link：IMU 自己的坐标系（空 link，只有安装位姿）' },
+        { n: 608, code: '  <joint name="imu_in_torso_joint" type="fixed">', hl: true, ann: 'type="fixed"：不参与动力学，只提供静态外参' },
+        { n: 609, code: '    <origin xyz="-0.03959 -0.00224 0.13792" rpy="0 0 0"/>', hl: true, ann: 'origin：与 MJCF site 的 pos 同值' },
+        { n: 610, code: '    <parent link="torso_link"/>', hl: true, ann: 'parent：IMU 相对哪个 link 安装' },
       ],
     },
   ],
@@ -70,6 +96,7 @@ const captions = {
   body: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为原文件行号。MJCF 用嵌套 <code>body</code> 表达父子关系，<code>geom</code>、<code>site</code> 和 <code>inertial</code> 都写在 body 内。',
   motor: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>）。<code>actuator</code> 和 <code>sensor</code> 与刚体写在同一个 MJCF 里，这是它与 URDF 最直观的差别之一。',
   free: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>）。<code>type="free"</code> 让 <code>pelvis</code> 相对世界有 6 个自由度；<code>qpos</code>/<code>qvel</code> 的长度因此不等于电机数量。',
+  state: "片段逐字摘自 <code>g1_29dof.xml</code> 与 <code>g1_29dof.urdf</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为各自原文件行号。<code>site</code> 的 <code>pos</code> 与 URDF <code>fixed joint</code> 的 <code>origin</code> 是同一个安装位姿的两种写法：MJCF 把 IMU 作为 site 挂在刚体上，URDF 则用空 link 加固定关节给它一个坐标系。这些定义只说明安装位置和仿真噪声，不等于真实硬件的偏置、延迟和量程。",
 };
 
 const card = cards[variant] || cards.body;
