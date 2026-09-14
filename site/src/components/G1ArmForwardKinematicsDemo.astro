@@ -13,9 +13,9 @@
  * 逐段更新；“复位”清空。末端还挂了一个 0.08 m 的 AxesHelper，随 FK 自动移动/转向。
  *
  * 读数：位置 =（末端世界坐标 − torso_link 世界坐标）再乘 torso_link 世界旋转的逆，
- * 得到“末端相对躯干”的位置，与旧版 SVG 的数值含义一致。读数区还给出末端位姿
- * T_end（相对躯干）的 4×4 齐次变换矩阵：左上 3×3 = R(q_t^{-1}·q_e)，右上 3×1 = 该位置 p，
- * 末行 [0 0 0 1]；16 个数保留 2 位小数，与 4.1 节齐次变换演示同一格式。
+ * 得到“末端相对躯干”的位置；姿态由末端相对躯干的旋转 R(q_t^{-1}·q_e) 按 ZYX 反解成
+ * roll / pitch / yaw（与 4.1 节一致），运行时用 three 的 Euler.setFromRotationMatrix(..., 'ZYX')。
+ * 读数区用两行三列显示：位置 3 位小数、角度 1 位小数。
  *
  * 关节链（父 → 子）与 URDF 数值（origin 单位 m / rad，limit 单位 rad，axis 为本体系）：
  *
@@ -110,12 +110,6 @@ const fmtDeg1 = (v) => {
   const r = Math.abs(v) < 0.05 ? 0 : v;
   return (r < 0 ? '−' : '') + Math.abs(r).toFixed(1);
 };
-// 与 4.1 节 HomogeneousTransformDemo 同一格式：2 位小数，负号用 U+2212
-const fmt2 = (v) => {
-  const r = Math.abs(v) < 0.005 ? 0 : v;
-  return (r < 0 ? '−' : '') + Math.abs(r).toFixed(2);
-};
-
 // ── 关节链（数值逐字取自 g1_29dof.urdf；def / lo / hi 单位 rad） ──────────────
 const CHAIN = [
   { name: 'left_shoulder_pitch_joint', short: '肩 pitch', group: 'shoulder', slider: true, xyz: [0.0039563, 0.10022, 0.23778], rpy: [0.27931, 5.4949e-05, -0.00019159], axis: [0, 1, 0], lo: -3.0892, hi: 2.6704, def: 0 },
@@ -128,24 +122,43 @@ const CHAIN = [
 ];
 const SLIDERS = CHAIN.filter((c) => c.slider);
 
+// 与 4.1 一致的 ZYX 欧拉角（度）：R = Rz(yaw)·Ry(pitch)·Rx(roll)
+const eulerZYXDeg = (R) => {
+  const sy = Math.hypot(R[0][0], R[1][0]);
+  if (sy < 1e-9) {
+    return { roll: 0, pitch: Math.atan2(-R[2][0], sy) * R2D, yaw: Math.atan2(-R[0][1], R[1][1]) * R2D };
+  }
+  return {
+    roll: Math.atan2(R[2][1], R[2][2]) * R2D,
+    pitch: Math.atan2(-R[2][0], sy) * R2D,
+    yaw: Math.atan2(R[1][0], R[0][0]) * R2D,
+  };
+};
+
 const DEF_Q = CHAIN.map((c) => c.def);
 const DEF_END = chainFK(DEF_Q)[6];
-const DEF_POS_TEXT = '末端相对躯干：x = ' + fmt3(DEF_END.p[0]) + ' m，y = ' + fmt3(DEF_END.p[1]) + ' m，z = ' + fmt3(DEF_END.p[2]) + ' m';
-
-// 默认姿态的末端位姿 T_end（相对躯干）：左上 3×3 = R，右上 3×1 = p，末行 [0 0 0 1]。
-// 与 three.js 侧 R(q_t^{-1}·q_e) 等价（chainFK 的 R 就是躯干系下末端系的旋转）。
-const DEF_M = [
-  [DEF_END.R[0][0], DEF_END.R[0][1], DEF_END.R[0][2], DEF_END.p[0]],
-  [DEF_END.R[1][0], DEF_END.R[1][1], DEF_END.R[1][2], DEF_END.p[1]],
-  [DEF_END.R[2][0], DEF_END.R[2][1], DEF_END.R[2][2], DEF_END.p[2]],
-  [0, 0, 0, 1],
+const DEF_EULER = eulerZYXDeg(DEF_END.R);
+// 默认姿态的两行读数：行标题 + 每行 3 个「标签 = 数值」，加载 3D 前先写进 markup
+const DEF_POSE_ROWS = [
+  {
+    head: '位置',
+    unit: 'm',
+    cells: [
+      { label: 'x', value: fmt3(DEF_END.p[0]) },
+      { label: 'y', value: fmt3(DEF_END.p[1]) },
+      { label: 'z', value: fmt3(DEF_END.p[2]) },
+    ],
+  },
+  {
+    head: '姿态',
+    unit: '°',
+    cells: [
+      { label: 'roll', value: fmtDeg1(DEF_EULER.roll) },
+      { label: 'pitch', value: fmtDeg1(DEF_EULER.pitch) },
+      { label: 'yaw', value: fmtDeg1(DEF_EULER.yaw) },
+    ],
+  },
 ];
-const DEF_M_CELLS = DEF_M.flat().map((value, i) => ({
-  i: i,
-  row: Math.floor(i / 4),
-  col: i % 4,
-  text: fmt2(value),
-}));
 
 const baseUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
@@ -198,22 +211,24 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
   </div>
 
   <div class="g1fk-readout fk-readout">
-    <output class="fk-out fk-out-pos" aria-live="polite">{DEF_POS_TEXT}</output>
-    <div class="fk-matrix" data-fk-matrix>
-      <span class="fk-matrix-title">末端位姿 T_end（相对躯干）</span>
-      <div class="fk-matrix-body">
-        <span class="fk-matrix-eq">T_end =</span>
-        <div class="fk-matrix-grid" role="group" aria-label="末端位姿 T_end 相对躯干的 4×4 齐次变换矩阵：左上 3×3 是旋转 R，右上 3×1 是位置 p，最后一行恒为 0 0 0 1">
-          {DEF_M_CELLS.map((cell) => (
-            <span class={cell.row === 3 ? 'fk-m fk-m-row' : cell.col === 3 ? 'fk-m fk-m-pos' : 'fk-m fk-m-rot'} data-fk-m={cell.i}>{cell.text}</span>
+    <div class="fk-pose" data-fk-pose role="group" aria-label="末端相对躯干的位置（m，3 位小数）与 ZYX 欧拉角（°，1 位小数）">
+      {DEF_POSE_ROWS.map((row, r) => (
+        <>
+          <span class="fk-pose-head">{row.head}</span>
+          {row.cells.map((cell, c) => (
+            <span class="fk-pose-cell">
+              <span class="fk-pose-k">{cell.label + ' ='}</span>
+              <span class="fk-pose-v" data-fk-pose-val={r * 3 + c}>{cell.value}</span>
+              <span class="fk-pose-u">{row.unit}</span>
+            </span>
           ))}
-        </div>
-      </div>
+        </>
+      ))}
     </div>
   </div>
 
   <figcaption>
-        拖六个关节角滑块：真实 G1 网格实时更新，末端坐标架随之移动转向，并留下虚线轨迹（“复位”清空）。下方是末端位姿的 4×4 齐次变换矩阵——左上 3×3 是旋转、右上 3×1 是位置、末行恒为 0 0 0 1。模型与数值取自 G1 URDF。
+    拖六个关节角滑块：真实 G1 网格实时更新，末端坐标架随之移动转向，并留下虚线轨迹（“复位”清空）。下方给出末端相对躯干的位置与欧拉角。模型与数值取自 G1 URDF。
   </figcaption>
 </figure>
 
@@ -261,13 +276,13 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
     const statusEl = demo.querySelector('[data-fk-status]');
     const resetBtn = demo.querySelector('[data-reset]');
     const stretchBtn = demo.querySelector('[data-stretch]');
-    const posOut = demo.querySelector('.fk-out-pos');
+    const poseEls = Array.from({ length: 6 }, (_, i) => demo.querySelector('[data-fk-pose-val="' + i + '"]'));
     const chainRaw = demo.dataset.fkChain;
     const urdfUrl = demo.dataset.urdfUrl;
     if (
       !(viewport instanceof HTMLElement)
       || !(statusEl instanceof HTMLElement)
-      || !(posOut instanceof HTMLElement)
+      || !(poseEls[0] instanceof HTMLElement)
       || !(resetBtn instanceof HTMLButtonElement)
       || !(stretchBtn instanceof HTMLButtonElement)
       || !chainRaw
@@ -291,10 +306,6 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
       const r = Math.abs(v) < 0.05 ? 0 : v;
       return (r < 0 ? '−' : '') + Math.abs(r).toFixed(1);
     };
-    const fmt2 = (v) => {
-      const r = Math.abs(v) < 0.005 ? 0 : v;
-      return (r < 0 ? '−' : '') + Math.abs(r).toFixed(2);
-    };
 
     const rangeEls = {};
     const valEls = {};
@@ -302,8 +313,6 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
       rangeEls[s.name] = demo.querySelector('[data-joint="' + s.name + '"]');
       valEls[s.name] = demo.querySelector('[data-val="' + s.name + '"]');
     });
-    const mEls = Array.from({ length: 16 }, (_, i) => demo.querySelector('[data-fk-m="' + i + '"]'));
-
     let started = false;
     let THREE_NS = null;
     let scene = null;
@@ -462,20 +471,18 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
       torsoLink.getWorldQuaternion(torsoQuat);
       endLink.getWorldQuaternion(endQuat);
 
-      // 末端相对躯干的旋转 R = R(q_t^{-1} · q_e)
+      // 末端相对躯干的旋转 R = R(q_t^{-1} · q_e)，按 ZYX 反解欧拉角（与 4.1 一致）
       const torsoQuatInv = torsoQuat.clone().invert();
       const relQuat = torsoQuatInv.clone().multiply(endQuat);
       const relRot = new THREE.Matrix4().makeRotationFromQuaternion(relQuat);
-      const e = relRot.elements; // 列优先存储：R[r][c] = e[c * 4 + r]
+      const euler = new THREE.Euler().setFromRotationMatrix(relRot, 'ZYX');
 
       const rel = world.clone().sub(torsoWorld).applyQuaternion(torsoQuatInv);
-      const matrix = [
-        [e[0], e[4], e[8], rel.x],
-        [e[1], e[5], e[9], rel.y],
-        [e[2], e[6], e[10], rel.z],
-        [0, 0, 0, 1],
-      ];
-      return { world: world, rel: rel, matrix: matrix };
+      return {
+        world: world,
+        rel: rel,
+        euler: { roll: euler.x * R2D, pitch: euler.y * R2D, yaw: euler.z * R2D },
+      };
     };
 
     const pushTrail = (world) => {
@@ -506,18 +513,15 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
       });
     };
 
-    const updateReadout = (rel) => {
-      posOut.textContent = '末端相对躯干：x = ' + fmt3(rel.x) + ' m，y = ' + fmt3(rel.y) + ' m，z = ' + fmt3(rel.z) + ' m';
-    };
-
-    // 16 个矩阵元素逐项刷新（2 位小数，与 4.1 齐次变换演示同一格式）
-    const updateMatrix = (matrix) => {
-      if (!mEls.length || !mEls[0]) return;
-      for (let row = 0; row < 4; row += 1) {
-        for (let col = 0; col < 4; col += 1) {
-          const node = mEls[row * 4 + col];
-          if (node) node.textContent = fmt2(matrix[row][col]);
-        }
+    // 位置 3 位小数、欧拉角 1 位小数；顺序与 markup 的 data-fk-pose-val="0..5" 一一对应
+    const updatePose = (rel, euler) => {
+      const values = [
+        fmt3(rel.x), fmt3(rel.y), fmt3(rel.z),
+        fmtDeg1(euler.roll), fmtDeg1(euler.pitch), fmtDeg1(euler.yaw),
+      ];
+      for (let i = 0; i < values.length; i += 1) {
+        const node = poseEls[i];
+        if (node) node.textContent = values[i];
       }
     };
 
@@ -529,8 +533,7 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
       applyJoints();
       const sample = readEndTorso();
       if (sample) {
-        updateReadout(sample.rel);
-        updateMatrix(sample.matrix);
+        updatePose(sample.rel, sample.euler);
         demo.dataset.endPos = fmt3(sample.rel.x) + ',' + fmt3(sample.rel.y) + ',' + fmt3(sample.rel.z);
         if (record) pushTrail(sample.world);
       }
@@ -828,7 +831,6 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
 <!-- 源码面板 / 画布等由 JS 动态创建，样式统一用全局作用域（类名带 fk- / g1fk- 前缀，不会冲突）。 -->
 <style is:global>
   .fk-demo {
-    --fk-pos: light-dark(#0d9488, #2dd4bf);
     margin: 1.5rem 0;
   }
 
@@ -925,61 +927,25 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
   .g1fk-btn:disabled { cursor: not-allowed; opacity: 0.55; }
   .g1fk-btn:hover:not(:disabled) { border-color: var(--sl-color-accent); color: var(--sl-color-accent-high, var(--sl-color-accent)); }
 
-  /* 读数：位置一条定高 output + 末端位姿 4×4 矩阵（矩阵在页面上水平居中） */
+  /* 读数：末端相对躯干的位置 + ZYX 欧拉角。两行共用同一套 4 列 grid（行标题 + 3 个数值列） */
   .g1fk-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; line-height: 1.7; }
-  .fk-out { display: block; white-space: nowrap; overflow-x: auto; height: 1.7em; line-height: 1.7; margin: 0; }
-  .fk-out-pos { color: var(--sl-color-accent); font-weight: 600; }
-
-  /* 末端位姿 T_end：4 列 grid 对齐；容器 / 标题 / 网格都水平居中；高度写死，数字变化不抖动 */
-  .fk-matrix { width: 100%; margin: 0.4rem auto 0; }
-  .fk-matrix-title { display: block; margin: 0 0 0.15rem; text-align: center; color: var(--sl-color-gray-2); font-size: 0.8125rem; line-height: 1.4; }
-  .fk-matrix-body {
+  .fk-pose {
     display: grid;
-    grid-template-columns: 1fr auto 1fr; /* 左右两个等宽 1fr 把中间的矩阵顶到正中央 */
+    grid-template-columns: 3rem repeat(3, minmax(7rem, 1fr)); /* 两行共用列宽，保证上下对齐 */
+    grid-auto-rows: 1.7rem;                                   /* 固定行高，数字变化不上下跳 */
+    row-gap: 0.35rem;
+    column-gap: 0.75rem;
     align-items: center;
-    height: 6.85rem;
-    margin: 0;
+    height: 3.75rem;                                          /* 2×1.7 + 0.35，容器高度写死 */
+    margin: 0.4rem 0 0;
+    font-size: 0.8125rem;
+    line-height: 1.7;
   }
-  .fk-matrix-eq { grid-column: 1; justify-self: end; margin: 0 0.5rem 0 0; color: var(--sl-color-text); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85rem; white-space: nowrap; }
-  .fk-matrix-grid {
-    grid-column: 2;
-    position: relative;
-    display: grid;
-    grid-template-columns: repeat(4, 3.7rem);
-    grid-auto-rows: 1.6rem;
-    row-gap: 0.15rem;
-    column-gap: 0.5rem;
-    justify-content: center;
-    margin: 0;
-    margin-inline: auto;
-    padding: 0 0.55rem;
-  }
-  /* 绝对值定位的伪元素不会成为 grid item，只用来画两侧方括号 */
-  .fk-matrix-grid::before,
-  .fk-matrix-grid::after {
-    content: '';
-    position: absolute;
-    top: -0.05rem;
-    bottom: -0.05rem;
-    width: 0.42rem;
-    border: 1.5px solid var(--sl-color-gray-3);
-  }
-  .fk-matrix-grid::before { left: 0; border-right: 0; }
-  .fk-matrix-grid::after { right: 0; border-left: 0; }
-  .fk-m {
-    display: block;
-    height: 1.6rem;
-    line-height: 1.6rem;
-    margin: 0;
-    text-align: center;
-    white-space: nowrap;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 0.85rem;
-    font-variant-numeric: tabular-nums;
-  }
-  .fk-m-rot { color: var(--sl-color-accent); }
-  .fk-m-pos { color: var(--fk-pos); font-weight: 600; }
-  .fk-m-row { color: var(--sl-color-gray-2); }
+  .fk-pose-head { margin: 0; color: var(--sl-color-gray-2); font-size: 0.8125rem; white-space: nowrap; }
+  .fk-pose-cell { display: flex; align-items: baseline; gap: 0.3rem; min-width: 0; margin: 0; white-space: nowrap; }
+  .fk-pose-k { flex: 0 0 auto; margin: 0; color: var(--sl-color-gray-2); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8125rem; }
+  .fk-pose-v { flex: 1 1 auto; min-width: 3.2rem; margin: 0; text-align: right; color: var(--sl-color-accent); font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+  .fk-pose-u { flex: 0 0 1rem; margin: 0; color: var(--sl-color-gray-2); font-size: 0.75rem; }
 
   .fk-demo figcaption {
     max-width: 900px;
@@ -994,7 +960,14 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
     .g1fk-row { flex-wrap: wrap; }
     .g1fk-row-title { flex-basis: 100%; }
     .g1fk-slider-label { flex: 1 1 8rem; }
-    /* 窄屏隐藏 “T_end =” 标签，避免它把居中的矩阵挤偏或溢出 */
-    .fk-matrix-eq { display: none; }
+    /* 窄屏：列宽仍写死以保证两行对齐；超宽时读数区内部横向滚动，行高固定不上下跳 */
+    .fk-pose {
+      grid-template-columns: 2.6rem repeat(3, minmax(6.5rem, 1fr));
+      column-gap: 0.4rem;
+      height: auto;
+      min-height: 3.75rem;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
   }
 </style>
