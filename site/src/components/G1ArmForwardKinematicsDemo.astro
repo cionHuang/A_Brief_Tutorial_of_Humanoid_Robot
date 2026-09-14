@@ -267,7 +267,7 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
   const FK_TORSO_LINK = 'torso_link';
   const FK_TRAIL_MAX = 240;
   const FK_TRAIL_MIN_STEP = 2.5e-4;
-  const FK_RESOURCE_TIMEOUT = 15000;
+  const FK_RESOURCE_TIMEOUT = 4000;
 
   document.querySelectorAll('.fk-demo').forEach((demo) => {
     if (!(demo instanceof HTMLElement)) return;
@@ -671,6 +671,9 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
         });
         manager.onProgress = (_url, loaded, total) => {
           setState('loading', total > 0 ? '加载模型网格 ' + loaded + '/' + total : '加载模型网格');
+          // 网格命中浏览器缓存等情况下 LoadingManager 的 onLoad 可能不触发，
+          // 进度到满即视为资源到齐，直接放行，避免一直停在 “37/37”。
+          if (total > 0 && loaded >= total) resolveResources();
         };
         manager.onError = (url) => {
           // 个别网格缺失不应让整个模型不可用：记录后继续，其余部件照常显示。

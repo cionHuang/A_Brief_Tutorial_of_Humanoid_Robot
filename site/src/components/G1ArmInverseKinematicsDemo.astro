@@ -274,7 +274,7 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
   const IK_TORSO_LINK = 'torso_link';
   const IK_TRAIL_MAX = 240;
   const IK_TRAIL_MIN_STEP = 2.5e-4;
-  const IK_RESOURCE_TIMEOUT = 15000;
+  const IK_RESOURCE_TIMEOUT = 4000;
   const IK_EPS = 1e-5;
   const IK_CONVERGE_POS = 5e-4;
   const IK_CONVERGE_ROT = 2e-3;
@@ -929,6 +929,8 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
         const resourcesLoaded = new Promise((resolve) => { resolveResources = resolve; });
         manager.onProgress = (_url, loaded, total) => {
           setState('loading', total > 0 ? '加载模型网格 ' + loaded + '/' + total : '加载模型网格');
+          // 同 FK 演示：缓存命中时 onLoad 可能不触发，进度到满即放行。
+          if (total > 0 && loaded >= total) resolveResources();
         };
         manager.onError = (url) => {
           meshErrors += 1;
