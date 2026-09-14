@@ -229,8 +229,8 @@ const CFG = { model: MODEL, joints: JOINTS, kp: K_P, scale: GC_SCALE, origin: GC
     <text class="gc-legend" x="24" y="58">矢状面（x 向右、z 向上）；灰箭头 = 各段重力作用点与方向</text>
 
     <!-- 地面参考线：画在可达包络之下，不与任何连杆/箭头交叉 -->
-    <line class="gc-ground" x1="40" y1="420" x2="430" y2="420"></line>
-    <text class="gc-ground-label" x="40" y="412">地面参考（示意）</text>
+    <line class="gc-ground" x1="40" y1="440" x2="436" y2="440"></line>
+    <text class="gc-ground-label" x="436" y="436" text-anchor="start">地面参考（示意）</text>
 
     <!-- 骨盆（固定） -->
     <rect class="gc-pelvis" x={(P_HIP.x - 34).toFixed(1)} y={(P_HIP.y - 42).toFixed(1)} width="68" height="34" rx="7"></rect>
@@ -286,7 +286,9 @@ const CFG = { model: MODEL, joints: JOINTS, kp: K_P, scale: GC_SCALE, origin: GC
     ))}
     <text class="gc-panel-note" x="596" y="252">K_p = 50 N·m/rad（示意）</text>
 
-    <text class="gc-foot" x="24" y="444">τ_j = Σ m_i g (x_i,CoM − x_j)：把每个下游连杆的重量乘它对关节的水平力臂，再求和。</text>
+    <text class="gc-foot" x="580" y="352">τ_j = Σ m_i g Δx_i</text>
+    <text class="gc-foot" x="580" y="376">Δx_i：各段 CoM 的水平力臂</text>
+    <text class="gc-foot" x="580" y="400">（相对关节 j，下游求和）</text>
   </svg>
 
   <div class="gc-controls">
