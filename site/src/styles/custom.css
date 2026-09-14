@@ -12,6 +12,11 @@
   font-size: 1rem;
 }
 
+/* 表头居中：与左对齐的数据列形成对照；长表头折行时也更对称 */
+.sl-markdown-content table th {
+  text-align: center;
+}
+
 /* SVG 交互演示里的 KaTeX 标签（foreignObject 内嵌 HTML） */
 .tex-fo,
 .tex-box {
