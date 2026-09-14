@@ -798,7 +798,8 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
         applyTheme();
       } catch (error) {
         console.error('G1 左臂正运动学演示渲染失败：', error);
-        setState('error', '模型加载失败（WebGL 不可用，或 URDF / 网格无法读取）');
+        const detail = error && error.message ? String(error.message).slice(0, 160) : '';
+        setState('error', detail ? '模型加载失败：' + detail : '模型加载失败（WebGL 不可用，或 URDF / 网格无法读取）');
         dispose();
       }
     };
