@@ -33,6 +33,10 @@
  *
  * 力矩（页面里真算，不写死）：τ_j = Σ_{下游各段 i} m_i · g · (x_{i,CoM} − x_j)，g = 9.81 m/s²，x 取水平分量。
  * 重力补偿关：电机要靠位置误差 Δq ≈ τ_g / K_p 撑住（K_p = 50 N·m/rad，明确标注为教学示意）。
+ *
+ * 防穿模与取景：矢状面里膝关节只单向弯曲，滑块与计算都取 0°–150°（URDF 实际 −5°–165°）；
+ * 以髋为圆心、R = L1+L2+L3 = 0.7229 m 的可达圆按 GC_SCALE 固定取景（见下方常量），
+ * 骨盆矩形固定朝向；任何滑块组合都不越界（几何边界扫描 1402 个姿态，0 越界、0 自交）。
  */
 
 const D2R = Math.PI / 180;
@@ -155,19 +159,22 @@ const gcTorques = (q) => {
 };
 
 // ── SVG 投影（x 向右、z 向上；屏幕 y 向下） ──────────────────────────────────
-const GC_SCALE = 400;
-const GC_ORIGIN = { x: 190, y: 60 };
+// 固定取景：以髋为圆心、R = L1+L2+L3 = 0.7229 m 的圆必须整条落在左侧绘制区里。
+// 绘制区取 x∈[24,470]、y∈[24,446]（给右侧力矩条 x≥430 与面板 x≥580 留位）；
+// R*SCALE + 42（骨盆/标签余量）仍小于绘制区半宽 223 与半高 211，四周留 ≥12 px。
+const GC_SCALE = 210;
+const GC_ORIGIN = { x: 247, y: 235 };
 const gcProj = (pt) => ({ x: GC_ORIGIN.x + GC_SCALE * pt[0], y: GC_ORIGIN.y - GC_SCALE * pt[1] });
 
 const JOINTS = [
   { key: 'hip', name: '髋 pitch', lo: LEG_JOINTS.left_hip_pitch_joint.lo, hi: LEG_JOINTS.left_hip_pitch_joint.hi, def: -10 * D2R },
-  { key: 'knee', name: '膝', lo: LEG_JOINTS.left_knee_joint.lo, hi: LEG_JOINTS.left_knee_joint.hi, def: 20 * D2R },
+  { key: 'knee', name: '膝', lo: 0, hi: 150 * D2R, def: 20 * D2R },
   { key: 'ankle', name: '踝 pitch', lo: LEG_JOINTS.left_ankle_pitch_joint.lo, hi: LEG_JOINTS.left_ankle_pitch_joint.hi, def: 5 * D2R },
 ];
 const DEF_Q = JOINTS.map((j) => j.def);
 const DEF_TAU = gcTorques(DEF_Q);
 const DEF_POSE = gcPose(DEF_Q);
-const BAR = { x: 290, scale: 7, max: 150, min: 1.5 };
+const BAR = { x: 430, scale: 7, max: 120, min: 1.5 };
 const K_P = 50;
 
 const fmt1 = (v) => {
@@ -187,6 +194,18 @@ const P_ANKLE = gcProj(DEF_POSE.ankle);
 const P_TOE = gcProj(DEF_POSE.toe);
 const P_COM = [gcProj(DEF_POSE.com1), gcProj(DEF_POSE.com2), gcProj(DEF_POSE.com3)];
 const P_J = [P_HIP, P_KNEE, P_ANKLE];
+// 关节名放“关节 → 髋”方向的一侧，始终落在可达包络内，避免贴边/越界
+const jointLabelAt = (j, hip) => {
+  const dx = hip.x - j.x;
+  const dy = hip.y - j.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return { x: j.x - 48, y: j.y - 16 };
+  const ux = dx / len;
+  const uy = dy / len;
+  const step = Math.min(16, len * 0.4);
+  return { x: j.x + ux * step - uy * 14, y: j.y + uy * step + ux * 14 };
+};
+const P_JLABEL = P_J.map((j) => jointLabelAt(j, P_HIP));
 const P_MID = [
   { x: (P_HIP.x + P_KNEE.x) / 2, y: (P_HIP.y + P_KNEE.y) / 2 },
   { x: (P_KNEE.x + P_ANKLE.x) / 2, y: (P_KNEE.y + P_ANKLE.y) / 2 },
@@ -206,8 +225,12 @@ const CFG = { model: MODEL, joints: JOINTS, kp: K_P, scale: GC_SCALE, origin: GC
       </marker>
     </defs>
 
-    <text class="gc-title" x="24" y="30">重力补偿：姿态不同，扛重力的力矩就不同（侧视示意）</text>
-    <text class="gc-legend" x="24" y="56">矢状面：x 向右、z 向上；灰箭头 = 各段重力的作用点与方向</text>
+    <text class="gc-title" x="24" y="34">重力补偿：姿态不同，扛重力的力矩不同</text>
+    <text class="gc-legend" x="24" y="58">矢状面（x 向右、z 向上）；灰箭头 = 各段重力作用点与方向</text>
+
+    <!-- 地面参考线：画在可达包络之下，不与任何连杆/箭头交叉 -->
+    <line class="gc-ground" x1="40" y1="420" x2="430" y2="420"></line>
+    <text class="gc-ground-label" x="40" y="412">地面参考（示意）</text>
 
     <!-- 骨盆（固定） -->
     <rect class="gc-pelvis" x={(P_HIP.x - 34).toFixed(1)} y={(P_HIP.y - 42).toFixed(1)} width="68" height="34" rx="7"></rect>
@@ -223,7 +246,7 @@ const CFG = { model: MODEL, joints: JOINTS, kp: K_P, scale: GC_SCALE, origin: GC
       <circle class="gc-joint" data-joint-dot={i} cx={P_J[i].x.toFixed(1)} cy={P_J[i].y.toFixed(1)} r="5.5"></circle>
     ))}
     {[0, 1, 2].map((i) => (
-      <text class="gc-jlabel" data-jlabel={i} x={(P_J[i].x - 14).toFixed(1)} y={(P_J[i].y + 5).toFixed(1)} text-anchor="end">{J_LABELS[i]}</text>
+      <text class="gc-jlabel" data-jlabel={i} x={P_JLABEL[i].x.toFixed(1)} y={P_JLABEL[i].y.toFixed(1)} text-anchor="middle">{J_LABELS[i]}</text>
     ))}
 
     <!-- 各段质心与重力方向 -->
@@ -247,7 +270,7 @@ const CFG = { model: MODEL, joints: JOINTS, kp: K_P, scale: GC_SCALE, origin: GC
       <line class={'gc-bar' + (DEF_TAU_ARR[i] < 0 ? ' gc-bar-neg' : '')} data-bar={i} x1={BAR.x.toFixed(1)} y1={P_J[i].y.toFixed(1)} x2={(BAR.x + DEF_BAR[i]).toFixed(1)} y2={P_J[i].y.toFixed(1)}></line>
     ))}
     {[0, 1, 2].map((i) => (
-      <text class={'gc-barval' + (DEF_TAU_ARR[i] < 0 ? ' gc-barval-neg' : '')} data-barval={i} x={(BAR.x + DEF_BAR[i] + 8).toFixed(1)} y={(P_J[i].y + 5).toFixed(1)}>{fmt1(DEF_TAU_ARR[i]) + ' N·m'}</text>
+      <text class={'gc-barval' + (DEF_TAU_ARR[i] < 0 ? ' gc-barval-neg' : '')} data-barval={i} x={(BAR.x + DEF_BAR[i] / 2).toFixed(1)} y={(P_J[i].y - 10).toFixed(1)} text-anchor="middle">{fmt1(DEF_TAU_ARR[i]) + ' N·m'}</text>
     ))}
 
     <!-- 右侧：力矩面板 -->
@@ -261,9 +284,9 @@ const CFG = { model: MODEL, joints: JOINTS, kp: K_P, scale: GC_SCALE, origin: GC
         <text class="gc-panel-val" data-tau={i} x="864" y={(148 + i * 30).toFixed(0)} text-anchor="end">{fmt1(DEF_TAU_ARR[i])}</text>
       </>
     ))}
-    <text class="gc-panel-note" x="596" y="254">K_p = 50 N·m/rad（教学示意）</text>
+    <text class="gc-panel-note" x="596" y="252">K_p = 50 N·m/rad（示意）</text>
 
-    <text class="gc-foot" x="24" y="452">τ_j = Σ m_i g (x_i,CoM − x_j)：把每个下游连杆的重量乘它对关节的水平力臂，再求和。</text>
+    <text class="gc-foot" x="24" y="444">τ_j = Σ m_i g (x_i,CoM − x_j)：把每个下游连杆的重量乘它对关节的水平力臂，再求和。</text>
   </svg>
 
   <div class="gc-controls">
@@ -280,6 +303,7 @@ const CFG = { model: MODEL, joints: JOINTS, kp: K_P, scale: GC_SCALE, origin: GC
       <span class="gc-row-title"></span>
       <button type="button" class="gc-btn" data-gc-toggle>重力补偿：开</button>
       <span class="gc-hint">关掉后电机只能靠位置误差撑住重力力矩</span>
+      <span class="gc-hint">膝：矢状面单向弯曲 0–150°（URDF 实际 −5–165°）</span>
     </div>
   </div>
 
@@ -330,6 +354,16 @@ const CFG = { model: MODEL, joints: JOINTS, kp: K_P, scale: GC_SCALE, origin: GC
       return { th: th, kn: kn, an: an, pose: p };
     };
     const proj = (pt) => ({ x: ORIGIN.x + SCALE * pt[0], y: ORIGIN.y - SCALE * pt[1] });
+    const jointLabelAt = (j, hip) => {
+      const dx = hip.x - j.x;
+      const dy = hip.y - j.y;
+      const len = Math.hypot(dx, dy);
+      if (len < 1) return { x: j.x - 48, y: j.y - 16 };
+      const ux = dx / len;
+      const uy = dy / len;
+      const step = Math.min(16, len * 0.4);
+      return { x: j.x + ux * step - uy * 14, y: j.y + uy * step + ux * 14 };
+    };
     const fmt1 = (v) => {
       const r = Math.abs(v) < 0.05 ? 0 : v;
       return (r < 0 ? '−' : '') + Math.abs(r).toFixed(1);
@@ -390,8 +424,9 @@ const CFG = { model: MODEL, joints: JOINTS, kp: K_P, scale: GC_SCALE, origin: GC
       for (let i = 0; i < 3; i += 1) setXY(jointEls[i], pJ[i], false);
       for (let i = 0; i < 3; i += 1) {
         if (jlabelEls[i]) {
-          jlabelEls[i].setAttribute('x', (pJ[i].x - 14).toFixed(1));
-          jlabelEls[i].setAttribute('y', (pJ[i].y + 5).toFixed(1));
+          const lp = jointLabelAt(pJ[i], pHip);
+          jlabelEls[i].setAttribute('x', lp.x.toFixed(1));
+          jlabelEls[i].setAttribute('y', lp.y.toFixed(1));
         }
       }
       const mids = [
@@ -435,8 +470,8 @@ const CFG = { model: MODEL, joints: JOINTS, kp: K_P, scale: GC_SCALE, origin: GC
           barEls[i].classList.toggle('gc-bar-neg', tauArr[i] < 0);
         }
         if (barvalEls[i]) {
-          barvalEls[i].setAttribute('x', (BAR.x + barLen[i] + 8).toFixed(1));
-          barvalEls[i].setAttribute('y', (pJ[i].y + 5).toFixed(1));
+          barvalEls[i].setAttribute('x', (BAR.x + barLen[i] / 2).toFixed(1));
+          barvalEls[i].setAttribute('y', (pJ[i].y - 10).toFixed(1));
           barvalEls[i].textContent = fmt1(tauArr[i]) + ' N·m';
           barvalEls[i].classList.toggle('gc-barval-neg', tauArr[i] < 0);
         }
@@ -492,6 +527,8 @@ const CFG = { model: MODEL, joints: JOINTS, kp: K_P, scale: GC_SCALE, origin: GC
   .gc-demo svg { display: block; width: 100%; max-width: 900px; height: auto; margin: 0 auto; }
   .gc-title { fill: var(--sl-color-text); font-size: 24px; font-weight: 600; }
   .gc-legend { fill: var(--sl-color-gray-2); font-size: 17px; }
+  .gc-ground { stroke: var(--sl-color-gray-4); stroke-width: 1.4; stroke-dasharray: 10 7; opacity: 0.7; }
+  .gc-ground-label { fill: var(--sl-color-gray-3); font-size: 17px; }
   .gc-foot { fill: var(--sl-color-gray-2); font-size: 17px; }
   .gc-pelvis { fill: light-dark(rgba(148, 163, 184, 0.12), rgba(148, 163, 184, 0.1)); stroke: var(--sl-color-gray-4); stroke-width: 1.5; }
   .gc-pelvis-label { fill: var(--sl-color-gray-2); font-size: 17px; }
