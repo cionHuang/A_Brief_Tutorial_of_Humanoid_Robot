@@ -108,7 +108,7 @@ const SLIDERS = CHAIN.filter((c) => c.slider);
 const DEF_Q = CHAIN.map((c) => c.def);
 const DEF_END = chainFK(DEF_Q)[6];
 const DEF_EULER = eulerZYXDeg(DEF_END.R);
-const DEF_JOINT_TEXT = SLIDERS.map((s, i) => s.short + ' ' + fmtDeg1(R2D * DEF_Q[i]) + '°').join(' / ');
+const DEF_JOINT_CELLS = SLIDERS.map((s, i) => ({ label: s.short, value: fmtDeg1(R2D * DEF_Q[i]) }));
 const DEF_POSE_ROWS = [
   {
     head: '位置',
@@ -248,7 +248,16 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
     </div>
 
     <output class="ik-out" data-ik-solve aria-live="polite">等待加载模型</output>
-    <div class="ik-joints" data-ik-joints>关节角（°）：{DEF_JOINT_TEXT}</div>
+    <div class="ik-joints" data-ik-joints role="group" aria-label="六个关节角（度，1 位小数）">
+      <span class="ik-joints-head">关节角</span>
+      {DEF_JOINT_CELLS.map((cell, i) => (
+        <span class="ik-joint-cell">
+          <span class="ik-joint-k">{cell.label}</span>
+          <span class="ik-joint-v" data-ik-joint-val={i}>{cell.value}</span>
+          <span class="ik-joint-u">°</span>
+        </span>
+      ))}
+    </div>
   </div>
 
   <figcaption>
@@ -286,7 +295,7 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
     const viewport = demo.querySelector('[data-ik-viewport]');
     const statusEl = demo.querySelector('[data-ik-status]');
     const solveOut = demo.querySelector('[data-ik-solve]');
-    const jointsEl = demo.querySelector('[data-ik-joints]');
+    const jointValEls = Array.from({ length: 6 }, (_, i) => demo.querySelector('[data-ik-joint-val="' + i + '"]'));
     const resetBtn = demo.querySelector('[data-ik-reset]');
     const lambdaInput = demo.querySelector('[data-ik-param="lambda"]');
     const stepsInput = demo.querySelector('[data-ik-param="steps"]');
@@ -318,7 +327,6 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
     }
 
     const chain = JSON.parse(chainRaw);
-    const sliders = chain.filter((c) => c.slider);
     const state = chain.map((c) => c.def);
     const endTrail = [];
     const R2D = 180 / Math.PI;
@@ -762,8 +770,10 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
       }
     };
     const syncJoints = () => {
-      if (!jointsEl) return;
-      jointsEl.textContent = '关节角（°）：' + sliders.map((s, i) => s.short + ' ' + fmtDeg1(R2D * state[i]) + '°').join(' / ');
+      for (let i = 0; i < 6; i += 1) {
+        const node = jointValEls[i];
+        if (node) node.textContent = fmtDeg1(R2D * state[i]);
+      }
     };
     const syncSolveReadout = (res) => {
       if (!solveOut) return;
@@ -1271,18 +1281,32 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
     font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
+  /* 六个关节角：与 .ik-pose 同款「行标题 + 3 列」网格，跨两行标题 + 3×2 数值格 */
   .ik-joints {
-    display: block;
-    white-space: nowrap;
-    overflow-x: auto;
-    height: 1.7em;
-    line-height: 1.7;
-    margin: 0.15rem 0 0;
-    color: var(--sl-color-gray-2);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    display: grid;
+    grid-template-columns: 3.6rem repeat(3, minmax(6.5rem, 1fr)); /* 行标题 + 3 个数值列 */
+    grid-auto-rows: 1.7rem;                                       /* 固定行高，数值变化不上下跳 */
+    row-gap: 0.35rem;
+    column-gap: 0.75rem;
+    align-items: center;
+    height: 3.75rem;                                              /* 2×1.7 + 0.35，容器高度写死 */
+    margin: 0.2rem 0 0;
     font-size: 0.8125rem;
-    font-variant-numeric: tabular-nums;
+    line-height: 1.7;
   }
+  .ik-joints-head {
+    grid-column: 1;
+    grid-row: span 2;                                             /* “关节角”跨两行 */
+    align-self: center;
+    margin: 0;
+    color: var(--sl-color-gray-2);
+    font-size: 0.8125rem;
+    white-space: nowrap;
+  }
+  .ik-joint-cell { display: flex; align-items: baseline; gap: 0.3rem; min-width: 0; margin: 0; white-space: nowrap; }
+  .ik-joint-k { flex: 0 0 auto; margin: 0; color: var(--sl-color-gray-2); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8125rem; }
+  .ik-joint-v { flex: 1 1 auto; min-width: 3.2rem; margin: 0; text-align: right; color: var(--sl-color-accent); font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+  .ik-joint-u { flex: 0 0 1rem; margin: 0; color: var(--sl-color-gray-2); font-size: 0.75rem; }
 
   .ik-demo figcaption {
     max-width: 900px;
@@ -1298,6 +1322,15 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
     .ik-slider-label { flex: 1 1 8rem; }
     .ik-pose {
       grid-template-columns: 2.6rem repeat(3, minmax(6.5rem, 1fr));
+      column-gap: 0.4rem;
+      height: auto;
+      min-height: 3.75rem;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    /* 窄屏仍保持 3 列对齐，超宽时容器内横向滚动而不是换行 */
+    .ik-joints {
+      grid-template-columns: 3.2rem repeat(3, minmax(6.5rem, 1fr));
       column-gap: 0.4rem;
       height: auto;
       min-height: 3.75rem;
