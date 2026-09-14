@@ -2,8 +2,20 @@
 /**
  * G1 左臂正运动学（Forward Kinematics）交互演示 —— 4.2 节“### G1 的正运动学落点”正文。
  *
- * 数据来源：site/public/models/g1/g1_29dof.urdf（Unitree G1 官方 29-DoF 模型，torso_link → 左臂链）。
- * 关节链（父 → 子）与 URDF 原始数值（origin 单位 m / rad，limit 单位 rad，axis 为本体系）：
+ * 渲染：three.js + urdf-loader 懒加载仓库内的 G1 29 DoF URDF 与 STL 网格
+ * （site/public/models/g1/g1_29dof.urdf，网格由 urdf-loader 自动按 meshes/ 解析）。
+ * 只显示躯干与左臂链，其余 link 一律 visible = false；6 个滑块 input 时用
+ * robot.setJointValue 实时改关节角并重绘一帧。
+ *
+ * 末端轨迹（保留旧版的“空间中的虚线”细节）：每次关节状态变化时取
+ * left_wrist_yaw_link 的世界坐标压入数组（上限 240 点），用
+ * BufferGeometry + Line + LineDashedMaterial 画成虚线，line.computeLineDistances()
+ * 逐段更新；“复位”清空。末端还挂了一个 0.08 m 的 AxesHelper，随 FK 自动移动/转向。
+ *
+ * 读数：位置 =（末端世界坐标 − torso_link 世界坐标）再乘 torso_link 世界旋转的逆，
+ * 得到“末端相对躯干”的位置，与旧版 SVG 的数值含义一致。
+ *
+ * 关节链（父 → 子）与 URDF 数值（origin 单位 m / rad，limit 单位 rad，axis 为本体系）：
  *
  *   ① left_shoulder_pitch_joint  (torso_link → left_shoulder_pitch_link)
  *        origin xyz="0.0039563 0.10022 0.23778"  rpy="0.27931 5.4949E-05 -0.00019159"
@@ -23,29 +35,15 @@
  *   ⑥ left_wrist_pitch_joint     (left_wrist_roll_link → left_wrist_pitch_link)
  *        origin xyz="0.038 0 0"                  rpy="0 0 0"
  *        axis  xyz="0 1 0"   limit lower="-1.614429558" upper="1.614429558"   （≈ ±92.50°）
- *   ⑦ left_wrist_yaw_joint       (left_wrist_pitch_link → left_wrist_yaw_link，链末端 = 手腕/掌基座)
+ *   ⑦ left_wrist_yaw_joint       (left_wrist_pitch_link → left_wrist_yaw_link，链末端)
  *        origin xyz="0.046 0 0"                  rpy="0 0 0"
  *        axis  xyz="0 0 1"   limit lower="-1.614429558" upper="1.614429558"   （≈ ±92.50°）
  *
- * 正运动学：T_i = T_origin_i · R_axis_i(q_i)，T = ∏_{i=1..7} T_i（前乘，等价于 T ← T · T_i）。
- *   · T_origin_i = Trans(xyz_i) · RPY(rpy_i)，RPY = Rz(yaw)·Ry(pitch)·Rx(roll)（URDF 固定轴约定）；
- *   · R_axis_i(q_i) = 绕轴 axis_i 转 q_i（Rodrigues 公式），q_i 一律用弧度；
- *   · 第 k 个关节坐标系原点 p_k = p_{k-1} + R_{k-1}·xyz_k（平移在父系里表达，与是否含 R_axis 无关），
- *     旋转 R_k = R_{k-1}·RPY_k·R_axis_k；末端位置取 p_7，姿态取 R_7 的三列（末端坐标架在躯干系中的方向）。
- *   · 滑块用角度（°），进出公式时 d2r 转弧度；默认姿态 q = [0°, 20°, 0°, 40°, 0°, 0°, 0°]（⑦ 腕 yaw 固定 0°，
- *     只给 6 个滑块：肩 pitch / 肩 roll / 肩 yaw / 肘 / 腕 roll / 腕 pitch）。
- *   · 注意 URDF 的零位不是“手臂伸直”：q=0 时肩 yaw→肘 的 origin 为 (0.0158,0,−0.0805)（上臂大致朝下），
- *     肘→腕 roll 的 origin 为 (0.100,0,−0.010)（前臂朝 +x），两者约成 90°（肘部呈 L 形）。因此“伸直”
- *     按钮把各腕角调到 0，再在肘 limit 内按 1° 扫描，取使 |末端 − 肩| 最大的肘角（默认肩姿下 ≈ +90°，
- *     而非 0°），即真正的“最长伸展”。
- *   · “复位”回默认姿态；“伸直”只改肘与腕，肩的三个角保持不动。
- *
- * 投影：等距投影 ax=(0.866, 0.5)（x 基）、ay=(−0.866, 0.5)（y 基）、z 向上 (0, −1)：
- *   sx = O.x + 300·(0.866·x − 0.866·y)，sy = O.y + 300·(0.5·x + 0.5·y − z)，比例 300 px/m。
- *   躯干原点屏幕位置 O = (320, 298)；左区 x ∈ [20, 560]，右面板 x ∈ [580, 880]，viewBox 900×470。
- *
- * 交互：默认静止、无动画循环、不用 requestAnimationFrame；拖滑块即时重算并更新属性 / textContent / classList。
- * 所有 SVG 图形都写在 markup 里，JS 只改属性；颜色只用 var(--sl-color-*) 与 light-dark()。
+ * 纯数学部分（chainFK / fmt3 / fmtDeg1）只用于组件加载 3D 前先把默认读数写进 markup，
+ * 真实渲染与读数以 three.js 加载后的 URDF 为准。
+ *   · “复位”回默认姿态 q = [0°, 20°, 0°, 40°, 0°, 0°, 0°]（⑦ 腕 yaw 固定 0°）。
+ *   · “伸直”把各腕角归零，再在肘 limit 内以真实 URDF 按 1° 扫描，取使 |末端 − 肩|
+ *     最大的肘角（URDF 零位下前臂与上臂约 90°，“伸直”并不是 0°），肩三个角保持不动。
  */
 
 const D2R = Math.PI / 180;
@@ -94,25 +92,12 @@ const chainFK = (q) => {
   let p = [0, 0, 0];
   const frames = [];
   CHAIN.forEach((j, i) => {
-    p = [
-      p[0] + mulVec(R, j.xyz)[0],
-      p[1] + mulVec(R, j.xyz)[1],
-      p[2] + mulVec(R, j.xyz)[2],
-    ];
+    const d = mulVec(R, j.xyz);
+    p = [p[0] + d[0], p[1] + d[1], p[2] + d[2]];
     R = mul3(mul3(R, rpyMat(j.rpy[0], j.rpy[1], j.rpy[2])), axisMat(j.axis, q[i]));
     frames.push({ p: p.slice(), R: R.map((row) => row.slice()) });
   });
   return frames;
-};
-// 从 R 反解 ZYX 欧拉角（与 URDF rpy 同序），返回弧度
-const eulerZYX = (R) => {
-  const sy = Math.hypot(R[0][0], R[1][0]);
-  if (sy < 1e-9) return { roll: 0, pitch: Math.atan2(-R[2][0], sy), yaw: Math.atan2(-R[0][1], R[1][1]) };
-  return {
-    roll: Math.atan2(R[2][1], R[2][2]),
-    pitch: Math.atan2(-R[2][0], sy),
-    yaw: Math.atan2(R[1][0], R[0][0]),
-  };
 };
 // 保留 3 位小数，负号用 U+2212；−0.000 归一为 0.000
 const fmt3 = (v) => {
@@ -136,126 +121,36 @@ const CHAIN = [
 ];
 const SLIDERS = CHAIN.filter((c) => c.slider);
 
-// ── 等距投影 & 画布 ──────────────────────────────────────────────────────────
-const VIEW = { w: 900, h: 470 };
-const WORLD = { x: 320, y: 298 };   // 躯干原点 (0,0,0) 的屏幕位置
-const SCALE = 300;                   // 300 px/m
-const ISO = { ax: 0.866, ay: 0.5 };  // x 基 (0.866, 0.5)、y 基 (−0.866, 0.5)、z 向上 (0, −1)
-const proj = (x, y, z) => ({
-  x: WORLD.x + SCALE * (ISO.ax * x - ISO.ax * y),
-  y: WORLD.y + SCALE * (ISO.ay * x + ISO.ay * y - z),
-});
-
 const DEF_Q = CHAIN.map((c) => c.def);
-const DEF_FRAMES = chainFK(DEF_Q);
-const DEF_END = DEF_FRAMES[DEF_FRAMES.length - 1];
-const DEF_EULER = eulerZYX(DEF_END.R);
-const AXIS_LEN = 0.07;               // 末端坐标架三根短轴长度 (m)，约 21 px
-const SEG = { mount: [0, 1, 2], upper: [2, 3], fore: [3, 4], wrist: [4, 6] };
+const DEF_END = chainFK(DEF_Q)[6];
+const DEF_POS_TEXT = '末端相对躯干：x = ' + fmt3(DEF_END.p[0]) + ' m，y = ' + fmt3(DEF_END.p[1]) + ' m，z = ' + fmt3(DEF_END.p[2]) + ' m';
+const DEF_NOTE_TEXT = SLIDERS.map((s, i) => s.short + ' ' + fmtDeg1(R2D * DEF_Q[i]) + '°').join('，')
+  + '：这就是一条串联链的 T 相乘结果';
 
-const ptsStr = (idxs) => idxs
-  .map((i) => {
-    const s = proj(DEF_FRAMES[i].p[0], DEF_FRAMES[i].p[1], DEF_FRAMES[i].p[2]);
-    return s.x.toFixed(1) + ',' + s.y.toFixed(1);
-  })
-  .join(' ');
-const DEF_DOTS = DEF_FRAMES.map((f) => proj(f.p[0], f.p[1], f.p[2]));
-const DEF_AXIS_TIPS = [0, 1, 2].map((i) => proj(
-  DEF_END.p[0] + AXIS_LEN * DEF_END.R[0][i],
-  DEF_END.p[1] + AXIS_LEN * DEF_END.R[1][i],
-  DEF_END.p[2] + AXIS_LEN * DEF_END.R[2][i],
-));
-
-// 躯干/肩基座：固定不动的线框方块
-const TORSO = { x: [-0.055, 0.055], y: [-0.09, 0.09], z: [-0.02, 0.235] };
-const TORSO_CORNERS = [];
-for (const tx of TORSO.x) for (const ty of TORSO.y) for (const tz of TORSO.z) TORSO_CORNERS.push(proj(tx, ty, tz));
-const TORSO_EDGES = [[0, 1], [0, 2], [0, 4], [1, 3], [1, 5], [2, 3], [2, 6], [3, 7], [4, 5], [4, 6], [5, 7], [6, 7]];
-
-// 躯干本体系三根短轴（x 右下 / y 左下 / z 上），帮助建立三维方向感
-const BASE_ORIGIN = proj(0, 0, 0);
-const BASE_AXES = [
-  { key: 'x', tip: proj(0.09, 0, 0) },
-  { key: 'y', tip: proj(0, 0.09, 0) },
-  { key: 'z', tip: proj(0, 0, 0.135) },
-];
-const BASE_LABELS = [
-  { key: 'x', x: BASE_AXES[0].tip.x + 8, y: BASE_AXES[0].tip.y + 16, anchor: 'start' },
-  { key: 'y', x: BASE_AXES[1].tip.x - 8, y: BASE_AXES[1].tip.y + 16, anchor: 'end' },
-  { key: 'z', x: BASE_AXES[2].tip.x - 6, y: BASE_AXES[2].tip.y - 6, anchor: 'end' },
-];
-
-const CFG = { view: VIEW, world: WORLD, scale: SCALE, iso: ISO, chain: CHAIN, seg: SEG, axisLen: AXIS_LEN, trailMax: 48 };
+const baseUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
 ---
 
-<figure class="g1fk-demo" data-g1fk={JSON.stringify(CFG)}>
-  <svg viewBox="0 0 900 470" role="img" aria-label="G1 左臂正运动学教学示意：拖动肩 pitch、肩 roll、肩 yaw、肘、腕 roll、腕 pitch 六个角度滑块，左侧等距投影中的左臂实时改变位姿，右侧面板给出末端相对躯干的位置与姿态角">
-    <text class="fk-title" x="24" y="28">G1 左臂正运动学：改关节角，看末端跑到哪（教学示意）</text>
+<figure
+  class="fk-demo g1fk-demo"
+  data-state="idle"
+  data-urdf-url={urdfUrl}
+  data-fk-chain={JSON.stringify(CHAIN)}
+>
+  <div
+    class="fk-3d"
+    data-fk-viewport
+    role="application"
+    tabindex="0"
+    aria-label="Unitree G1 左臂正运动学三维演示：拖动肩 pitch、肩 roll、肩 yaw、肘、腕 roll、腕 pitch 六个角度滑块，用真实 URDF 网格渲染的左臂实时改变位姿，末端坐标架随之移动，并在空间中留下虚线轨迹"
+  >
+    <div class="fk-loading" data-fk-loading>
+      <span class="fk-spinner" aria-hidden="true"></span>
+      <span class="fk-status" data-fk-status>滚动到此处加载 3D 模型</span>
+    </div>
+  </div>
 
-    <!-- ===== 左区：等距投影（x 基 (0.866,0.5)、y 基 (−0.866,0.5)、z 向上 (0,−1)，300 px/m） ===== -->
-    <!-- 躯干/肩基座：固定不动的线框方块 -->
-    {TORSO_EDGES.map(([a, b]) => (
-      <line class="fk-torso" x1={TORSO_CORNERS[a].x.toFixed(1)} y1={TORSO_CORNERS[a].y.toFixed(1)} x2={TORSO_CORNERS[b].x.toFixed(1)} y2={TORSO_CORNERS[b].y.toFixed(1)}></line>
-    ))}
-    <!-- 躯干本体系三根短轴 -->
-    {BASE_AXES.map((a) => (
-      <line class={'fk-bax fk-bax-' + a.key} x1={BASE_ORIGIN.x.toFixed(1)} y1={BASE_ORIGIN.y.toFixed(1)} x2={a.tip.x.toFixed(1)} y2={a.tip.y.toFixed(1)}></line>
-    ))}
-    {BASE_LABELS.map((l) => (
-      <text class={'fk-bax-label fk-bax-label-' + l.key} x={l.x.toFixed(1)} y={l.y.toFixed(1)} text-anchor={l.anchor}>{l.key}</text>
-    ))}
-
-    <!-- 肩基座段（肩 pitch → 肩 roll → 肩 yaw） -->
-    <polyline class="fk-mount" data-role="mount" points={ptsStr(SEG.mount)}></polyline>
-
-    <!-- 末端轨迹：拖滑块时记录最近若干末端位置 -->
-    <polyline class="fk-trail" data-role="trail" points=""></polyline>
-
-    <!-- 三段线：上臂（肩 yaw → 肘）、前臂（肘 → 腕 roll）、腕/掌（腕 roll → 链末端） -->
-    <polyline class="fk-arm fk-arm-upper" data-role="upper" points={ptsStr(SEG.upper)}></polyline>
-    <polyline class="fk-arm fk-arm-fore" data-role="fore" points={ptsStr(SEG.fore)}></polyline>
-    <polyline class="fk-arm fk-arm-wrist" data-role="wrist" points={ptsStr(SEG.wrist)}></polyline>
-
-    <!-- 每个关节一个小圆点 -->
-    {DEF_DOTS.map((d, i) => (
-      <circle class="fk-joint" data-dot={i} cx={d.x.toFixed(1)} cy={d.y.toFixed(1)} r="4"></circle>
-    ))}
-
-    <!-- 末端坐标架：三根短轴方向 = 累计旋转矩阵 R 的三列 -->
-    {[0, 1, 2].map((i) => (
-      <line
-        class={'fk-eax fk-eax-' + ['x', 'y', 'z'][i]}
-        data-axis={i}
-        x1={DEF_DOTS[6].x.toFixed(1)}
-        y1={DEF_DOTS[6].y.toFixed(1)}
-        x2={DEF_AXIS_TIPS[i].x.toFixed(1)}
-        y2={DEF_AXIS_TIPS[i].y.toFixed(1)}
-      ></line>
-    ))}
-    <circle class="fk-end" data-role="end" cx={DEF_DOTS[6].x.toFixed(1)} cy={DEF_DOTS[6].y.toFixed(1)} r="5.5"></circle>
-    <text class="fk-end-label" data-role="end-label" x={(DEF_DOTS[6].x + 10).toFixed(1)} y={(DEF_DOTS[6].y + 20).toFixed(1)}>末端</text>
-
-    <text class="fk-legend" x="24" y="440">等距投影：x 向右下、y 向左下、z 向上；比例 300 px/m</text>
-    <text class="fk-legend" x="24" y="460">连杆长度 = 相邻关节 origin 之间的平移；末端坐标架方向 = 累计旋转 R 的三列</text>
-
-    <!-- ===== 右区：末端位姿（相对躯干） ===== -->
-    <rect class="fk-panel" x="580" y="58" width="300" height="266" rx="10"></rect>
-    <text class="fk-panel-title" x="596" y="84">末端位姿（相对躯干）</text>
-    <text class="fk-panel-head" x="596" y="114">位置 p（m）</text>
-    {['x', 'y', 'z'].map((k, i) => (
-      <text class="fk-row" x="612" y={140 + i * 24} data-row={k}>
-        <tspan class="fk-row-k">{k}&#160;=</tspan><tspan class="fk-row-v" dx="6" data-pos={i}>{fmt3(DEF_END.p[i])}</tspan><tspan class="fk-row-u" dx="6">m</tspan>
-      </text>
-    ))}
-    <text class="fk-panel-head" x="596" y="228">姿态（ZYX 欧拉角，°）</text>
-    {['roll', 'pitch', 'yaw'].map((k, i) => (
-      <text class="fk-row" x="612" y={254 + i * 24} data-row={k}>
-        <tspan class="fk-row-k">{k}&#160;=</tspan><tspan class="fk-row-v" dx="6" data-pose={i}>{fmtDeg1([DEF_EULER.roll, DEF_EULER.pitch, DEF_EULER.yaw][i] * R2D)}</tspan><tspan class="fk-row-u">°</tspan>
-      </text>
-    ))}
-  </svg>
-
-  <div class="g1fk-controls">
+  <div class="g1fk-controls fk-controls">
     <div class="g1fk-row">
       <span class="g1fk-row-title">肩 / 肘</span>
       {SLIDERS.filter((s) => s.group !== 'wrist').map((s) => (
@@ -277,93 +172,89 @@ const CFG = { view: VIEW, world: WORLD, scale: SCALE, iso: ISO, chain: CHAIN, se
     </div>
     <div class="g1fk-row">
       <span class="g1fk-row-title"></span>
-      <button type="button" class="g1fk-btn" data-reset>复位</button>
-      <button type="button" class="g1fk-btn" data-stretch>伸直（末端伸到最远）</button>
+      <button type="button" class="g1fk-btn" data-reset disabled>复位</button>
+      <button type="button" class="g1fk-btn" data-stretch disabled>伸直（末端伸到最远）</button>
     </div>
   </div>
 
-  <div class="g1fk-readout">
-    <output class="fk-out fk-out-pos" aria-live="polite"></output>
-    <output class="fk-out fk-out-note" aria-live="polite"></output>
+  <div class="g1fk-readout fk-readout">
+    <output class="fk-out fk-out-pos" aria-live="polite">{DEF_POS_TEXT}</output>
+    <output class="fk-out fk-out-note" aria-live="polite">{DEF_NOTE_TEXT}</output>
   </div>
 
   <figcaption>
-    拖六个关节角滑块，看左臂末端实时移动；右侧给出它相对躯干的位姿。连杆尺寸取自 G1 URDF，数值为教学示意。
+    左臂由仓库里的 G1 官方 URDF 与 STL 网格实时渲染：拖六个关节角滑块，网格会立刻更新，末端坐标架随 FK 移动与转向，末端走过的位置在空间中留下虚线轨迹（最多 240 个采样点），“复位”清空轨迹。读数为末端相对躯干的位置，由“末端世界坐标 − 躯干世界坐标”再乘躯干逆旋转得到。
   </figcaption>
 </figure>
 
 <script>
-  document.querySelectorAll('.g1fk-demo').forEach((demo) => {
-    const cfg = JSON.parse(demo.dataset.g1fk);
-    const world = cfg.world;
-    const scale = cfg.scale;
-    const iso = cfg.iso;
-    const chain = cfg.chain;
-    const seg = cfg.seg;
-    const axisLen = cfg.axisLen;
-    const trailMax = cfg.trailMax;
-    const sliders = chain.filter((c) => c.slider);
+  // 只保留躯干与左臂链的 link（其余 visible = false），父子关系向下闭合。
+  const FK_VISIBLE_LINKS = new Set([
+    'pelvis',
+    'pelvis_contour_link',
+    'waist_yaw_link',
+    'waist_roll_link',
+    'torso_link',
+    'logo_link',
+    'head_link',
+    'waist_support_link',
+    'left_shoulder_pitch_link',
+    'left_shoulder_roll_link',
+    'left_shoulder_yaw_link',
+    'left_elbow_link',
+    'left_wrist_roll_link',
+    'left_wrist_pitch_link',
+    'left_wrist_yaw_link',
+    'left_rubber_hand',
+  ]);
+  // 计算初始包围盒时只看左臂，保证相机对准左臂。
+  const FK_ARM_LINKS = [
+    'left_shoulder_pitch_link',
+    'left_shoulder_roll_link',
+    'left_shoulder_yaw_link',
+    'left_elbow_link',
+    'left_wrist_roll_link',
+    'left_wrist_pitch_link',
+    'left_wrist_yaw_link',
+    'left_rubber_hand',
+  ];
+  const FK_END_LINK = 'left_wrist_yaw_link';
+  const FK_TORSO_LINK = 'torso_link';
+  const FK_TRAIL_MAX = 240;
+  const FK_TRAIL_MIN_STEP = 2.5e-4;
+  const FK_RESOURCE_TIMEOUT = 15000;
 
-    // 与 frontmatter 完全一致的变换、投影与格式化工具
-    const I3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
-    const mul3 = (A, B) => {
-      const C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-      for (let i = 0; i < 3; i += 1) {
-        for (let j = 0; j < 3; j += 1) {
-          C[i][j] = A[i][0] * B[0][j] + A[i][1] * B[1][j] + A[i][2] * B[2][j];
-        }
-      }
-      return C;
-    };
-    const rpyMat = (r, p, y) => {
-      const cr = Math.cos(r); const sr = Math.sin(r);
-      const cp = Math.cos(p); const sp = Math.sin(p);
-      const cy = Math.cos(y); const sy = Math.sin(y);
-      return [
-        [cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr],
-        [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr],
-        [-sp, cp * sr, cp * cr],
-      ];
-    };
-    const axisMat = (axis, q) => {
-      const n = Math.hypot(axis[0], axis[1], axis[2]) || 1;
-      const ux = axis[0] / n; const uy = axis[1] / n; const uz = axis[2] / n;
-      const c = Math.cos(q); const s = Math.sin(q); const t = 1 - c;
-      return [
-        [t * ux * ux + c, t * ux * uy - s * uz, t * ux * uz + s * uy],
-        [t * ux * uy + s * uz, t * uy * uy + c, t * uy * uz - s * ux],
-        [t * ux * uz - s * uy, t * uy * uz + s * ux, t * uz * uz + c],
-      ];
-    };
-    const chainFK = (q) => {
-      let R = I3;
-      let p = [0, 0, 0];
-      const frames = [];
-      chain.forEach((j, i) => {
-        const d = [
-          R[0][0] * j.xyz[0] + R[0][1] * j.xyz[1] + R[0][2] * j.xyz[2],
-          R[1][0] * j.xyz[0] + R[1][1] * j.xyz[1] + R[1][2] * j.xyz[2],
-          R[2][0] * j.xyz[0] + R[2][1] * j.xyz[1] + R[2][2] * j.xyz[2],
-        ];
-        p = [p[0] + d[0], p[1] + d[1], p[2] + d[2]];
-        R = mul3(mul3(R, rpyMat(j.rpy[0], j.rpy[1], j.rpy[2])), axisMat(j.axis, q[i]));
-        frames.push({ p: p.slice(), R: R.map((row) => row.slice()) });
-      });
-      return frames;
-    };
-    const eulerZYX = (R) => {
-      const sy = Math.hypot(R[0][0], R[1][0]);
-      if (sy < 1e-9) return { roll: 0, pitch: Math.atan2(-R[2][0], sy), yaw: Math.atan2(-R[0][1], R[1][1]) };
-      return {
-        roll: Math.atan2(R[2][1], R[2][2]),
-        pitch: Math.atan2(-R[2][0], sy),
-        yaw: Math.atan2(R[1][0], R[0][0]),
-      };
-    };
-    const proj = (x, y, z) => ({
-      x: world.x + scale * (iso.ax * x - iso.ax * y),
-      y: world.y + scale * (iso.ay * x + iso.ay * y - z),
-    });
+  document.querySelectorAll('.fk-demo').forEach((demo) => {
+    if (!(demo instanceof HTMLElement)) return;
+
+    const viewport = demo.querySelector('[data-fk-viewport]');
+    const statusEl = demo.querySelector('[data-fk-status]');
+    const resetBtn = demo.querySelector('[data-reset]');
+    const stretchBtn = demo.querySelector('[data-stretch]');
+    const posOut = demo.querySelector('.fk-out-pos');
+    const noteOut = demo.querySelector('.fk-out-note');
+    const chainRaw = demo.dataset.fkChain;
+    const urdfUrl = demo.dataset.urdfUrl;
+    if (
+      !(viewport instanceof HTMLElement)
+      || !(statusEl instanceof HTMLElement)
+      || !(posOut instanceof HTMLElement)
+      || !(noteOut instanceof HTMLElement)
+      || !(resetBtn instanceof HTMLButtonElement)
+      || !(stretchBtn instanceof HTMLButtonElement)
+      || !chainRaw
+      || !urdfUrl
+    ) {
+      return;
+    }
+
+    const chain = JSON.parse(chainRaw);
+    const sliders = chain.filter((c) => c.slider);
+    const state = chain.map((c) => c.def);
+    const endTrail = [];
+    const R2D = 180 / Math.PI;
+    const D2R = Math.PI / 180;
+
     const fmt3 = (v) => {
       const r = Math.abs(v) < 5e-4 ? 0 : v;
       return (r < 0 ? '−' : '') + Math.abs(r).toFixed(3);
@@ -372,211 +263,600 @@ const CFG = { view: VIEW, world: WORLD, scale: SCALE, iso: ISO, chain: CHAIN, se
       const r = Math.abs(v) < 0.05 ? 0 : v;
       return (r < 0 ? '−' : '') + Math.abs(r).toFixed(1);
     };
-    const P2 = (p) => {
-      const s = proj(p[0], p[1], p[2]);
-      return s.x.toFixed(1) + ',' + s.y.toFixed(1);
-    };
-    const pts = (frames, idxs) => idxs.map((i) => P2(frames[i].p)).join(' ');
 
-    const el = (sel) => demo.querySelector(sel);
-    const mountEl = el('[data-role="mount"]');
-    const trailEl = el('[data-role="trail"]');
-    const upperEl = el('[data-role="upper"]');
-    const foreEl = el('[data-role="fore"]');
-    const wristEl = el('[data-role="wrist"]');
-    const endEl = el('[data-role="end"]');
-    const endLabel = el('[data-role="end-label"]');
-    const dotEls = chain.map((c, i) => el('[data-dot="' + i + '"]'));
-    const axisEls = [0, 1, 2].map((i) => el('[data-axis="' + i + '"]'));
-    const posEls = [0, 1, 2].map((i) => el('[data-pos="' + i + '"]'));
-    const poseEls = [0, 1, 2].map((i) => el('[data-pose="' + i + '"]'));
-    const posOut = el('.fk-out-pos');
-    const noteOut = el('.fk-out-note');
-    const resetBtn = el('[data-reset]');
-    const stretchBtn = el('[data-stretch]');
     const rangeEls = {};
     const valEls = {};
     sliders.forEach((s) => {
-      rangeEls[s.name] = el('[data-joint="' + s.name + '"]');
-      valEls[s.name] = el('[data-val="' + s.name + '"]');
+      rangeEls[s.name] = demo.querySelector('[data-joint="' + s.name + '"]');
+      valEls[s.name] = demo.querySelector('[data-val="' + s.name + '"]');
     });
 
-    // 状态 = 7 个关节角（弧度），腕 yaw 恒为默认 0°
-    const state = chain.map((c) => c.def);
-    const trail = [];
-    let lastKey = '';
+    let started = false;
+    let THREE_NS = null;
+    let scene = null;
+    let camera = null;
+    let renderer = null;
+    let controls = null;
+    let robot = null;
+    let modelGroup = null;
+    let endLink = null;
+    let torsoLink = null;
+    let grid = null;
+    let gridY = 0;
+    let trailLine = null;
+    let trailGeom = null;
+    let trailAttr = null;
+    let trailPositions = null;
+    let trailMat = null;
+    let endHelper = null;
+    let probe = null;
+    let animationFrame = 0;
+    let resizeObserver = null;
+    let themeObserver = null;
+    let mediaQuery = null;
+    let meshErrors = 0;
+    let pageVisible = true;
 
-    const setLine = (node, a, b) => {
-      node.setAttribute('x1', a.x.toFixed(1));
-      node.setAttribute('y1', a.y.toFixed(1));
-      node.setAttribute('x2', b.x.toFixed(1));
-      node.setAttribute('y2', b.y.toFixed(1));
+    const setState = (next, message) => {
+      demo.dataset.state = next;
+      if (message !== undefined) statusEl.textContent = message;
     };
 
-    const render = (record) => {
-      const frames = chainFK(state);
-      const end = frames[frames.length - 1];
+    const scheduleRender = () => {
+      if (animationFrame || !renderer || !scene || !camera) return;
+      animationFrame = requestAnimationFrame(render);
+    };
 
-      // 三段线 + 肩基座段
-      mountEl.setAttribute('points', pts(frames, seg.mount));
-      upperEl.setAttribute('points', pts(frames, seg.upper));
-      foreEl.setAttribute('points', pts(frames, seg.fore));
-      wristEl.setAttribute('points', pts(frames, seg.wrist));
+    const render = () => {
+      animationFrame = 0;
+      if (!renderer || !scene || !camera || !pageVisible) return;
+      const moving = controls ? controls.update() : false;
+      renderer.render(scene, camera);
+      demo.dataset.rendered = 'true';
+      if (moving) scheduleRender();
+    };
 
-      // 关节圆点
-      frames.forEach((f, i) => {
-        const s = proj(f.p[0], f.p[1], f.p[2]);
-        dotEls[i].setAttribute('cx', s.x.toFixed(1));
-        dotEls[i].setAttribute('cy', s.y.toFixed(1));
-      });
+    const resize = () => {
+      if (!renderer || !camera) return;
+      const width = Math.max(viewport.clientWidth, 1);
+      const height = Math.max(viewport.clientHeight, 1);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(width, height, false);
+      scheduleRender();
+    };
 
-      // 末端坐标架：三根短轴 = R 的三列
-      const o = proj(end.p[0], end.p[1], end.p[2]);
-      endEl.setAttribute('cx', o.x.toFixed(1));
-      endEl.setAttribute('cy', o.y.toFixed(1));
-      endLabel.setAttribute('x', (o.x + 10).toFixed(1));
-      endLabel.setAttribute('y', (o.y + 20).toFixed(1));
-      for (let i = 0; i < 3; i += 1) {
-        const tip = proj(
-          end.p[0] + axisLen * end.R[0][i],
-          end.p[1] + axisLen * end.R[1][i],
-          end.p[2] + axisLen * end.R[2][i],
-        );
-        setLine(axisEls[i], o, tip);
+    // 把 CSS 颜色（含 var()）解析成 THREE.Color；解析不出来就用 fallback。
+    const resolveCssColor = (expr, fallback) => {
+      if (!THREE_NS) return null;
+      if (!probe) {
+        probe = document.createElement('span');
+        probe.setAttribute('aria-hidden', 'true');
+        probe.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none;';
+        demo.appendChild(probe);
       }
-
-      // 轨迹：只在拖动滑块时记录（复位 / 伸直清空）
-      const key = state.map((v) => v.toFixed(5)).join(',');
-      if (record && key !== lastKey) {
-        trail.push(o.x.toFixed(1) + ',' + o.y.toFixed(1));
-        while (trail.length > trailMax) trail.shift();
+      let computed = '';
+      try {
+        probe.style.color = '';
+        probe.style.color = expr;
+        computed = (getComputedStyle(probe).color || '').trim();
+      } catch {
+        computed = '';
       }
-      lastKey = key;
-      if (!record && trail.length) trail.length = 0;
-      trailEl.setAttribute('points', trail.join(' '));
-      trailEl.classList.toggle('fk-trail-on', trail.length >= 2);
+      if (!/^(rgb|rgba|hsl|hsla)\(/i.test(computed) && !/^#[0-9a-f]{3,8}$/i.test(computed)) {
+        computed = fallback || '';
+      }
+      try {
+        return computed ? new THREE_NS.Color(computed) : null;
+      } catch {
+        return fallback ? new THREE_NS.Color(fallback) : null;
+      }
+    };
 
-      // 右区：位置（m，3 位小数）与姿态（ZYX 欧拉角，°）
-      posEls.forEach((node, i) => { node.textContent = fmt3(end.p[i]); });
-      const eu = eulerZYX(end.R);
-      poseEls.forEach((node, i) => {
-        node.textContent = fmtDeg1([eu.roll, eu.pitch, eu.yaw][i] * 180 / Math.PI);
+    const buildGrid = () => {
+      if (!THREE_NS || !scene) return;
+      const THREE = THREE_NS;
+      const centerColor = resolveCssColor('var(--sl-color-gray-2)', '#888c96');
+      const lineColor = resolveCssColor('var(--sl-color-gray-4)', '#555962');
+      const next = new THREE.GridHelper(1.0, 10, centerColor || 0x888c96, lineColor || 0x555962);
+      next.position.y = gridY;
+      next.material.transparent = true;
+      next.material.opacity = 0.55;
+      if (grid) {
+        scene.remove(grid);
+        grid.geometry?.dispose();
+        grid.material?.dispose();
+      }
+      grid = next;
+      scene.add(grid);
+    };
+
+    const applyTheme = () => {
+      if (!renderer || !scene) return;
+      if (trailMat) {
+        const accent = resolveCssColor('var(--sl-color-accent)', '#3369ff');
+        if (accent) trailMat.color.copy(accent);
+      }
+      buildGrid();
+      scheduleRender();
+    };
+
+    const fitCamera = () => {
+      if (!camera || !controls || !robot || !THREE_NS) return;
+      const THREE = THREE_NS;
+      const box = new THREE.Box3();
+      FK_ARM_LINKS.forEach((name) => {
+        const link = robot.links[name];
+        if (link) box.expandByObject(link);
       });
+      if (box.isEmpty()) box.setFromObject(robot);
+      if (box.isEmpty()) return;
 
-      // 滑块旁的度数
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const radius = Math.max(size.x, size.y, size.z, 0.12) * 0.62;
+      const fitDistance = radius / Math.tan((camera.fov * Math.PI) / 360);
+
+      controls.target.copy(center);
+      camera.near = Math.max(fitDistance / 100, 0.005);
+      camera.far = fitDistance * 50;
+      camera.position.set(center.x + fitDistance * 0.95, center.y + fitDistance * 0.5, center.z + fitDistance * 1.2);
+      camera.updateProjectionMatrix();
+      controls.update();
+      scheduleRender();
+    };
+
+    const applyJoints = () => {
+      if (!robot) return;
+      chain.forEach((c, i) => {
+        robot.setJointValue(c.name, state[i]);
+      });
+      robot.updateMatrixWorld(true);
+    };
+
+    // 读数：把（末端 − 躯干）变换到躯干本体系，与旧版 SVG 的数值含义一致。
+    const readEndTorso = () => {
+      if (!endLink || !torsoLink || !THREE_NS) return null;
+      const THREE = THREE_NS;
+      const world = new THREE.Vector3();
+      const torsoWorld = new THREE.Vector3();
+      const quaternion = new THREE.Quaternion();
+      endLink.getWorldPosition(world);
+      torsoLink.getWorldPosition(torsoWorld);
+      torsoLink.getWorldQuaternion(quaternion).invert();
+      const rel = world.clone().sub(torsoWorld).applyQuaternion(quaternion);
+      return { world: world, rel: rel };
+    };
+
+    const pushTrail = (world) => {
+      const last = endTrail[endTrail.length - 1];
+      if (last && last.distanceToSquared(world) <= FK_TRAIL_MIN_STEP * FK_TRAIL_MIN_STEP) return;
+      endTrail.push(world.clone());
+      while (endTrail.length > FK_TRAIL_MAX) endTrail.shift();
+    };
+
+    const syncTrailGeometry = () => {
+      if (!trailLine || !trailGeom || !trailAttr || !trailPositions) return;
+      const count = endTrail.length;
+      for (let i = 0; i < count; i += 1) {
+        trailPositions[i * 3] = endTrail[i].x;
+        trailPositions[i * 3 + 1] = endTrail[i].y;
+        trailPositions[i * 3 + 2] = endTrail[i].z;
+      }
+      trailAttr.needsUpdate = true;
+      trailGeom.setDrawRange(0, count);
+      trailLine.visible = count >= 2;
+      if (count >= 2) trailLine.computeLineDistances();
+    };
+
+    const updateSliderLabels = () => {
       sliders.forEach((s, i) => {
-        if (valEls[s.name]) valEls[s.name].textContent = fmtDeg1(state[i] * 180 / Math.PI) + '°';
+        const node = valEls[s.name];
+        if (node) node.textContent = fmtDeg1(R2D * state[i]) + '°';
       });
+    };
 
-      // 两条定高读数
-      posOut.textContent = '末端相对躯干：x = ' + fmt3(end.p[0]) + ' m，y = ' + fmt3(end.p[1]) + ' m，z = ' + fmt3(end.p[2]) + ' m';
+    const updateReadout = (rel) => {
+      posOut.textContent = '末端相对躯干：x = ' + fmt3(rel.x) + ' m，y = ' + fmt3(rel.y) + ' m，z = ' + fmt3(rel.z) + ' m';
       noteOut.textContent = sliders
-        .map((s, i) => s.short + ' ' + fmtDeg1(state[i] * 180 / Math.PI) + '°')
+        .map((s, i) => s.short + ' ' + fmtDeg1(R2D * state[i]) + '°')
         .join('，')
         + '：这就是一条串联链的 T 相乘结果';
     };
 
-    sliders.forEach((s, i) => {
-      const r = rangeEls[s.name];
-      if (!r) return;
-      r.addEventListener('input', () => {
-        state[i] = Number(r.value) * Math.PI / 180;
-        render(true);
-      });
-    });
+    const updateScene = (record) => {
+      if (!robot || !endLink || !torsoLink) {
+        updateSliderLabels();
+        return;
+      }
+      applyJoints();
+      const sample = readEndTorso();
+      if (sample) {
+        updateReadout(sample.rel);
+        demo.dataset.endPos = fmt3(sample.rel.x) + ',' + fmt3(sample.rel.y) + ',' + fmt3(sample.rel.z);
+        if (record) pushTrail(sample.world);
+      }
+      syncTrailGeometry();
+      updateSliderLabels();
+      scheduleRender();
+    };
 
-    resetBtn.addEventListener('click', () => {
+    const onReset = () => {
       chain.forEach((c, i) => {
         state[i] = c.def;
-        if (rangeEls[c.name]) rangeEls[c.name].value = String(c.def * 180 / Math.PI);
+        const range = rangeEls[c.name];
+        if (range instanceof HTMLInputElement) range.value = String((c.def * R2D).toFixed(1));
       });
-      render(false);
-    });
+      endTrail.length = 0;
+      updateScene(false);
+    };
 
-    // 伸直：各腕角归零；肘在 limit 内按 1° 扫描，取使 |末端 − 肩| 最大的角度
-    // （URDF 零位下前臂与上臂约 90°，所以“伸直”并不是 0°）；肩保持不变
-    stretchBtn.addEventListener('click', () => {
+    // 伸直：腕角归零，肘在 limit 内按 1° 扫描真实 URDF，取 |末端 − 肩| 最大者；肩不动。
+    const onStretch = () => {
       chain.forEach((c, i) => {
         if (c.group !== 'wrist') return;
         state[i] = 0;
-        if (rangeEls[c.name]) rangeEls[c.name].value = '0';
+        const range = rangeEls[c.name];
+        if (range instanceof HTMLInputElement) range.value = '0';
       });
-      const elbowIdx = chain.findIndex((c) => c.group === 'elbow');
-      if (elbowIdx >= 0) {
-        const j = chain[elbowIdx];
-        const q = state.slice();
-        let best = state[elbowIdx];
-        let bestD = -1;
-        for (let deg = Math.ceil(j.lo * 180 / Math.PI); deg <= Math.floor(j.hi * 180 / Math.PI); deg += 1) {
-          q[elbowIdx] = deg * Math.PI / 180;
-          const f = chainFK(q);
-          const d = Math.hypot(
-            f[6].p[0] - f[0].p[0],
-            f[6].p[1] - f[0].p[1],
-            f[6].p[2] - f[0].p[2],
-          );
-          if (d > bestD) { bestD = d; best = q[elbowIdx]; }
-        }
-        state[elbowIdx] = best;
-        if (rangeEls[j.name]) rangeEls[j.name].value = String(Math.round(best * 180 / Math.PI));
-      }
-      trail.length = 0;
-      render(false);
-    });
 
-    render(false);
+      const elbowIndex = chain.findIndex((c) => c.group === 'elbow');
+      const shoulderLink = robot && robot.links['left_shoulder_pitch_link'];
+      if (elbowIndex >= 0 && robot && endLink && shoulderLink && THREE_NS) {
+        const THREE = THREE_NS;
+        const elbow = chain[elbowIndex];
+        const endWorld = new THREE.Vector3();
+        const shoulderWorld = new THREE.Vector3();
+        const saved = state[elbowIndex];
+        let best = saved;
+        let bestDistance = -1;
+        for (let deg = Math.ceil(elbow.lo * R2D); deg <= Math.floor(elbow.hi * R2D); deg += 1) {
+          state[elbowIndex] = deg * D2R;
+          applyJoints();
+          endLink.getWorldPosition(endWorld);
+          shoulderLink.getWorldPosition(shoulderWorld);
+          const distance = endWorld.distanceTo(shoulderWorld);
+          if (distance > bestDistance) {
+            bestDistance = distance;
+            best = state[elbowIndex];
+          }
+        }
+        state[elbowIndex] = best;
+        const range = rangeEls[elbow.name];
+        if (range instanceof HTMLInputElement) range.value = String(Math.round(best * R2D));
+      }
+
+      endTrail.length = 0;
+      updateScene(false);
+    };
+
+    const dispose = () => {
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      animationFrame = 0;
+      resizeObserver?.disconnect();
+      themeObserver?.disconnect();
+      if (mediaQuery) mediaQuery.removeEventListener?.('change', applyTheme);
+      if (modelGroup) {
+        modelGroup.traverse((object) => {
+          if (object.isMesh) {
+            object.geometry?.dispose();
+            const materials = Array.isArray(object.material) ? object.material : [object.material];
+            materials.forEach((material) => {
+              material?.map?.dispose();
+              material?.dispose();
+            });
+          }
+        });
+      }
+      if (endHelper) {
+        endHelper.geometry?.dispose();
+        endHelper.material?.dispose();
+      }
+      if (trailGeom) trailGeom.dispose();
+      if (trailMat) trailMat.dispose();
+      if (grid) {
+        grid.geometry?.dispose();
+        grid.material?.dispose();
+      }
+      controls?.dispose();
+      renderer?.dispose();
+      if (renderer && renderer.domElement && renderer.domElement.parentNode) {
+        renderer.domElement.parentNode.removeChild(renderer.domElement);
+      }
+    };
+
+    const load = async () => {
+      try {
+        setState('loading', '加载 Three.js 与 URDF 解析器');
+        const [THREE, orbitModule, urdfModule] = await Promise.all([
+          import('three'),
+          import('three/examples/jsm/controls/OrbitControls.js'),
+          import('urdf-loader'),
+        ]);
+        const { OrbitControls } = orbitModule;
+        const URDFLoader = urdfModule.default;
+        THREE_NS = THREE;
+
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(38, 1, 0.01, 50);
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.setClearColor(0x000000, 0);
+        renderer.domElement.style.touchAction = 'none';
+        viewport.appendChild(renderer.domElement);
+
+        const hemisphere = new THREE.HemisphereLight(0xffffff, 0x46505f, 2.3);
+        const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);
+        const fillLight = new THREE.DirectionalLight(0xbdd7ff, 0.9);
+        keyLight.position.set(2.5, 4, 3);
+        fillLight.position.set(-3, 1.5, -2);
+        scene.add(hemisphere, keyLight, fillLight);
+
+        buildGrid();
+
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.minDistance = 0.15;
+        controls.maxDistance = 4;
+        controls.addEventListener('change', scheduleRender);
+        controls.listenToKeyEvents(viewport);
+
+        const manager = new THREE.LoadingManager();
+        let resolveResources = () => {};
+        const resourcesLoaded = new Promise((resolve) => {
+          resolveResources = resolve;
+        });
+        manager.onProgress = (_url, loaded, total) => {
+          setState('loading', total > 0 ? '加载模型网格 ' + loaded + '/' + total : '加载模型网格');
+        };
+        manager.onError = (url) => {
+          // 个别网格缺失不应让整个模型不可用：记录后继续，其余部件照常显示。
+          meshErrors += 1;
+          console.warn('G1 模型网格加载失败：' + url);
+        };
+        manager.onLoad = () => {
+          resolveResources();
+          scheduleRender();
+        };
+
+        const loader = new URDFLoader(manager);
+        loader.workingPath = urdfUrl.slice(0, urdfUrl.lastIndexOf('/') + 1);
+        loader.fetchOptions = { cache: 'force-cache' };
+
+        setState('loading', '解析 URDF 结构');
+        const loadedRobot = await loader.loadAsync(urdfUrl);
+        robot = loadedRobot;
+        robot.rotation.x = -Math.PI / 2; // URDF 为 Z-up，Three.js 场景为 Y-up
+        modelGroup = new THREE.Group();
+        modelGroup.add(robot);
+        scene.add(modelGroup);
+
+        Object.keys(robot.links).forEach((name) => {
+          const link = robot.links[name];
+          if (link) link.visible = FK_VISIBLE_LINKS.has(name);
+        });
+        endLink = robot.links[FK_END_LINK] || null;
+        torsoLink = robot.links[FK_TORSO_LINK] || null;
+        robot.updateMatrixWorld(true);
+
+        // 空间虚线轨迹：位置属性预分配到 240 点，drawRange 控制实际长度。
+        trailPositions = new Float32Array(FK_TRAIL_MAX * 3);
+        trailGeom = new THREE.BufferGeometry();
+        trailAttr = new THREE.BufferAttribute(trailPositions, 3);
+        trailAttr.setUsage(THREE.DynamicDrawUsage);
+        trailGeom.setAttribute('position', trailAttr);
+        trailGeom.setDrawRange(0, 0);
+        trailMat = new THREE.LineDashedMaterial({
+          color: resolveCssColor('var(--sl-color-accent)', '#3369ff') || 0x3369ff,
+          dashSize: 0.012,
+          gapSize: 0.009,
+          transparent: true,
+          opacity: 0.95,
+        });
+        trailLine = new THREE.Line(trailGeom, trailMat);
+        trailLine.frustumCulled = false;
+        trailLine.visible = false;
+        scene.add(trailLine);
+
+        // 网格放在躯干原点所在高度，给“相对躯干”一个空间参照。
+        if (torsoLink) {
+          const torsoWorld = new THREE.Vector3();
+          torsoLink.getWorldPosition(torsoWorld);
+          gridY = torsoWorld.y;
+        }
+        buildGrid();
+
+        // 网格命中缓存时 onLoad 可能早于 await，onLoad 已在 loadAsync 前绑定；超时兜底。
+        await Promise.race([
+          resourcesLoaded,
+          new Promise((resolve) => {
+            setTimeout(resolve, FK_RESOURCE_TIMEOUT);
+          }),
+        ]);
+
+        let meshCount = 0;
+        modelGroup.traverse((object) => {
+          if (object.isMesh) meshCount += 1;
+        });
+        demo.dataset.linkCount = String(Object.keys(robot.links).length);
+        demo.dataset.jointCount = String(Object.keys(robot.joints).length);
+        demo.dataset.meshCount = String(meshCount);
+        demo.dataset.meshErrors = String(meshErrors);
+
+        resizeObserver = new ResizeObserver(resize);
+        resizeObserver.observe(viewport);
+
+        themeObserver = new MutationObserver(applyTheme);
+        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        if (window.matchMedia) {
+          mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+          mediaQuery.addEventListener('change', applyTheme);
+        }
+
+        resetBtn.disabled = false;
+        stretchBtn.disabled = false;
+        resetBtn.addEventListener('click', onReset);
+        stretchBtn.addEventListener('click', onStretch);
+        sliders.forEach((s, i) => {
+          const range = rangeEls[s.name];
+          if (!(range instanceof HTMLInputElement)) return;
+          range.addEventListener('input', () => {
+            state[i] = Number(range.value) * D2R;
+            updateScene(true);
+          });
+        });
+
+        if (meshErrors > 0) {
+          setState('warn', '模型网格未同步（' + meshErrors + ' 个 STL 未能加载），已显示的部件仍可交互');
+        } else {
+          setState('ready', '');
+        }
+
+        resize();
+        fitCamera();
+
+        // 末端坐标架：挂在末端 link 上，随 FK 自动移动与转向。
+        // 放在 fitCamera 之后，避免 0.08 m 的辅助轴把左臂包围盒撑大。
+        if (endLink) {
+          endHelper = new THREE.AxesHelper(0.08);
+          if (endHelper.material) {
+            endHelper.material.depthTest = false;
+            endHelper.material.transparent = true;
+          }
+          endHelper.renderOrder = 20;
+          endHelper.frustumCulled = false;
+          endLink.add(endHelper);
+        }
+
+        updateScene(false);
+        applyTheme();
+      } catch (error) {
+        console.error('G1 左臂正运动学演示渲染失败：', error);
+        setState('error', '模型加载失败（WebGL 不可用，或 URDF / 网格无法读取）');
+        dispose();
+      }
+    };
+
+    const start = () => {
+      if (started) return;
+      started = true;
+      load();
+    };
+
+    if ('IntersectionObserver' in window) {
+      const loadObserver = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) {
+            loadObserver.disconnect();
+            start();
+          }
+        },
+        { rootMargin: '240px' },
+      );
+      loadObserver.observe(demo);
+    } else {
+      start();
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      pageVisible = document.visibilityState === 'visible';
+      if (pageVisible) scheduleRender();
+    });
   });
 </script>
 
-<style>
-  .g1fk-demo {
-    --fk-ay: light-dark(#0e7490, #67e8f9);
-    --fk-az: light-dark(#b45309, #fbbf24);
-    --fk-end: light-dark(#0d9488, #2dd4bf);
+<!-- 源码面板 / 画布等由 JS 动态创建，样式统一用全局作用域（类名带 fk- / g1fk- 前缀，不会冲突）。 -->
+<style is:global>
+  .fk-demo {
     margin: 1.5rem 0;
   }
-  .g1fk-demo svg { display: block; width: 100%; max-width: 900px; height: auto; margin: 0 auto; }
 
-  /* 左区：标题、图例、躯干与坐标架 */
-  .fk-title { fill: var(--sl-color-text); font-size: 24px; font-weight: 600; }
-  .fk-legend { fill: var(--sl-color-gray-2); font-size: 17px; }
-  .fk-torso { stroke: var(--sl-color-gray-3); stroke-width: 1.6; }
-  .fk-bax { stroke-width: 2.4; stroke-linecap: round; }
-  .fk-bax-x { stroke: var(--sl-color-accent); }
-  .fk-bax-y { stroke: var(--fk-ay); }
-  .fk-bax-z { stroke: var(--fk-az); }
-  .fk-bax-label { font-size: 17px; font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-  .fk-bax-label-x { fill: var(--sl-color-accent); }
-  .fk-bax-label-y { fill: var(--fk-ay); }
-  .fk-bax-label-z { fill: var(--fk-az); }
+  .fk-3d {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    min-height: 300px;
+    overflow: hidden;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 8px;
+    background: var(--sl-color-gray-7, var(--sl-color-gray-6));
+    touch-action: none;
+  }
 
-  /* 左区：链与末端 */
-  .fk-mount { fill: none; stroke: var(--sl-color-gray-2); stroke-width: 2; stroke-dasharray: 6 4; stroke-linejoin: round; }
-  .fk-arm { fill: none; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
-  .fk-arm-upper { stroke: var(--sl-color-accent); }
-  .fk-arm-fore { stroke: var(--fk-ay); }
-  .fk-arm-wrist { stroke: var(--fk-az); }
-  .fk-joint { fill: var(--sl-color-bg); stroke: var(--sl-color-text); stroke-width: 1.8; }
-  .fk-end { fill: var(--fk-end); stroke: var(--sl-color-bg); stroke-width: 1.6; }
-  .fk-end-label { fill: var(--sl-color-text); font-size: 17px; font-weight: 700; }
-  .fk-eax { stroke-width: 3; stroke-linecap: round; }
-  .fk-eax-x { stroke: var(--sl-color-accent); }
-  .fk-eax-y { stroke: var(--fk-ay); }
-  .fk-eax-z { stroke: var(--fk-az); }
-  .fk-trail { fill: none; stroke: var(--sl-color-gray-3); stroke-width: 1.6; stroke-dasharray: 3 4; opacity: 0; }
-  .fk-trail.fk-trail-on { opacity: 0.85; }
+  .fk-3d canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    touch-action: none;
+  }
 
-  /* 右区：末端位姿面板 */
-  .fk-panel { fill: light-dark(rgba(148, 163, 184, 0.1), rgba(148, 163, 184, 0.08)); stroke: var(--sl-color-gray-4); stroke-width: 1.4; }
-  .fk-panel-title { fill: var(--sl-color-text); font-size: 18px; font-weight: 700; }
-  .fk-panel-head { fill: var(--sl-color-gray-2); font-size: 17px; font-weight: 600; }
-  .fk-row { font-size: 17px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
-  .fk-row-k { fill: var(--sl-color-gray-2); }
-  .fk-row-v { fill: var(--fk-end); font-weight: 700; }
-  .fk-row-u { fill: var(--sl-color-gray-2); }
+  .fk-loading {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    padding: 1rem;
+    color: var(--sl-color-gray-2);
+    font-size: 0.9375rem;
+    text-align: center;
+    background: color-mix(in srgb, var(--sl-color-bg) 72%, transparent);
+    pointer-events: none;
+  }
 
-  /* 控件：统一 margin: 0 */
-  .g1fk-controls { display: flex; flex-direction: column; gap: 0.5rem; max-width: 900px; margin: 0.55rem auto 0; }
+  .fk-spinner {
+    flex: 0 0 auto;
+    width: 1.15rem;
+    height: 1.15rem;
+    border: 2px solid var(--sl-color-gray-4);
+    border-top-color: var(--sl-color-accent);
+    border-radius: 50%;
+    animation: fk-spin 0.9s linear infinite;
+  }
+
+  @keyframes fk-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .fk-demo[data-state='idle'] .fk-spinner,
+  .fk-demo[data-state='error'] .fk-spinner,
+  .fk-demo[data-state='warn'] .fk-spinner {
+    display: none;
+  }
+
+  .fk-demo[data-state='ready'] .fk-loading {
+    display: none;
+  }
+
+  .fk-demo[data-state='warn'] .fk-loading {
+    align-items: flex-start;
+    background: transparent;
+  }
+
+  .fk-demo[data-state='warn'] .fk-status {
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.7rem;
+    border: 1px solid var(--sl-color-gray-4);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--sl-color-bg) 82%, transparent);
+    font-size: 0.78rem;
+  }
+
+  /* 控件：统一 margin: 0，保持肩/肘与腕两排对齐 */
+  .g1fk-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: 900px;
+    margin: 0.55rem auto 0;
+  }
   .g1fk-row { display: flex; align-items: center; gap: 0.8rem; margin: 0; }
   .g1fk-row-title { flex: 0 0 3.2rem; margin: 0; color: var(--sl-color-gray-2); font-size: 0.8125rem; }
   .g1fk-hint { margin: 0; flex: 0 0 auto; color: var(--sl-color-gray-3); font-size: 0.75rem; white-space: nowrap; }
@@ -584,11 +864,27 @@ const CFG = { view: VIEW, world: WORLD, scale: SCALE, iso: ISO, chain: CHAIN, se
   .g1fk-range { flex: 1 1 auto; width: auto; min-width: 3.5rem; margin: 0; accent-color: var(--sl-color-accent); }
   .g1fk-val { flex: 0 0 3.2rem; margin: 0; text-align: right; color: var(--sl-color-accent); font-weight: 600; font-variant-numeric: tabular-nums; }
   .g1fk-btn { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.85rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
+  .g1fk-btn:disabled { cursor: not-allowed; opacity: 0.55; }
+  .g1fk-btn:hover:not(:disabled) { border-color: var(--sl-color-accent); color: var(--sl-color-accent-high, var(--sl-color-accent)); }
 
   /* 两条定高读数 */
   .g1fk-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; line-height: 1.7; }
   .fk-out { display: block; white-space: nowrap; overflow-x: auto; height: 1.7em; line-height: 1.7; margin: 0; }
-  .fk-out-pos { color: var(--fk-end); font-weight: 600; }
+  .fk-out-pos { color: var(--sl-color-accent); font-weight: 600; }
   .fk-out-note { color: var(--sl-color-gray-2); }
-  .g1fk-demo figcaption { max-width: 900px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.9rem; line-height: 1.65; }
+
+  .fk-demo figcaption {
+    max-width: 900px;
+    margin: 0.6rem auto 0;
+    color: var(--sl-color-gray-2);
+    font-size: 0.9rem;
+    line-height: 1.65;
+  }
+
+  /* 窄屏：容器宽度 100%，行内允许换行但保留肩/肘与腕两排分组 */
+  @media (max-width: 720px) {
+    .g1fk-row { flex-wrap: wrap; }
+    .g1fk-row-title { flex-basis: 100%; }
+    .g1fk-slider-label { flex: 1 1 8rem; }
+  }
 </style>
