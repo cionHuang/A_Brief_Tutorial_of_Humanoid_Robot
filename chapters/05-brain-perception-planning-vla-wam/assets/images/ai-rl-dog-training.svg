@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360" viewBox="0 0 720 360" role="img" aria-label="强化学习等于训狗示意图">
+  <defs>
+    <marker id="f1-blue" viewBox="0 0 10 10" refX="7.5" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/>
+    </marker>
+    <marker id="f1-green" viewBox="0 0 10 10" refX="7.5" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/>
+    </marker>
+    <marker id="f1-orange" viewBox="0 0 10 10" refX="7.5" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#ea580c"/>
+    </marker>
+  </defs>
+  <rect x="8" y="8" width="704" height="344" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <g font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif">
+    <text x="360" y="50" text-anchor="middle" font-size="23" font-weight="700" fill="#2563eb">动作 action：坐下 / 打滚 / 乱跑</text>
+    <line x1="176" y1="72" x2="540" y2="72" stroke="#2563eb" stroke-width="3" marker-end="url(#f1-blue)"/>
+
+    <g stroke="#0f172a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M42,126 C28,110 32,90 58,88"/>
+    </g>
+    <g stroke="#0f172a" stroke-width="3" fill="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M144,96 L137,72 Q 135,63 145,68 L164,86 Z"/>
+      <path d="M176,96 L183,72 Q 185,63 175,68 L156,86 Z"/>
+      <rect x="42" y="108" width="100" height="54" rx="26"/>
+      <ellipse cx="160" cy="106" rx="26" ry="22"/>
+      <line x1="64" y1="160" x2="64" y2="182"/>
+      <line x1="122" y1="160" x2="122" y2="182"/>
+    </g>
+    <circle cx="168" cy="99" r="3.2" fill="#0f172a"/>
+    <path d="M184,107 L192,113 L184,119 Z" fill="#0f172a"/>
+    <path d="M183,118 Q 177,124 170,121" fill="none" stroke="#0f172a" stroke-width="2" stroke-linecap="round"/>
+    <path d="M138,98 Q 152,113 140,132" fill="none" stroke="#2563eb" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="148" cy="114" r="3.5" fill="#ea580c"/>
+    <text x="100" y="204" text-anchor="middle" font-size="19" font-weight="700" fill="#0f172a">智能体 Agent</text>
+    <text x="100" y="228" text-anchor="middle" font-size="18" fill="#475569">（小狗）</text>
+
+    <g stroke="#0f172a" stroke-width="3" fill="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="622" cy="100" r="22"/>
+      <rect x="592" y="122" width="60" height="56" rx="20"/>
+      <line x1="608" y1="176" x2="604" y2="192"/>
+      <line x1="636" y1="176" x2="640" y2="192"/>
+    </g>
+    <path d="M596,140 L558,160" stroke="#0f172a" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <circle cx="558" cy="160" r="4.5" fill="#0f172a"/>
+    <circle cx="612" cy="96" r="3.2" fill="#0f172a"/>
+    <text x="620" y="204" text-anchor="middle" font-size="19" font-weight="700" fill="#0f172a">环境 Environment</text>
+    <text x="620" y="228" text-anchor="middle" font-size="18" fill="#475569">（主人）</text>
+
+    <text x="360" y="252" text-anchor="middle" font-size="19" font-weight="700" fill="#16a34a">奖励 reward：给零食 ✔</text>
+    <line x1="556" y1="270" x2="174" y2="270" stroke="#16a34a" stroke-width="3" marker-end="url(#f1-green)"/>
+    <text x="360" y="296" text-anchor="middle" font-size="18" fill="#ea580c">没做对 → 不给 ✘</text>
+    <line x1="556" y1="314" x2="174" y2="314" stroke="#ea580c" stroke-width="3" stroke-dasharray="12 9" marker-end="url(#f1-orange)"/>
+
+    <rect x="40" y="326" width="640" height="22" rx="11" fill="#ecfdf5" stroke="#86efac" stroke-width="1.5"/>
+    <text x="360" y="342" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">做对了有零食 → 这个动作以后出现的概率变大</text>
+  </g>
+</svg>

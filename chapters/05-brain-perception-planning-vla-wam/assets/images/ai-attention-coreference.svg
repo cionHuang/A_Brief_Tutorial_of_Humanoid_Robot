@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="310" viewBox="0 0 720 310" role="img" aria-label="注意力指代消解示意图">
+  <rect x="8" y="8" width="704" height="294" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <g font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif">
+    <path d="M520,148 C440,28 216,28 136,148" fill="none" stroke="#2563eb" stroke-width="6" stroke-linecap="round"/>
+    <path d="M520,148 C456,48 392,48 328,148" fill="none" stroke="#94a3b8" stroke-width="2.5"/>
+    <path d="M520,148 C476,92 436,92 392,148" fill="none" stroke="#94a3b8" stroke-width="2.5"/>
+
+    <g>
+      <rect x="308" y="42" width="40" height="24" rx="12" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.5"/>
+      <text x="328" y="60" text-anchor="middle" font-size="17" font-weight="700" fill="#2563eb">0.7</text>
+      <rect x="404" y="58" width="40" height="24" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+      <text x="424" y="76" text-anchor="middle" font-size="16" fill="#475569">0.1</text>
+      <rect x="442" y="88" width="40" height="24" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+      <text x="462" y="106" text-anchor="middle" font-size="16" fill="#475569">0.1</text>
+    </g>
+
+    <g stroke-width="2">
+      <rect x="43" y="150" width="58" height="44" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+      <text x="72" y="178" text-anchor="middle" font-size="20" fill="#0f172a">小</text>
+      <rect x="107" y="150" width="58" height="44" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+      <text x="136" y="178" text-anchor="middle" font-size="20" fill="#0f172a">猫</text>
+      <rect x="171" y="150" width="58" height="44" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+      <text x="200" y="178" text-anchor="middle" font-size="20" fill="#0f172a">坐</text>
+      <rect x="235" y="150" width="58" height="44" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+      <text x="264" y="178" text-anchor="middle" font-size="20" fill="#0f172a">在</text>
+      <rect x="299" y="150" width="58" height="44" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+      <text x="328" y="177" text-anchor="middle" font-size="18" fill="#0f172a">垫子</text>
+      <rect x="363" y="150" width="58" height="44" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+      <text x="392" y="178" text-anchor="middle" font-size="20" fill="#0f172a">上</text>
+      <rect x="427" y="150" width="58" height="44" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+      <text x="456" y="178" text-anchor="middle" font-size="20" fill="#0f172a">，</text>
+      <rect x="491" y="150" width="58" height="44" rx="8" fill="#fff7ed" stroke="#ea580c" stroke-width="2.5"/>
+      <text x="520" y="178" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">它</text>
+      <rect x="555" y="150" width="58" height="44" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+      <text x="584" y="178" text-anchor="middle" font-size="20" fill="#0f172a">很</text>
+      <rect x="619" y="150" width="58" height="44" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+      <text x="648" y="177" text-anchor="middle" font-size="18" fill="#0f172a">舒服</text>
+    </g>
+    <circle cx="520" cy="148" r="5" fill="#ea580c"/>
+
+    <text x="40" y="228" text-anchor="start" font-size="16" fill="#475569">示意图：不是某个真实模型的注意力输出</text>
+    <text x="680" y="228" text-anchor="end" font-size="16" fill="#475569">线越粗 = 注意力权重越大</text>
+
+    <rect x="40" y="248" width="640" height="40" rx="12" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+    <text x="360" y="274" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">注意力 = 让序列里每个 token 互相看一遍，按相关度加权取信息</text>
+  </g>
+</svg>

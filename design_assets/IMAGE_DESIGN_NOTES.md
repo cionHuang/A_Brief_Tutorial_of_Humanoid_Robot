@@ -145,41 +145,31 @@
 - 行星齿轮组特写（CC0）：https://commons.wikimedia.org/wiki/File:Looking_through_a_set_of_planetary_gears.png
 
 
-## AI 概念图（5.1 节）
+## 5.1 自制概念图（原创、无第三方许可问题）
 
-**强化学习回路、注意力与 Transformer 架构图**（2026-09-15 下载自 Dive into Deep Learning / d2l.ai 官方仓库 `img/`，均为矢量 SVG，无外部位图引用、无外链字体，未做改动）。正文图注只保留一句说明，署名与许可统一放在 5.1 节参考资料 [10]。
+**三张通俗类比图**（2026-09-15 原创手绘 SVG，均为自包含矢量图：无外链字体、无外部位图、无 emoji，深浅色主题下均可正常显示）。用于把 5.1 节的抽象 AI 词汇讲成人话；正文图注只保留一句话说明，不含来源/作者/许可。整张图带浅色底 panel（`#f8fafc` 底、`#cbd5e1` 描边），主文字 `#0f172a`、次文字 `#475569`，配色蓝 `#2563eb`、绿 `#16a34a`、橙红 `#ea580c`、灰线 `#94a3b8`；站内 CSS `.sl-markdown-content img[src*="/ai-"]` 会把这些图放大到正文宽度（约 640 px），因此图内字号按放大后仍可读设计（主标签 24–28、次级 18–20、说明 16–18）。
 
 当前位置：`chapters/05-brain-perception-planning-vla-wam/assets/images/`
 
-### ai-rl-agent-environment.svg（图 5.1-1）
+### ai-rl-dog-training.svg（图 5.1-1）
 
-- 内容：强化学习的智能体（Agent）–环境（Environment）交互回路——动作、奖励、观测的循环；
-- 来源：Dive into Deep Learning（d2l.ai），原文件 https://github.com/d2l-ai/d2l-en/blob/master/img/rl-environment.svg
-- 作者：Aston Zhang、Zachary C. Lipton、Mu Li、Alexander J. Smola；许可：CC BY-SA 4.0（署名 + 相同方式共享）；
-- 备注：用于 5.1「模型从哪来：三条路」小节，帮助读者把"从试错学"与 RL 交互回路对应起来。
+- 内容：强化学习 = 训狗——左为简笔小狗（智能体 Agent）、右为简笔主人（环境 Environment）；上方蓝色箭头「动作 action：坐下 / 打滚 / 乱跑」，下方绿色箭头「奖励 reward：给零食 ✔」，另加一条橙色虚线分支「没做对 → 不给 ✘」；底部结论「做对了有零食 → 这个动作以后出现的概率变大」；
+- 用途：放在 5.1「模型从哪来：三条路」小节讲「从试错学」之后，帮助读者一眼记住 agent / environment / action / reward 四个词；
+- viewBox：`0 0 720 360`（显示宽约 640 px）。
 
-### ai-qkv-attention.svg（图 5.1-2）
+### ai-attention-coreference.svg（图 5.1-2）
 
-- 内容：查询–键–值（QKV）注意力——查询与各键算相关度权重，再对值加权汇总；
-- 来源：https://github.com/d2l-ai/d2l-en/blob/master/img/qkv.svg
-- 作者：Aston Zhang、Zachary C. Lipton、Mu Li、Alexander J. Smola；许可：CC BY-SA 4.0（署名 + 相同方式共享）；
-- 备注：用于 5.1「架构：Transformer 与注意力」小节，对应正文 Attention(Q,K,V) 公式。
+- 内容：注意力 = 每个词「看一圈」按相关度加权——以「小猫坐在垫子上，它很舒服」的 10 个 token 方块为例，从「它」出发，对「小猫」画一条粗蓝弧线（标 0.7），对「垫子」「上」画两条细灰弧线（各标 0.1）；右侧小图例「线越粗 = 注意力权重越大」，并注明这是示意、不是某个真实模型的输出；底部结论「注意力 = 让序列里每个 token 互相看一遍，按相关度加权取信息」；
+- 用途：放在 5.1「架构：Transformer 与注意力」小节，讲完 QKV 与 softmax 加权之后，用指代消解类比解释「按相关度加权」；
+- viewBox：`0 0 720 310`（显示宽约 640 px）。
 
-### ai-multi-head-attention.svg（图 5.1-3）
+### ai-token-pipeline.svg（图 5.1-3）
 
-- 内容：多头注意力——多组 Q/K/V 并行做注意力后拼接，再经全连接融合；
-- 来源：https://github.com/d2l-ai/d2l-en/blob/master/img/multi-head-attention.svg
-- 作者：Aston Zhang、Zachary C. Lipton、Mu Li、Alexander J. Smola；许可：CC BY-SA 4.0（署名 + 相同方式共享）；
-- 备注：用于 5.1「架构：Transformer 与注意力」小节。
+- 内容：VLA / WAM 的通用套路——左侧三张入口卡片「图像 / 语言指令 / 关节状态」（各配相机轮廓、对话气泡、简笔机械臂图标）汇入一排彩色 token 小方块（颜色区分来源），标注「统一成一条 token 序列」；中间圆角大框「Transformer（让每个 token 互相看）」；最右输出一排动作方块，标「动作块 action chunk：未来 N 步的关节 / 末端动作」，旁注「1–10 Hz」；底部结论「VLA / WAM 的通用套路：输入切成 token，输出也是 token（动作 token）」；
+- 用途：放在 5.1「架构：Transformer 与注意力」小节末尾，讲完「为什么 VLA/WAM 选它」之后，用一张流水线图收束「多模态输入 → 动作输出」的通用流程；
+- viewBox：`0 0 720 330`（显示宽约 640 px）。
 
-### ai-transformer-arch.svg（图 5.1-4）
+### 已弃用：Dive into Deep Learning（D2L）图
 
-- 内容：Transformer 编码器–解码器整体架构（多头注意力、前馈网络、Add & norm、位置编码）；
-- 来源：https://github.com/d2l-ai/d2l-en/blob/master/img/transformer.svg
-- 作者：Aston Zhang、Zachary C. Lipton、Mu Li、Alexander J. Smola；许可：CC BY-SA 4.0（署名 + 相同方式共享）；
-- 备注：用于 5.1「架构：Transformer 与注意力」小节末尾。
-
-### 备选（同仓库，本次未采用）
-
-- `img/self-attention.svg`、`img/attention.svg`、`img/cnn-rnn-self-attention.svg`。
+原 5.1 节引用的 4 张 D2L 官方仓库图（`ai-rl-agent-environment.svg`、`ai-qkv-attention.svg`、`ai-multi-head-attention.svg`、`ai-transformer-arch.svg`，原图号 5.1-1 至 5.1-4，许可 CC BY-SA 4.0）已全部删除，5.1 正文的引用与参考资料 [10] 同步清理。弃用原因：图内标注过于专业、不够通俗，读者反馈不易看懂；现由上面三张原创类比图替代（并取消「多头注意力」「Transformer 完整架构」两张，正文保留一句「实际模型用多头注意力……」的说明即可）。
 

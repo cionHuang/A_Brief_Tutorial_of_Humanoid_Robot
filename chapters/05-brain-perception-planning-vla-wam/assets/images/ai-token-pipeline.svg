@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="330" viewBox="0 0 720 330" role="img" aria-label="VLA和WAM的token流水线示意图">
+  <defs>
+    <marker id="f3-dark" viewBox="0 0 10 10" refX="7.5" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0f172a"/>
+    </marker>
+  </defs>
+  <rect x="8" y="8" width="704" height="314" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <g font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif">
+    <rect x="20" y="76" width="140" height="54" rx="10" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+    <rect x="30" y="92" width="32" height="22" rx="5" fill="#ffffff" stroke="#2563eb" stroke-width="2.5"/>
+    <path d="M38,92 L41,86 L51,86 L54,92" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linejoin="round"/>
+    <circle cx="46" cy="103" r="6.5" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+    <text x="74" y="106" font-size="18" font-weight="700" fill="#0f172a">图像</text>
+    <text x="74" y="124" font-size="12" fill="#475569">image</text>
+
+    <rect x="20" y="142" width="140" height="54" rx="10" fill="#ffffff" stroke="#16a34a" stroke-width="2"/>
+    <rect x="30" y="156" width="32" height="22" rx="7" fill="#ffffff" stroke="#16a34a" stroke-width="2.5"/>
+    <path d="M38,178 L36,186 L46,178" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linejoin="round"/>
+    <circle cx="39" cy="167" r="2" fill="#16a34a"/>
+    <circle cx="46" cy="167" r="2" fill="#16a34a"/>
+    <circle cx="53" cy="167" r="2" fill="#16a34a"/>
+    <text x="74" y="172" font-size="18" font-weight="700" fill="#0f172a">语言指令</text>
+    <text x="74" y="190" font-size="12" fill="#475569">language</text>
+
+    <rect x="20" y="208" width="140" height="54" rx="10" fill="#ffffff" stroke="#ea580c" stroke-width="2"/>
+    <path d="M30,252 L52,252 L48,245 L34,245 Z" fill="#ea580c"/>
+    <line x1="41" y1="245" x2="49" y2="223" stroke="#ea580c" stroke-width="5" stroke-linecap="round"/>
+    <line x1="49" y1="223" x2="63" y2="232" stroke="#ea580c" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="41" cy="245" r="4" fill="#ea580c"/>
+    <circle cx="49" cy="223" r="4" fill="#ea580c"/>
+    <circle cx="63" cy="232" r="3" fill="#ea580c"/>
+    <line x1="63" y1="232" x2="69" y2="226" stroke="#ea580c" stroke-width="3" stroke-linecap="round"/>
+    <line x1="63" y1="232" x2="69" y2="238" stroke="#ea580c" stroke-width="3" stroke-linecap="round"/>
+    <text x="74" y="238" font-size="18" font-weight="700" fill="#0f172a">关节状态</text>
+    <text x="74" y="256" font-size="12" fill="#475569">joint state</text>
+
+    <path d="M160,103 Q193,108 194,164" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+    <path d="M160,169 L194,169" fill="none" stroke="#16a34a" stroke-width="2.5"/>
+    <path d="M160,235 Q193,230 194,174" fill="none" stroke="#ea580c" stroke-width="2.5"/>
+    <line x1="194" y1="169" x2="210" y2="169" stroke="#0f172a" stroke-width="3" marker-end="url(#f3-dark)"/>
+
+    <g stroke-width="2">
+      <rect x="216" y="164" width="11" height="11" rx="2" fill="#bfdbfe" stroke="#2563eb"/>
+      <rect x="230" y="164" width="11" height="11" rx="2" fill="#bfdbfe" stroke="#2563eb"/>
+      <rect x="244" y="164" width="11" height="11" rx="2" fill="#bfdbfe" stroke="#2563eb"/>
+      <rect x="258" y="164" width="11" height="11" rx="2" fill="#bbf7d0" stroke="#16a34a"/>
+      <rect x="272" y="164" width="11" height="11" rx="2" fill="#bbf7d0" stroke="#16a34a"/>
+      <rect x="286" y="164" width="11" height="11" rx="2" fill="#bbf7d0" stroke="#16a34a"/>
+      <rect x="300" y="164" width="11" height="11" rx="2" fill="#fed7aa" stroke="#ea580c"/>
+      <rect x="314" y="164" width="11" height="11" rx="2" fill="#fed7aa" stroke="#ea580c"/>
+    </g>
+    <text x="270" y="204" text-anchor="middle" font-size="17" fill="#0f172a">统一成一条</text>
+    <text x="270" y="226" text-anchor="middle" font-size="17" fill="#0f172a">token 序列</text>
+
+    <line x1="336" y1="169" x2="340" y2="169" stroke="#0f172a" stroke-width="3" marker-end="url(#f3-dark)"/>
+    <rect x="344" y="104" width="152" height="130" rx="16" fill="#eef2ff" stroke="#2563eb" stroke-width="2.5"/>
+    <text x="420" y="152" text-anchor="middle" font-size="20" font-weight="700" fill="#1e3a8a">Transformer</text>
+    <text x="420" y="182" text-anchor="middle" font-size="15" fill="#475569">让每个 token</text>
+    <text x="420" y="204" text-anchor="middle" font-size="15" fill="#475569">互相看</text>
+
+    <line x1="496" y1="169" x2="512" y2="169" stroke="#0f172a" stroke-width="3" marker-end="url(#f3-dark)"/>
+    <g stroke-width="2">
+      <rect x="514" y="162" width="14" height="14" rx="3" fill="#fdba74" stroke="#ea580c"/>
+      <rect x="532" y="162" width="14" height="14" rx="3" fill="#fdba74" stroke="#ea580c"/>
+      <rect x="550" y="162" width="14" height="14" rx="3" fill="#fdba74" stroke="#ea580c"/>
+      <rect x="568" y="162" width="14" height="14" rx="3" fill="#fdba74" stroke="#ea580c"/>
+      <rect x="586" y="162" width="14" height="14" rx="3" fill="#fdba74" stroke="#ea580c"/>
+    </g>
+    <text x="557" y="146" text-anchor="middle" font-size="16" font-weight="700" fill="#ea580c">1–10 Hz</text>
+    <text x="512" y="203" text-anchor="start" font-size="17" font-weight="700" fill="#0f172a">动作块 action chunk</text>
+    <text x="512" y="226" text-anchor="start" font-size="15" fill="#475569">未来 N 步的关节 / 末端动作</text>
+
+    <rect x="40" y="270" width="640" height="40" rx="12" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+    <text x="360" y="296" text-anchor="middle" font-size="17" font-weight="700" fill="#0f172a">VLA / WAM 的通用套路：输入切成 token，输出也是 token（动作 token）</text>
+  </g>
+</svg>
