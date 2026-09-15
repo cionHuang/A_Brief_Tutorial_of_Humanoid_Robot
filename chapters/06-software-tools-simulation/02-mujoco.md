@@ -59,7 +59,7 @@ MJCF 的 `<sensor>` 挂靠在 site 上。`g1_29dof.xml` 为 `imu_in_pelvis` 和 
 
 ![MJCF 模型结构与 G1 仿真循环](assets/images/02-g1-mujoco-mjcf-sim-loop.png)
 
-图：以 G1 `g1_29dof` 无手、腰部可动模型为例，概览 MJCF 的 body/joint/geom 层级、自由关节的 qpos/qvel 维度、IMU site 上的陀螺仪与加速度计，以及"读状态—算力矩—写 ctrl—步进"的仿真循环和足底软接触。图中结构与参数对应官方 MJCF 文件；接触与噪声参数的取值决定仿真行为，与真实物理量之间没有直接等号。
+图 6.2-1 以 G1 `g1_29dof` 无手、腰部可动模型为例，概览 MJCF 的 body/joint/geom 层级、自由关节的 qpos/qvel 维度、IMU site 上的陀螺仪与加速度计，以及"读状态—算力矩—写 ctrl—步进"的仿真循环和足底软接触。接触与噪声参数的取值决定仿真行为，与真实物理量之间没有直接等号。[4]
 
 ## 参考资料
 
@@ -69,4 +69,4 @@ MJCF 的 `<sensor>` 挂靠在 site 上。`g1_29dof.xml` 为 `imu_in_pelvis` 和 
 
 [3] Google DeepMind. *mujoco: Multi-Joint dynamics with Contact*. 本文使用提交 `44c118d712db5ca5d8c6264e4a21e3086e2ac952`，用于核对 MJCF 语义、`mj_data` 字段与仿真循环 API。<https://github.com/google-deepmind/mujoco/tree/44c118d712db5ca5d8c6264e4a21e3086e2ac952>
 
-[4] Unitree Robotics. *unitree_rl_gym: G1 robot description and RL example*. 官方 G1 模型与部署示例；本文使用提交 `276801e46c5d433564f24658bac64f254b7d2d4b`，用于核对 `g1_29dof.xml` 的 free joint、29 个 `<motor>`、IMU 传感器配置及 MuJoCo 部署中的 PD 力矩计算方式。<https://github.com/unitreerobotics/unitree_rl_gym/tree/276801e46c5d433564f24658bac64f254b7d2d4b>
+[4] Unitree Robotics. *unitree_rl_gym: G1 robot description and RL example*. 官方 G1 模型与部署示例；本文使用提交 `276801e46c5d433564f24658bac64f254b7d2d4b`，用于核对 `g1_29dof.xml` 的 free joint、29 个 `<motor>`、IMU 传感器配置及 MuJoCo 部署中的 PD 力矩计算方式；图 6.2-1 的结构与参数即依据该仓库的 `g1_29dof.xml` 绘制。<https://github.com/unitreerobotics/unitree_rl_gym/tree/276801e46c5d433564f24658bac64f254b7d2d4b>
