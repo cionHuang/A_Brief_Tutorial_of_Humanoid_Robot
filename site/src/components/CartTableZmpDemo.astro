@@ -1,0 +1,472 @@
+---
+/**
+ * 4.6 用：cart-table（小车—桌子）演示 ZMP 与发散 —— “### 零力矩点（ZMP）”之后。
+ *
+ * 视觉：教科书画法 —— 支点（ZMP）+ 可倾斜的无质量桌面 + 水平小车（质心）+
+ * 竖直参考线、尺寸标注、重力与地面反力箭头、地面坐标系。
+ *
+ * 模型（页面里真算）：
+ *   ẍ = (g/z)(x − p)，  x = 质心水平位置，p = 支点位置（就是 ZMP），z = 质心高度
+ *   平衡控制器：p = xref + (g/z)⁻¹·(kp·(x − xref) + kd·ẋ)
+ * 桌面绕支点倾斜：桌面在质心处的抬高 ≈ (x − p)·tanθ，θ 随 |x − p| 增大（视觉放大），
+ * 这样“支点不在质心正下方 → 桌子要翻”这件事直接画出来。
+ *
+ * 教学参数（量级参考 G1）：质心高 0.7 m、可用基座半宽 0.35 m；
+ * z = 0.7 m 时时间常数 1/√(g/z) ≈ 0.27 s，开环 0.05 m/s 扰动约 1.3 s 跑出边界。
+ */
+
+const CFG = {
+  g: 9.81,
+  z: 0.7,
+  halfBase: 0.35,
+  kp: 16,
+  kd: 8,
+  pushV: 0.05,
+  trialT: 4.0,
+  holdT: 1.1,
+};
+---
+
+<figure class="ct2-demo" data-ct={JSON.stringify(CFG)}>
+  <svg viewBox="0 0 800 420" role="img" aria-label="cart-table 教学示意图：无质量桌面由支点支撑，支点就是 ZMP；桌面上小车代表整机质心。竖直参考线从支点向上，质心偏离支点时桌面绕支点倾斜，加速度方向背离支点；可切换平衡控制器观察质心发散或收敛">
+    <text class="ct2-title" x="24" y="28">cart-table：支点（ZMP）不追质心，质心就自己跑掉</text>
+    <text class="ct2-sub" x="24" y="48">竖直参考线过支点 p；质心 x 偏离 p 时，桌面绕支点倾斜</text>
+
+    <!-- 地面坐标系 -->
+    <line class="ct2-ground" x1="50" y1="336" x2="760" y2="336"></line>
+    <line class="ct2-axis" data-ct2-xaxis x1="90" y1="336" x2="744" y2="336" marker-end="url(#ct2-arrow)"></line>
+    <text class="ct2-axis-label" x="750" y="341" text-anchor="start">x</text>
+    <rect class="ct2-base" data-ct2-base x="0" y="330" width="0" height="12"></rect>
+    <text class="ct2-base-label" data-ct2-base-label x="0" y="362" text-anchor="middle">可用基座 ±0.35 m</text>
+    <circle class="ct2-support-edge" data-ct2-edge-l cx="0" cy="336" r="3"></circle>
+    <circle class="ct2-support-edge" data-ct2-edge-r cx="0" cy="336" r="3"></circle>
+
+    <!-- 竖直参考线（穿过支点） -->
+    <line class="ct2-vref" data-ct2-vref x1="0" y1="120" x2="0" y2="336"></line>
+
+    <!-- 桌面（绕支点倾斜）与支点 -->
+    <g data-ct2-table-group>
+      <rect class="ct2-table" data-ct2-table x="0" y="0" width="0" height="9" rx="3"></rect>
+    </g>
+    <text class="ct2-table-label" data-ct2-table-label x="0" y="0" text-anchor="middle">无质量桌面</text>
+    <line class="ct2-leg" data-ct2-leg x1="0" y1="260" x2="0" y2="336"></line>
+    <circle class="ct2-zmp" data-ct2-zmp cx="0" cy="336" r="6"></circle>
+    <text class="ct2-zmp-label" data-ct2-zmp-label x="0" y="316" text-anchor="middle">p = ZMP</text>
+
+    <!-- 小车（质心） -->
+    <rect class="ct2-cart" data-ct2-cart x="0" y="0" width="52" height="34" rx="4"></rect>
+    <circle class="ct2-wheel" data-ct2-wheel-l cx="0" cy="0" r="6"></circle>
+    <circle class="ct2-wheel" data-ct2-wheel-r cx="0" cy="0" r="6"></circle>
+    <circle class="ct2-com" data-ct2-com cx="0" cy="0" r="4"></circle>
+    <text class="ct2-cart-label" data-ct2-cart-label x="0" y="0" text-anchor="middle">质心（小车）</text>
+
+    <!-- 力：重力与地面反力 -->
+    <line class="ct2-force ct2-gravity" data-ct2-gravity x1="0" y1="0" x2="0" y2="0" marker-end="url(#ct2-arrow)"></line>
+    <text class="ct2-force-label" data-ct2-gravity-label x="0" y="0" text-anchor="end">mg</text>
+    <line class="ct2-force ct2-reaction" data-ct2-reaction x1="0" y1="0" x2="0" y2="0" marker-end="url(#ct2-arrow)"></line>
+    <text class="ct2-force-label" data-ct2-reaction-label x="0" y="0" text-anchor="start">N</text>
+
+    <!-- 加速度箭头 -->
+    <line class="ct2-accel" data-ct2-accel x1="0" y1="0" x2="0" y2="0" marker-end="url(#ct2-arrow)"></line>
+    <text class="ct2-accel-label" data-ct2-accel-label x="0" y="0" text-anchor="middle"></text>
+
+    <!-- 推力（点击按钮后出现一小段时间） -->
+    <line class="ct2-push" data-ct2-push-arrow x1="0" y1="0" x2="0" y2="0" marker-end="url(#ct2-arrow)" opacity="0"></line>
+    <text class="ct2-push-label" data-ct2-push-label x="0" y="0" text-anchor="middle" opacity="0"></text>
+
+    <!-- 尺寸标注：|x − p| 与 z -->
+    <line class="ct2-dim" data-ct2-dim-gap x1="0" y1="0" x2="0" y2="0" marker-start="url(#ct2-dimarrow)" marker-end="url(#ct2-dimarrow)"></line>
+    <text class="ct2-dim-label" data-ct2-dim-gap-label x="0" y="0" text-anchor="middle"></text>
+    <line class="ct2-dim" data-ct2-dim-z x1="0" y1="0" x2="0" y2="0" marker-start="url(#ct2-dimarrow)" marker-end="url(#ct2-dimarrow)"></line>
+    <text class="ct2-dim-label" data-ct2-dim-z-label x="0" y="0" text-anchor="end"></text>
+
+    <defs>
+      <marker id="ct2-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" markerUnits="userSpaceOnUse" orient="auto">
+        <path class="ct2-arrow-head" d="M0,0 L10,5 L0,10 Z"></path>
+      </marker>
+      <marker id="ct2-dimarrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4.5" markerHeight="4.5" markerUnits="userSpaceOnUse" orient="auto">
+        <path class="ct2-dim-arrow-head" d="M10,0 L0,5 L10,10 Z"></path>
+      </marker>
+    </defs>
+
+
+  </svg>
+
+  <div class="ct2-controls">
+    <div class="ct2-row">
+      <span class="ct2-row-title">操作</span>
+      <button type="button" class="ct2-btn" data-ct2-ctl>平衡控制器：开</button>
+      <button type="button" class="ct2-btn" data-ct2-push>施加水平推力（→）</button>
+      <button type="button" class="ct2-btn" data-ct2-pause>暂停</button>
+      <button type="button" class="ct2-btn" data-ct2-reset>复位重跑</button>
+    </div>
+    <div class="ct2-row">
+      <span class="ct2-row-title">参数</span>
+      <label class="ct2-slider"><span class="ct2-k">质心高度 z</span><input class="ct2-range" type="range" data-ct2-in="z" min="0.4" max="1.2" step="0.05" value="0.7" /><span class="ct2-v" data-ct2-v="z">0.70 m</span></label>
+      <span class="ct2-hint">质心越高（z 越大），时间常数 √(z/g) 越长、发散越慢；z 越小发散越快</span>
+    </div>
+  </div>
+
+  <div class="ct2-readout">
+    <div class="ct2-fields">
+      <div class="ct2-field"><span class="ct2-field-k">质心 x</span><span class="ct2-field-v" data-ct2-out="x">0.000 m</span></div>
+      <div class="ct2-field"><span class="ct2-field-k">支点 p（ZMP）</span><span class="ct2-field-v" data-ct2-out="p">0.000 m</span></div>
+      <div class="ct2-field"><span class="ct2-field-k">|x − p|</span><span class="ct2-field-v ct2-field-warn" data-ct2-out="gap">0.000 m</span></div>
+      <div class="ct2-field"><span class="ct2-field-k">质心加速度</span><span class="ct2-field-v" data-ct2-out="a">0.00 m/s²</span></div>
+    </div>
+    <div class="ct2-state" data-ct2-state>稳定：支点跟住了质心</div>
+    <div class="ct2-note" data-ct2-eq>ẍ = (g/z)(x − p)</div>
+  </div>
+</figure>
+<script>
+(function () {
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const fmt = (v, d) => (Math.abs(v) < Math.pow(10, -d) / 2 ? "0." + "0".repeat(d) : (v < 0 ? "−" : "") + Math.abs(v).toFixed(d));
+
+  document.querySelectorAll(".ct2-demo").forEach((demo) => {
+    if (!(demo instanceof HTMLElement)) return;
+    const cfg = JSON.parse(demo.dataset.ct || "{}");
+    const G = cfg.g != null ? cfg.g : 9.81;
+    const HALF = cfg.halfBase != null ? cfg.halfBase : 0.35;
+    const KP = cfg.kp != null ? cfg.kp : 16;
+    const KD = cfg.kd != null ? cfg.kd : 8;
+    const PUSH_V = cfg.pushV != null ? cfg.pushV : 0.05;
+    const TRIAL = cfg.trialT != null ? cfg.trialT : 4.0;
+    const HOLD = cfg.holdT != null ? cfg.holdT : 1.1;
+    const DT = 0.002;
+
+    const state = { x: 0, v: 0, z: cfg.z != null ? cfg.z : 0.7 };
+    let controlled = true;
+    let paused = false;
+    let pushTimer = 0;
+    let pushDir = -1;
+    let fell = false;   // 点击按钮时先翻成 +1（向右），与初始文案一致
+    let t = 0;
+    let hold = 0;
+    let lastNow = 0;
+    let raf = 0;
+
+    const pick = (sel) => demo.querySelector("[data-ct2-" + sel + "]");
+    const elBase = pick("base");
+    const elBaseLabel = pick("base-label");
+    const elEdgeL = pick("edge-l");
+    const elEdgeR = pick("edge-r");
+    const elVref = pick("vref");
+    const elVrefLabel = pick("vref-label");
+    const elTableGroup = pick("table-group");
+    const elTable = pick("table");
+    const elTableLabel = pick("table-label");
+    const elLeg = pick("leg");
+    const elZmp = pick("zmp");
+    const elZmpLabel = pick("zmp-label");
+    const elCart = pick("cart");
+    const elWheelL = pick("wheel-l");
+    const elWheelR = pick("wheel-r");
+    const elCom = pick("com");
+    const elCartLabel = pick("cart-label");
+    const elGravity = pick("gravity");
+    const elGravityLabel = pick("gravity-label");
+    const elReaction = pick("reaction");
+    const elReactionLabel = pick("reaction-label");
+    const elAccel = pick("accel");
+    const elAccelLabel = pick("accel-label");
+    const elPushArrow = pick("push-arrow");
+    const elPushLabel = pick("push-label");
+    const elDimGap = pick("dim-gap");
+    const elDimGapLabel = pick("dim-gap-label");
+    const elDimZ = pick("dim-z");
+    const elDimZLabel = pick("dim-z-label");
+    const out = { x: pick("out='x'"), p: pick("out='p'"), gap: pick("out='gap'"), a: pick("out='a'") };
+    const elState = pick("state");
+    const elEq = pick("eq");
+    const ctlBtn = pick("ctl");
+    const pushBtn = pick("push");
+    const pauseBtn = pick("pause");
+    const resetBtn = pick("reset");
+    const zEl = demo.querySelector("[data-ct2-in='z']");
+    const zVal = demo.querySelector("[data-ct2-v='z']");
+    if (!elCart || !ctlBtn) return;
+
+    const PX = 560;
+    const CX = 330;
+    const GROUND = 336;
+    const PZ_PER_M = 150;   // z 映射到图中的高度：150 px/m
+    const PUSH_DUR = 0.25;  // 推力持续时间（s）
+    const TABLE_HALF_PX = 150;
+    const CART_W = 52;
+    const CART_H = 34;
+    const toX = (m) => CX + m * PX;
+    const controlZmp = (x, v, z) => (z / G) * (KP * x + KD * v);
+
+    const render = () => {
+      const z = state.z;
+      const PZ = GROUND - z * PZ_PER_M;   // 质心高度越高，桌面与小车在图中越高
+      const p = controlled ? controlZmp(state.x, state.v, z) : 0;
+      const a = (G / z) * (state.x - p);
+      const gap = state.x - p;
+      const cartX = toX(state.x);
+      const pX = toX(p);
+      const theta = clamp(gap * 0.45, -0.14, 0.14);
+      const cos = Math.cos(theta), sin = Math.sin(theta);
+      const halfPx = TABLE_HALF_PX;
+
+      // 基座与端点
+      if (elBase) { elBase.setAttribute("x", (CX - HALF * PX * 0.85).toFixed(1)); elBase.setAttribute("width", (HALF * PX * 1.7).toFixed(1)); }
+      if (elBaseLabel) elBaseLabel.setAttribute("x", CX.toFixed(1));
+      if (elEdgeL) elEdgeL.setAttribute("cx", toX(-HALF).toFixed(1));
+      if (elEdgeR) elEdgeR.setAttribute("cx", toX(HALF).toFixed(1));
+      // 支点腿与 ZMP
+      if (elLeg) { elLeg.setAttribute("x1", pX.toFixed(1)); elLeg.setAttribute("x2", pX.toFixed(1)); elLeg.setAttribute("y1", String(PZ)); elLeg.setAttribute("y2", String(GROUND)); }
+      if (elZmp) elZmp.setAttribute("cx", pX.toFixed(1));
+      if (elZmpLabel) elZmpLabel.setAttribute("x", pX.toFixed(1));
+      // 竖直参考线穿过支点
+      if (elVref) { elVref.setAttribute("x1", pX.toFixed(1)); elVref.setAttribute("x2", pX.toFixed(1)); elVref.setAttribute("y1", (PZ - 46).toFixed(1)); }
+      if (elVrefLabel) { elVrefLabel.setAttribute("x", pX.toFixed(1)); elVrefLabel.setAttribute("y", (PZ - 54).toFixed(1)); }
+      // 桌面绕支点旋转
+      if (elTableGroup) elTableGroup.setAttribute("transform", "rotate(" + (theta * 180 / Math.PI).toFixed(2) + " " + pX.toFixed(1) + " " + GROUND + ")");
+      if (elTable) { elTable.setAttribute("x", (pX - halfPx).toFixed(1)); elTable.setAttribute("y", String(PZ)); elTable.setAttribute("width", (2 * halfPx).toFixed(1)); }
+      // 小车：水平放置，底部落在桌面在质心处的抬高上
+      const cartBottom = PZ - gap * sin;
+      const cartTop = cartBottom - CART_H;
+      if (elCart) { elCart.setAttribute("x", (cartX - CART_W / 2).toFixed(1)); elCart.setAttribute("y", cartTop.toFixed(1)); elCart.setAttribute("class", fell ? "ct2-cart ct2-cart-fall" : "ct2-cart"); }
+      if (elWheelL) { elWheelL.setAttribute("cx", (cartX - CART_W * 0.28).toFixed(1)); elWheelL.setAttribute("cy", cartBottom.toFixed(1)); }
+      if (elWheelR) { elWheelR.setAttribute("cx", (cartX + CART_W * 0.28).toFixed(1)); elWheelR.setAttribute("cy", cartBottom.toFixed(1)); }
+      const comY = cartTop + CART_H / 2;
+      if (elCom) { elCom.setAttribute("cx", cartX.toFixed(1)); elCom.setAttribute("cy", comY.toFixed(1)); }
+      if (elCartLabel) { elCartLabel.setAttribute("x", cartX.toFixed(1)); elCartLabel.setAttribute("y", (cartTop - 10).toFixed(1)); }
+      if (elTableLabel) {
+        const lx = pX + halfPx * 0.55 * cos;
+        const ly = PZ - halfPx * 0.55 * sin;
+        elTableLabel.setAttribute("x", lx.toFixed(1));
+        elTableLabel.setAttribute("y", (ly - 10).toFixed(1));
+      }
+      // 重力与地面反力
+      if (elGravity) { elGravity.setAttribute("x1", cartX.toFixed(1)); elGravity.setAttribute("x2", cartX.toFixed(1)); elGravity.setAttribute("y1", (cartBottom + 18).toFixed(1)); elGravity.setAttribute("y2", (cartBottom + 58).toFixed(1)); }
+      if (elGravityLabel) { elGravityLabel.setAttribute("x", (cartX - 10).toFixed(1)); elGravityLabel.setAttribute("y", (cartBottom + 44).toFixed(1)); elGravityLabel.setAttribute("text-anchor", "end"); }
+      if (elReaction) { elReaction.setAttribute("x1", pX.toFixed(1)); elReaction.setAttribute("x2", pX.toFixed(1)); elReaction.setAttribute("y1", String(GROUND - 8)); elReaction.setAttribute("y2", String(GROUND - 48)); }
+      if (elReactionLabel) { elReactionLabel.setAttribute("x", (pX + 9).toFixed(1)); elReactionLabel.setAttribute("y", String(GROUND - 40)); }
+      // 加速度箭头（背离支点）
+      if (elAccel) {
+        const len = clamp(Math.abs(a) * 12, 0, 130);
+        const dir = a >= 0 ? 1 : -1;
+        elAccel.setAttribute("x1", (cartX + dir * (CART_W / 2 + 6)).toFixed(1));
+        elAccel.setAttribute("x2", (cartX + dir * (CART_W / 2 + 6 + len)).toFixed(1));
+        elAccel.setAttribute("y1", String(cartTop));
+        elAccel.setAttribute("y2", String(cartTop));
+        elAccel.setAttribute("opacity", Math.abs(a) > 0.02 ? "1" : "0");
+      }
+      if (elAccelLabel) {
+        const dir = a >= 0 ? 1 : -1;
+        const len = clamp(Math.abs(a) * 12, 0, 130);
+        elAccelLabel.setAttribute("x", (cartX + dir * (CART_W / 2 + 6 + len + 8)).toFixed(1));
+        elAccelLabel.setAttribute("y", (cartTop + 5).toFixed(1));
+        elAccelLabel.setAttribute("text-anchor", dir > 0 ? "start" : "end");
+        elAccelLabel.textContent = Math.abs(a) > 0.02 ? "ẍ = " + fmt(a, 2) + " m/s²" : "";
+      }
+      // 推力箭头：点击“施加水平推力”后出现一小段时间，作用在质心高度上
+      if (elPushArrow) {
+        const on = pushTimer > 0;
+        elPushArrow.setAttribute("opacity", on ? "1" : "0");
+        if (on) {
+          // 起点 = 小车中心（自由体受力图的画法），沿推力方向向外伸出
+          elPushArrow.setAttribute("x1", cartX.toFixed(1));
+          elPushArrow.setAttribute("y1", comY.toFixed(1));
+          elPushArrow.setAttribute("x2", (cartX + pushDir * (CART_W / 2 + 56)).toFixed(1));
+          elPushArrow.setAttribute("y2", comY.toFixed(1));
+        }
+      }
+      if (elPushLabel) {
+        const on = pushTimer > 0;
+        elPushLabel.setAttribute("opacity", on ? "1" : "0");
+        if (on) {
+          elPushLabel.setAttribute("x", (cartX + pushDir * (CART_W / 2 + 66)).toFixed(1));
+          elPushLabel.setAttribute("y", (comY - 12).toFixed(1));
+          elPushLabel.setAttribute("text-anchor", pushDir > 0 ? "start" : "end");
+          elPushLabel.textContent = "推力 F";
+        }
+      }
+      // 尺寸标注
+      if (elDimGap) {
+        const y = 384;
+        elDimGap.setAttribute("x1", Math.min(cartX, pX).toFixed(1));
+        elDimGap.setAttribute("x2", Math.max(cartX, pX).toFixed(1));
+        elDimGap.setAttribute("y1", String(y));
+        elDimGap.setAttribute("y2", String(y));
+      }
+      if (elDimGapLabel) {
+        elDimGapLabel.setAttribute("x", ((cartX + pX) / 2).toFixed(1));
+        elDimGapLabel.setAttribute("y", "402");
+        elDimGapLabel.textContent = "|x − p| = " + fmt(Math.abs(gap), 3) + " m";
+      }
+      if (elDimZ) {
+        const x = 108;
+        elDimZ.setAttribute("x1", String(x));
+        elDimZ.setAttribute("x2", String(x));
+        elDimZ.setAttribute("y1", String(GROUND));
+        elDimZ.setAttribute("y2", cartTop.toFixed(1));
+      }
+      if (elDimZLabel) {
+        elDimZLabel.setAttribute("x", "100");
+        elDimZLabel.setAttribute("y", ((GROUND + cartTop) / 2).toFixed(1));
+        elDimZLabel.textContent = "z = " + z.toFixed(2) + " m";
+      }
+      // 读数与状态
+      if (out.x) out.x.textContent = fmt(state.x, 3) + " m";
+      if (out.p) out.p.textContent = fmt(p, 3) + " m";
+      if (out.gap) out.gap.textContent = fmt(Math.abs(gap), 3) + " m";
+      if (out.a) out.a.textContent = fmt(a, 2) + " m/s²";
+      if (elEq) elEq.textContent = "ẍ = (g/z)(x − p) = (9.81/" + z.toFixed(2) + ") × (" + fmt(state.x, 3) + " − " + fmt(p, 3) + ") = " + fmt(a, 2) + " m/s²";
+      if (elState) {
+        if (Math.abs(state.x) > HALF) {
+          elState.textContent = "翻倒：质心越过了可用基座边界";
+          elState.className = "ct2-state ct2-state-bad";
+        } else if (!controlled) {
+          elState.textContent = "支点固定：偏差按指数放大（时间常数 1/√(g/z) ≈ " + (1 / Math.sqrt(G / z)).toFixed(2) + " s）";
+          elState.className = "ct2-state ct2-state-warn";
+        } else {
+          elState.textContent = "稳定：支点跟着质心跑，扰动被压下去";
+          elState.className = "ct2-state ct2-state-ok";
+        }
+      }
+    };
+
+    const step = (dt) => {
+      let remain = dt;
+      while (remain > 0) {
+        const h = Math.min(DT, remain);
+        const p = controlled ? controlZmp(state.x, state.v, state.z) : 0;
+        const a = (G / state.z) * (state.x - p);
+        // 推力：在 PUSH_DUR 内均匀施加，总冲量对应 PUSH_V 的速度增量
+        let aPush = 0;
+        if (pushTimer > 0) {
+          aPush = pushDir * PUSH_V / PUSH_DUR;
+          pushTimer = Math.max(0, pushTimer - h);
+        }
+        state.v += (a + aPush) * h;
+        state.x += state.v * h;
+        remain -= h;
+        t += h;
+      }
+      if (!fell && Math.abs(state.x) > HALF) {
+        // 质心越过支撑边界：桌子会翻，这一轮到此为止（冻结在临界位置）
+        state.x = clamp(state.x, -(HALF + 0.04), HALF + 0.04);
+        state.v = 0;
+        fell = true;
+      }
+    };
+
+    const resetTrial = () => {
+      state.x = 0; state.v = 0;
+      pushTimer = 0;
+      fell = false;
+      t = 0; hold = 0; lastNow = 0;
+      render();
+    };
+
+    const tick = (now) => {
+      raf = requestAnimationFrame(tick);
+      if (paused) { lastNow = now; return; }
+      if (!lastNow) lastNow = now;
+      let dt = (now - lastNow) / 1000;
+      lastNow = now;
+      dt = clamp(dt, 0.001, 0.05);
+      if (hold > 0) {
+        hold -= dt;
+        if (hold <= 0) resetTrial();   // 停一拍结束后才重来，翻倒态能看清
+        render();
+        return;
+      }
+      if (fell || t >= TRIAL) { hold = HOLD; render(); return; }
+      step(dt);
+      render();
+    };
+
+    ctlBtn.addEventListener("click", () => {
+      controlled = !controlled;
+      ctlBtn.textContent = "平衡控制器：" + (controlled ? "开" : "关");
+      ctlBtn.classList.toggle("ct2-btn-warn", !controlled);
+      resetTrial();
+    });
+    if (pushBtn instanceof HTMLButtonElement) pushBtn.addEventListener("click", () => {
+      pushDir = -pushDir;
+      pushTimer = PUSH_DUR;
+      pushBtn.textContent = pushDir > 0 ? "推力：→ 向右" : "推力：← 向左";
+    });
+    if (pauseBtn instanceof HTMLButtonElement) pauseBtn.addEventListener("click", () => {
+      paused = !paused;
+      pauseBtn.textContent = paused ? "继续" : "暂停";
+      lastNow = 0;
+    });
+    if (resetBtn instanceof HTMLButtonElement) resetBtn.addEventListener("click", () => { resetTrial(); });
+    if (zEl instanceof HTMLInputElement) zEl.addEventListener("input", () => {
+      state.z = Number(zEl.value);
+      if (zVal) zVal.textContent = state.z.toFixed(2) + " m";
+      resetTrial();
+    });
+
+    resetTrial();
+    raf = requestAnimationFrame(tick);
+  });
+})();
+</script>
+<style is:global>
+  .ct2-demo { margin: 1.5rem 0; }
+  .ct2-demo svg { display: block; width: 100%; max-width: 980px; height: auto; margin: 0 auto; }
+  .ct2-demo svg text { paint-order: stroke fill; stroke: var(--sl-color-bg); stroke-width: 3.5px; stroke-linejoin: round; }
+  .ct2-title { fill: var(--sl-color-text); font-size: 28px; font-weight: 600; }
+  .ct2-sub { fill: var(--sl-color-gray-2); font-size: 17px; }
+  .ct2-ground { stroke: var(--sl-color-gray-4); stroke-width: 1.6; }
+  .ct2-axis { stroke: var(--sl-color-gray-3); stroke-width: 1.4; }
+  .ct2-axis-label, .ct2-base-label, .ct2-vref-label, .ct2-table-label { fill: var(--sl-color-gray-3); font-size: 17px; }
+  .ct2-base { fill: var(--sl-color-gray-5); opacity: 0.45; rx: 3; }
+  .ct2-support-edge { fill: var(--sl-color-gray-3); }
+  .ct2-vref { stroke: var(--sl-color-gray-4); stroke-width: 1.2; stroke-dasharray: 6 5; }
+  .ct2-table { fill: none; stroke: var(--sl-color-text); stroke-width: 3; }
+  .ct2-leg { stroke: var(--sl-color-text); stroke-width: 3.5; stroke-linecap: round; opacity: 0.8; }
+  .ct2-zmp { fill: light-dark(#15803d, #4ade80); stroke: var(--sl-color-bg); stroke-width: 1.5; }
+  .ct2-zmp-label { fill: var(--sl-color-gray-2); font-size: 17px; font-weight: 700; }
+  .ct2-cart { fill: var(--sl-color-accent); opacity: 0.9; }
+  .ct2-cart-fall { fill: light-dark(#dc2626, #f87171); }
+  .ct2-wheel { fill: var(--sl-color-text); opacity: 0.8; }
+  .ct2-com { fill: var(--sl-color-bg); stroke: var(--sl-color-text); stroke-width: 1.5; }
+  .ct2-cart-label { fill: var(--sl-color-bg); font-size: 15px; font-weight: 700; }
+  .ct2-force { stroke: var(--sl-color-gray-2); stroke-width: 2; }
+  .ct2-gravity { stroke-dasharray: 6 4; }
+  .ct2-reaction { stroke: light-dark(#15803d, #4ade80); }
+  .ct2-force-label { fill: var(--sl-color-gray-2); font-size: 17px; font-weight: 600; }
+  .ct2-accel { stroke: light-dark(#b45309, #fbbf24); stroke-width: 3; }
+  .ct2-accel-label { fill: light-dark(#b45309, #fbbf24); font-size: 17px; font-weight: 600; }
+  .ct2-push { stroke: light-dark(#dc2626, #f87171); stroke-width: 3.5; }
+  .ct2-push-label { fill: light-dark(#dc2626, #f87171); font-size: 17px; font-weight: 700; }
+  .ct2-arrow-head { fill: var(--sl-color-gray-2); }
+  .ct2-dim { stroke: var(--sl-color-gray-4); stroke-width: 1.2; }
+  .ct2-dim-arrow-head { fill: var(--sl-color-gray-4); }
+  .ct2-dim-label { fill: var(--sl-color-gray-2); font-size: 17px; font-variant-numeric: tabular-nums; }
+  .ct2-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; margin-bottom: 0.4rem; align-items: stretch; }
+  .ct2-field { display: flex; flex-direction: column; justify-content: flex-start; gap: 0.2rem; height: 4.6rem; box-sizing: border-box; margin: 0 !important; padding: 0.5rem 0.7rem; border: 1px solid var(--sl-color-gray-5); border-radius: 8px; }
+  .ct2-field-k { color: var(--sl-color-gray-3); font-size: 0.875rem; line-height: 1.5rem; height: 1.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ct2-field-v { color: var(--sl-color-accent); font-size: 1.25rem; font-weight: 700; line-height: 1.75rem; height: 1.75rem; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .ct2-field-warn { color: light-dark(#b45309, #fbbf24); }
+
+  .ct2-controls { display: flex; flex-direction: column; gap: 0.5rem; max-width: 980px; margin: 0.6rem auto 0; }
+  .ct2-row { display: flex; align-items: center; gap: 0.6rem; margin: 0; flex-wrap: wrap; }
+  .ct2-row-title { flex: 0 0 3.2rem; margin: 0; color: var(--sl-color-gray-2); font-size: 0.9375rem; }
+  .ct2-slider { display: flex; flex: 1 1 16rem; min-width: 0; align-items: center; gap: 0.4rem; margin: 0; }
+  .ct2-k { flex: 0 0 5.8rem; color: var(--sl-color-gray-2); font-size: 0.9375rem; }
+  .ct2-range { flex: 1 1 auto; min-width: 4rem; margin: 0; accent-color: var(--sl-color-accent); }
+  .ct2-v { flex: 0 0 4.6rem; text-align: right; color: var(--sl-color-accent); font-weight: 600; font-variant-numeric: tabular-nums; font-size: 0.9375rem; }
+  .ct2-hint { margin: 0; color: var(--sl-color-gray-3); font-size: 0.875rem; }
+  .ct2-btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; height: 2.35rem; margin: 0; padding: 0 1rem; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-accent); font: inherit; font-size: 0.9375rem; line-height: 1; cursor: pointer; }
+  .ct2-btn:hover { border-color: var(--sl-color-accent); }
+  .ct2-btn-warn { border-color: var(--sl-color-orange, #ea580c); color: var(--sl-color-orange, #ea580c); }
+
+  .ct2-readout { max-width: 980px; margin: 0.7rem auto 0; display: flex; flex-direction: column; gap: 0.35rem; font-size: 1rem; }
+  .ct2-state { font-weight: 600; }
+  .ct2-state-ok { color: light-dark(#15803d, #4ade80); }
+  .ct2-state-warn { color: light-dark(#d97706, #fbbf24); }
+  .ct2-state-bad { color: light-dark(#dc2626, #f87171); }
+  .ct2-note { color: var(--sl-color-gray-3); font-size: 0.9375rem; font-variant-numeric: tabular-nums; }
+  @media (max-width: 60rem) { .ct2-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 40rem) { .ct2-fields { grid-template-columns: 1fr; } }
+  @media (max-width: 40rem) { .ct2-row-title { flex-basis: 100%; } .ct2-slider { flex: 1 1 100%; } }
+</style>
