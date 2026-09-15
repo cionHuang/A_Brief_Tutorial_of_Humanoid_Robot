@@ -22,11 +22,11 @@ Geom 分 visual 和 collision 两类用途，碰撞几何的形状和摩擦参�
 
 开头"发位置指令却抽搐"的根因在这里。`<motor>` 型执行器的 `ctrl` 直接是广义力（对转动关节即力矩）；`<position>` 型执行器内部自带一个 PD，把 `ctrl` 解释为目标位置。`g1_29dof.xml` 定义了 29 个 `<motor>`，每个绑定同名关节，例如 `<motor name="left_hip_pitch_joint" joint="left_hip_pitch_joint"/>`——对 G1 官方 MJCF，`ctrl` 就是关节力矩。
 
-要在这种模型上做"位置控制"，需要在仿真循环外自己实现 PD：用 `qpos/qvel` 读出关节状态，按 4.5 节的阻抗公式算出力矩写入 `ctrl`，这正是 `unitree_rl_gym` 的 MuJoCo 部署示例（5.4 节链路）的做法，也和 G1 真机 `MotorCmd_` 的 `kp`/`kd` 接口语义对齐。[4]
+要在这种模型上做"位置控制"，需要在仿真循环外自己实现 PD：用 `qpos/qvel` 读出关节状态，按 4.5 节的阻抗公式算出力矩写入 `ctrl`，这正是 `unitree_rl_gym` 的 MuJoCo 部署示例（5.5 节链路）的做法，也和 G1 真机 `MotorCmd_` 的 `kp`/`kd` 接口语义对齐。[4]
 
 ### Sensor：带噪声和滤波的仿真传感器
 
-MJCF 的 `<sensor>` 挂靠在 site 上。`g1_29dof.xml` 为 `imu_in_pelvis` 和 `imu_in_torso` 两个 site 各配置了一个 `<gyro>` 和一个 `<accelerometer>`，且都带 `noise` 和 `cutoff` 属性——例如陀螺仪 `noise="5e-4"`、加速度计 `noise="1e-2"`。这些参数让仿真输出更接近真实传感器特性，4.4 节状态估计和 5.4 节域随机化里"传感器差异"一项，在 MuJoCo 里对应的就是这组参数的调节范围。仿真传感器读数经过零偏和噪声注入后，才可以和 SDK 消息做有意义的对比。
+MJCF 的 `<sensor>` 挂靠在 site 上。`g1_29dof.xml` 为 `imu_in_pelvis` 和 `imu_in_torso` 两个 site 各配置了一个 `<gyro>` 和一个 `<accelerometer>`，且都带 `noise` 和 `cutoff` 属性——例如陀螺仪 `noise="5e-4"`、加速度计 `noise="1e-2"`。这些参数让仿真输出更接近真实传感器特性，4.4 节状态估计和 5.5 节域随机化里"传感器差异"一项，在 MuJoCo 里对应的就是这组参数的调节范围。仿真传感器读数经过零偏和噪声注入后，才可以和 SDK 消息做有意义的对比。
 
 ## 场景与模型加载
 
@@ -53,7 +53,7 @@ MJCF 的 `<sensor>` 挂靠在 site 上。`g1_29dof.xml` 为 `imu_in_pelvis` 和 
 | --- | --- | --- | --- | --- |
 | `g1_29dof.xml` | 29 | yaw/roll/pitch 可动 | 无 | 行走、平衡、全身控制 |
 | `g1_29dof_lock_waist.xml` | 27 可动（腰部 roll/pitch 锁定） | 仅 yaw | 无 | 腿部步态调试、减少变量 |
-| `g1_29dof_with_hand.xml` | 43（含双手 14 个手指关节） | yaw/roll/pitch 可动 | 三指 7 DoF/手 | 操作、VLA/WAM（5.3、5.5、5.6 节） |
+| `g1_29dof_with_hand.xml` | 43（含双手 14 个手指关节） | yaw/roll/pitch 可动 | 三指 7 DoF/手 | 操作、VLA/WAM（5.4、5.6、5.7 节） |
 
 切换变体时要同步更换的不只是文件名：关节索引顺序、动作向量维度、重力补偿参数和任何按索引写死的代码都要跟着改。锁腰模型中被固定的关节仍以 `fixed` 类型存在于模型树里，代码按名字而不是按位置索引关节，可以避开大部分这类错误。
 

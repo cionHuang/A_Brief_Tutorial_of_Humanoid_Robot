@@ -29,10 +29,11 @@
 | [4.5 基础控制](../04-cerebellum-realtime-control/05-basic-control.mdx) | PID、kp/kd——"把 kp 调大"意味着机器人反应更灵敏 |
 | [4.6 双足平衡与全身控制](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | ZMP、平衡控制——"机器人为什么推不倒" |
 | [6.1 ROS 2 与机器人软件架构](../06-software-tools-simulation/01-ros2-software-architecture.md) | ROS 2、节点、Topic——软件团队口中的高频框架 |
-| [5.1 感知系统](../05-brain-perception-planning-vla-wam/01-perception-system.md) | 相机、深度、SLAM——机器人怎么"看见" |
-| [5.3 双臂操作与灵巧手](../05-brain-perception-planning-vla-wam/03-dual-arm-manipulation-and-dexterous-hands.md) | 抓取、灵巧手——"机器人会干活"具体指什么 |
-| [5.5 VLA 与高级 AI 推理模型](../05-brain-perception-planning-vla-wam/05-vla-and-advanced-ai.md) | VLA——"大模型装进机器人"的真实含义 |
-| [5.6 WAM：世界动作模型](../05-brain-perception-planning-vla-wam/06-wam-world-action-model.md) | WAM——"预测动作后果"和"直接输出动作"有什么区别 |
+| [5.1 机器人学习与 AI 词汇](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 策略、训练、推理、Transformer——和 AI 团队对话的入场券 |
+| [5.2 感知系统](../05-brain-perception-planning-vla-wam/02-perception-system.md) | 相机、深度、SLAM——机器人怎么"看见" |
+| [5.4 双臂操作与灵巧手](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.md) | 抓取、灵巧手——"机器人会干活"具体指什么 |
+| [5.6 VLA 与高级 AI 推理模型](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.md) | VLA——"大模型装进机器人"的真实含义 |
+| [5.7 WAM：世界动作模型](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md) | WAM——"预测动作后果"和"直接输出动作"有什么区别 |
 
 ## 第四步：理解工程现实（约 10 分钟）
 

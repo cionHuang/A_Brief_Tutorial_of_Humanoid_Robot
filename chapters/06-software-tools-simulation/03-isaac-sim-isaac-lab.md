@@ -28,7 +28,7 @@ Isaac Sim 的相机走 RTX 光线追踪渲染，能输出 RGB、深度、分割�
 
 ### 把 MDP 拆成 Manager
 
-Isaac Lab 把 5.4 节的 MDP 要素工程化为一组管理器（Manager）：观测管理器（Observation Manager）拼装观测向量，动作管理器（Action Manager）把策略输出映射到关节目标或力矩，奖励管理器（Reward Manager）把奖励拆成带权重的独立项，终止管理器（Termination Manager）判定 episode 结束，事件管理器（Event Manager）负责域随机化和外部扰动。[3][4] 这套拆分的价值在于可组合：换一个奖励项、加一种随机化，只改配置不改框架。
+Isaac Lab 把 5.5 节的 MDP 要素工程化为一组管理器（Manager）：观测管理器（Observation Manager）拼装观测向量，动作管理器（Action Manager）把策略输出映射到关节目标或力矩，奖励管理器（Reward Manager）把奖励拆成带权重的独立项，终止管理器（Termination Manager）判定 episode 结束，事件管理器（Event Manager）负责域随机化和外部扰动。[3][4] 这套拆分的价值在于可组合：换一个奖励项、加一种随机化，只改配置不改框架。
 
 ### 并行训练
 

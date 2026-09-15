@@ -44,17 +44,18 @@
 | [4.5 基础控制](../04-cerebellum-realtime-control/05-basic-control.mdx) | 20 分钟 | 4.2 |
 | [4.6 双足平衡与全身控制](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | 20 分钟 | 2.4、4.3、4.5 |
 
-## 第 5 章 大脑：感知、规划、VLA 与 WAM（约 1 小时 45 分钟）
+## 第 5 章 大脑：感知、规划、VLA 与 WAM（约 1 小时 55 分钟）
 
 | 小节 | 预计时间 | 前置知识 |
 | --- | --- | --- |
-| [5.1 感知系统](../05-brain-perception-planning-vla-wam/01-perception-system.md) | 15 分钟 | 3.3、4.1 |
-| [5.2 运动规划：大脑与小脑之间的桥](../05-brain-perception-planning-vla-wam/02-motion-planning.md) | 15 分钟 | 4.2、4.6 |
-| [5.3 双臂操作与灵巧手](../05-brain-perception-planning-vla-wam/03-dual-arm-manipulation-and-dexterous-hands.md) | 15 分钟 | 4.2、5.2 |
-| [5.4 学习控制与模仿学习](../05-brain-perception-planning-vla-wam/04-learning-control-and-imitation-learning.md) | 15 分钟 | 4.5 |
-| [5.5 VLA 与高级 AI 推理模型](../05-brain-perception-planning-vla-wam/05-vla-and-advanced-ai.md) | 15 分钟 | 5.1、5.4 |
-| [5.6 WAM：世界动作模型](../05-brain-perception-planning-vla-wam/06-wam-world-action-model.md) | 15 分钟 | 5.5 |
-| [5.7 从 VLA/WAM 到 G1 控制接口](../05-brain-perception-planning-vla-wam/07-vla-wam-to-g1-control-interface.md) | 15 分钟 | 4.6、5.6 |
+| [5.1 机器人学习与 AI 词汇](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 10 分钟 | 无 |
+| [5.2 感知系统](../05-brain-perception-planning-vla-wam/02-perception-system.md) | 15 分钟 | 3.3、4.1 |
+| [5.3 运动规划：大脑与小脑之间的桥](../05-brain-perception-planning-vla-wam/03-motion-planning.md) | 15 分钟 | 4.2、4.6 |
+| [5.4 双臂操作与灵巧手](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.md) | 15 分钟 | 4.2、5.3 |
+| [5.5 学习控制与模仿学习](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.md) | 15 分钟 | 4.5 |
+| [5.6 VLA 与高级 AI 推理模型](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.md) | 15 分钟 | 5.2、5.5 |
+| [5.7 WAM：世界动作模型](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md) | 15 分钟 | 5.6 |
+| [5.8 从 VLA/WAM 到 G1 控制接口](../05-brain-perception-planning-vla-wam/08-vla-wam-to-g1-control-interface.md) | 15 分钟 | 4.6、5.7 |
 
 ## 第 6 章 软件与工具链（约 1.5 小时）
 
@@ -78,5 +79,5 @@
 ## 读完之后往哪走
 
 - 想做结构/硬件：从 2.3 的关节模组和 3.2 的驱动器往深挖，结合 G1 的 STL 和 URDF 研究真实设计取舍；
-- 想做控制/算法：从 4.6 全身控制和 5.4 模仿学习切入，跑通 `unitree_rl_gym` 的官方示例；
-- 想做 AI/VLA/WAM：从 5.5 和 5.6 出发，继续读 OpenVLA、LeRobot 和 WAM 论文的官方资料。
+- 想做控制/算法：从 4.6 全身控制和 5.5 模仿学习切入，跑通 `unitree_rl_gym` 的官方示例；
+- 想做 AI/VLA/WAM：从 5.6 和 5.7 出发，继续读 OpenVLA、LeRobot 和 WAM 论文的官方资料。
