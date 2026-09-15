@@ -147,7 +147,7 @@
 
 ## AI 概念图（5.1 节）
 
-**强化学习回路、注意力与 Transformer 架构图**（2026-09-15 下载自 Dive into Deep Learning / d2l.ai 官方仓库 `img/`，均为矢量 SVG，无外部位图引用、无外链字体，未做改动）。
+**强化学习回路、注意力与 Transformer 架构图**（2026-09-15 下载自 Dive into Deep Learning / d2l.ai 官方仓库 `img/`，均为矢量 SVG，无外部位图引用、无外链字体，未做改动）。正文图注只保留一句说明，署名与许可统一放在 5.1 节参考资料 [10]。
 
 当前位置：`chapters/05-brain-perception-planning-vla-wam/assets/images/`
 

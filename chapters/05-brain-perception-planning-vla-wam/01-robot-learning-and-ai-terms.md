@@ -20,7 +20,7 @@
 
 ![强化学习中的智能体–环境交互回路](assets/images/ai-rl-agent-environment.svg)
 
-*图 5.1-1 强化学习的智能体–环境交互回路：智能体依据观测选择动作，环境返回奖励与新观测，模型正是靠反复“试错”这一循环学出策略。来源：Dive into Deep Learning（d2l.ai），Aston Zhang、Zachary C. Lipton、Mu Li、Alexander J. Smola，许可 CC BY-SA 4.0（相同方式共享）。*
+*图 5.1-1 强化学习的智能体–环境交互回路：模型靠反复“试错”学出策略。[10]*
 
 ## 神经网络的最小词汇
 
@@ -51,17 +51,17 @@ $$
 
 ![查询–键–值（QKV）注意力：按相关度对值加权汇总](assets/images/ai-qkv-attention.svg)
 
-*图 5.1-2 查询–键–值（QKV）注意力：查询 $q$ 与各键 $k_i$ 算出相关度权重 $\alpha$，再对值 $v_i$ 加权汇总，即正文公式 $\mathrm{Attention}(Q,K,V)$ 的直观过程。来源：Dive into Deep Learning（d2l.ai），Aston Zhang、Zachary C. Lipton、Mu Li、Alexander J. Smola，许可 CC BY-SA 4.0（相同方式共享）。*
+*图 5.1-2 查询–键–值（QKV）注意力：先算相关度权重 $\alpha$，再对值 $v_i$ 加权汇总。[10]*
 
 ![多头注意力：多组 Q/K/V 并行后拼接融合](assets/images/ai-multi-head-attention.svg)
 
-*图 5.1-3 多头注意力：多组 $Q,K,V$ 并行做注意力后拼接，再经全连接融合，让模型在同一层里同时关注不同类型的关系。来源：Dive into Deep Learning（d2l.ai），Aston Zhang、Zachary C. Lipton、Mu Li、Alexander J. Smola，许可 CC BY-SA 4.0（相同方式共享）。*
+*图 5.1-3 多头注意力：多组 $Q,K,V$ 并行后拼接融合，让同一层同时关注不同类型的关系。[10]*
 
 为什么 VLA/WAM 选它：图像、语言、机器人状态和动作可以统一成一条序列处理，容量大、易扩展。代价是**计算量和显存随序列长度增长**，而机器人对延迟敏感——这正是“模型很大、但推理只有 1–10 Hz”的根源（见 5.6、5.8 节）。
 
 ![Transformer 编码器–解码器整体架构](assets/images/ai-transformer-arch.svg)
 
-*图 5.1-4 Transformer 整体架构：编码器与解码器各自堆叠“多头注意力 + 前馈网络 + 残差归一化”，是 VLA/WAM 把图像、语言、状态与动作统一成一条序列处理的基础。来源：Dive into Deep Learning（d2l.ai），Aston Zhang、Zachary C. Lipton、Mu Li、Alexander J. Smola，许可 CC BY-SA 4.0（相同方式共享）。*
+*图 5.1-4 Transformer 整体架构：编码器与解码器各自堆叠“多头注意力 + 前馈网络 + 残差归一化”。[10]*
 
 ## 生成：扩散与流匹配
 
@@ -133,3 +133,5 @@ $$
 [8] Chi, C., et al. “Diffusion Policy: Visuomotor Policy Learning via Action Diffusion.” *RSS*, 2023. 用扩散生成动作序列的机器人策略。<https://arxiv.org/abs/2303.04137>
 
 [9] Hugging Face. *LeRobot: Making AI for Robotics More Accessible*. 数据集格式、采集与训练流水线的开源参考实现。<https://github.com/huggingface/lerobot>
+
+[10] Zhang, A., Lipton, Z. C., Li, M., & Smola, A. J. *Dive into Deep Learning*. 图 5.1-1 至 5.1-4 取自该书官方仓库 `img/` 目录（`rl-environment.svg`、`qkv.svg`、`multi-head-attention.svg`、`transformer.svg`），许可 CC BY-SA 4.0（相同方式共享）。<https://d2l.ai>

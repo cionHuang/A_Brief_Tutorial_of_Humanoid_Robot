@@ -79,10 +79,21 @@
   margin-top: 0.1rem;
 }
 
+/* 正文图片统一居中 */
+.sl-markdown-content img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* 图注跟随图片居中（图片自成一段时，紧随其后的段落即图注） */
+.sl-markdown-content p:has(> img) + p {
+  text-align: center;
+}
+
 /* 5.1 引用的 D2L 概念图：源 SVG 固有尺寸偏小（约 250–290pt），
    放大到正文宽度以保证图内标注可读（矢量图放大不失真） */
 .sl-markdown-content img[src*="/ai-"] {
-  display: block;
   width: 100%;
   max-width: 40rem;
   height: auto;
