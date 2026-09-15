@@ -144,3 +144,42 @@
 - 摆线减速器零件分解图（公有领域，Petteri Aimonen）：https://commons.wikimedia.org/wiki/File:Cycloidal_drive_parts.png
 - 行星齿轮组特写（CC0）：https://commons.wikimedia.org/wiki/File:Looking_through_a_set_of_planetary_gears.png
 
+
+## AI 概念图（5.1 节）
+
+**强化学习回路、注意力与 Transformer 架构图**（2026-09-15 下载自 Dive into Deep Learning / d2l.ai 官方仓库 `img/`，均为矢量 SVG，无外部位图引用、无外链字体，未做改动）。
+
+当前位置：`chapters/05-brain-perception-planning-vla-wam/assets/images/`
+
+### ai-rl-agent-environment.svg（图 5.1-1）
+
+- 内容：强化学习的智能体（Agent）–环境（Environment）交互回路——动作、奖励、观测的循环；
+- 来源：Dive into Deep Learning（d2l.ai），原文件 https://github.com/d2l-ai/d2l-en/blob/master/img/rl-environment.svg
+- 作者：Aston Zhang、Zachary C. Lipton、Mu Li、Alexander J. Smola；许可：CC BY-SA 4.0（署名 + 相同方式共享）；
+- 备注：用于 5.1「模型从哪来：三条路」小节，帮助读者把"从试错学"与 RL 交互回路对应起来。
+
+### ai-qkv-attention.svg（图 5.1-2）
+
+- 内容：查询–键–值（QKV）注意力——查询与各键算相关度权重，再对值加权汇总；
+- 来源：https://github.com/d2l-ai/d2l-en/blob/master/img/qkv.svg
+- 作者：Aston Zhang、Zachary C. Lipton、Mu Li、Alexander J. Smola；许可：CC BY-SA 4.0（署名 + 相同方式共享）；
+- 备注：用于 5.1「架构：Transformer 与注意力」小节，对应正文 Attention(Q,K,V) 公式。
+
+### ai-multi-head-attention.svg（图 5.1-3）
+
+- 内容：多头注意力——多组 Q/K/V 并行做注意力后拼接，再经全连接融合；
+- 来源：https://github.com/d2l-ai/d2l-en/blob/master/img/multi-head-attention.svg
+- 作者：Aston Zhang、Zachary C. Lipton、Mu Li、Alexander J. Smola；许可：CC BY-SA 4.0（署名 + 相同方式共享）；
+- 备注：用于 5.1「架构：Transformer 与注意力」小节。
+
+### ai-transformer-arch.svg（图 5.1-4）
+
+- 内容：Transformer 编码器–解码器整体架构（多头注意力、前馈网络、Add & norm、位置编码）；
+- 来源：https://github.com/d2l-ai/d2l-en/blob/master/img/transformer.svg
+- 作者：Aston Zhang、Zachary C. Lipton、Mu Li、Alexander J. Smola；许可：CC BY-SA 4.0（署名 + 相同方式共享）；
+- 备注：用于 5.1「架构：Transformer 与注意力」小节末尾。
+
+### 备选（同仓库，本次未采用）
+
+- `img/self-attention.svg`、`img/attention.svg`、`img/cnn-rnn-self-attention.svg`。
+

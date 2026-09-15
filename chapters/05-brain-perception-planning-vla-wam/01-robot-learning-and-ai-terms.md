@@ -18,11 +18,15 @@
 
 三条路在真实系统里几乎总是混用：学习模块输出“意图”，经典控制负责把它变成可执行、可兜底的动作。
 
+![强化学习中的智能体–环境交互回路](assets/images/ai-rl-agent-environment.svg)
+
+*图 5.1-1 强化学习的智能体–环境交互回路：智能体依据观测选择动作，环境返回奖励与新观测，模型正是靠反复“试错”这一循环学出策略。来源：Dive into Deep Learning（d2l.ai），Aston Zhang、Zachary C. Lipton、Mu Li、Alexander J. Smola，许可 CC BY-SA 4.0（相同方式共享）。*
+
 ## 神经网络的最小词汇
 
 - **模型与参数**：模型是一个带参数的函数 $\hat{y}=f_\theta(x)$；参数 $\theta$ 就是训练要调整的那一堆数。
 - **层与前向**：网络由若干层叠加，一次**前向传播**就是“输入 → 逐层计算 → 输出”。
-- **训练与推理**：训练是在数据集上反复迭代求参数，$\theta^\*=\arg\min_\theta \mathbb{E}_{(x,y)\sim D}\left[L(f_\theta(x),y)\right]$；**推理则是固定参数后做一次前向**。机器人上电后跑的都是推理，所以“一次推理多久、多久能出一次”比“训练了多久”更决定能不能用。
+- **训练与推理**：训练是在数据集上反复迭代求参数，$\theta^*=\arg\min_\theta \mathbb{E}_{(x,y)\sim D}\left[L(f_\theta(x),y)\right]$；**推理则是固定参数后做一次前向**。机器人上电后跑的都是推理，所以“一次推理多久、多久能出一次”比“训练了多久”更决定能不能用。
 - **损失与过拟合**：损失衡量输出与目标的差距；过拟合是“把训练集背下来了，换一批数据就不行”。
 - **数据集与标注**：数据从哪来、标签谁给、分布是否覆盖真实场景，往往比模型结构更决定成败。
 
@@ -45,7 +49,19 @@ $$
 - $QK^\top$ 衡量“谁和谁相关”，$\sqrt{d_k}$ 做尺度缩放，$\mathrm{softmax}$ 把相关度变成权重，再对 $V$ 加权求和；
 - 实际模型用**多头注意力**（多组 $Q,K,V$ 并行）和**位置编码**（补上顺序信息）。[2]
 
+![查询–键–值（QKV）注意力：按相关度对值加权汇总](assets/images/ai-qkv-attention.svg)
+
+*图 5.1-2 查询–键–值（QKV）注意力：查询 $q$ 与各键 $k_i$ 算出相关度权重 $\alpha$，再对值 $v_i$ 加权汇总，即正文公式 $\mathrm{Attention}(Q,K,V)$ 的直观过程。来源：Dive into Deep Learning（d2l.ai），Aston Zhang、Zachary C. Lipton、Mu Li、Alexander J. Smola，许可 CC BY-SA 4.0（相同方式共享）。*
+
+![多头注意力：多组 Q/K/V 并行后拼接融合](assets/images/ai-multi-head-attention.svg)
+
+*图 5.1-3 多头注意力：多组 $Q,K,V$ 并行做注意力后拼接，再经全连接融合，让模型在同一层里同时关注不同类型的关系。来源：Dive into Deep Learning（d2l.ai），Aston Zhang、Zachary C. Lipton、Mu Li、Alexander J. Smola，许可 CC BY-SA 4.0（相同方式共享）。*
+
 为什么 VLA/WAM 选它：图像、语言、机器人状态和动作可以统一成一条序列处理，容量大、易扩展。代价是**计算量和显存随序列长度增长**，而机器人对延迟敏感——这正是“模型很大、但推理只有 1–10 Hz”的根源（见 5.6、5.8 节）。
+
+![Transformer 编码器–解码器整体架构](assets/images/ai-transformer-arch.svg)
+
+*图 5.1-4 Transformer 整体架构：编码器与解码器各自堆叠“多头注意力 + 前馈网络 + 残差归一化”，是 VLA/WAM 把图像、语言、状态与动作统一成一条序列处理的基础。来源：Dive into Deep Learning（d2l.ai），Aston Zhang、Zachary C. Lipton、Mu Li、Alexander J. Smola，许可 CC BY-SA 4.0（相同方式共享）。*
 
 ## 生成：扩散与流匹配
 
