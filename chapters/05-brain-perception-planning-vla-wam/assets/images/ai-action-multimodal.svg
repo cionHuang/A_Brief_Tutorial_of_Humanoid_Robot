@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="330" viewBox="0 0 720 330" role="img" aria-label="动作多峰分布与回归平均示意图">
+  <rect x="8" y="8" width="704" height="314" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <g font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif">
+    <rect x="26" y="26" width="316" height="212" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <rect x="378" y="26" width="316" height="212" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+
+    <text x="184" y="50" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">俯视：绕开障碍的两种走法</text>
+    <rect x="152" y="120" width="60" height="60" rx="8" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/>
+    <text x="182" y="134" text-anchor="middle" font-size="14" fill="#475569">障碍</text>
+    <path d="M 56,150 C 120,78 248,78 312,150" fill="none" stroke="#16a34a" stroke-width="3.5"/>
+    <path d="M 56,150 C 120,222 248,222 312,150" fill="none" stroke="#16a34a" stroke-width="3.5"/>
+    <text x="184" y="82" text-anchor="middle" font-size="15" font-weight="700" fill="#16a34a">方案 A</text>
+    <text x="184" y="226" text-anchor="middle" font-size="15" font-weight="700" fill="#16a34a">方案 B</text>
+    <line x1="56" y1="150" x2="312" y2="150" stroke="#dc2626" stroke-width="3" stroke-dasharray="9 7"/>
+    <line x1="172" y1="148" x2="192" y2="168" stroke="#dc2626" stroke-width="4" stroke-linecap="round"/>
+    <line x1="172" y1="168" x2="192" y2="148" stroke="#dc2626" stroke-width="4" stroke-linecap="round"/>
+    <text x="268" y="140" text-anchor="middle" font-size="13" fill="#dc2626">回归的平均动作 ✗</text>
+    <circle cx="56" cy="150" r="6" fill="#0f172a"/>
+    <circle cx="312" cy="150" r="6" fill="#0f172a"/>
+    <text x="56" y="176" text-anchor="middle" font-size="13" fill="#475569">起点</text>
+    <text x="312" y="176" text-anchor="middle" font-size="13" fill="#475569">终点</text>
+
+    <text x="536" y="50" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">动作分布：示范里有两个峰</text>
+    <line x1="404" y1="196" x2="672" y2="196" stroke="#475569" stroke-width="2"/>
+    <path d="M672,191 L682,196 L672,201 Z" fill="#475569"/>
+    <text x="676" y="214" text-anchor="end" font-size="12" fill="#475569">动作</text>
+    <path d="M 404,196 C 424,196 438,96 472,96 C 506,96 518,150 536,150 C 554,150 566,96 600,96 C 634,96 648,196 668,196 Z" fill="#dcfce7"/>
+    <path d="M 404,196 C 424,196 438,96 472,96 C 506,96 518,150 536,150 C 554,150 566,96 600,96 C 634,96 648,196 668,196" fill="none" stroke="#16a34a" stroke-width="3.5"/>
+    <text x="472" y="84" text-anchor="middle" font-size="13" fill="#16a34a">做法 1</text>
+    <text x="600" y="84" text-anchor="middle" font-size="13" fill="#16a34a">做法 2</text>
+    <line x1="536" y1="120" x2="536" y2="196" stroke="#dc2626" stroke-width="3" stroke-dasharray="8 6"/>
+    <text x="536" y="110" text-anchor="middle" font-size="14" font-weight="700" fill="#dc2626">平均</text>
+    <text x="536" y="226" text-anchor="middle" font-size="12" fill="#dc2626">两峰之间取平均 → 左图直穿的红线</text>
+
+    <rect x="40" y="254" width="640" height="48" rx="12" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5"/>
+    <text x="360" y="284" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">动作是连续、多峰的分布：直接回归容易把多个可行动作平均成一个不可行的动作</text>
+  </g>
+</svg>

@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="388" viewBox="0 0 720 388" role="img" aria-label="扩散加噪与去噪过程示意图">
+  <defs>
+    <marker id="f5-red" viewBox="0 0 10 10" refX="7.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/>
+    </marker>
+    <marker id="f5-blue" viewBox="0 0 10 10" refX="7.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/>
+    </marker>
+  </defs>
+  <rect x="8" y="8" width="704" height="372" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <g font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif">
+    <text x="360" y="36" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">训练：逐步加噪 x<tspan dy="4" font-size="13">t</tspan></text>
+    <rect x="46" y="48" width="108" height="72" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+    <rect x="176" y="48" width="108" height="72" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+    <rect x="306" y="48" width="108" height="72" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+    <rect x="436" y="48" width="108" height="72" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+    <rect x="566" y="48" width="108" height="72" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+    <polyline points="58,96 76,90 94,82 112,80 130,80 142,76" fill="none" stroke="#16a34a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" transform="translate(0,0)"/>
+    <circle cx="58" cy="96" r="2.5" fill="#16a34a"/>
+    <circle cx="94" cy="82" r="2.5" fill="#16a34a"/>
+    <circle cx="130" cy="80" r="2.5" fill="#16a34a"/>
+    <circle cx="192" cy="74" r="2" fill="#94a3b8"/>
+    <circle cx="232" cy="98" r="2" fill="#94a3b8"/>
+    <circle cx="266" cy="96" r="2" fill="#94a3b8"/>
+    <polyline points="188,96 200,88 212,90 224,82 236,86 248,80 260,82 272,76" fill="none" stroke="#16a34a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" transform="translate(0,0)"/>
+    <circle cx="188" cy="96" r="2.5" fill="#16a34a"/>
+    <circle cx="224" cy="82" r="2.5" fill="#16a34a"/>
+    <circle cx="260" cy="82" r="2.5" fill="#16a34a"/>
+    <circle cx="192" cy="74" r="2" fill="#94a3b8"/>
+    <circle cx="232" cy="98" r="2" fill="#94a3b8"/>
+    <circle cx="266" cy="96" r="2" fill="#94a3b8"/>
+    <polyline points="318,98 330,84 342,92 354,76 366,90 378,74 390,86 402,74" fill="none" stroke="#16a34a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" transform="translate(0,0)"/>
+    <circle cx="318" cy="98" r="2.5" fill="#16a34a"/>
+    <circle cx="354" cy="76" r="2.5" fill="#16a34a"/>
+    <circle cx="390" cy="86" r="2.5" fill="#16a34a"/>
+    <circle cx="316" cy="72" r="2" fill="#94a3b8"/>
+    <circle cx="340" cy="100" r="2" fill="#94a3b8"/>
+    <circle cx="360" cy="70" r="2" fill="#94a3b8"/>
+    <circle cx="384" cy="100" r="2" fill="#94a3b8"/>
+    <circle cx="400" cy="92" r="2" fill="#94a3b8"/>
+    <polyline points="448,96 460,74 472,98 484,72 496,100 508,74 520,96 532,76" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" transform="translate(0,0)"/>
+    <circle cx="448" cy="96" r="2.5" fill="#94a3b8"/>
+    <circle cx="484" cy="72" r="2.5" fill="#94a3b8"/>
+    <circle cx="520" cy="96" r="2.5" fill="#94a3b8"/>
+    <circle cx="444" cy="70" r="2" fill="#94a3b8"/>
+    <circle cx="468" cy="86" r="2" fill="#94a3b8"/>
+    <circle cx="492" cy="78" r="2" fill="#94a3b8"/>
+    <circle cx="516" cy="100" r="2" fill="#94a3b8"/>
+    <circle cx="536" cy="92" r="2" fill="#94a3b8"/>
+    <circle cx="452" cy="105" r="2" fill="#94a3b8"/>
+    <circle cx="504" cy="68" r="2" fill="#94a3b8"/>
+    <circle cx="580" cy="68" r="2.5" fill="#94a3b8"/>
+    <circle cx="600" cy="100" r="2.5" fill="#94a3b8"/>
+    <circle cx="620" cy="76" r="2.5" fill="#94a3b8"/>
+    <circle cx="640" cy="104" r="2.5" fill="#94a3b8"/>
+    <circle cx="656" cy="66" r="2.5" fill="#94a3b8"/>
+    <circle cx="590" cy="88" r="2.5" fill="#94a3b8"/>
+    <circle cx="614" cy="64" r="2.5" fill="#94a3b8"/>
+    <circle cx="650" cy="90" r="2.5" fill="#94a3b8"/>
+    <circle cx="670" cy="84" r="2.5" fill="#94a3b8"/>
+    <circle cx="628" cy="108" r="2.5" fill="#94a3b8"/>
+    <circle cx="574" cy="102" r="2.5" fill="#94a3b8"/>
+    <circle cx="662" cy="110" r="2.5" fill="#94a3b8"/>
+    <text x="100" y="138" text-anchor="middle" font-size="11.5" fill="#475569">干净动作</text>
+    <text x="230" y="138" text-anchor="middle" font-size="11.5" fill="#475569">加一点噪</text>
+    <text x="360" y="138" text-anchor="middle" font-size="11.5" fill="#475569">噪声更多</text>
+    <text x="490" y="138" text-anchor="middle" font-size="11.5" fill="#475569">几乎没结构</text>
+    <text x="620" y="138" text-anchor="middle" font-size="11.5" fill="#475569">纯噪声</text>
+    <line x1="157" y1="84" x2="173" y2="84" stroke="#dc2626" stroke-width="2.5" marker-end="url(#f5-red)"/>
+    <line x1="287" y1="84" x2="303" y2="84" stroke="#dc2626" stroke-width="2.5" marker-end="url(#f5-red)"/>
+    <line x1="417" y1="84" x2="433" y2="84" stroke="#dc2626" stroke-width="2.5" marker-end="url(#f5-red)"/>
+    <line x1="547" y1="84" x2="563" y2="84" stroke="#dc2626" stroke-width="2.5" marker-end="url(#f5-red)"/>
+    <path d="M 70,157 L 250,157 L 250,151 L 290,163 L 250,175 L 250,169 L 70,169 Z" fill="#dc2626"/>
+    <text x="160" y="168" text-anchor="middle" font-size="13" fill="#ffffff">训练加噪</text>
+    <path d="M 650,157 L 470,157 L 470,151 L 430,163 L 470,175 L 470,169 L 650,169 Z" fill="#2563eb"/>
+    <text x="560" y="168" text-anchor="middle" font-size="13" fill="#ffffff">采样去噪</text>
+    <text x="360" y="196" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">采样：从纯噪声出发，迭代去噪 N 步</text>
+    <rect x="46" y="206" width="108" height="72" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+    <rect x="176" y="206" width="108" height="72" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+    <rect x="306" y="206" width="108" height="72" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+    <rect x="436" y="206" width="108" height="72" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+    <rect x="566" y="206" width="108" height="72" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+    <polyline points="58,96 76,90 94,82 112,80 130,80 142,76" fill="none" stroke="#16a34a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" transform="translate(0,158)"/>
+    <circle cx="58" cy="254" r="2.5" fill="#16a34a"/>
+    <circle cx="94" cy="240" r="2.5" fill="#16a34a"/>
+    <circle cx="130" cy="238" r="2.5" fill="#16a34a"/>
+    <circle cx="192" cy="232" r="2" fill="#94a3b8"/>
+    <circle cx="232" cy="256" r="2" fill="#94a3b8"/>
+    <circle cx="266" cy="254" r="2" fill="#94a3b8"/>
+    <polyline points="188,96 200,88 212,90 224,82 236,86 248,80 260,82 272,76" fill="none" stroke="#16a34a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" transform="translate(0,158)"/>
+    <circle cx="188" cy="254" r="2.5" fill="#16a34a"/>
+    <circle cx="224" cy="240" r="2.5" fill="#16a34a"/>
+    <circle cx="260" cy="240" r="2.5" fill="#16a34a"/>
+    <circle cx="192" cy="232" r="2" fill="#94a3b8"/>
+    <circle cx="232" cy="256" r="2" fill="#94a3b8"/>
+    <circle cx="266" cy="254" r="2" fill="#94a3b8"/>
+    <polyline points="318,98 330,84 342,92 354,76 366,90 378,74 390,86 402,74" fill="none" stroke="#16a34a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" transform="translate(0,158)"/>
+    <circle cx="318" cy="256" r="2.5" fill="#16a34a"/>
+    <circle cx="354" cy="234" r="2.5" fill="#16a34a"/>
+    <circle cx="390" cy="244" r="2.5" fill="#16a34a"/>
+    <circle cx="316" cy="230" r="2" fill="#94a3b8"/>
+    <circle cx="340" cy="258" r="2" fill="#94a3b8"/>
+    <circle cx="360" cy="228" r="2" fill="#94a3b8"/>
+    <circle cx="384" cy="258" r="2" fill="#94a3b8"/>
+    <circle cx="400" cy="250" r="2" fill="#94a3b8"/>
+    <polyline points="448,96 460,74 472,98 484,72 496,100 508,74 520,96 532,76" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" transform="translate(0,158)"/>
+    <circle cx="448" cy="254" r="2.5" fill="#94a3b8"/>
+    <circle cx="484" cy="230" r="2.5" fill="#94a3b8"/>
+    <circle cx="520" cy="254" r="2.5" fill="#94a3b8"/>
+    <circle cx="444" cy="228" r="2" fill="#94a3b8"/>
+    <circle cx="468" cy="244" r="2" fill="#94a3b8"/>
+    <circle cx="492" cy="236" r="2" fill="#94a3b8"/>
+    <circle cx="516" cy="258" r="2" fill="#94a3b8"/>
+    <circle cx="536" cy="250" r="2" fill="#94a3b8"/>
+    <circle cx="452" cy="263" r="2" fill="#94a3b8"/>
+    <circle cx="504" cy="226" r="2" fill="#94a3b8"/>
+    <circle cx="580" cy="226" r="2.5" fill="#94a3b8"/>
+    <circle cx="600" cy="258" r="2.5" fill="#94a3b8"/>
+    <circle cx="620" cy="234" r="2.5" fill="#94a3b8"/>
+    <circle cx="640" cy="262" r="2.5" fill="#94a3b8"/>
+    <circle cx="656" cy="224" r="2.5" fill="#94a3b8"/>
+    <circle cx="590" cy="246" r="2.5" fill="#94a3b8"/>
+    <circle cx="614" cy="222" r="2.5" fill="#94a3b8"/>
+    <circle cx="650" cy="248" r="2.5" fill="#94a3b8"/>
+    <circle cx="670" cy="242" r="2.5" fill="#94a3b8"/>
+    <circle cx="628" cy="266" r="2.5" fill="#94a3b8"/>
+    <circle cx="574" cy="260" r="2.5" fill="#94a3b8"/>
+    <circle cx="662" cy="268" r="2.5" fill="#94a3b8"/>
+    <text x="100" y="294" text-anchor="middle" font-size="11.5" fill="#475569">干净动作</text>
+    <text x="230" y="294" text-anchor="middle" font-size="11.5" fill="#475569">加一点噪</text>
+    <text x="360" y="294" text-anchor="middle" font-size="11.5" fill="#475569">噪声更多</text>
+    <text x="490" y="294" text-anchor="middle" font-size="11.5" fill="#475569">几乎没结构</text>
+    <text x="620" y="294" text-anchor="middle" font-size="11.5" fill="#475569">纯噪声</text>
+    <line x1="173" y1="242" x2="157" y2="242" stroke="#2563eb" stroke-width="2.5" marker-end="url(#f5-blue)"/>
+    <line x1="303" y1="242" x2="287" y2="242" stroke="#2563eb" stroke-width="2.5" marker-end="url(#f5-blue)"/>
+    <line x1="433" y1="242" x2="417" y2="242" stroke="#2563eb" stroke-width="2.5" marker-end="url(#f5-blue)"/>
+    <line x1="563" y1="242" x2="547" y2="242" stroke="#2563eb" stroke-width="2.5" marker-end="url(#f5-blue)"/>
+    <text x="60" y="314" font-size="13" fill="#475569">每步：网络先预测“噪声有多少”，再减掉</text>
+    <text x="660" y="314" text-anchor="end" font-size="13" fill="#475569">步数越多越慢 → 1–10 Hz 的来源之一</text>
+    <rect x="40" y="328" width="640" height="40" rx="12" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+    <text x="360" y="353" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">扩散 = 先教网络认噪声，再让它一步步把动作从噪声里“擦”出来</text>
+  </g>
+</svg>

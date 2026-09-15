@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="340" viewBox="0 0 720 340" role="img" aria-label="流匹配速度场示意图">
+  <defs>
+    <marker id="f6-blue" viewBox="0 0 10 10" refX="7.5" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/>
+    </marker>
+  </defs>
+  <rect x="8" y="8" width="704" height="324" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <g font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif">
+    <text x="360" y="50" text-anchor="middle" font-size="15" font-weight="700" fill="#2563eb">速度场 v_θ(x,t)：每个位置告诉你「往哪走、走多快」</text>
+    <ellipse cx="92" cy="122" rx="46" ry="50" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 6"/>
+    <ellipse cx="626" cy="120" rx="44" ry="36" fill="none" stroke="#fed7aa" stroke-width="2" stroke-dasharray="6 6"/>
+    <circle cx="66" cy="96" r="4" fill="#94a3b8"/>
+    <circle cx="84" cy="84" r="4" fill="#94a3b8"/>
+    <circle cx="104" cy="100" r="4" fill="#94a3b8"/>
+    <circle cx="70" cy="124" r="4" fill="#94a3b8"/>
+    <circle cx="92" cy="118" r="4" fill="#94a3b8"/>
+    <circle cx="112" cy="132" r="4" fill="#94a3b8"/>
+    <circle cx="76" cy="152" r="4" fill="#94a3b8"/>
+    <circle cx="98" cy="156" r="4" fill="#94a3b8"/>
+    <circle cx="118" cy="150" r="4" fill="#94a3b8"/>
+    <circle cx="60" cy="140" r="4" fill="#94a3b8"/>
+    <circle cx="600" cy="112" r="4.5" fill="#ea580c"/>
+    <circle cx="618" cy="104" r="4.5" fill="#ea580c"/>
+    <circle cx="636" cy="116" r="4.5" fill="#ea580c"/>
+    <circle cx="610" cy="130" r="4.5" fill="#ea580c"/>
+    <circle cx="630" cy="136" r="4.5" fill="#ea580c"/>
+    <circle cx="648" cy="126" r="4.5" fill="#ea580c"/>
+    <circle cx="620" cy="120" r="4.5" fill="#ea580c"/>
+    <path d="M 66,96 C 180,74 260,72 340,78 C 420,84 520,92 598,106" fill="none" stroke="#2563eb" stroke-width="2.5" marker-mid="url(#f6-blue)"/>
+    <path d="M 84,84 C 190,62 280,58 360,66 C 450,74 540,86 614,98" fill="none" stroke="#2563eb" stroke-width="2.5" marker-mid="url(#f6-blue)"/>
+    <path d="M 92,118 C 180,138 280,146 356,143 C 440,140 540,128 620,120" fill="none" stroke="#2563eb" stroke-width="2.5" marker-mid="url(#f6-blue)"/>
+    <path d="M 112,132 C 200,158 300,164 374,159 C 460,153 560,130 636,112" fill="none" stroke="#2563eb" stroke-width="2.5" marker-mid="url(#f6-blue)"/>
+    <path d="M 76,152 C 170,176 270,178 347,170 C 440,161 540,148 618,140" fill="none" stroke="#2563eb" stroke-width="2.5" marker-mid="url(#f6-blue)"/>
+    <text x="92" y="196" text-anchor="middle" font-size="18" font-weight="700" fill="#475569">噪声</text>
+    <text x="626" y="196" text-anchor="middle" font-size="18" font-weight="700" fill="#ea580c">动作</text>
+    <line x1="70" y1="222" x2="650" y2="222" stroke="#94a3b8" stroke-width="2.5"/>
+    <path d="M650,216 L662,222 L650,228 Z" fill="#94a3b8"/>
+    <line x1="70" y1="214" x2="70" y2="230" stroke="#94a3b8" stroke-width="2"/>
+    <line x1="650" y1="214" x2="650" y2="230" stroke="#94a3b8" stroke-width="2"/>
+    <text x="70" y="246" font-size="15" fill="#475569">t=0（噪声）</text>
+    <text x="360" y="246" text-anchor="middle" font-size="14" fill="#2563eb">沿流线积分（解常微分方程）</text>
+    <text x="650" y="246" text-anchor="end" font-size="15" fill="#ea580c">t=1（动作）</text>
+    <text x="694" y="272" text-anchor="end" font-size="13" fill="#475569">与扩散的区别：不预测噪声，直接学速度；同样要迭代多步积分</text>
+    <rect x="40" y="284" width="640" height="40" rx="12" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
+    <text x="360" y="309" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">流匹配 = 学一张速度地图，从噪声出发顺着箭头走到动作</text>
+  </g>
+</svg>
