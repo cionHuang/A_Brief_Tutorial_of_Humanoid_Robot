@@ -43,6 +43,10 @@ G1 头部的深度相机明明在画面里看到了桌上的杯子，RViz 2 里�
 
 > **一句话听懂**：检测框只说“图里有个杯子”，不说“杯子在哪”；从像素到三维位姿，还差深度和标定两道工序。
 
+![目标检测与实例分割的区别：检测给出类别、置信度与包围框，实例分割给出每个像素的归属掩码](assets/images/detection-vs-segmentation.png)
+
+*图 5.2-1 目标检测给出类别、置信度与包围框，实例分割进一步给出每个像素的归属掩码；低置信度框（灰色虚线）应先二次确认，而不是直接进抓取闭环。[7]*
+
 ### 深度、点云与平面提取
 
 深度图配合内参可以逐像素反投影成点云（Point Cloud）：每个有效像素变成相机坐标系下的一个三维点。[3] 点云再经过去噪、降采样、平面提取（Plane Extraction）和聚类，就能得到桌面、地面和障碍物等结构。RANSAC 类的平面拟合是桌面操作场景的标配步骤。
@@ -91,7 +95,7 @@ SLAM（Simultaneous Localization and Mapping，同步定位与建图）在建图
 
 ![G1 感知链路与坐标系](assets/images/01-g1-perception-chain-frames.png)
 
-图：以 G1 `g1_29dof` 无手、腰部可动模型为例，概览从头部相机 RGB/深度/点云到检测、平面提取和目标位姿估计的感知流水线，相机系、头部系、基座系与世界系之间的 TF 变换，以及“曝光—传输—推理—变换—规划”的延迟链路。图中相机安装系对应 URDF 中的 `d435_link`；相机内参、外参与延迟数值为示意，真实参数以出厂标定为准。
+图 5.2-2 以 G1 `g1_29dof` 无手、腰部可动模型为例，概览从头部相机 RGB/深度/点云到检测、平面提取和目标位姿估计的感知流水线，相机系、头部系、基座系与世界系之间的 TF 变换，以及“曝光—传输—推理—变换—规划”的延迟链路。图中相机安装系对应 URDF 中的 `d435_link`；相机内参、外参与延迟数值为示意，真实参数以出厂标定为准。
 
 ## 参考资料
 
@@ -106,3 +110,5 @@ SLAM（Simultaneous Localization and Mapping，同步定位与建图）在建图
 [5] Scaramuzza, D., & Fraundorfer, F. “Visual Odometry: Part I – The First 30 Years and Fundamentals.” *IEEE Robotics & Automation Magazine*, 2011. 视觉里程计的基本原理与误差来源。<https://doi.org/10.1109/MRA.2011.943232>
 
 [6] Unitree Robotics. *unitree_rl_gym: G1 robot description*. 官方 G1 URDF/MJCF 模型；本文使用提交 `276801e46c5d433564f24658bac64f254b7d2d4b`，用于核对 `head_link`、`d435_link` 的定义及 MJCF 中相机元素的缺失情况。<https://github.com/unitreerobotics/unitree_rl_gym/tree/276801e46c5d433564f24658bac64f254b7d2d4b/resources/robots/g1_description>
+
+[7] Unsplash. 桌面工作台俯拍照片（笔记本电脑、马克杯、书与眼镜），图 5.2-1 的底图，许可 Unsplash License（可自由使用，无需署名，此处按惯例标注）。摄影师与照片页在可达网络中未能确认，故不署名；底图直链：<https://images.unsplash.com/photo-1587614382346-4ec70e388b28>
