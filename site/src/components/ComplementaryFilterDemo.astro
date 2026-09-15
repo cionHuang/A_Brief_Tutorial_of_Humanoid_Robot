@@ -20,7 +20,7 @@ const R2D = 180 / Math.PI;
 const WINDOW_S = 12;
 const YAW_WINDOW_S = 30;
 const MAX_PTS = 600;
-const ALPHA_DEF = 0.99;
+const ALPHA_DEF = 0.96;
 const ALPHA_MIN = 0.8;
 const ALPHA_MAX = 0.998;
 const GYRO_N = 0.25;
@@ -51,7 +51,7 @@ const CFG = {
     </defs>
 
     <text class="cf-title" x="150" y="32">互补滤波：短期信陀螺，长期信重力</text>
-    <text class="cf-legend" x="150" y="54">蓝 = 陀螺积分　橙 = 加速度计观测　绿 = 融合输出　灰虚线 = 真值</text>
+    <text class="cf-legend" x="150" y="54">浅灰粗虚线 = 真值　蓝线 = 陀螺积分　橙线 = 加速度计　绿线 = 融合输出</text>
 
     <text class="cf-lane-name" x="138" y="110" text-anchor="end">roll 真值与融合</text>
     <text class="cf-lane-name" x="138" y="210" text-anchor="end">纯陀螺积分</text>
@@ -68,8 +68,9 @@ const CFG = {
       <line class="cf-zero" x1="150" y1="114" x2="940" y2="114"></line>
       <line class="cf-zero" x1="150" y1="214" x2="940" y2="214"></line>
       <line class="cf-zero" x1="150" y1="314" x2="940" y2="314"></line>
-      <path class="cf-series cf-gyro" data-cf-gyro="1" d=""></path>
+      <path class="cf-series cf-true-halo" data-cf-halo="0" d=""></path>
       <path class="cf-series cf-true" data-cf-true="0" d=""></path>
+      <path class="cf-series cf-gyro" data-cf-gyro="1" d=""></path>
       <path class="cf-series cf-fuse" data-cf-fuse="0" d=""></path>
       <path class="cf-series cf-acc" data-cf-acc="2" d=""></path>
       <path class="cf-series cf-fuse" data-cf-fuse="2" d=""></path>
@@ -88,8 +89,8 @@ const CFG = {
   <div class="cf-controls">
     <div class="cf-row">
       <span class="cf-row-title">α（信陀螺的比例）</span>
-      <input class="cf-range" type="range" data-cf-alpha min="800" max="998" step="1" value="990" />
-      <span class="cf-alpha-val" data-cf-alpha-val>0.990</span>
+      <input class="cf-range" type="range" data-cf-alpha min="800" max="998" step="1" value="960" />
+      <span class="cf-alpha-val" data-cf-alpha-val>0.960</span>
       <span class="cf-hint" data-cf-tau>时间常数 ≈ 3.30 s（教学示意）</span>
     </div>
     <div class="cf-row">
@@ -131,7 +132,7 @@ const CFG = {
   document.querySelectorAll(".cf-demo").forEach((demo) => {
     if (!(demo instanceof HTMLElement)) return;
     const cfg = JSON.parse(demo.dataset.cf || "{}");
-    const ALPHA_DEF = cfg.alpha != null ? cfg.alpha : 0.99;
+    const ALPHA_DEF = cfg.alpha != null ? cfg.alpha : 0.96;
     const A_MIN = cfg.aMin != null ? cfg.aMin : 0.8;
     const A_MAX = cfg.aMax != null ? cfg.aMax : 0.998;
     const GYRO_N = cfg.gyroN != null ? cfg.gyroN : 0.25;
@@ -162,6 +163,7 @@ const CFG = {
     const errYaw = pick("err='yaw'");
     if (!(alphaEl instanceof HTMLInputElement) || !(gravityBtn instanceof HTMLButtonElement)) return;
 
+    const pathHalo = pick("halo='0'");
     const pathTrue = pick("true='0'");
     const pathGyro = pick("gyro='1'");
     const pathAcc = pick("acc='2'");
@@ -296,7 +298,9 @@ const CFG = {
 
     const renderChart = () => {
       const tNow = hist.t.length ? hist.t[hist.t.length - 1] : 0;
-      setPath(pathTrue, toPath(hist.t, hist.true, LANES[0], scaleDeg, tNow, MAIN_WIN_S));
+      const dTrue = toPath(hist.t, hist.true, LANES[0], scaleDeg, tNow, MAIN_WIN_S);
+      setPath(pathTrue, dTrue);
+      setPath(pathHalo, dTrue);
       setPath(pathFuseTop, toPath(hist.t, hist.fuse, LANES[0], scaleDeg, tNow, MAIN_WIN_S));
       setPath(pathGyro, toPath(hist.t, hist.gyro, LANES[1], scaleDeg, tNow, MAIN_WIN_S));
       setPath(pathAcc, toPath(hist.t, hist.acc, LANES[2], scaleDeg, tNow, MAIN_WIN_S));
@@ -394,7 +398,8 @@ const CFG = {
   .cf-axis, .cf-tick { stroke: var(--sl-color-gray-4); stroke-width: 1.2; }
   .cf-axis-label, .cf-scale-label { fill: var(--sl-color-gray-2); font-size: 15px; }
   .cf-series { fill: none; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
-  .cf-true { stroke: var(--sl-color-gray-3); stroke-width: 1.6; stroke-dasharray: 6 5; }
+  .cf-true-halo { stroke: var(--sl-color-bg); stroke-width: 6.5; stroke-dasharray: 11 5; opacity: 0.95; }
+  .cf-true { stroke: light-dark(#334155, #e2e8f0); stroke-width: 2.4; stroke-dasharray: 11 5; opacity: 0.95; }
   .cf-gyro { stroke: var(--sl-color-accent); }
   .cf-acc { stroke: var(--cf-acc, #b45309); stroke-width: 1.6; opacity: 0.85; }
   .cf-fuse { stroke: var(--cf-fuse, #15803d); stroke-width: 2.6; }
