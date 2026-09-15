@@ -1,0 +1,81 @@
+---
+/**
+ * 4.5 用：G1 低层控制接口的源码高亮卡片。
+ * variant="motorcmd"（默认）：MotorCmd_ 字段声明 —— 对应正文 kp/kd 的关节级阻抗接口；
+ * variant="ankle"          ：g1_ankle_swing_example 的控制片段 —— 逐拍写目标 + 组装下发命令。
+ * 片段逐字摘自 unitree_sdk2 固定提交（见 COMMIT），保留原文件行号。
+ */
+import SourceSnippet from './SourceSnippet.astro';
+
+const { variant = 'motorcmd' } = Astro.props;
+const COMMIT = '9754cd153af3da471b0fe5f3aa535e426fb11db3';
+const MOTOR = 'MotorCmd_.hpp';
+const ANKLE = 'g1_ankle_swing_example.cpp';
+const blob = (file, line) =>
+  'https://github.com/unitreerobotics/unitree_sdk2/blob/' + COMMIT + '/' + file + '#L' + line;
+const motorPath = 'include/unitree/idl/hg/' + MOTOR;
+const anklePath = 'example/g1/low_level/' + ANKLE;
+const lowPath = 'include/unitree/idl/hg/LowCmd_.hpp';
+
+const cards = {
+  motorcmd: [
+    {
+      role: 'MotorCmd_ · 每个关节一条命令',
+      file: motorPath,
+      url: blob(motorPath, 21),
+      lines: [
+        { n: 21, code: 'class MotorCmd_', hl: true, ann: '一个关节一条命令，29 个电机各一份' },
+        { n: 24, code: ' uint8_t mode_ = 0;', hl: true, ann: 'mode：1 = Enable，0 = Disable' },
+        { n: 25, code: ' float q_ = 0.0f;', hl: true, ann: 'q：期望位置（rad）' },
+        { n: 26, code: ' float dq_ = 0.0f;', hl: true, ann: 'dq：期望速度（rad/s）' },
+        { n: 27, code: ' float tau_ = 0.0f;', hl: true, ann: 'tau：前馈力矩（N·m）' },
+        { n: 28, code: ' float kp_ = 0.0f;', hl: true, ann: 'kp：关节刚度（N·m/rad）' },
+        { n: 29, code: ' float kd_ = 0.0f;', hl: true, ann: 'kd：关节阻尼（N·m·s/rad）' },
+      ],
+    },
+    {
+      role: 'LowCmd_ · 一帧命令 = 35 个 MotorCmd_ + 模式 + CRC',
+      file: lowPath,
+      url: blob(lowPath, 28),
+      lines: [
+        { n: 28, code: ' std::array<::unitree_hg::msg::dds_::MotorCmd_, 35> motor_cmd_ = { };', hl: true, ann: '数组长度 35，G1 实际用 29 个电机' },
+        { n: 26, code: ' uint8_t mode_pr_ = 0;', ann: 'PR / AB 模式（踝关节串并联构型）' },
+        { n: 30, code: ' uint32_t crc_ = 0;', ann: '整帧校验，写错会静默丢弃' },
+      ],
+    },
+  ],
+  ankle: [
+    {
+      role: 'g1_ankle_swing_example · 逐拍生成目标',
+      file: anklePath,
+      url: blob(anklePath, 331),
+      lines: [
+        { n: 331, code: '        double L_P_des = max_P * std::sin(2.0 * M_PI * t);', hl: true, ann: '目标位置由 sin 曲线逐拍生成，而不是写死一个阶跃' },
+        { n: 332, code: '        double L_R_des = max_R * std::sin(2.0 * M_PI * t);', hl: true, ann: '同一时刻的四个踝关节目标之一' },
+        { n: 335, code: '        motor_command_tmp.q_target.at(LeftAnklePitch) = L_P_des;', hl: true, ann: '写进按关节索引排布的 q_target' },
+      ],
+    },
+    {
+      role: 'g1_ankle_swing_example · 组装并下发五元组',
+      file: anklePath,
+      url: blob(anklePath, 284),
+      lines: [
+        { n: 284, code: '  void LowCommandWriter() {', hl: true, ann: '每个控制周期组装一帧 LowCmd_' },
+        { n: 292, code: '        dds_low_command.motor_cmd().at(i).mode() = 1;  // 1:Enable, 0:Disable', hl: true, ann: '逐关节使能' },
+        { n: 293, code: '        dds_low_command.motor_cmd().at(i).tau() = mc->tau_ff.at(i);', hl: true, ann: '前馈力矩' },
+        { n: 294, code: '        dds_low_command.motor_cmd().at(i).q() = mc->q_target.at(i);', hl: true, ann: '期望位置' },
+        { n: 295, code: '        dds_low_command.motor_cmd().at(i).dq() = mc->dq_target.at(i);', hl: true, ann: '期望速度' },
+        { n: 296, code: '        dds_low_command.motor_cmd().at(i).kp() = mc->kp.at(i);', hl: true, ann: '关节刚度' },
+        { n: 297, code: '        dds_low_command.motor_cmd().at(i).kd() = mc->kd.at(i);', hl: true, ann: '关节阻尼' },
+      ],
+    },
+  ],
+};
+
+const captionMotor = '片段逐字摘自 <code>include/unitree/idl/hg/MotorCmd_.hpp</code> 与 <code>LowCmd_.hpp</code>（unitree_sdk2，提交 <code>9754cd1</code>），行号为原文件行号。<code>mode</code>/<code>q</code>/<code>dq</code>/<code>tau</code>/<code>kp</code>/<code>kd</code> 就是正文那条阻抗式里的目标、前馈与增益；一帧 <code>LowCmd_</code> 装 35 条 <code>MotorCmd_</code>，G1 实际用到 29 个，其余留空。';
+const captionAnkle = '片段逐字摘自 <code>example/g1/low_level/g1_ankle_swing_example.cpp</code>（unitree_sdk2，提交 <code>9754cd1</code>）。示例以 2 ms 周期用 <code>sin</code> 逐拍生成踝关节目标，再把 <code>q</code>/<code>dq</code>/<code>tau</code>/<code>kp</code>/<code>kd</code> 组装进 <code>LowCmd_</code> 下发——这正是“轨迹逐拍插值 + 关节级阻抗接口”的最小实现；其中的幅度与增益属于示例配置，不代表所有 G1 任务。';
+
+const card = cards[variant] || cards.motorcmd;
+const caption = variant === 'ankle' ? captionAnkle : captionMotor;
+---
+<SourceSnippet cards={card} caption={caption} />
