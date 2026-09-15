@@ -45,7 +45,7 @@ G1 头部的深度相机明明在画面里看到了桌上的杯子，RViz 2 里�
 
 ![目标检测与实例分割的区别：检测给出类别、置信度与包围框，实例分割给出每个像素的归属掩码](assets/images/detection-vs-segmentation.png)
 
-*图 5.2-1 目标检测给出类别、置信度与包围框，实例分割进一步给出每个像素的归属掩码；低置信度框（灰色虚线）应先二次确认，而不是直接进抓取闭环。[7]*
+*图 5.2-1 目标检测给出类别、置信度与包围框，实例分割进一步给出每个像素的归属掩码；低置信度框（灰色虚线）应先二次确认，而不是直接进抓取闭环。[6]*
 
 ### 深度、点云与平面提取
 
@@ -57,7 +57,7 @@ G1 头部的深度相机明明在画面里看到了桌上的杯子，RViz 2 里�
 
 ![真实 Kinect 桌面点云与 RANSAC 平面提取对比：左格为按高度着色的原始点云，右格为拟合出的桌面平面（绿色）与平面上方物体点（橙色）](assets/images/point-cloud-plane-extraction.png)
 
-*图 5.2-2 深度图按内参反投影得到点云，再经去噪、降采样与平面拟合，把桌面、地面这类结构分离出来。[8]*
+*图 5.2-2 深度图按内参反投影得到点云，再经去噪、降采样与平面拟合，把桌面、地面这类结构分离出来。[7]*
 
 ## 定位与世界坐标系：里程计与 SLAM
 
@@ -83,23 +83,9 @@ SLAM（Simultaneous Localization and Mapping，同步定位与建图）在建图
 | 时间戳 | 测量时刻，供 TF 查询和与机器人状态对齐 |
 | 延迟 | 从曝光到结果可用的端到端耗时 |
 
-延迟经常比精度更先出问题：一个 300 ms 前检测到的准确位姿，用在正在走动的机器人身上就是错的。时间戳与延迟的通用处理（测量时刻与到达时刻的区别、端到端延迟怎么拆）在 3.3 节，状态估计侧的要求在 4.4 节；这里只补感知特有的一段：曝光 → 传输 → 推理 → 坐标变换 → 规划，每一级都要计入延迟预算。
+延迟经常比精度更先出问题：一个 300 ms 前检测到的准确位姿，用在正在走动的机器人身上就是错的。时间戳与延迟的通用处理（测量时刻与到达时刻的区别、端到端延迟怎么拆）在 3.3 节，状态估计侧的要求在 4.4 节；这里只补感知特有的一段：曝光 → 传输 → 推理 → 坐标变换 → 规划，每一级都要计入延迟预算。低置信度和超龄（时间戳过旧）的观测，应在进入规划前就被拦截。
 
 > **一句话听懂**：感知的输出不是一张图，而是一组带坐标系、时间戳和置信度的结构化字段——少一个字段，下游就多一种出错方式。
-
-## G1：头部相机与仿真相机的落点
-
-在本手册使用的 `g1_29dof.urdf` 中，头部有 `head_link`，并定义了 `d435_link` 作为头部深度相机的安装坐标系（命名对应 Intel RealSense D435 这一档深度相机）。[6] 这个 link 给出的是相机在机器人上的几何安装位姿；真实 G1 各硬件版本的相机型号、内参和出厂标定，以 Unitree 官方资料为准，模型文件不能反推这些信息。
-
-`g1_29dof.xml` 的 MJCF 中没有定义 `camera` 元素，MuJoCo 仿真需要自行添加相机并固定到头部 link 上，同时自行配置分辨率、视场角、噪声和更新频率。[6] 仿真时可以逐项打开噪声、延迟和外参误差，观察它们如何沿“检测 → 坐标变换 → 规划 → 抓取”的链路传播成最终的抓取失败，再回头对照本节的排查顺序定位问题。
-
-感知到规划的接口建议按前文的字段表固定下来：目标位姿带 `frame_id` 和时间戳，经 TF（6.1 节）变换到基座或世界坐标系后交给 5.3 节的规划器；低置信度和超龄（时间戳过旧）的观测在进入规划前就应被拦截。
-
-> **一句话听懂**：仿真相机是可控的教学工具：噪声、延迟、外参误差都能逐项打开，看它们怎样沿着“检测 → 变换 → 规划 → 抓取”一路传播成失败。
-
-![G1 感知链路与坐标系](assets/images/01-g1-perception-chain-frames.png)
-
-图 5.2-3 以 G1 `g1_29dof` 无手、腰部可动模型为例，概览从头部相机 RGB/深度/点云到检测、平面提取和目标位姿估计的感知流水线，相机系、头部系、基座系与世界系之间的 TF 变换，以及“曝光—传输—推理—变换—规划”的延迟链路。图中相机安装系对应 URDF 中的 `d435_link`；相机内参、外参与延迟数值为示意，真实参数以出厂标定为准。
 
 ## 参考资料
 
@@ -113,8 +99,6 @@ SLAM（Simultaneous Localization and Mapping，同步定位与建图）在建图
 
 [5] Scaramuzza, D., & Fraundorfer, F. “Visual Odometry: Part I – The First 30 Years and Fundamentals.” *IEEE Robotics & Automation Magazine*, 2011. 视觉里程计的基本原理与误差来源。<https://doi.org/10.1109/MRA.2011.943232>
 
-[6] Unitree Robotics. *unitree_rl_gym: G1 robot description*. 官方 G1 URDF/MJCF 模型；本文使用提交 `276801e46c5d433564f24658bac64f254b7d2d4b`，用于核对 `head_link`、`d435_link` 的定义及 MJCF 中相机元素的缺失情况。<https://github.com/unitreerobotics/unitree_rl_gym/tree/276801e46c5d433564f24658bac64f254b7d2d4b/resources/robots/g1_description>
+[6] Unsplash. 桌面工作台俯拍照片（笔记本电脑、马克杯、书与眼镜），图 5.2-1 的底图，许可 Unsplash License（可自由使用，无需署名，此处按惯例标注）。摄影师与照片页在可达网络中未能确认，故不署名；底图直链：<https://images.unsplash.com/photo-1587614382346-4ec70e388b28>
 
-[7] Unsplash. 桌面工作台俯拍照片（笔记本电脑、马克杯、书与眼镜），图 5.2-1 的底图，许可 Unsplash License（可自由使用，无需署名，此处按惯例标注）。摄影师与照片页在可达网络中未能确认，故不署名；底图直链：<https://images.unsplash.com/photo-1587614382346-4ec70e388b28>
-
-[8] PointCloudLibrary/data. table_scene_mug_stereo_textured.pcd（真实 Kinect 采集的桌面场景点云）. 许可 BSD-3-Clause. <https://github.com/PointCloudLibrary/data>
+[7] PointCloudLibrary/data. table_scene_mug_stereo_textured.pcd（真实 Kinect 采集的桌面场景点云）. 许可 BSD-3-Clause. <https://github.com/PointCloudLibrary/data>
