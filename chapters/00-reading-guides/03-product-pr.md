@@ -26,8 +26,8 @@
 
 | 小节 | 你将听懂 |
 | --- | --- |
-| [4.5 基础控制](../04-cerebellum-realtime-control/05-basic-control.md) | PID、kp/kd——"把 kp 调大"意味着机器人反应更灵敏 |
-| [4.6 双足平衡与全身控制](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.md) | ZMP、平衡控制——"机器人为什么推不倒" |
+| [4.5 基础控制](../04-cerebellum-realtime-control/05-basic-control.mdx) | PID、kp/kd——"把 kp 调大"意味着机器人反应更灵敏 |
+| [4.6 双足平衡与全身控制](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | ZMP、平衡控制——"机器人为什么推不倒" |
 | [6.1 ROS 2 与机器人软件架构](../06-software-tools-simulation/01-ros2-software-architecture.md) | ROS 2、节点、Topic——软件团队口中的高频框架 |
 | [5.1 感知系统](../05-brain-perception-planning-vla-wam/01-perception-system.md) | 相机、深度、SLAM——机器人怎么"看见" |
 | [5.3 双臂操作与灵巧手](../05-brain-perception-planning-vla-wam/03-dual-arm-manipulation-and-dexterous-hands.md) | 抓取、灵巧手——"机器人会干活"具体指什么 |

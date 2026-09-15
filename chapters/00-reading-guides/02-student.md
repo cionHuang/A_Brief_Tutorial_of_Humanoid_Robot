@@ -41,8 +41,8 @@
 | [4.2 运动学](../04-cerebellum-realtime-control/02-kinematics.mdx) | 20 分钟 | 4.1 |
 | [4.3 动力学](../04-cerebellum-realtime-control/03-dynamics.mdx) | 20 分钟 | 4.2 |
 | [4.4 状态估计](../04-cerebellum-realtime-control/04-state-estimation.mdx) | 20 分钟 | 3.3、4.1 |
-| [4.5 基础控制](../04-cerebellum-realtime-control/05-basic-control.md) | 20 分钟 | 4.2 |
-| [4.6 双足平衡与全身控制](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.md) | 20 分钟 | 2.4、4.3、4.5 |
+| [4.5 基础控制](../04-cerebellum-realtime-control/05-basic-control.mdx) | 20 分钟 | 4.2 |
+| [4.6 双足平衡与全身控制](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | 20 分钟 | 2.4、4.3、4.5 |
 
 ## 第 5 章 大脑：感知、规划、VLA 与 WAM（约 1 小时 45 分钟）
 
