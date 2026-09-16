@@ -1,0 +1,70 @@
+---
+/**
+ * 5.5 用：G1 训练 → Sim2Sim → 实机部署的三段关键源码高亮卡片。
+ * 三张卡片分别对应 unitree_rl_gym 的训练配置、MuJoCo 部署循环、实机 lowcmd 下发；
+ * 片段逐字摘自该仓库固定提交（见 COMMIT），保留原文件行号。
+ * 仓库许可：BSD-3-Clause。
+ */
+import SourceSnippet from './SourceSnippet.astro';
+
+const COMMIT = '276801e46c5d433564f24658bac64f254b7d2d4b';
+const REPO = 'https://github.com/unitreerobotics/unitree_rl_gym/blob/' + COMMIT + '/';
+const cfgPath = 'legged_gym/envs/g1/g1_config.py';
+const simPath = 'deploy/deploy_mujoco/deploy_mujoco.py';
+const realPath = 'deploy/deploy_real/deploy_real.py';
+const blob = (p, line) => REPO + p + '#L' + line;
+
+const cards = [
+  {
+    role: 'legged_gym/envs/g1/g1_config.py · 训练配置：奖励尺度 + 域随机化',
+    file: cfgPath,
+    url: blob(cfgPath, 28),
+    lines: [
+      { n: 28, code: '    class domain_rand(LeggedRobotCfg.domain_rand):', hl: true, ann: '训练时要随机的参数都在这里' },
+      { n: 29, code: '        randomize_friction = True', hl: true, ann: '随机化地面摩擦' },
+      { n: 30, code: '        friction_range = [0.1, 1.25]', hl: true, ann: '摩擦系数区间——策略必须在这一区间里都站得住' },
+      { n: 32, code: '        added_mass_range = [-1., 3.]', hl: true, ann: '机身附加质量（覆盖负载与不同电池）' },
+      { n: 33, code: '        push_robots = True', hl: true, ann: '训练中随机推一把' },
+      { n: 55, code: '        action_scale = 0.25', hl: true, ann: '目标角 = 0.25 × 动作 + 默认角' },
+      { n: 57, code: '        decimation = 4', hl: true, ann: '物理 200 Hz、策略 50 Hz：每 4 个物理步出一次动作' },
+      { n: 73, code: '            tracking_lin_vel = 1.0', hl: true, ann: '奖励项：跟踪指令线速度' },
+      { n: 75, code: '            lin_vel_z = -2.0', hl: true, ann: '惩罚项：垂直速度（防止原地蹦）' },
+      { n: 78, code: '            base_height = -10.0', hl: true, ann: '惩罚偏离目标机身高度' },
+      { n: 83, code: '            action_rate = -0.01', hl: true, ann: '惩罚动作抖动' },
+    ],
+  },
+  {
+    role: 'deploy/deploy_mujoco/deploy_mujoco.py · Sim2Sim：策略 50 Hz、物理 200 Hz',
+    file: simPath,
+    url: blob(simPath, 91),
+    lines: [
+      { n: 26, code: 'def pd_control(target_q, q, kp, target_dq, dq, kd):', hl: true, ann: '部署侧的低层就是这一行 PD' },
+      { n: 28, code: '    return (target_q - q) * kp + (target_dq - dq) * kd', hl: true, ann: '与 4.5 节的关节阻抗式同形' },
+      { n: 48, code: '        kps = np.array(config["kps"], dtype=np.float32)', ann: '各关节刚度（来自部署配置）' },
+      { n: 49, code: '        kds = np.array(config["kds"], dtype=np.float32)', ann: '各关节阻尼' },
+      { n: 77, code: '    policy = torch.jit.load(policy_path)', hl: true, ann: '训练导出的 TorchScript 策略直接加载' },
+      { n: 88, code: '            mujoco.mj_step(m, d)', ann: '物理每步（200 Hz）' },
+      { n: 91, code: '            if counter % control_decimation == 0:', hl: true, ann: '每 4 步跑一次策略 → 50 Hz' },
+      { n: 118, code: '                obs_tensor = torch.from_numpy(obs).unsqueeze(0)', hl: true, ann: '观测打包成张量' },
+      { n: 120, code: '                action = policy(obs_tensor).detach().numpy().squeeze()', hl: true },
+    ],
+  },
+  {
+    role: 'deploy/deploy_real/deploy_real.py · 实机：把关节目标写进 LowCmd_',
+    file: realPath,
+    url: blob(realPath, 124),
+    lines: [
+      { n: 29, code: '        self.policy = torch.jit.load(config.policy_path)', ann: '同一个策略文件' },
+      { n: 85, code: '        cmd.crc = CRC().Crc(cmd)', hl: true, ann: '每帧算 CRC，校验不过会被底层丢弃' },
+      { n: 86, code: '        self.lowcmd_publisher_.Write(cmd)', hl: true, ann: '经 DDS 下发到 rt/lowcmd 话题' },
+      { n: 108, code: '        kps = self.config.kps + self.config.arm_waist_kps', ann: '腿与腰/臂增益分开配' },
+      { n: 126, code: '                self.low_cmd.motor_cmd[motor_idx].kp = kps[j]', hl: true, ann: '逐关节写刚度' },
+      { n: 127, code: '                self.low_cmd.motor_cmd[motor_idx].kd = kds[j]', hl: true, ann: '逐关节写阻尼' },
+    ],
+  },
+];
+
+const caption = '片段逐字摘自 <code>unitree_rl_gym</code>（BSD-3-Clause）固定提交 <code>276801e4</code>，行号为原文件行号。三张卡片正对应正文那条链路：训练配置里 <code>decimation = 4</code> 决定了策略 50 Hz、物理 200 Hz；Sim2Sim 用 <code>torch.jit.load</code> 加载同一个策略、按同样的公式把动作换算成关节目标；实机侧还会先从初始姿态插值到目标位置（避免起步突变），再把同一组目标逐关节写进 <code>LowCmd_</code> 并算 CRC。训练时的奖励尺度与随机化范围、部署时的 <code>kps</code>/<code>kds</code> 都是这份配置的取值，换任务要重调。';
+---
+
+<SourceSnippet cards={cards} caption={caption} />
