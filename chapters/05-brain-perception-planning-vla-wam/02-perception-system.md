@@ -97,7 +97,7 @@ SLAM（Simultaneous Localization and Mapping，同步定位与建图）在建图
 
 [4] Cadena, C., et al. “Past, Present, and Future of Simultaneous Localization and Mapping: Toward the Robust-Perception Age.” *IEEE Transactions on Robotics*, 2016. SLAM 的问题定义、漂移与回环检测综述。<https://doi.org/10.1109/TRO.2016.2624754>
 
-[5] Scaramuzza, D., & Fraundorfer, F. “Visual Odometry: Part I – The First 30 Years and Fundamentals.” *IEEE Robotics & Automation Magazine*, 2011. 视觉里程计的基本原理与误差来源。<https://doi.org/10.1109/MRA.2011.943232>
+[5] Scaramuzza, D., & Fraundorfer, F. “Visual Odometry [Tutorial].” *IEEE Robotics & Automation Magazine*, 2011. 视觉里程计的基本原理与误差来源。<https://doi.org/10.1109/MRA.2011.943233>
 
 [6] Unsplash. 桌面工作台俯拍照片（笔记本电脑、马克杯、书与眼镜），图 5.2-1 的底图，许可 Unsplash License（可自由使用，无需署名，此处按惯例标注）。摄影师与照片页在可达网络中未能确认，故不署名；底图直链：<https://images.unsplash.com/photo-1587614382346-4ec70e388b28>
 

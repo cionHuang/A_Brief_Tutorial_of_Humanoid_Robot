@@ -1,18 +1,18 @@
 # 在校学生阅读路线
 
-这条路线给想系统了解人形机器人、找学习方向的同学。建议顺序通读，全书约 8 到 10 小时。每章先看小结表格，再按节推进。表中的每节时长是估算值，按正文体量、公式、配图与交互演示折算；读者按自己的节奏调整即可。
+这条路线给想系统了解人形机器人、找学习方向的同学。建议顺序通读，全书约 8 到 10 小时。每章先看小结表格，再按节推进。表中的每节时长按每分钟约 300 字的正文速度估算，另加看公式、配图和动手试交互演示的时间；按自己的节奏读即可。
 
 读的过程中建议同步做两件事：把每节出现的黑话记成自己的词汇表；把 G1 的[开源模型](https://github.com/unitreerobotics/unitree_rl_gym)下载下来，边读边对照。
 
-## 第 1 章 系统总览（约 35 分钟）
+## 第 1 章 系统总览（约 40 分钟）
 
 | 小节 | 预计时间 | 前置知识 |
 | --- | --- | --- |
 | [1.1 具身智能是什么](../01-system-overview/01-what-is-embodied-ai.mdx) | 10 分钟 | 无 |
-| [1.2 人形机器人：定义、构造与 G1](../01-system-overview/02-humanoid-robot-anatomy.mdx) | 10 分钟 | 1.1 |
+| [1.2 人形机器人：定义、构造与 G1](../01-system-overview/02-humanoid-robot-anatomy.mdx) | 15 分钟 | 1.1 |
 | [1.3 人形机器人系统架构](../01-system-overview/03-humanoid-robot-system-architecture.mdx) | 15 分钟 | 1.1、1.2 |
 
-## 第 2 章 机械（约 1 小时 25 分钟）
+## 第 2 章 机械（约 1 小时 30 分钟）
 
 | 小节 | 预计时间 | 前置知识 |
 | --- | --- | --- |
@@ -20,7 +20,7 @@
 | [2.2 结构设计、材料与刚柔性](../02-mechanics/02-links-structure-and-materials.mdx) | 15 分钟 | 2.1 |
 | [2.3 传动与关节模组](../02-mechanics/03-transmission-and-joint-modules.mdx) | 25 分钟 | 2.1 |
 | [2.4 足部、接触与稳定性](../02-mechanics/04-foot-contact-and-stability.mdx) | 10 分钟 | 2.1 |
-| [2.5 机器人描述文件](../02-mechanics/05-robot-description-files.mdx) | 5 分钟 | 2.1 |
+| [2.5 机器人描述文件](../02-mechanics/05-robot-description-files.mdx) | 10 分钟 | 2.1 |
 
 ## 第 3 章 电气与嵌入式（约 1 小时 35 分钟）
 
@@ -56,13 +56,13 @@
 | [5.6 VLA 与高级 AI 推理模型](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) | 15 分钟 | 5.2、5.5 |
 | [5.7 WAM：世界动作模型](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md) | 10 分钟 | 5.6 |
 
-## 第 6 章 软件与工具链（约 55 分钟）
+## 第 6 章 软件与工具链（约 1 小时 5 分钟）
 
 | 小节 | 预计时间 | 前置知识 |
 | --- | --- | --- |
 | [6.1 ROS 2 与机器人软件架构](../06-software-tools-simulation/01-ros2-software-architecture.md) | 10 分钟 | 1.2 |
-| [6.2 MuJoCo](../06-software-tools-simulation/02-mujoco.mdx) | 10 分钟 | 2.5、4.3 |
-| [6.3 Isaac Sim 与 Isaac Lab](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx) | 10 分钟 | 6.2 |
+| [6.2 MuJoCo](../06-software-tools-simulation/02-mujoco.mdx) | 15 分钟 | 2.5、4.3 |
+| [6.3 Isaac Sim 与 Isaac Lab](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx) | 15 分钟 | 6.2 |
 | [6.4 Gazebo、RViz 2 与 Foxglove](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md) | 5 分钟 | 6.1 |
 | [6.5 运动学与动力学工具库](../06-software-tools-simulation/05-kinematics-dynamics-libraries.md) | 15 分钟 | 4.2、4.3 |
 | [6.6 软件工程与版本管理](../06-software-tools-simulation/06-software-engineering-and-versioning.md) | 5 分钟 | 6.1、6.4 |

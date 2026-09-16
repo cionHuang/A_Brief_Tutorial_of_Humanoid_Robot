@@ -96,7 +96,7 @@ Gazebo 居中：TF、ros2_control、Nav2 等组件开箱即用，适合验证软
 
 [2] Koenig, N., & Howard, A. “Design and Use Paradigms for Gazebo, an Open-Source Multi-Robot Simulator.” *IEEE/RSJ IROS*, 2004. Gazebo 的原始论文与架构设计。<https://doi.org/10.1109/IROS.2004.1389727>
 
-[3] Kam, H. R., et al. “RViz: A Toolkit for Real Domain Data Visualization.” *Telecommunication Systems*, 2015. RViz 的设计与定位论文。<https://doi.org/10.1007/s11235-015-0034-7>
+[3] Kam, H. R., et al. “RViz: A Toolkit for Real Domain Data Visualization.” *Telecommunication Systems*, 2015. RViz 的设计与定位论文。<https://doi.org/10.1007/s11235-015-0034-5>
 
 [4] Foxglove. *Foxglove Documentation*. 面板、时间序列与 rosbag 回放的官方文档。<https://docs.foxglove.dev/>
 
