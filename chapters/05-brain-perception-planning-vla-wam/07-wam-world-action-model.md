@@ -25,6 +25,12 @@ VLA 不一定显式预测未来观测；WAM 则把“动作—世界变化”的
 
 > **一句话听懂**：两者不是替代关系：VLA 负责理解任务与场景，WAM 负责预测后果；WAM 也能直接输出动作，但它真正的本事是“预演”。
 
+一个真实的开源 WAM 长这样：语言模型接收任务指令与观测，视频模型自回归地预测未来若干帧，动作模型据此输出动作——“未来想象（Future Imagination）”与“机器人动作（Robot Action）”是同一个模型的两个出口；图下半部分还给出了“预测未来 → 逆动力学 → 真机执行”的链路，以及真机与仿真上的评测结果。
+
+![LingBot-VA 系统概览：语言模型、视频模型与动作模型，以及未来预测与动作输出](assets/images/wam-lingbot-va-teaser.png)
+
+*图 5.7-1 一个开源 WAM（LingBot-VA）的系统概览：语言模型 + 视频模型（自回归预测未来）+ 动作模型，同时输出未来想象与机器人动作。[5]*
+
 ## WAM 预测什么：三种尺度
 
 “世界模型”听起来是一个东西，但不同工作预测的对象差别很大，成本与控制价值也完全不同：
@@ -120,3 +126,5 @@ WAM 的预测仍然是学习出来的近似，不是物理定律本身。它会�
 [3] Ma, S., et al. “DECOWAM: Decoupled Whole-Body World-Action Model for Legged Mobile Manipulation.” *arXiv*, 2026. 腿式移动操作中的相机自我运动、底盘与手臂动作解耦。<https://arxiv.org/abs/2608.20114>
 
 [4] Ma, S., et al. “ForeTime-VLA: Causal Future-Token Distillation from a World Action Model for Conveyor-Belt Manipulation.” *arXiv*, 2026. WAM 作为教师模型向在线 VLA 策略蒸馏未来表征。<https://arxiv.org/abs/2608.20735>
+
+[5] Robbyant. *LingBot-VA: Causal Video-Action World Model for Generalist Robot Control*. 许可 Apache-2.0；图 5.7-1 取自其仓库 `assets/teaser_v3.png`（提交 `7c6ffa9bfc4b`）。<https://github.com/Robbyant/lingbot-va>

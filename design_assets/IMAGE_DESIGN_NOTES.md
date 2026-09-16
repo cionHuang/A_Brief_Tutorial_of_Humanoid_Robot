@@ -255,5 +255,14 @@
 - 处理：用 sharp 把 24 页动画 WebP 缩放至宽 640 并转 GIF（colours=160, effort=7）：640×360、24 帧、2.73 MB；未修改画面内容，仅缩放与转码。站点构建时 Astro 会再转成动画 WebP（实测 pages=24，动画保留）
 - 用途：5.5「### 遥操作」小节末尾，配合正文讲「VR 手柄 / 头显驱动」这一类遥操作
 
+## 5.7 WAM 系统概览图（图 5.7-1）
+
+- 文件：`chapters/05-brain-perception-planning-vla-wam/assets/images/wam-lingbot-va-teaser.png`
+- 内容：LingBot-VA 的系统概览——训练数据来源（互联网视频 / 机器人视频）、模型结构（语言模型 + 视频模型 + 动作模型）、未来想象与机器人动作两个出口、下方“预测未来 → 逆动力学 → 真机执行”链路，以及真机与仿真评测结果
+- 来源：Robbyant/lingbot-va 仓库 `assets/teaser_v3.png`（<https://github.com/Robbyant/lingbot-va>，提交 `7c6ffa9bfc4b83582cafc860fab4c82cc7deeeeb`）
+- 许可：**Apache-2.0**（仓库 LICENSE）
+- 处理：**未做任何修改**，直接使用仓库原始 PNG（1860×1078，1.1 MB）
+- 用途：5.7「WAM 与 VLA 的分工」小节末尾，用真实项目的系统图给读者一个“WAM 到底长什么样”的锚点
+
 
 
