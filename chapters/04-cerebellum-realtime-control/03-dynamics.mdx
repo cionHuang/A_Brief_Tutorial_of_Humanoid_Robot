@@ -34,7 +34,7 @@ $$
 - $\boldsymbol{g}(\boldsymbol{q})$：重力项，站立时即使 $\dot{\boldsymbol{q}} = \boldsymbol{0}$、$\ddot{\boldsymbol{q}} = \boldsymbol{0}$ 也可能不为零；
 - $\boldsymbol{\tau}_{\mathrm{fric}}$：库仑摩擦、黏性摩擦、齿轮损耗和其他未建模阻力的等效项；
 - $\boldsymbol{\tau}_{\mathrm{act}}$：执行器施加的关节力矩；
-- $\boldsymbol{J}_c^\top \boldsymbol{\lambda}$：接触力通过接触雅可比（Contact Jacobian）映射回关节的力矩；
+- $\boldsymbol{J}_c^\top \boldsymbol{\lambda}$：接触力通过接触雅可比（Contact Jacobian，见本节「接触力如何进入动力学」）映射回关节的力矩；
 - $\boldsymbol{\tau}_{\mathrm{ext}}$：其他外部力或力矩的广义表示。
 
 不同教材可能把摩擦、重力或外力移到等式另一侧，因此不能只比较符号就判断实现错误。真正需要固定的是：每一项的坐标系、正负方向、是否包含浮动基座，以及 $\boldsymbol{\lambda}$ 表示接触力还是约束乘子。[1][2][3]
