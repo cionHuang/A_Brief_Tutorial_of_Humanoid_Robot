@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360" viewBox="0 0 720 360" role="img" aria-label="梯形速度曲线与速度、加速度约束示意图">
+  <defs>
+    <marker id="tv-axis" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect x="8" y="8" width="704" height="344" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <g font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif">
+    <text x="360" y="42" text-anchor="middle" font-size="25" font-weight="700" fill="#0f172a">梯形速度曲线：加速 → 匀速 → 减速</text>
+
+    <line x1="100" y1="270" x2="100" y2="62" stroke="#475569" stroke-width="2.5" marker-end="url(#tv-axis)"/>
+    <line x1="100" y1="270" x2="666" y2="270" stroke="#475569" stroke-width="2.5" marker-end="url(#tv-axis)"/>
+    <text transform="translate(72,175) rotate(-90)" text-anchor="middle" font-size="17" fill="#0f172a">速度 v</text>
+    <text x="666" y="294" text-anchor="end" font-size="17" fill="#0f172a">时间 t</text>
+
+    <line x1="100" y1="120" x2="666" y2="120" stroke="#ea580c" stroke-width="2" stroke-dasharray="8 7"/>
+    <text x="662" y="112" text-anchor="end" font-size="16" font-weight="700" fill="#ea580c">v_max（速度上限）</text>
+
+    <line x1="240" y1="120" x2="279" y2="62" stroke="#ea580c" stroke-width="2.5" stroke-dasharray="7 6"/>
+    <text x="296" y="76" text-anchor="start" font-size="16" font-weight="700" fill="#ea580c">a_max</text>
+    <text x="296" y="96" text-anchor="start" font-size="13" fill="#ea580c">加速段斜率 = 加速度上限</text>
+
+    <path d="M140,270 L240,120 L470,120 L570,270 Z" fill="#dbeafe" opacity="0.75"/>
+    <path d="M140,270 L240,120 L470,120 L570,270" fill="none" stroke="#2563eb" stroke-width="3.5" stroke-linejoin="round"/>
+    <text x="215" y="150" text-anchor="end" font-size="13" font-weight="700" fill="#2563eb">加速段</text>
+    <text x="360" y="152" text-anchor="middle" font-size="14" font-weight="700" fill="#2563eb">匀速段</text>
+    <text x="505" y="155" text-anchor="start" font-size="13" font-weight="700" fill="#2563eb">减速段</text>
+
+    <path d="M140,270 L280,190 L520,190 L660,270" fill="none" stroke="#94a3b8" stroke-width="3" stroke-dasharray="10 8" stroke-linejoin="round"/>
+    <line x1="400" y1="214" x2="400" y2="196" stroke="#94a3b8" stroke-width="2" marker-end="url(#tv-axis)"/>
+    <text x="400" y="234" text-anchor="middle" font-size="15" fill="#475569">力矩或接触约束收紧后</text>
+    <text x="400" y="258" text-anchor="middle" font-size="15" font-weight="700" fill="#475569">只能更慢、更久</text>
+
+    <rect x="40" y="302" width="640" height="40" rx="12" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+    <text x="360" y="328" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">约束越多、越靠近执行器极限，轨迹能分配的时间就越长</text>
+  </g>
+</svg>

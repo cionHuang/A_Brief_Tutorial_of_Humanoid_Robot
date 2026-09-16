@@ -1,0 +1,334 @@
+---
+/**
+ * 5.3 用：MPC 滚动时域（receding horizon）演示 —— 放在「## 怎么算：采样、轨迹优化与 MPC」
+ * 小节 MPC 段落之后、“一句话听懂”之前。
+ *
+ * 场景：一维质点在水平线上，目标在右侧 x* = 1.0 m。
+ * 模型（页面里真算）：离散双积分器
+ *   x_{k+1} = x_k + Δt·v_k + ½Δt²·a_k,  v_{k+1} = v_k + Δt·a_k
+ * 规划器：每个控制周期从当前 (x, v) 出发，在预测时域 N 步内求一组加速度，使第 N 步
+ * 恰好停在目标（位置与速度同时归零）。用有限时域「最小能量」解的可控性矩阵伪逆闭式
+ * 求解（不是 QP 求解器）：
+ *   e_N = A^N e_0 + Σ_i A^{N-1-i} B a_i = 0  ⇒  a = −Vᵀ(VVᵀ)⁻¹A^N e_0
+ * MPC 只执行第一步 a_0，下一周期用新状态重算，所以蓝色计划线每周期整体改变。
+ * 第 6 个周期注入一次 +2.0 m/s 速度冲量（也可手动再加一次），用来演示“每周期重新决策”。
+ *
+ * 教学量级（一维质点），不代表任何真机参数。viewBox 980×520，SVG 内文字 ≥18px。
+ */
+
+const CFG = {
+  dt: 0.1,        // 控制周期 Δt（仿真秒）
+  target: 1.0,    // 目标位置 x*（m）
+  nDefault: 10,   // 默认预测时域 N（步）
+  nMin: 5,
+  nMax: 20,
+  distK: 6,       // 自动扰动所处的控制周期
+  distV: 2.0,     // 速度冲量（m/s）
+  maxK: 90,       // 周期上限（安全阀）
+  cycle: 0.08,    // 每控制周期占用的真实秒数（播放速度）
+  hold: 1.3,      // 到目标后停留多久再重跑
+};
+---
+
+<figure class="mpc-demo" data-mpc={JSON.stringify(CFG)}>
+  <svg viewBox="0 0 980 520" role="img" aria-label="MPC 滚动时域演示：一维质点从 0 走向右侧目标 1 米；时间—位置图上，绿色实线是已执行的轨迹，蓝色虚线是当前周期在 N 步预测时域内重新算出的计划，灰色竖线是当前周期，橙色竖线标记扰动时刻；可播放暂停、重置、手动加扰动并调节预测时域 N，观察窗口滑动与计划随新状态整体改变">
+    <text class="mpc-title" x="24" y="32">MPC 滚动时域：每周期重算，只执行第一步</text>
+    <text class="mpc-legend" x="24" y="64">绿实线 = 已执行　蓝虚线 = 本周期计划　灰 = 当前周期　橙 = 扰动时刻</text>
+
+    <text class="mpc-lane" x="84" y="94">位置 x — 控制周期 k</text>
+    <rect class="mpc-band" data-mpc-band x="0" y="122" width="0" height="8" rx="4"></rect>
+    <text class="mpc-bandlabel" data-mpc-bandlabel x="0" y="116" text-anchor="middle">时域 N = 10 步</text>
+
+    <line class="mpc-grid" x1="84" y1="322.9" x2="950" y2="322.9"></line>
+    <line class="mpc-grid" x1="84" y1="266.4" x2="950" y2="266.4"></line>
+    <line class="mpc-grid" x1="84" y1="153.3" x2="950" y2="153.3"></line>
+    <text class="mpc-ytick" x="76" y="329" text-anchor="end">0</text>
+    <text class="mpc-ytick" x="76" y="272" text-anchor="end">0.5</text>
+    <text class="mpc-ytick" x="76" y="216" text-anchor="end">1.0</text>
+    <text class="mpc-ytick" x="76" y="159" text-anchor="end">1.5</text>
+
+    <line class="mpc-target" x1="84" y1="209.9" x2="950" y2="209.9"></line>
+    <text class="mpc-target-label" x="946" y="236" text-anchor="end">目标 x* = 1.00 m</text>
+
+    <path class="mpc-exec" data-mpc-exec d=""></path>
+    <path class="mpc-plan" data-mpc-plan d=""></path>
+    <line class="mpc-now" data-mpc-now x1="84" y1="134" x2="84" y2="338"></line>
+    <circle class="mpc-nowdot" data-mpc-nowdot cx="84" cy="322" r="5"></circle>
+    <text class="mpc-ktext" data-mpc-ktext x="84" y="360" text-anchor="middle">k=0</text>
+    <line class="mpc-dist" data-mpc-dist x1="84" y1="134" x2="84" y2="338" opacity="0"></line>
+    <text class="mpc-distlabel" data-mpc-distlabel x="84" y="152" text-anchor="middle" opacity="0">扰动</text>
+
+    <line class="mpc-axis" x1="84" y1="142" x2="84" y2="332"></line>
+    <line class="mpc-axis" x1="84" y1="332" x2="950" y2="332"></line>
+    <text class="mpc-xtick" x="950" y="360" text-anchor="end">控制周期 k →</text>
+
+    <text class="mpc-lane" x="84" y="394">一维小车：目标在右侧</text>
+    <line class="mpc-pole" x1="633.5" y1="374" x2="633.5" y2="470"></line>
+    <path class="mpc-flag" d="M633.5 374 L661 383 L633.5 392 Z"></path>
+    <text class="mpc-flaglabel" x="669" y="382" text-anchor="start">目标</text>
+    <line class="mpc-ground" x1="60" y1="470" x2="950" y2="470"></line>
+    <rect class="mpc-cart" data-mpc-cart x="116" y="446" width="46" height="22" rx="4"></rect>
+    <circle class="mpc-wheel" data-mpc-wheel-l cx="126" cy="470" r="5"></circle>
+    <circle class="mpc-wheel" data-mpc-wheel-r cx="152" cy="470" r="5"></circle>
+    <line class="mpc-vel" data-mpc-vel x1="139" y1="428" x2="139" y2="428" marker-end="url(#mpc-arrow)" opacity="0"></line>
+    <text class="mpc-vellabel" data-mpc-vellabel x="139" y="422" text-anchor="middle"></text>
+
+    <defs>
+      <marker id="mpc-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" markerUnits="userSpaceOnUse" orient="auto">
+        <path class="mpc-vel-head" d="M0,0 L10,5 L0,10 Z"></path>
+      </marker>
+    </defs>
+  </svg>
+
+  <div class="mpc-controls">
+    <div class="mpc-row">
+      <span class="mpc-row-title">操作</span>
+      <button type="button" class="mpc-btn" data-mpc-play>暂停</button>
+      <button type="button" class="mpc-btn" data-mpc-distbtn>加扰动（+2 m/s）</button>
+      <button type="button" class="mpc-btn" data-mpc-reset>复位重跑</button>
+    </div>
+    <div class="mpc-row">
+      <span class="mpc-row-title">参数</span>
+      <label class="mpc-slider"><span class="mpc-k">预测时域 N</span><input class="mpc-range" type="range" data-mpc-n min="5" max="20" step="1" value="10" /><span class="mpc-v" data-mpc-nval>10 步</span></label>
+      <span class="mpc-hint">N 越长，规划看得越远、同一目标下动作越缓；N 越短越急</span>
+    </div>
+  </div>
+
+  <div class="mpc-readout">
+    <div class="mpc-fields">
+      <div class="mpc-field"><span class="mpc-field-k">周期 k</span><span class="mpc-field-v" data-mpc-out="k">0</span></div>
+      <div class="mpc-field"><span class="mpc-field-k">预测时域 N</span><span class="mpc-field-v" data-mpc-out="n">10 步</span></div>
+      <div class="mpc-field"><span class="mpc-field-k">位置 x</span><span class="mpc-field-v" data-mpc-out="x">0.000 m</span></div>
+      <div class="mpc-field"><span class="mpc-field-k">速度 v</span><span class="mpc-field-v" data-mpc-out="v">0.000 m/s</span></div>
+      <div class="mpc-field"><span class="mpc-field-k">是否受扰</span><span class="mpc-field-v mpc-field-warn" data-mpc-out="dist">未受扰</span></div>
+    </div>
+    <div class="mpc-state" data-mpc-state>窗口在滑动：每个控制周期以当前状态重算一条 N 步计划，只执行第一步。</div>
+  </div>
+</figure>
+<script>
+(function () {
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const fmt = (v, d) => (Math.abs(v) < Math.pow(10, -d) / 2 ? "0." + "0".repeat(d) : (v < 0 ? "−" : "") + Math.abs(v).toFixed(d));
+
+  document.querySelectorAll(".mpc-demo").forEach((demo) => {
+    if (!(demo instanceof HTMLElement)) return;
+    const cfg = JSON.parse(demo.dataset.mpc || "{}");
+    const DT = cfg.dt != null ? cfg.dt : 0.1;
+    const TARGET = cfg.target != null ? cfg.target : 1.0;
+    const DIST_K = cfg.distK != null ? cfg.distK : 6;
+    const DIST_V = cfg.distV != null ? cfg.distV : 2.0;
+    const MAXK = cfg.maxK != null ? cfg.maxK : 90;
+    const CYCLE = cfg.cycle != null ? cfg.cycle : 0.08;
+    const HOLD = cfg.hold != null ? cfg.hold : 1.3;
+    const NMIN = cfg.nMin != null ? cfg.nMin : 5;
+    const NMAX = cfg.nMax != null ? cfg.nMax : 20;
+
+    const pick = (sel) => demo.querySelector("[data-mpc-" + sel + "]");
+    const elExec = pick("exec"), elPlan = pick("plan"), elNow = pick("now"), elNowDot = pick("nowdot");
+    const elKText = pick("ktext"), elBand = pick("band"), elBandLabel = pick("bandlabel");
+    const elDist = pick("dist"), elDistLabel = pick("distlabel");
+    const elCart = pick("cart"), elWheelL = pick("wheel-l"), elWheelR = pick("wheel-r");
+    const elVel = pick("vel"), elVelLabel = pick("vellabel");
+    const out = { k: pick("out='k'"), n: pick("out='n'"), x: pick("out='x'"), v: pick("out='v'"), dist: pick("out='dist'") };
+    const elState = pick("state");
+    const playBtn = pick("play"), resetBtn = pick("reset"), distBtn = pick("distbtn");
+    const nEl = demo.querySelector("[data-mpc-n]"), nVal = pick("nval");
+    if (!elExec || !elPlan || !playBtn || !(nEl instanceof HTMLInputElement)) return;
+
+    // 画布几何
+    const X0 = 84, X1 = 950, YT = 142, YB = 332;
+    const YMIN = -0.08, YMAX = 1.6;
+    const TRK0 = 90, TRK1 = 930, TRKMIN = -0.1, TRKMAX = 1.6, GROUND = 470, CART_W = 46;
+    const TX = (p) => TRK0 + (clamp(p, TRKMIN, TRKMAX) - TRKMIN) / (TRKMAX - TRKMIN) * (TRK1 - TRK0);
+
+    // 规划器：有限时域最小能量解，终点 (x*, 0)
+    const plan = (x, v, N) => {
+      const e1 = x - TARGET, e2 = v;
+      const acc = new Array(N).fill(0);
+      if (Math.abs(e1) > 1e-12 || Math.abs(e2) > 1e-12) {
+        let s11 = 0, s12 = 0, s22 = 0;
+        for (let k = 0; k < N; k += 1) { const b1 = DT * DT * (k + 0.5), b2 = DT; s11 += b1 * b1; s12 += b1 * b2; s22 += b2 * b2; }
+        const det = s11 * s22 - s12 * s12;
+        if (Math.abs(det) > 1e-12) {
+          const a1 = e1 + N * DT * e2, a2 = e2;
+          const w1 = (s22 * a1 - s12 * a2) / det, w2 = (s11 * a2 - s12 * a1) / det;
+          for (let i = 0; i < N; i += 1) { const k = N - 1 - i; acc[i] = -(DT * DT * (k + 0.5) * w1 + DT * w2); }
+        }
+      }
+      const pos = [x], vel = [v];
+      let px = x, pv = v;
+      for (let i = 0; i < N; i += 1) { px += DT * pv + 0.5 * DT * DT * acc[i]; pv += DT * acc[i]; pos.push(px); vel.push(pv); }
+      return { acc: acc, pos: pos, vel: vel };
+    };
+
+    const state = { k: 0, x: 0, v: 0, n: cfg.nDefault != null ? cfg.nDefault : 10, history: [{ k: 0, x: 0 }], plan: null, disturbed: false, disturbedK: null, autoDone: false };
+    let paused = false, finished = false, holdTimer = 0, accTime = 0, lastNow = 0, raf = 0;
+
+    const render = () => {
+      const N = state.n, W = 2 * N + 2, winStart = Math.max(0, state.k - N);
+      const X = (c) => X0 + (c - winStart) / W * (X1 - X0);
+      const Yp = (p) => YB - (clamp(p, YMIN, YMAX) - YMIN) / (YMAX - YMIN) * (YB - YT);
+      let d = "";
+      for (const h of state.history) {
+        if (h.k < winStart) continue;
+        d = d ? d + " L " + X(h.k).toFixed(1) + " " + Yp(h.x).toFixed(1) : "M " + X(h.k).toFixed(1) + " " + Yp(h.x).toFixed(1);
+      }
+      elExec.setAttribute("d", d);
+      let dp = "";
+      const P = state.plan;
+      if (P) for (let i = 0; i < P.pos.length; i += 1) {
+        dp = dp ? dp + " L " + X(state.k + i).toFixed(1) + " " + Yp(P.pos[i]).toFixed(1) : "M " + X(state.k + i).toFixed(1) + " " + Yp(P.pos[i]).toFixed(1);
+      }
+      elPlan.setAttribute("d", dp);
+      const xn = X(state.k), xh = X(state.k + N);
+      if (elNow) { elNow.setAttribute("x1", xn.toFixed(1)); elNow.setAttribute("x2", xn.toFixed(1)); }
+      if (elNowDot) { elNowDot.setAttribute("cx", xn.toFixed(1)); elNowDot.setAttribute("cy", Yp(state.x).toFixed(1)); }
+      if (elKText) { elKText.setAttribute("x", xn.toFixed(1)); elKText.textContent = "k=" + state.k; }
+      if (elBand) { elBand.setAttribute("x", xn.toFixed(1)); elBand.setAttribute("width", Math.max(0, xh - xn).toFixed(1)); }
+      if (elBandLabel) { elBandLabel.setAttribute("x", ((xn + xh) / 2).toFixed(1)); elBandLabel.textContent = "时域 N = " + N + " 步"; }
+      const distOn = state.disturbed && state.disturbedK != null && state.disturbedK >= winStart && state.disturbedK <= winStart + W;
+      if (elDist) {
+        elDist.setAttribute("opacity", distOn ? "1" : "0");
+        if (distOn) { const xd = X(state.disturbedK); elDist.setAttribute("x1", xd.toFixed(1)); elDist.setAttribute("x2", xd.toFixed(1)); }
+      }
+      if (elDistLabel) {
+        elDistLabel.setAttribute("opacity", distOn ? "1" : "0");
+        if (distOn) {
+          const xd = X(state.disturbedK);
+          elDistLabel.setAttribute("x", (xd < X0 + 40 ? xd + 8 : xd > X1 - 40 ? xd - 8 : xd).toFixed(1));
+          elDistLabel.setAttribute("text-anchor", xd < X0 + 40 ? "start" : xd > X1 - 40 ? "end" : "middle");
+        }
+      }
+      const tx = TX(state.x);
+      if (elCart) elCart.setAttribute("x", (tx - CART_W / 2).toFixed(1));
+      if (elWheelL) elWheelL.setAttribute("cx", (tx - 13).toFixed(1));
+      if (elWheelR) elWheelR.setAttribute("cx", (tx + 13).toFixed(1));
+      const vel = clamp(state.v, -3.5, 3.5);
+      const tip = clamp(tx + vel * 46, 64, 946);
+      if (elVel) {
+        elVel.setAttribute("x1", tx.toFixed(1)); elVel.setAttribute("x2", tip.toFixed(1));
+        elVel.setAttribute("opacity", Math.abs(state.v) > 0.03 ? "1" : "0");
+      }
+      if (elVelLabel) { elVelLabel.setAttribute("x", clamp((tx + tip) / 2, 80, 920).toFixed(1)); elVelLabel.textContent = Math.abs(state.v) > 0.03 ? "v = " + fmt(state.v, 2) + " m/s" : ""; }
+      if (out.k) out.k.textContent = String(state.k);
+      if (out.n) out.n.textContent = N + " 步";
+      if (out.x) out.x.textContent = fmt(state.x, 3) + " m";
+      if (out.v) out.v.textContent = fmt(state.v, 3) + " m/s";
+      if (out.dist) out.dist.textContent = state.disturbed ? "已受扰" : "未受扰";
+      if (elState) {
+        if (finished) elState.textContent = "已到达目标并停稳：整段运动就是每周期「重算 + 只执行第一步」的结果。";
+        else if (state.disturbed) elState.textContent = "第 " + state.disturbedK + " 周期注入了 " + DIST_V.toFixed(1) + " m/s 速度冲量：蓝色计划已整体重算，绿色已执行段不回溯改写。";
+        else elState.textContent = "窗口在滑动：每个控制周期以当前状态重算一条 N 步计划，只执行第一步。";
+      }
+    };
+
+    const replan = () => { state.plan = plan(state.x, state.v, state.n); };
+    const resetTrial = () => {
+      state.k = 0; state.x = 0; state.v = 0; state.history = [{ k: 0, x: 0 }];
+      state.disturbed = false; state.disturbedK = null; state.autoDone = false;
+      finished = false; holdTimer = 0; accTime = 0; lastNow = 0;
+      replan(); render();
+    };
+    const stepControl = () => {
+      replan();
+      const a = state.plan.acc[0];
+      state.x = state.x + DT * state.v + 0.5 * DT * DT * a;
+      state.v = state.v + DT * a;
+      state.k += 1;
+      state.history.push({ k: state.k, x: state.x });
+      if (state.k === DIST_K && !state.autoDone) { state.v += DIST_V; state.autoDone = true; state.disturbed = true; state.disturbedK = state.k; }
+      replan();
+    };
+    const converged = () => state.k > state.n + 2 && Math.abs(state.x - TARGET) < 0.01 && Math.abs(state.v) < 0.03;
+
+    const tick = (now) => {
+      raf = requestAnimationFrame(tick);
+      if (paused) { lastNow = now; return; }
+      if (!lastNow) lastNow = now;
+      let dt = (now - lastNow) / 1000; lastNow = now;
+      dt = clamp(dt, 0.001, 0.05);
+      if (holdTimer > 0) { holdTimer -= dt; if (holdTimer <= 0) resetTrial(); render(); return; }
+      if (!finished) {
+        accTime += dt;
+        while (accTime >= CYCLE && !finished) {
+          accTime -= CYCLE;
+          stepControl();
+          if (state.k >= MAXK || converged()) { finished = true; holdTimer = HOLD; }
+        }
+        render();
+      }
+    };
+
+    playBtn.addEventListener("click", () => {
+      paused = !paused;
+      if (playBtn instanceof HTMLButtonElement) playBtn.textContent = paused ? "继续" : "暂停";
+      lastNow = 0; render();
+    });
+    if (resetBtn instanceof HTMLButtonElement) resetBtn.addEventListener("click", () => resetTrial());
+    if (distBtn instanceof HTMLButtonElement) distBtn.addEventListener("click", () => {
+      state.v += DIST_V; state.disturbed = true;
+      if (state.disturbedK == null) state.disturbedK = state.k;
+      replan(); render();
+    });
+    nEl.addEventListener("input", () => {
+      state.n = clamp(Number(nEl.value), NMIN, NMAX);
+      if (nVal) nVal.textContent = state.n + " 步";
+      resetTrial();
+    });
+
+    resetTrial();
+    raf = requestAnimationFrame(tick);
+  });
+})();
+</script>
+<style is:global>
+  .mpc-demo { margin: 1.5rem 0; }
+  .mpc-demo svg { display: block; width: 100%; max-width: 980px; height: auto; margin: 0 auto; }
+  .mpc-demo svg text { paint-order: stroke fill; stroke: var(--sl-color-bg); stroke-width: 4px; stroke-linejoin: round; }
+  .mpc-title { fill: var(--sl-color-text); font-size: 26px; font-weight: 600; }
+  .mpc-legend, .mpc-lane, .mpc-xtick { fill: var(--sl-color-gray-2); font-size: 18px; }
+  .mpc-grid { stroke: var(--sl-color-gray-5); stroke-width: 1; opacity: 0.35; }
+  .mpc-axis { stroke: var(--sl-color-gray-4); stroke-width: 1.2; }
+  .mpc-ytick { fill: var(--sl-color-gray-3); font-size: 18px; }
+  .mpc-target { stroke: var(--sl-color-gray-3); stroke-width: 1.6; stroke-dasharray: 7 5; }
+  .mpc-target-label { fill: var(--sl-color-gray-3); font-size: 20px; }
+  .mpc-flaglabel { fill: var(--sl-color-gray-3); font-size: 18px; }
+  .mpc-band { fill: var(--sl-color-accent); opacity: 0.22; }
+  .mpc-bandlabel { fill: var(--sl-color-accent); font-size: 18px; font-weight: 600; }
+  .mpc-exec { fill: none; stroke: light-dark(#15803d, #4ade80); stroke-width: 2.8; stroke-linejoin: round; stroke-linecap: round; }
+  .mpc-plan { fill: none; stroke: var(--sl-color-accent); stroke-width: 2.4; stroke-dasharray: 8 5; stroke-linejoin: round; stroke-linecap: round; }
+  .mpc-now { stroke: var(--sl-color-gray-3); stroke-width: 1.1; stroke-dasharray: 3 3; opacity: 0.85; }
+  .mpc-nowdot { fill: var(--sl-color-accent); stroke: var(--sl-color-bg); stroke-width: 1.5; }
+  .mpc-ktext { fill: var(--sl-color-gray-2); font-size: 18px; font-variant-numeric: tabular-nums; }
+  .mpc-dist { stroke: light-dark(#dc2626, #f87171); stroke-width: 1.6; }
+  .mpc-distlabel { fill: light-dark(#dc2626, #f87171); font-size: 18px; font-weight: 700; }
+  .mpc-ground { stroke: var(--sl-color-gray-4); stroke-width: 2; }
+  .mpc-pole { stroke: var(--sl-color-gray-3); stroke-width: 1.4; stroke-dasharray: 5 4; }
+  .mpc-flag { fill: light-dark(#15803d, #4ade80); opacity: 0.8; }
+  .mpc-cart { fill: var(--sl-color-accent); opacity: 0.9; }
+  .mpc-wheel { fill: var(--sl-color-text); opacity: 0.85; }
+  .mpc-vel { stroke: light-dark(#b45309, #fbbf24); stroke-width: 2.4; }
+  .mpc-vel-head { fill: light-dark(#b45309, #fbbf24); }
+  .mpc-vellabel { fill: light-dark(#b45309, #fbbf24); font-size: 18px; font-weight: 600; }
+
+  .mpc-controls { display: flex; flex-direction: column; gap: 0.5rem; max-width: 980px; margin: 0.6rem auto 0; }
+  .mpc-row { display: flex; align-items: center; gap: 0.6rem; margin: 0; flex-wrap: wrap; }
+  .mpc-row-title { flex: 0 0 3.4rem; margin: 0; color: var(--sl-color-gray-2); font-size: 1rem; }
+  .mpc-slider { display: flex; flex: 1 1 16rem; min-width: 0; align-items: center; gap: 0.4rem; margin: 0; }
+  .mpc-k { flex: 0 0 6.2rem; color: var(--sl-color-gray-2); font-size: 1rem; }
+  .mpc-range { flex: 1 1 auto; min-width: 4rem; margin: 0; accent-color: var(--sl-color-accent); }
+  .mpc-v { flex: 0 0 4.8rem; text-align: right; color: var(--sl-color-accent); font-weight: 600; font-variant-numeric: tabular-nums; font-size: 1rem; }
+  .mpc-hint { margin: 0; color: var(--sl-color-gray-3); font-size: 0.9375rem; }
+  .mpc-btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; height: 2.35rem; margin: 0; padding: 0 1rem; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-accent); font: inherit; font-size: 1rem; line-height: 1; cursor: pointer; }
+  .mpc-btn:hover { border-color: var(--sl-color-accent); }
+
+  .mpc-readout { max-width: 980px; margin: 0.7rem auto 0; display: flex; flex-direction: column; gap: 0.35rem; }
+  .mpc-fields { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.5rem; align-items: stretch; }
+  .mpc-field { display: flex; flex-direction: column; justify-content: flex-start; gap: 0.2rem; height: 4.6rem; box-sizing: border-box; margin: 0 !important; padding: 0.5rem 0.7rem; border: 1px solid var(--sl-color-gray-5); border-radius: 8px; }
+  .mpc-field-k { color: var(--sl-color-gray-3); font-size: 0.9375rem; line-height: 1.5rem; height: 1.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mpc-field-v { color: var(--sl-color-accent); font-size: 1.2rem; font-weight: 700; line-height: 1.75rem; height: 1.75rem; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .mpc-field-warn { color: light-dark(#b45309, #fbbf24); }
+  .mpc-state { color: var(--sl-color-gray-2); font-size: 1rem; line-height: 1.6; }
+  @media (max-width: 60rem) { .mpc-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 40rem) { .mpc-fields { grid-template-columns: 1fr; } .mpc-row-title { flex-basis: 100%; } .mpc-slider { flex: 1 1 100%; } }
+</style>

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="420" viewBox="0 0 720 420" role="img" aria-label="关节空间与笛卡尔空间规划、逆运动学多解与分支跳变示意图">
+  <defs>
+    <marker id="jv-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <rect x="8" y="8" width="704" height="404" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <g font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif">
+    <text x="360" y="46" text-anchor="middle" font-size="25" font-weight="700" fill="#0f172a">同一个末端位置，可能有多组关节角</text>
+
+    <rect x="26" y="68" width="330" height="332" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="191" y="96" text-anchor="middle" font-size="21" font-weight="700" fill="#0f172a">笛卡尔空间规划</text>
+    <path d="M 70,140 C 110,300 250,340 305,235" fill="none" stroke="#94a3b8" stroke-width="3" stroke-dasharray="10 8"/>
+    <line x1="70" y1="140" x2="305" y2="235" stroke="#2563eb" stroke-width="3.5"/>
+    <circle cx="70" cy="140" r="6" fill="#0f172a"/>
+    <circle cx="305" cy="235" r="6" fill="#0f172a"/>
+    <text x="70" y="120" text-anchor="middle" font-size="15" fill="#475569">起点</text>
+    <text x="305" y="215" text-anchor="middle" font-size="15" fill="#475569">终点</text>
+    <text x="195" y="130" text-anchor="middle" font-size="16" font-weight="700" fill="#2563eb">末端走直线：路径可控</text>
+    <text x="191" y="356" text-anchor="middle" font-size="15" fill="#64748b">关节空间插值出的末端轨迹：</text>
+    <text x="191" y="378" text-anchor="middle" font-size="15" font-weight="700" fill="#64748b">走什么路不可控</text>
+
+    <rect x="364" y="68" width="330" height="332" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="529" y="96" text-anchor="middle" font-size="19" font-weight="700" fill="#0f172a">肘朝上 / 肘朝下：两组解</text>
+
+    <polyline points="420,270 435,176 530,185" fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <polyline points="420,270 515,279 530,185" fill="none" stroke="#ea580c" stroke-width="3.5" stroke-dasharray="9 7" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="420" cy="270" r="5" fill="#0f172a"/>
+    <circle cx="530" cy="185" r="7" fill="#0f172a"/>
+    <text x="430" y="160" text-anchor="middle" font-size="15" font-weight="700" fill="#2563eb">肘朝上</text>
+    <text x="530" y="300" text-anchor="middle" font-size="15" font-weight="700" fill="#ea580c">肘朝下</text>
+    <text x="546" y="208" text-anchor="start" font-size="15" font-weight="700" fill="#0f172a">同一末端点</text>
+
+    <rect x="376" y="314" width="306" height="82" rx="10" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5"/>
+    <circle cx="406" cy="340" r="3.5" fill="#94a3b8"/>
+    <circle cx="424" cy="340" r="3.5" fill="#94a3b8"/>
+    <circle cx="442" cy="340" r="3.5" fill="#94a3b8"/>
+    <circle cx="466" cy="340" r="5" fill="#2563eb"/>
+    <line x1="476" y1="340" x2="534" y2="340" stroke="#64748b" stroke-width="2.5" marker-end="url(#jv-arrow)"/>
+    <line x1="492" y1="332" x2="508" y2="348" stroke="#dc2626" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="492" y1="348" x2="508" y2="332" stroke="#dc2626" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="546" cy="340" r="5" fill="#ea580c"/>
+    <text x="529" y="372" text-anchor="middle" font-size="14" fill="#0f172a">相邻两帧跳到另一组解 → 关节猛跳</text>
+    <text x="529" y="392" text-anchor="middle" font-size="13" fill="#475569">（末端没动，只有关节角突变）</text>
+  </g>
+</svg>

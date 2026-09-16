@@ -50,7 +50,7 @@
 | --- | --- | --- |
 | [5.1 机器人学习与 AI 词汇](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 10 分钟 | 无 |
 | [5.2 感知系统](../05-brain-perception-planning-vla-wam/02-perception-system.md) | 15 分钟 | 3.3、4.1 |
-| [5.3 运动规划：大脑与小脑之间的桥](../05-brain-perception-planning-vla-wam/03-motion-planning.md) | 15 分钟 | 4.2、4.6 |
+| [5.3 运动规划：大脑与小脑之间的桥](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx) | 15 分钟 | 4.2、4.6 |
 | [5.4 双臂操作与灵巧手](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.md) | 15 分钟 | 4.2、5.3 |
 | [5.5 学习控制与模仿学习](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.md) | 15 分钟 | 4.5 |
 | [5.6 VLA 与高级 AI 推理模型](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.md) | 15 分钟 | 5.2、5.5 |
