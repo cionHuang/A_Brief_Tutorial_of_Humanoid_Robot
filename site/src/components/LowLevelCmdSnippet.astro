@@ -22,15 +22,15 @@ const cards = {
     {
       role: 'MotorCmd_ · 每个关节一条命令',
       file: motorPath,
-      url: blob(motorPath, 21),
+      url: blob(motorPath, 20),
       lines: [
-        { n: 21, code: 'class MotorCmd_', hl: true, ann: '一个关节一条命令，29 个电机各一份' },
-        { n: 24, code: ' uint8_t mode_ = 0;', hl: true, ann: 'mode：1 = Enable，0 = Disable' },
-        { n: 25, code: ' float q_ = 0.0f;', hl: true, ann: 'q：期望位置（rad）' },
-        { n: 26, code: ' float dq_ = 0.0f;', hl: true, ann: 'dq：期望速度（rad/s）' },
-        { n: 27, code: ' float tau_ = 0.0f;', hl: true, ann: 'tau：前馈力矩（N·m）' },
-        { n: 28, code: ' float kp_ = 0.0f;', hl: true, ann: 'kp：关节刚度（N·m/rad）' },
-        { n: 29, code: ' float kd_ = 0.0f;', hl: true, ann: 'kd：关节阻尼（N·m·s/rad）' },
+        { n: 20, code: 'class MotorCmd_', hl: true, ann: '一个关节一条命令，29 个电机各一份' },
+        { n: 23, code: ' uint8_t mode_ = 0;', hl: true, ann: 'mode：1 = Enable，0 = Disable' },
+        { n: 24, code: ' float q_ = 0.0f;', hl: true, ann: 'q：期望位置（rad）' },
+        { n: 25, code: ' float dq_ = 0.0f;', hl: true, ann: 'dq：期望速度（rad/s）' },
+        { n: 26, code: ' float tau_ = 0.0f;', hl: true, ann: 'tau：前馈力矩（N·m）' },
+        { n: 27, code: ' float kp_ = 0.0f;', hl: true, ann: 'kp：关节刚度（N·m/rad）' },
+        { n: 28, code: ' float kd_ = 0.0f;', hl: true, ann: 'kd：关节阻尼（N·m·s/rad）' },
       ],
     },
     {
@@ -52,7 +52,7 @@ const cards = {
       lines: [
         { n: 331, code: '        double L_P_des = max_P * std::sin(2.0 * M_PI * t);', hl: true, ann: '目标位置由 sin 曲线逐拍生成，而不是写死一个阶跃' },
         { n: 332, code: '        double L_R_des = max_R * std::sin(2.0 * M_PI * t);', hl: true, ann: '同一时刻的四个踝关节目标之一' },
-        { n: 335, code: '        motor_command_tmp.q_target.at(LeftAnklePitch) = L_P_des;', hl: true, ann: '写进按关节索引排布的 q_target' },
+        { n: 336, code: '        motor_command_tmp.q_target.at(LeftAnklePitch) = L_P_des;', hl: true, ann: '写进按关节索引排布的 q_target' },
       ],
     },
     {

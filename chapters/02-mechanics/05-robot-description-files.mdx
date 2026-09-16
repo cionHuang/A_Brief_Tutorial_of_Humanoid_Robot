@@ -21,7 +21,7 @@ import MjcfFieldSnippet from '../../../components/MjcfFieldSnippet.astro';
 
 > **一句话听懂**：URDF 把机器人拆成一堆 `link`（零件），再用 `joint`（关节）从根一路串到手脚，变成一棵“家谱树”。因为每个零件只能有一个上级，四连杆那种首尾相连的机构就没法直接写进去。
 
-在 G1 URDF 中，`pelvis` 是根 link，向下接双腿，向上经腰部接到 `torso_link`，再由躯干接头部和双臂。每个关节通常包含：
+在 G1 URDF 中，`pelvis` 是根 link，向下接双腿，向上经腰部接到 `torso_link`，再由躯干接头部和双臂。[3]每个关节通常包含：
 
 - `parent` / `child`：父子 link；
 - `origin`：关节相对父 link 的位姿；
@@ -105,5 +105,3 @@ URDF 和 MJCF 不是“谁更真实”的关系，而是边界不同：
 [2] MuJoCo Documentation. *XML Reference*. MuJoCo 官方文档，Body、Joint、Geom、Actuator、Sensor、Contact 和 Equality 说明。<https://mujoco.readthedocs.io/en/stable/XMLreference.html>
 
 [3] Unitree Robotics. *unitree_rl_gym: G1 robot description*. 官方开源 G1 URDF/MJCF、网格和模型变体资料；本文使用提交 `276801e46c5d433564f24658bac64f254b7d2d4b`。<https://github.com/unitreerobotics/unitree_rl_gym/tree/276801e46c5d433564f24658bac64f254b7d2d4b/resources/robots/g1_description>
-
-[4] Unitree Robotics. *unitree_sdk2: Unitree robot SDK version 2*. 官方 SDK，用于核对 G1 关节索引和接口边界；本文使用提交 `9754cd153af3da471b0fe5f3aa535e426fb11db3`。<https://github.com/unitreerobotics/unitree_sdk2/tree/9754cd153af3da471b0fe5f3aa535e426fb11db3>

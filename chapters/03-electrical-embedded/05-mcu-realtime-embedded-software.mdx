@@ -18,7 +18,7 @@ import BareMetalLoopDemo from '../../../components/BareMetalLoopDemo.astro';
 
 微控制器（Microcontroller Unit, MCU）通常把 CPU、片上存储器、定时器、PWM、ADC、通信外设和 GPIO 集成在一颗芯片中。它适合运行电机控制、传感器采样、保护逻辑和通信协议等确定性较强的任务。
 
-数字信号处理器（Digital Signal Processor, DSP）针对乘加、滤波、变换和控制算法进行了优化，常用于电机驱动器或高速信号处理。现代 MCU 也可能集成 DSP 指令、浮点单元（Floating Point Unit, FPU：专门算小数的硬件）和电机控制外设，因此“MCU”和“DSP”是功能定位，不一定对应两种完全不同的硬件。
+数字信号处理器（Digital Signal Processor, DSP）针对乘加、滤波、变换和控制算法进行了优化，常用于电机驱动器或高速信号处理。现代 MCU 也可能集成 DSP 指令、浮点单元（Floating Point Unit, FPU：专门做浮点运算的硬件，把很大和很小的数按浮点格式算得又快又准）和电机控制外设，因此“MCU”和“DSP”是功能定位，不一定对应两种完全不同的硬件。
 
 片上系统（System on Chip, SoC）把多个处理单元、存储控制器和高速接口集成在一起，常见于运行 Linux、视觉算法或机器人中间件的计算模块。工控机（Industrial PC, IPC）和边缘计算平台（Edge Computing Platform：装在机器人本地、比云端更近的算力）通常拥有更大的内存和更强的 CPU/GPU，适合规划、感知、日志和模型推理，但其通用操作系统调度和设备驱动不天然提供硬实时保证。
 
@@ -52,7 +52,7 @@ import BareMetalLoopDemo from '../../../components/BareMetalLoopDemo.astro';
 
 直接存储器访问（Direct Memory Access, DMA）可以在外设和内存之间搬运 ADC、UART、SPI 或 EtherCAT 数据，减少 CPU 逐字节处理的负担。常见做法是使用双缓冲或环形缓冲：DMA 写入当前缓冲区，控制任务读取已经完成的上一块数据，并通过序号或标志位确认数据边界。
 
-中断（Interrupt）用于通知 CPU 某个硬件事件已经发生，例如 ADC 转换完成、编码器捕获或通信帧到达。中断服务函数（Interrupt Service Routine, ISR）应只完成时间敏感且可快速完成的工作；把日志格式化、动态内存分配或复杂运动学计算放进 ISR，会增加其他中断和控制任务的最坏响应时间。
+中断（Interrupt）用于通知 CPU 某个硬件事件已经发生，例如 ADC 转换完成、编码器捕获或通信帧到达。中断服务函数（Interrupt Service Routine, ISR）应只完成时间敏感且可快速完成的工作；把日志格式化、动态内存分配或复杂运动学计算放进 ISR，会增加其他中断和控制任务的最坏响应时间。[3]
 
 缓冲（Buffer）不是 CPU 的缓存（Cache），它解决生产者和消费者速度不一致的问题，但缓冲越深不一定越好。低层控制通常要优先使用最新一帧命令，并丢弃已经过期的旧目标；参数、诊断和日志则可以使用较深队列。每个缓冲区都应记录长度、序号、时间戳和校验结果，避免把半帧或旧帧交给控制器。
 
@@ -82,7 +82,7 @@ import BareMetalLoopDemo from '../../../components/BareMetalLoopDemo.astro';
 
 ### RTOS、任务与优先级
 
-实时操作系统（Real-time Operating System, RTOS）提供任务（Task/Thread）、优先级、阻塞等待、队列、信号量、定时器和内存管理等机制。一个典型的机器人控制板可能划分为：
+实时操作系统（Real-time Operating System, RTOS）提供任务（Task/Thread）、优先级、阻塞等待、队列、信号量、定时器和内存管理等机制。[4]一个典型的机器人控制板可能划分为：
 
 | 任务 | 触发方式 | 关注点 |
 | --- | --- | --- |
@@ -108,7 +108,7 @@ $$
 C + C_{\mathrm{interrupt}} + C_{\mathrm{scheduling}} < T
 $$
 
-式中三个量的单位要一致（通常用 ms）；$C_{\mathrm{scheduling}}$ 包含任务切换和中断延迟。这个不等式只是必要条件，最坏情况必须逐周期实测。周期平均值达标并不充分。偶发的一次超长执行时间（长尾）可能错过截止时间，造成旧目标保持、队列堆积或状态估计跳变。工程验证应记录周期误差、最大执行时间、最小/最大空闲时间和连续超时次数。
+式中三个量的单位要一致（通常用 ms）；$C_{\mathrm{scheduling}}$ 包含任务切换和中断延迟。这个不等式只是必要条件，最坏情况必须逐周期实测。周期平均值达标并不充分。偶发的一次超长执行时间（长尾）可能错过截止时间，造成旧目标保持、队列堆积或状态估计跳变。工程验证应记录周期误差、最大执行时间、最小/最大空闲时间和连续超时次数。[1]
 
 官方 G1 低层例程 `g1_ankle_swing_example.cpp` 就是一个具体例子：它用 `CreateRecurrentThreadEx(..., 2000, ...)` 建立 2000 µs（2 ms，即 500 Hz）的周期线程；例程维护 29 个电机（`G1_NUM_MOTOR = 29`），在 `LowCommandWriter` 里逐拍写 `LowCmd_` 并做 CRC32（循环冗余校验，Cyclic Redundancy Check）校验。[5] 这正好说明“控制周期是目标还是最坏情况”，必须靠实测回答。
 
@@ -124,7 +124,7 @@ $$
 
 ### 优先级反转与资源争用
 
-优先级反转（Priority Inversion）的成因是：高优先级控制任务在等低优先级任务持有的锁，而中优先级任务不断抢占 CPU，把低优先级任务挤得迟迟不能释放锁，结果最急的任务反而被堵住。类似问题也会出现在共享总线、缓存、浮点单元、GPU 或内存带宽上。解决方法包括缩短临界区、避免控制任务进行阻塞 I/O、为实时任务预留 CPU 时间，以及把诊断和大块数据传输移到独立通道。
+优先级反转（Priority Inversion）的成因是：高优先级控制任务在等低优先级任务持有的锁，而中优先级任务不断抢占 CPU，把低优先级任务挤得迟迟不能释放锁，结果最急的任务反而被堵住。类似问题也会出现在共享总线、缓存、浮点单元、GPU 或内存带宽上。解决方法包括缩短临界区、避免控制任务进行阻塞 I/O、为实时任务预留 CPU 时间，以及把诊断和大块数据传输移到独立通道。[2]
 
 > **一句话听懂**：优先级反转就是“最急的人反而被堵住”：急任务在等一把被慢任务拿着的锁，中间不急不慢的任务还一直插队。办法是让锁用得尽量短，或让急任务用自己的一份数据，不跟别人抢。
 
@@ -143,5 +143,3 @@ $$
 [4] FreeRTOS Documentation. *The FreeRTOS Kernel*. 任务、队列、信号量、优先级和任务同步机制的开源 RTOS 文档。<https://www.freertos.org/Documentation/RTOS_book.html>
 
 [5] Unitree Robotics. *unitree_sdk2: Unitree robot SDK version 2*. 官方 SDK2 消息定义和 G1 低层示例；本文使用提交 `9754cd153af3da471b0fe5f3aa535e426fb11db3`，用于核对 `LowCmd_`、`LowState_`、`MotorCmd_`、`MotorState_`、`rt/lowcmd`、`rt/lowstate` 和示例控制循环配置。<https://github.com/unitreerobotics/unitree_sdk2/tree/9754cd153af3da471b0fe5f3aa535e426fb11db3>
-
-[6] Unitree Robotics. *unitree_rl_gym: G1 robot description*. 官方 G1 URDF/MJCF 模型；本文使用提交 `276801e46c5d433564f24658bac64f254b7d2d4b`，用于区分仿真执行器模型与真实执行器固件实现。<https://github.com/unitreerobotics/unitree_rl_gym/tree/276801e46c5d433564f24658bac64f254b7d2d4b/resources/robots/g1_description>

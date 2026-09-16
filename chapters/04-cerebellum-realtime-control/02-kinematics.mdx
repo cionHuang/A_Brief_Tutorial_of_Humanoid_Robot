@@ -13,7 +13,7 @@ import G1ArmInverseKinematicsDemo from '../../../components/G1ArmInverseKinemati
 
 运动学（Kinematics）研究的是“几何构型如何决定位置、姿态和速度的映射”，以及由对偶得到的力—力矩映射，暂时不讨论质量、惯量和力的产生原因。它是规划器、逆运动学、全身控制和碰撞检查之间的共同接口：输入通常是关节变量和模型几何，输出是连杆/末端位姿、速度映射、雅可比以及可行性指标。
 
-> **本节使用的 G1 模型**：`robot_descriptions/g1/g1_29dof.urdf`（29 DoF、无灵巧手、腰部可动；对应 MJCF `g1_29dof.xml`）。涉及锁腰对比时使用 `g1_29dof_lock_waist.urdf`；数值取自官方模型，不代表真机完整规格。
+> **本节使用的 G1 模型**：`robot_descriptions/g1/g1_29dof.urdf`（29 DoF、无灵巧手、腰部可动；对应 MJCF `g1_29dof.xml`）。涉及锁腰对比时使用 `g1_29dof_lock_waist.urdf`；数值取自官方模型，不代表真机完整规格。[4]
 
 
 ## 正运动学：从关节变量得到末端位姿
@@ -54,7 +54,7 @@ $$
 
 ### G1 的正运动学落点
 
-本手册使用的 G1 无灵巧手（末端为模型自带的固定橡胶手）、腰部可动模型，把 pelvis、腿、腰和双臂组织成一棵 body/joint 树。沿这条树把局部变换逐段乘起来，就能由关节角算出左脚、手腕或 IMU 安装点在 pelvis 中的位姿。[5]下面用左臂做一次实时正运动学——连杆尺寸和关节限位都取自 G1 的 URDF：
+本手册使用的 G1 无灵巧手（末端为模型自带的固定橡胶手）、腰部可动模型，把 pelvis、腿、腰和双臂组织成一棵 body/joint 树。沿这条树把局部变换逐段乘起来，就能由关节角算出左脚、手腕或 IMU 安装点在 pelvis 中的位姿。[5][6]下面用左臂做一次实时正运动学——连杆尺寸和关节限位都取自 G1 的 URDF：
 
 <G1ArmForwardKinematicsDemo />
 
