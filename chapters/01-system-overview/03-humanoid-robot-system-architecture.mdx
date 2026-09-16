@@ -35,7 +35,7 @@ import LowCmdLowStateSnippet from '../../../components/LowCmdLowStateSnippet.ast
 - **大脑层**：感知、运动规划、Manipulation、学习控制、VLA 与 WAM；
 - **软件与工具链层**：ROS 2、TF、日志、可视化、仿真接口与部署工具。
 
-分层的关键在于明确接口：上层只向下层发“要什么”，下层只向上层汇报“现在是什么”。[3]
+分层的关键在于明确接口：上层只向下层发“要什么”，下层只向上层汇报“现在是什么”。[2]
 
 ### 2. 系统级闭环（System-level Closed Loop）
 
@@ -60,8 +60,8 @@ import LowCmdLowStateSnippet from '../../../components/LowCmdLowStateSnippet.ast
 典型模块包括：
 
 - **本体（Body / Chassis）**：躯干、骨盆、腿、手臂、头部、足部；
-- **关节模组（Joint Module）**：电机、减速器、编码器、驱动器、输出轴和轴承组成的执行单元；[5]
-- **传感器（Sensor）**：编码器、IMU、六维力/力矩传感器、足底压力传感器、相机、激光雷达；[5]
+- **关节模组（Joint Module）**：电机、减速器、编码器、驱动器、输出轴和轴承组成的执行单元；[3]
+- **传感器（Sensor）**：编码器、IMU、六维力/力矩传感器、足底压力传感器、相机、激光雷达；[3]
 - **结构与连接（Structure & Mounting）**：壳体、支架、轴承座、紧固件、线束和传感器安装结构；
 - **接触部件（Contact Components）**：足底材料、碰撞几何、限位结构和末端执行器。
 
@@ -80,7 +80,7 @@ import LowCmdLowStateSnippet from '../../../components/LowCmdLowStateSnippet.ast
 - **MCU 与实时调度（MCU & Real-time Scheduling）**：把控制任务按固定周期调度，保证 500 Hz、1 kHz 等硬实时要求；
 - **安全监控（Safety Monitor）**：过流、过压、过温、超速、超位、失联检测，触发保护；
 
-这一层的核心指标是控制频率（Control Frequency）和端到端延迟（End-to-end Latency）。控制频率指控制器每秒钟执行多少次；端到端延迟指“传感器采样 → 总线传输 → 计算 → 执行器响应”的总时间。这两个指标直接决定机器人能不能站稳、能不能及时补偿扰动。[1][6]
+这一层的核心指标是控制频率（Control Frequency）和端到端延迟（End-to-end Latency）。控制频率指控制器每秒钟执行多少次；端到端延迟指“传感器采样 → 总线传输 → 计算 → 执行器响应”的总时间。这两个指标直接决定机器人能不能站稳、能不能及时补偿扰动。[1][5]
 
 ### 小脑层（Cerebellum Layer）
 
@@ -88,11 +88,11 @@ import LowCmdLowStateSnippet from '../../../components/LowCmdLowStateSnippet.ast
 
 典型模块包括：
 
-- **状态估计（State Estimation）**：用编码器、IMU、足底力估计浮动基座（Floating Base）姿态、速度、位置，以及各关节状态；[7]
+- **状态估计（State Estimation）**：用编码器、IMU、足底力估计浮动基座（Floating Base）姿态、速度、位置，以及各关节状态；[6]
 - **运动学（Kinematics）**：由关节角算末端位姿，或由末端位姿反求关节角；[4]
-- **动力学（Dynamics）**：由关节角、速度、加速度和外力算所需关节力矩；[7]
-- **基础控制（Low-level Control）**：PID、阻抗控制（Impedance Control）、力位混合控制；[4][6]
-- **平衡与全身控制（Balance & Whole-body Control, WBC）**：维护支撑域、ZMP、质心动量，同时协调腿、腰、手臂；[1][6]
+- **动力学（Dynamics）**：由关节角、速度、加速度和外力算所需关节力矩；[6]
+- **基础控制（Low-level Control）**：PID、阻抗控制（Impedance Control）、力位混合控制；[4][5]
+- **平衡与全身控制（Balance & Whole-body Control, WBC）**：维护支撑域、ZMP、质心动量，同时协调腿、腰、手臂；[1][5]
 
 小脑层输入是身体状态和目标轨迹，输出是关节层目标（位置、速度、力矩或加速度）。它不决定机器人要完成什么任务，而是负责让机器人站稳、走稳并跟住目标。
 
@@ -117,7 +117,7 @@ import LowCmdLowStateSnippet from '../../../components/LowCmdLowStateSnippet.ast
 
 典型模块包括：
 
-- **ROS 2 中间件（Middleware）**：节点（Node）、Topic、Service、Action、Launch、TF 树；[8]
+- **ROS 2 中间件（Middleware）**：节点（Node）、Topic、Service、Action、Launch、TF 树；[7]
 - **仿真接口（Simulation Interface）**：MuJoCo、Isaac Sim、Gazebo，提供与真实硬件对齐的模型和接口；
 - **数据记录与可视化（Logging & Visualization）**：rosbag2、Foxglove、RViz 2；
 - **配置与部署（Configuration & Deployment）**：参数、版本、构建目标、仿真/实机配置和故障恢复；
@@ -129,15 +129,15 @@ import LowCmdLowStateSnippet from '../../../components/LowCmdLowStateSnippet.ast
 
 ### 能量流（Power Flow）
 
-能量流（Power Flow）描述电能如何从电池出发，经过 BMS、DC-DC、配电板，分配到驱动器、计算平台、传感器和安全系统。设计能量流时需要注意：峰值功率、持续功率、压降、热耗、急停切断路径。[3]
+能量流（Power Flow）描述电能如何从电池出发，经过 BMS、DC-DC、配电板，分配到驱动器、计算平台、传感器和安全系统。设计能量流时需要注意：峰值功率、持续功率、压降、热耗、急停切断路径。[2]
 
 ### 数据流（Data Flow）
 
-数据流（Data Flow）描述传感器数据如何向上汇聚、高层指令如何向下分发。例如：编码器 → 驱动器 → CAN → 工控机 → 状态估计 → ROS Topic → 规划器 → ROS Topic → 控制器 → CAN → 驱动器 → 电机。[2][8]
+数据流（Data Flow）描述传感器数据如何向上汇聚、高层指令如何向下分发。例如：编码器 → 驱动器 → CAN → 工控机 → 状态估计 → ROS Topic → 规划器 → ROS Topic → 控制器 → CAN → 驱动器 → 电机。[2][7]
 
 ### 控制流（Control Flow）
 
-控制流（Control Flow）描述“任务目标 → 轨迹 → 全身控制 → 关节控制 → 电流环”的逐层分解。每一层都把上一层的抽象目标翻译成下一层更具体的命令。[1][6]
+控制流（Control Flow）描述“任务目标 → 轨迹 → 全身控制 → 关节控制 → 电流环”的逐层分解。每一层都把上一层的抽象目标翻译成下一层更具体的命令。[1][5]
 
 ## 以 G1 看一条指令的旅程
 
@@ -145,7 +145,7 @@ import LowCmdLowStateSnippet from '../../../components/LowCmdLowStateSnippet.ast
 
 <G1CommandJourney />
 
-这条链路上有两个名字值得先记住：`LowCmd` 和 `LowState` 是 G1 低层通信接口的核心消息——`LowCmd` 逐关节携带目标位置、速度、前馈力矩和 `kp`/`kd` 增益，`LowState` 回报电机状态和 IMU 数据。[9][10] 也就是说，上层算法和真实电机之间隔着这两个消息。下面是从官方 SDK 和官方低层示例中截取的真实定义，高亮行就是上面提到的字段；`kp`/`kd`/`tau` 的控制含义在 4.5 节展开。
+这条链路上有两个名字值得先记住：`LowCmd` 和 `LowState` 是 G1 低层通信接口的核心消息——`LowCmd` 逐关节携带目标位置、速度、前馈力矩和 `kp`/`kd` 增益，`LowState` 回报电机状态和 IMU 数据。[8][9] 也就是说，上层算法和真实电机之间隔着这两个消息。下面是从官方 SDK 和官方低层示例中截取的真实定义，高亮行就是上面提到的字段；`kp`/`kd`/`tau` 的控制含义在 4.5 节展开。
 
 <LowCmdLowStateSnippet />
 
@@ -163,14 +163,12 @@ G1 的 URDF 中还固定了 `d435_link` 和 `mid360_link`，分别对应 RGB-D �
 
 [4] Lynch, K. M., & Park, F. C. *Modern Robotics: Mechanics, Planning, and Control*. Cambridge University Press, 2017. 机器人学教材，含坐标系、运动学、控制基础。<https://modernrobotics.northwestern.edu/chapters/chapter2/>
 
-[5] International Organization for Standardization. *ISO 8373:2021 Robotics — Vocabulary*. 传感器、执行器术语标准。<https://www.iso.org/standard/75539.html>
+[5] Åström, K. J., & Murray, R. M. *Feedback Systems: An Introduction for Scientists and Engineers*. Princeton University Press, 2008. 反馈控制、控制频率与延迟教材。<https://www.cds.caltech.edu/~murray/books/AM08/>
 
-[6] Åström, K. J., & Murray, R. M. *Feedback Systems: An Introduction for Scientists and Engineers*. Princeton University Press, 2008. 反馈控制、控制频率与延迟教材。<https://www.cds.caltech.edu/~murray/books/AM08/>
+[6] Featherstone, R. *Rigid Body Dynamics Algorithms*. Springer, 2008. 浮动基座、动力学与状态估计专著。<https://doi.org/10.1007/978-1-4899-7560-7>
 
-[7] Featherstone, R. *Rigid Body Dynamics Algorithms*. Springer, 2008. 浮动基座、动力学与状态估计专著。<https://doi.org/10.1007/978-1-4899-7560-7>
+[7] Open Robotics. *ROS 2 Documentation*. ROS 2 官方文档，节点、Topic、TF 与中间件说明。<https://docs.ros.org/en/humble/>
 
-[8] Open Robotics. *ROS 2 Documentation*. ROS 2 官方文档，节点、Topic、TF 与中间件说明。<https://docs.ros.org/en/humble/>
+[8] Unitree Robotics. *unitree_rl_gym: G1 robot description*. 官方开源模型与仿真资料，含 G1 URDF/MJCF。本文使用的版本为 `276801e46c5d433564f24658bac64f254b7d2d4b`，对应目录：<https://github.com/unitreerobotics/unitree_rl_gym/tree/276801e46c5d433564f24658bac64f254b7d2d4b/resources/robots/g1_description>
 
-[9] Unitree Robotics. *unitree_rl_gym: G1 robot description*. 官方开源模型与仿真资料，含 G1 URDF/MJCF。本文使用的版本为 `276801e46c5d433564f24658bac64f254b7d2d4b`，对应目录：<https://github.com/unitreerobotics/unitree_rl_gym/tree/276801e46c5d433564f24658bac64f254b7d2d4b/resources/robots/g1_description>
-
-[10] Unitree Robotics. *unitree_sdk2: Unitree robot SDK version 2*. 官方 SDK 仓库。本文使用的版本为 `9754cd153af3da471b0fe5f3aa535e426fb11db3`，对应源码路径包括 `include/unitree/idl/hg/` 和 `example/g1/low_level/g1_ankle_swing_example.cpp`；其中可核对 `rt/lowcmd`、`rt/lowstate`、29 电机索引和 2 ms 控制循环。<https://github.com/unitreerobotics/unitree_sdk2/tree/9754cd153af3da471b0fe5f3aa535e426fb11db3>
+[9] Unitree Robotics. *unitree_sdk2: Unitree robot SDK version 2*. 官方 SDK 仓库。本文使用的版本为 `9754cd153af3da471b0fe5f3aa535e426fb11db3`，对应源码路径包括 `include/unitree/idl/hg/` 和 `example/g1/low_level/g1_ankle_swing_example.cpp`；其中可核对 `rt/lowcmd`、`rt/lowstate`、29 电机索引和 2 ms 控制循环。<https://github.com/unitreerobotics/unitree_sdk2/tree/9754cd153af3da471b0fe5f3aa535e426fb11db3>

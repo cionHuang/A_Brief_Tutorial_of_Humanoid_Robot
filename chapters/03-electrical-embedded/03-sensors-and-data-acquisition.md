@@ -14,7 +14,7 @@
 
 ### 绝对式与增量式编码器
 
-绝对式编码器（Absolute Encoder）在上电后可以直接给出当前位置，通常不需要先寻找零点；增量式编码器（Incremental Encoder）输出脉冲或计数增量，需要通过计数和回零建立角度。两者都需要明确分辨率、方向、零位偏置、多圈处理和通信更新率。[1][2] 分辨率（Resolution）指编码器把一圈分成多少份，例如 17 位就是一圈 131072 份（典型值，随型号变化）；多圈（Multi-turn）指单圈编码器只知道当前处在这一圈内的哪个角度，多圈编码器还能记住总共转了几圈。
+绝对式编码器（Absolute Encoder）在上电后可以直接给出当前位置，通常不需要先寻找零点；增量式编码器（Incremental Encoder）输出脉冲或计数增量，需要通过计数和回零建立角度。两者都需要明确分辨率、方向、零位偏置、多圈处理和通信更新率。 分辨率（Resolution）指编码器把一圈分成多少份，例如 17 位就是一圈 131072 份（典型值，随型号变化）；多圈（Multi-turn）指单圈编码器只知道当前处在这一圈内的哪个角度，多圈编码器还能记住总共转了几圈。
 
 编码器读数通常写成：
 
@@ -36,7 +36,7 @@ $q_{\mathrm{raw}}$ 是原始计数，$\mathrm{scale}$ 是计数到弧度的比�
 
 ### 惯性测量单元（Inertial Measurement Unit, IMU）
 
-惯性测量单元（IMU）通常包含陀螺仪（Gyroscope）和加速度计（Accelerometer），有些设备还包含磁力计。陀螺仪测量角速度，加速度计测量比力（Specific Force），其中包含运动加速度和重力影响。姿态估计需要处理零偏、噪声、坐标变换和积分漂移。[2][3] 零偏（Bias）是静止时输出也不为零的一个固定偏置；把它积分起来会变成越来越大的角度误差，所以要提前标定并在运行中校正。
+惯性测量单元（IMU）通常包含陀螺仪（Gyroscope）和加速度计（Accelerometer），有些设备还包含磁力计。陀螺仪测量角速度，加速度计测量比力（Specific Force），其中包含运动加速度和重力影响。姿态估计需要处理零偏、噪声、坐标变换和积分漂移。[1][2] 零偏（Bias）是静止时输出也不为零的一个固定偏置；把它积分起来会变成越来越大的角度误差，所以要提前标定并在运行中校正。
 
 短时间内可以用角速度积分估计姿态变化：角速度乘以时间就是这一小步转过的角度，累加起来就得到姿态是怎么变的（用旋转矩阵写出来就是 $\boldsymbol{R}_{k+1} = \boldsymbol{R}_k \, \mathrm{Exp}([(\boldsymbol{\omega} - \boldsymbol{b}_g)\Delta t]_\times)$）。长时间积分会被陀螺零偏越带越偏，所以要结合重力方向、足底接触等外部观测校正；这些观测怎样融合、以及哪些状态当前根本不可观，是 [4.4 节](../04-cerebellum-realtime-control/04-state-estimation.mdx)要解决的问题。
 
@@ -48,7 +48,7 @@ IMU 输出位于传感器坐标系（Sensor Frame）。控制器使用躯干、�
 
 > **一句话听懂**：这只“内耳”还得知道自己是朝哪个方向装的。装偏了或朝向没标定好，机器人算出来的姿态就会反着来，连“哪边是下”都判断错。
 
-以 G1 的 SDK 为例，Unitree SDK2 的 `IMUState_` 消息里 `quaternion_` 是四元数姿态、`gyroscope_` 是角速度、`accelerometer_` 是加速度、`rpy_` 是欧拉角、`temperature_` 是温度。这正好对应正文说的“陀螺仪 + 加速度计 + 姿态输出”。[4]
+以 G1 的 SDK 为例，Unitree SDK2 的 `IMUState_` 消息里 `quaternion_` 是四元数姿态、`gyroscope_` 是角速度、`accelerometer_` 是加速度、`rpy_` 是欧拉角、`temperature_` 是温度。这正好对应正文说的“陀螺仪 + 加速度计 + 姿态输出”。[3]
 
 ## 力、压力与接触
 
@@ -68,7 +68,7 @@ IMU 输出位于传感器坐标系（Sensor Frame）。控制器使用躯干、�
 
 足底压力传感器（Foot Pressure Sensor）通过多个压力单元估计足底载荷分布、接触区域和压力中心（Center of Pressure, CoP）。单个压力点只能提供局部信息，完整接触判断需要结合多个点、关节状态和 IMU。压力传感器的零点会随温度、鞋底材料和长期载荷变化，需要定期校准。
 
-以 G1 的 SDK 为例，`PressSensorState_` 里 `pressure_` 是 12 路压力、`temperature_` 是 12 路温度、`lost_` 记录丢包/失效。这正好对应正文说的“多压力单元 + 零点漂移要校准”：零点会随温度变化，所以要连同温度一起采集。[4]
+以 G1 的 SDK 为例，`PressSensorState_` 里 `pressure_` 是 12 路压力、`temperature_` 是 12 路温度、`lost_` 记录丢包/失效。这正好对应正文说的“多压力单元 + 零点漂移要校准”：零点会随温度变化，所以要连同温度一起采集。[3]
 
 > **一句话听懂**：它相当于给脚底铺了一层“秤”：踩在地上时哪块脚掌吃多少力、重心压在哪儿，它都能测出来，机器人靠它判断自己站得稳不稳。
 
@@ -127,12 +127,8 @@ IMU 输出位于传感器坐标系（Sensor Frame）。控制器使用躯干、�
 
 ## 参考资料
 
-[1] ISO 6487:2015. *Road vehicles — Measurement techniques in impact tests — Instrumentation*. 该标准实际面向道路车辆碰撞试验中的测量仪器，并非通用传感器采集标准；本书只借鉴它的滤波等级和量程分级方法。<https://www.iso.org/standard/63422.html>
+[1] Titterton, D., & Weston, J. *Strapdown Inertial Navigation Technology*, 2nd ed. IET, 2004. IMU、陀螺仪、加速度计、零偏和姿态估计专著。
 
-[2] Titterton, D., & Weston, J. *Strapdown Inertial Navigation Technology*, 2nd ed. IET, 2004. IMU、陀螺仪、加速度计、零偏和姿态估计专著。
+[2] Crassidis, J. L., & Junkins, J. L. *Optimal Estimation of Dynamic Systems*. CRC Press, 2004. 状态估计、传感器融合、噪声和时间更新教材。
 
-[3] Crassidis, J. L., & Junkins, J. L. *Optimal Estimation of Dynamic Systems*. CRC Press, 2004. 状态估计、传感器融合、噪声和时间更新教材。
-
-[4] Unitree Robotics. *unitree_sdk2: Unitree robot SDK version 2*. 官方 SDK2 消息定义；本文使用提交 `9754cd153af3da471b0fe5f3aa535e426fb11db3`，用于核对 `MotorState_`、`IMUState_` 和 `PressSensorState_` 类型。<https://github.com/unitreerobotics/unitree_sdk2/tree/9754cd153af3da471b0fe5f3aa535e426fb11db3/include/unitree/idl/hg>
-
-[5] Unitree Robotics. *unitree_rl_gym: G1 robot description*. 官方 G1 URDF/MJCF 模型；本文使用提交 `276801e46c5d433564f24658bac64f254b7d2d4b`，用于核对 IMU site、仿真传感器和 `d435_link`/`mid360_link` 接口。<https://github.com/unitreerobotics/unitree_rl_gym/tree/276801e46c5d433564f24658bac64f254b7d2d4b/resources/robots/g1_description>
+[3] Unitree Robotics. *unitree_sdk2: Unitree robot SDK version 2*. 官方 SDK2 消息定义；本文使用提交 `9754cd153af3da471b0fe5f3aa535e426fb11db3`，用于核对 `MotorState_`、`IMUState_` 和 `PressSensorState_` 类型。<https://github.com/unitreerobotics/unitree_sdk2/tree/9754cd153af3da471b0fe5f3aa535e426fb11db3/include/unitree/idl/hg>
