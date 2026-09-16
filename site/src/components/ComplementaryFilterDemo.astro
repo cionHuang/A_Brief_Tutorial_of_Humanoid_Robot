@@ -123,6 +123,8 @@ const CFG = {
 </figure>
 
 <script>
+  import { createVisibleRaf } from '../lib/visible-raf.js';
+
 (function () {
   const D2R = Math.PI / 180;
   const R2D = 180 / Math.PI;
@@ -196,7 +198,6 @@ const CFG = {
     let peak = { g: 0, a: 0, f: 0 };
     let scaleDeg = 10;
     let lastNow = 0;
-    let raf = 0;
     let frame = 0;
 
     const SAMPLE_T = 0.025;
@@ -325,8 +326,8 @@ const CFG = {
       }
     };
 
+    const loop = createVisibleRaf(demo);
     const tick = (now) => {
-      raf = requestAnimationFrame(tick);
       if (paused) { lastNow = now; return; }
       if (!lastNow) lastNow = now;
       let dt = (now - lastNow) / 1000;
@@ -381,7 +382,8 @@ const CFG = {
     for (let i = 0; i < 480; i += 1) { step(SAMPLE_T); t += SAMPLE_T; pushHist(); }
     renderChart();
     paintAll(0, 0, 0, 0);
-    raf = requestAnimationFrame(tick);
+    loop.onFrame(tick);
+    loop.start();
   });
 })();
 </script>

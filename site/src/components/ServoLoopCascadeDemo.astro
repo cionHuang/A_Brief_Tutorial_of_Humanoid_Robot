@@ -153,6 +153,7 @@ const TX = (k) => (LX0 + (k / 4) * (LX1 - LX0)).toFixed(1);
 
 <script>
   import { setParts } from '../lib/tex.js';
+  import { createVisibleRaf } from '../lib/visible-raf.js';
 
   document.querySelectorAll('.sc-demo').forEach((demo) => {
     // ---- 模型与显示常量 ----
@@ -201,7 +202,8 @@ const TX = (k) => (LX0 + (k / 4) * (LX1 - LX0)).toFixed(1);
       hist: [], recent: [], lastSample: -1e9,
       running: false,
     };
-    let raf = 0, last = 0;
+    let last = 0;
+    const loop = createVisibleRaf(demo);
 
     const num = (el) => Number(el.value);
     const clampI = (v) => (v > I_MAX ? I_MAX : (v < -I_MAX ? -I_MAX : v));
@@ -318,7 +320,7 @@ const TX = (k) => (LX0 + (k / 4) * (LX1 - LX0)).toFixed(1);
       wcOut.textContent = num(wcIn).toFixed(0) + ' rad/s';
     };
 
-    const stop = () => { if (raf) cancelAnimationFrame(raf); raf = 0; last = 0; };
+    const stop = () => { loop.stop(); last = 0; };
 
     const startRun = (opts) => {
       stop();
@@ -336,11 +338,11 @@ const TX = (k) => (LX0 + (k / 4) * (LX1 - LX0)).toFixed(1);
         render();
       } else {
         last = 0;
-        raf = requestAnimationFrame(tick);
+        loop.start();
       }
     };
 
-    const tick = (ts) => {
+    loop.onFrame((ts) => {
       if (!last) last = ts;
       let dt = (ts - last) / 1000;
       last = ts;
@@ -350,14 +352,11 @@ const TX = (k) => (LX0 + (k / 4) * (LX1 - LX0)).toFixed(1);
       render();
       const pulseOn = st.t < st.distUntil;
       const settled = Math.abs(st.ref - st.th) < 1e-3 && Math.abs(st.om) < 1e-3 && Math.abs(st.i) < 1e-3;
-      if (st.running && (st.t < WS + 0.6 || pulseOn || !settled)) {
-        raf = requestAnimationFrame(tick);
-      } else {
-        raf = 0;
-        st.running = false;
-        render();
-      }
-    };
+      if (st.running && (st.t < WS + 0.6 || pulseOn || !settled)) return true; // 继续跑
+      st.running = false;
+      render();
+      return false; // 收敛：交回连续模式
+    });
 
     demo.querySelector('[data-step]').addEventListener('click', () => { syncControls(); startRun(); });
 

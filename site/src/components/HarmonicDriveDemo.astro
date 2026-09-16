@@ -67,6 +67,7 @@ const ringTeeth = teethPath(ZC, RC - 6, RC + 1);
 </figure>
 
 <script>
+  import { createVisibleRaf } from '../lib/visible-raf.js';
   document.querySelectorAll('.hd-demo').forEach((demo) => {
     const waveG = demo.querySelector('.hd-wave');
     const flexBody = demo.querySelector('.hd-flex-body');
@@ -87,7 +88,6 @@ const ringTeeth = teethPath(ZC, RC - 6, RC + 1);
     let thetaWg = 0;
     let playing = true;
     let lastTs = 0;
-    let raf = 0;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const setOutArrow = (f) => {
@@ -118,8 +118,9 @@ const ringTeeth = teethPath(ZC, RC - 6, RC + 1);
       return d;
     };
 
-    const loop = (ts) => {
-      if (!playing) { raf = 0; return; }
+    const loop = createVisibleRaf(demo);
+    loop.onFrame((ts) => {
+      if (!playing) return false; // 暂停：不再排帧，交回连续模式
       if (!lastTs) lastTs = ts;
       const dt = Math.min((ts - lastTs) / 1000, 0.05);
       lastTs = ts;
@@ -132,14 +133,13 @@ const ringTeeth = teethPath(ZC, RC - 6, RC + 1);
       setOutArrow(thetaF);
       out.textContent = '波发生器已转 ' + ((thetaWg * 180 / Math.PI) / 360).toFixed(2) + ' 圈　柔轮已转 ' +
         ((thetaF * 180 / Math.PI) / 360).toFixed(2) + ' 圈　减速比 z_f / 2 = ' + RATIO;
-      raf = requestAnimationFrame(loop);
-    };
+    });
 
     const setPlaying = (v) => {
       playing = v;
       playBtn.setAttribute('aria-pressed', String(v));
       playBtn.textContent = v ? '暂停' : '播放';
-      if (v && raf === 0) { lastTs = 0; raf = requestAnimationFrame(loop); }
+      if (v) { lastTs = 0; loop.start(); }
     };
 
     speedSlider.addEventListener('input', () => { speedOut.textContent = speedSlider.value; });

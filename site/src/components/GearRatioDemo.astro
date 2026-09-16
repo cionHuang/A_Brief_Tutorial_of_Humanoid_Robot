@@ -45,6 +45,7 @@ import { katexHtml } from '../lib/tex.js';
 
 <script>
   import { setParts } from '../lib/tex.js';
+  import { createVisibleRaf } from '../lib/visible-raf.js';
 
   document.querySelectorAll('.gr-demo').forEach((demo) => {
     const inputGearG = demo.querySelector('.gr-input-gear');
@@ -76,7 +77,6 @@ import { katexHtml } from '../lib/tex.js';
     let thetaIn = 0;
     let playing = true;
     let lastTs = 0;
-    let raf = 0;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const gearPath = (teeth, rRoot, rTip) => {
@@ -121,8 +121,9 @@ import { katexHtml } from '../lib/tex.js';
       setParts(countLab.box, [{ text: '本轮：输入 ' }, { tex: inCycle.toFixed(1) + ' / ' + N }, { text: ' 圈　输出 ' }, { tex: outCycle.toFixed(1) + ' / 1' }, { text: ' 圈' }]);
     };
 
-    const loop = (ts) => {
-      if (!playing) { raf = 0; return; }
+    const loop = createVisibleRaf(demo);
+    loop.onFrame((ts) => {
+      if (!playing) return false; // 暂停：不再排帧，交回连续模式
       if (!lastTs) lastTs = ts;
       const dt = Math.min((ts - lastTs) / 1000, 0.05);
       lastTs = ts;
@@ -134,14 +135,13 @@ import { katexHtml } from '../lib/tex.js';
       inputGearG.setAttribute('transform', 'translate(' + CX1 + ' ' + CY + ') rotate(' + degIn.toFixed(2) + ')');
       outputGearG.setAttribute('transform', 'translate(' + cx2 + ' ' + CY + ') rotate(' + degOut.toFixed(2) + ')');
       updateCount();
-      raf = requestAnimationFrame(loop);
-    };
+    });
 
     const setPlaying = (v) => {
       playing = v;
       playBtn.setAttribute('aria-pressed', String(v));
       playBtn.textContent = v ? '暂停' : '播放';
-      if (v && raf === 0) { lastTs = 0; raf = requestAnimationFrame(loop); }
+      if (v) { lastTs = 0; loop.start(); }
     };
 
     ratioSlider.addEventListener('input', () => { layout(); updateCount(); });

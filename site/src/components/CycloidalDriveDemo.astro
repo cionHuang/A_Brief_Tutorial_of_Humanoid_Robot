@@ -62,6 +62,7 @@ const pins = Array.from({ length: ZR }, (_, i) => {
 </figure>
 
 <script>
+  import { createVisibleRaf } from '../lib/visible-raf.js';
   document.querySelectorAll('.cy-demo').forEach((demo) => {
     const inputLine = demo.querySelector('.cy-input');
     const discG = demo.querySelector('.cy-disc-g');
@@ -96,7 +97,6 @@ const pins = Array.from({ length: ZR }, (_, i) => {
     let thetaIn = 0;
     let playing = true;
     let lastTs = 0;
-    let raf = 0;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const render = () => {
@@ -121,22 +121,22 @@ const pins = Array.from({ length: ZR }, (_, i) => {
         ((thetaOut * 180 / Math.PI) / 360).toFixed(2) + ' 圈　减速比 z_d = ' + RATIO;
     };
 
-    const loop = (ts) => {
-      if (!playing) { raf = 0; return; }
+    const loop = createVisibleRaf(demo);
+    loop.onFrame((ts) => {
+      if (!playing) return false; // 暂停：不再排帧，交回连续模式
       if (!lastTs) lastTs = ts;
       const dt = Math.min((ts - lastTs) / 1000, 0.05);
       lastTs = ts;
       const omega = (Number(speedSlider.value) / 90) * 1.1;
       thetaIn = (thetaIn + dt * omega) % (Math.PI * 2 * RATIO);
       render();
-      raf = requestAnimationFrame(loop);
-    };
+    });
 
     const setPlaying = (v) => {
       playing = v;
       playBtn.setAttribute('aria-pressed', String(v));
       playBtn.textContent = v ? '暂停' : '播放';
-      if (v && raf === 0) { lastTs = 0; raf = requestAnimationFrame(loop); }
+      if (v) { lastTs = 0; loop.start(); }
     };
 
     speedSlider.addEventListener('input', () => { speedOut.textContent = speedSlider.value; });

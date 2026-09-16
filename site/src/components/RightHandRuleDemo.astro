@@ -105,6 +105,7 @@ const AXIS_COLOR = {
 
 <script>
   import { setParts } from '../lib/tex.js';
+  import { createVisibleRaf } from '../lib/visible-raf.js';
 
   document.querySelectorAll('.rhd-demo').forEach((demo) => {
     const orbit = demo.querySelector('.rhd-orbit');
@@ -235,29 +236,25 @@ const AXIS_COLOR = {
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let playing = !reduced;
-    let raf = null;
     let last = 0;
 
-    function loop(ts) {
-      if (!playing) {
-        raf = null;
-        return;
-      }
+    const loop = createVisibleRaf(demo);
+    loop.onFrame((ts) => {
+      if (!playing) return false; // 暂停：交回连续模式，不再排帧
       if (!last) last = ts;
       const dt = Math.min((ts - last) / 1000, 0.05);
       last = ts;
       theta = (theta + dt * 48) % 360;
       update();
-      raf = requestAnimationFrame(loop);
-    }
+    });
 
     function setPlaying(v) {
       playing = v;
       playBtn.textContent = v ? '暂停' : '播放';
       playBtn.setAttribute('aria-pressed', String(v));
-      if (v && raf === null) {
+      if (v) {
         last = 0;
-        raf = requestAnimationFrame(loop);
+        loop.start();
       }
     }
 

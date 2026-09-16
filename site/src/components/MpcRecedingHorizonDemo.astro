@@ -106,6 +106,8 @@ const CFG = {
   </div>
 </figure>
 <script>
+  import { createVisibleRaf } from '../lib/visible-raf.js';
+
 (function () {
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const fmt = (v, d) => (Math.abs(v) < Math.pow(10, -d) / 2 ? "0." + "0".repeat(d) : (v < 0 ? "−" : "") + Math.abs(v).toFixed(d));
@@ -162,7 +164,7 @@ const CFG = {
     };
 
     const state = { k: 0, x: 0, v: 0, n: cfg.nDefault != null ? cfg.nDefault : 10, history: [{ k: 0, x: 0 }], plan: null, disturbed: false, disturbedK: null, autoDone: false };
-    let paused = false, finished = false, holdTimer = 0, accTime = 0, lastNow = 0, raf = 0;
+    let paused = false, finished = false, holdTimer = 0, accTime = 0, lastNow = 0;
 
     const render = () => {
       const N = state.n, W = 2 * N + 2, winStart = Math.max(0, state.k - N);
@@ -241,8 +243,8 @@ const CFG = {
     };
     const converged = () => state.k > state.n + 2 && Math.abs(state.x - TARGET) < 0.01 && Math.abs(state.v) < 0.03;
 
+    const loop = createVisibleRaf(demo);
     const tick = (now) => {
-      raf = requestAnimationFrame(tick);
       if (paused) { lastNow = now; return; }
       if (!lastNow) lastNow = now;
       let dt = (now - lastNow) / 1000; lastNow = now;
@@ -277,7 +279,8 @@ const CFG = {
     });
 
     resetTrial();
-    raf = requestAnimationFrame(tick);
+    loop.onFrame(tick);
+    loop.start();
   });
 })();
 </script>

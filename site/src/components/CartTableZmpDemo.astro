@@ -119,6 +119,8 @@ const CFG = {
   </div>
 </figure>
 <script>
+  import { createVisibleRaf } from '../lib/visible-raf.js';
+
 (function () {
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const fmt = (v, d) => (Math.abs(v) < Math.pow(10, -d) / 2 ? "0." + "0".repeat(d) : (v < 0 ? "−" : "") + Math.abs(v).toFixed(d));
@@ -144,7 +146,6 @@ const CFG = {
     let t = 0;
     let hold = 0;
     let lastNow = 0;
-    let raf = 0;
 
     const pick = (sel) => demo.querySelector("[data-ct2-" + sel + "]");
     const elBase = pick("base");
@@ -363,8 +364,8 @@ const CFG = {
       render();
     };
 
+    const loop = createVisibleRaf(demo);
     const tick = (now) => {
-      raf = requestAnimationFrame(tick);
       if (paused) { lastNow = now; return; }
       if (!lastNow) lastNow = now;
       let dt = (now - lastNow) / 1000;
@@ -405,7 +406,8 @@ const CFG = {
     });
 
     resetTrial();
-    raf = requestAnimationFrame(tick);
+    loop.onFrame(tick);
+    loop.start();
   });
 })();
 </script>

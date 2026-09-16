@@ -84,6 +84,7 @@ const planetPos = planetAngles.map((deg) => {
 </figure>
 
 <script>
+  import { createVisibleRaf } from '../lib/visible-raf.js';
   document.querySelectorAll('.pg-demo').forEach((demo) => {
     const sunG = demo.querySelector('.pg-sun');
     const carrierG = demo.querySelector('.pg-carrier');
@@ -104,7 +105,6 @@ const planetPos = planetAngles.map((deg) => {
     let thetaS = 0;
     let playing = true;
     let lastTs = 0;
-    let raf = 0;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const updateReadout = () => {
@@ -113,8 +113,9 @@ const planetPos = planetAngles.map((deg) => {
         (degC / 360).toFixed(2) + ' 圈　传动比 (z_s + z_r) / z_s = ' + RATIO;
     };
 
-    const loop = (ts) => {
-      if (!playing) { raf = 0; return; }
+    const loop = createVisibleRaf(demo);
+    loop.onFrame((ts) => {
+      if (!playing) return false; // 暂停：不再排帧，交回连续模式
       if (!lastTs) lastTs = ts;
       const dt = Math.min((ts - lastTs) / 1000, 0.05);
       lastTs = ts;
@@ -143,14 +144,13 @@ const planetPos = planetAngles.map((deg) => {
       const p2y = (aLen - 1) * Math.sin(thetaC) + 6 * Math.cos(thetaC);
       outHead.setAttribute('points', hx.toFixed(1) + ',' + hy.toFixed(1) + ' ' + p1x.toFixed(1) + ',' + p1y.toFixed(1) + ' ' + p2x.toFixed(1) + ',' + p2y.toFixed(1));
       updateReadout();
-      raf = requestAnimationFrame(loop);
-    };
+    });
 
     const setPlaying = (v) => {
       playing = v;
       playBtn.setAttribute('aria-pressed', String(v));
       playBtn.textContent = v ? '暂停' : '播放';
-      if (v && raf === 0) { lastTs = 0; raf = requestAnimationFrame(loop); }
+      if (v) { lastTs = 0; loop.start(); }
     };
 
     speedSlider.addEventListener('input', () => { speedOut.textContent = speedSlider.value; updateReadout(); });

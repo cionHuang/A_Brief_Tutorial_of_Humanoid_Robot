@@ -186,6 +186,7 @@ const CFG = { phases: PHASES.map((p) => p.key), geom: GEOM };
 
 <script>
   import { setParts } from '../lib/tex.js';
+  import { createVisibleRaf } from '../lib/visible-raf.js';
 
   document.querySelectorAll('.foc-demo').forEach((demo) => {
     const cfg = JSON.parse(demo.dataset.foc);
@@ -241,7 +242,7 @@ const CFG = { phases: PHASES.map((p) => p.key), geom: GEOM };
     let theta = Number(thetaSlider.value);
     let iq = Number(iqSlider.value);
     let playing = !reduced;
-    let raf = 0;
+    const loop = createVisibleRaf(demo);
     let last = 0;
     let lastText = 0;
 
@@ -431,12 +432,11 @@ const CFG = { phases: PHASES.map((p) => p.key), geom: GEOM };
     };
 
     const stop = () => {
-      if (raf) cancelAnimationFrame(raf);
-      raf = 0;
+      loop.stop();
       last = 0;
     };
 
-    const tick = (ts) => {
+    loop.onFrame((ts) => {
       if (!last) { last = ts; lastText = ts; }
       const dt = Math.min((ts - last) / 1000, 0.05);
       last = ts;
@@ -447,14 +447,11 @@ const CFG = { phases: PHASES.map((p) => p.key), geom: GEOM };
         lastText = ts;
         updateReadout();
       }
-      raf = requestAnimationFrame(tick);
-    };
+    });
 
     const start = () => {
-      if (!raf) {
-        last = 0;
-        raf = requestAnimationFrame(tick);
-      }
+      last = 0;
+      loop.start();
     };
 
     playBtn.addEventListener('click', () => {

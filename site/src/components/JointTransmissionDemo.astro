@@ -85,6 +85,7 @@ import { katexHtml } from '../lib/tex.js';
 
 <script>
   import { setParts } from '../lib/tex.js';
+  import { createVisibleRaf } from '../lib/visible-raf.js';
 
   document.querySelectorAll('.jt-demo').forEach((demo) => {
     const svg = demo.querySelector('svg');
@@ -125,7 +126,6 @@ import { katexHtml } from '../lib/tex.js';
     let thetaIn = 0;
     let playing = true;
     let lastTs = 0;
-    let raf = 0;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const gearPath = (teeth, rRoot, rTip) => {
@@ -202,8 +202,9 @@ import { katexHtml } from '../lib/tex.js';
       ]);
     };
 
-    const loop = (ts) => {
-      if (!playing) { raf = 0; return; }
+    const loop = createVisibleRaf(demo);
+    loop.onFrame((ts) => {
+      if (!playing) return false; // 暂停：不再排帧，交回连续模式
       if (!lastTs) lastTs = ts;
       const dt = Math.min((ts - lastTs) / 1000, 0.05);
       lastTs = ts;
@@ -217,14 +218,13 @@ import { katexHtml } from '../lib/tex.js';
       outputGearG.setAttribute('transform', 'translate(' + CX2 + ' ' + CY + ') rotate(' + degOut.toFixed(2) + ')');
       linkG.setAttribute('transform', 'translate(' + CX2 + ' ' + CY + ') rotate(' + degOut.toFixed(2) + ')');
       rotorG.setAttribute('transform', 'translate(87 200) rotate(' + (degIn * 3).toFixed(2) + ') translate(-87 -200)');
-      raf = requestAnimationFrame(loop);
-    };
+    });
 
     const setPlaying = (v) => {
       playing = v;
       playBtn.setAttribute('aria-pressed', String(v));
       playBtn.textContent = v ? '暂停' : '播放';
-      if (v && raf === 0) { lastTs = 0; raf = requestAnimationFrame(loop); }
+      if (v) { lastTs = 0; loop.start(); }
     };
 
     ratioSlider.addEventListener('input', () => { layout(); updateNumbers(); });
