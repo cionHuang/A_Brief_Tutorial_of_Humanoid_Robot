@@ -66,10 +66,6 @@
 
 每一步失败时的排查入口也各不相同：滑掉看接触封闭和摩擦，倾斜看双臂约束，推飞看阻抗刚度，够不到看腰部和站位，晃动看 ZMP 与负载补偿。把任务按层拆开，问题就不会被笼统地归因于"抓取算法不行"。
 
-![G1 带手模型的双臂操作与动作空间](assets/images/03-g1-dual-arm-manipulation-action-space.png)
-
-图 5.4-1 以 G1 `g1_29dof_with_hand` 带手模型（三指灵巧手）为例，概览双臂搬运任务中的相对位姿约束、负载对质心与 ZMP 的影响，以及关节空间、末端空间、手指空间和轨迹级四类动作空间的分工。图中结构用于解释约束与接口关系；具体手型的自由度与动作维度以官方资料为准。[4]
-
 ## 参考资料
 
 [1] Murray, R. M., Li, Z., & Sastry, S. S. *A Mathematical Introduction to Robotic Manipulation*. CRC Press, 1994. 抓取、接触与力封闭的数学基础教材。
@@ -77,5 +73,3 @@
 [2] Prattichizzo, D., & Trinkle, J. C. “Grasping.” In *Springer Handbook of Robotics*, 2nd ed., Springer, 2016. 抓取模型、接触类型与力封闭条件的手册章节。<https://doi.org/10.1007/978-3-319-32552-1_38>
 
 [3] Unitree Robotics. *unitree_rl_gym: G1 robot description*. 官方 G1 URDF/MJCF 模型；本文使用提交 `276801e46c5d433564f24658bac64f254b7d2d4b`，用于核对 `g1_29dof_with_hand` 的手部关节命名、数量与碰撞结构。<https://github.com/unitreerobotics/unitree_rl_gym/tree/276801e46c5d433564f24658bac64f254b7d2d4b/resources/robots/g1_description>
-
-[4] Unitree Robotics. *G1 与 Dex 系列灵巧手官方资料*. 手型配置、自由度与接口以官方最新资料为准。<https://www.unitree.com/g1>
