@@ -1,6 +1,7 @@
 # 5.4 双臂操作与灵巧手
 
 import ForceClosureDemo from '../../../components/ForceClosureDemo.astro';
+import FrictionConeDemo from '../../../components/FrictionConeDemo.astro';
 
 ## 先看一个现场问题
 
@@ -25,6 +26,12 @@ import ForceClosureDemo from '../../../components/ForceClosureDemo.astro';
 ### 抓取：从接触到力封闭
 
 抓取（Grasping）的核心问题只有一个：施加在物体上的接触力能否抵抗预期的扰动。几何上手指碰到了物体，只是“碰到”；要“抓住”，接触点布局、法向方向和摩擦必须能合力封住物体的可能运动方向，这就是力封闭（Force Closure）的直觉。[1][2] 开头“抓起瞬间滑掉”，多半是接触点选择只考虑了几何可达，没有考虑受力封闭。
+
+力封闭的判据要用到**摩擦锥（Friction Cone）**：一个接触点能施加的力，必须落在以接触法向为轴、张角由摩擦系数决定的锥内；摩擦越小、锥越窄，能封住的扰动方向就越少。先看摩擦锥本身：
+
+<FrictionConeDemo />
+
+再看两指抓取：把两个接触点放上去，看它们的连线是否同时落在两个摩擦锥内。
 
 <ForceClosureDemo />
 
