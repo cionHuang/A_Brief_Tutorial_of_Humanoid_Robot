@@ -65,15 +65,7 @@
 | [6.3 Isaac Sim 与 Isaac Lab](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx) | 15 分钟 | 6.2 |
 | [6.4 Gazebo、RViz 2 与 Foxglove](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md) | 10 分钟 | 6.1 |
 | [6.5 运动学与动力学工具库](../06-software-tools-simulation/05-kinematics-dynamics-libraries.md) | 10 分钟 | 4.2、4.3 |
-| [6.6 从仿真到真实系统](../06-software-tools-simulation/06-sim-to-real.md) | 15 分钟 | 6.2 |
-
-## 第 7 章 工程实践与安全（约 45 分钟）
-
-| 小节 | 预计时间 | 前置知识 |
-| --- | --- | --- |
-| [7.1 软件工程与版本管理](../07-engineering-practice-safety/01-software-engineering-and-versioning.md) | 15 分钟 | 无 |
-| [7.2 调试、测试与故障排查](../07-engineering-practice-safety/02-debugging-testing-troubleshooting.md) | 15 分钟 | 第 3、4 章 |
-| [7.3 机器人安全](../07-engineering-practice-safety/03-robot-safety.md) | 15 分钟 | 3.6 |
+| [6.6 软件工程与版本管理](../06-software-tools-simulation/06-software-engineering-and-versioning.md) | 15 分钟 | 6.1、6.4 |
 
 ## 读完之后往哪走
 

@@ -39,8 +39,8 @@
 
 | 小节 | 你将听懂 |
 | --- | --- |
-| [6.6 从仿真到真实系统](../06-software-tools-simulation/06-sim-to-real.md) | Sim2Real——为什么演示视频和真实表现有差距 |
-| [7.3 机器人安全](../07-engineering-practice-safety/03-robot-safety.md) | 急停、降额、安全等级——产品宣传中不能乱说的部分 |
+| [6.6 软件工程与版本管理](../06-software-tools-simulation/06-software-engineering-and-versioning.md) | 五个维度的版本管理——为什么“上周还能走”必须能核查 |
+| [3.6 电气安全与保护](../03-electrical-embedded/06-electrical-safety-and-protection.mdx) | 急停、过流、过温——产品宣传中不能乱说的部分 |
 
 ## 写文案时的两个提醒
 

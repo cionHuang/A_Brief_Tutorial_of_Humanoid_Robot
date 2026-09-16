@@ -46,7 +46,7 @@
 | 4 | [5.6 VLA 与高级 AI 推理模型](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) | 大模型输出如何一步步变成关节动作 | 读前半 |
 | 5 | [5.7 WAM：世界动作模型](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md) | 世界动作模型与 VLA 的分工 | 读前半 |
 | 6 | [6.2 MuJoCo](../06-software-tools-simulation/02-mujoco.mdx) | 仿真里的表现和实机为什么不一样 | 读开头 |
-| 7 | [6.6 从仿真到真实系统](../06-software-tools-simulation/06-sim-to-real.md) | Sim2Real 差距来自哪里 | 读开头 |
+| 7 | [6.6 软件工程与版本管理](../06-software-tools-simulation/06-software-engineering-and-versioning.md) | 哪些东西需要版本化、怎么复现 | 全读 |
 
 ## 读完之后
 

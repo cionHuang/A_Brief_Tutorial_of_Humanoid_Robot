@@ -27,7 +27,6 @@ const chapterRedirects = {
   '/06-simulation-tools-integration/02-isaac-sim-isaac-lab': redirectTo('/06-software-tools-simulation/03-isaac-sim-isaac-lab'),
   '/06-simulation-tools-integration/03-gazebo-rviz2-foxglove': redirectTo('/06-software-tools-simulation/04-gazebo-rviz2-foxglove'),
   '/06-simulation-tools-integration/04-kinematics-dynamics-libraries': redirectTo('/06-software-tools-simulation/05-kinematics-dynamics-libraries'),
-  '/06-simulation-tools-integration/05-sim-to-real': redirectTo('/06-software-tools-simulation/06-sim-to-real'),
   // 第五章插入 5.1 后，原 5.1–5.6 顺延为 5.2–5.7：旧小节 URL 重定向到新路径（原 5.7 对应的“到 G1 控制接口”一节已删除）
   '/05-brain-perception-planning-vla-wam/01-perception-system': redirectTo('/05-brain-perception-planning-vla-wam/02-perception-system'),
   '/05-brain-perception-planning-vla-wam/02-motion-planning': redirectTo('/05-brain-perception-planning-vla-wam/03-motion-planning'),
@@ -71,7 +70,6 @@ export default defineConfig({
         { label: '小脑：模型与实时运控', items: [{ autogenerate: { directory: '04-cerebellum-realtime-control' } }] },
         { label: '大脑：感知、规划、VLA 与 WAM', items: [{ autogenerate: { directory: '05-brain-perception-planning-vla-wam' } }] },
         { label: '软件与工具链', items: [{ autogenerate: { directory: '06-software-tools-simulation' } }] },
-        { label: '工程实践与安全', items: [{ autogenerate: { directory: '07-engineering-practice-safety' } }] },
       ],
       tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
       pagination: true,
