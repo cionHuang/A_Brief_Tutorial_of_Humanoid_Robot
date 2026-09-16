@@ -47,7 +47,9 @@ GitHub Pages 只提供静态托管，因此全站采用静态站点生成（SSG�
 
 ### 部署：GitHub Actions → GitHub Pages
 
-标准流水线：push 触发 Actions，`npm ci && npm run build`，产物发布到 Pages。自定义域名与 HTTPS 由 GitHub Pages 直接支持。
+当前状态：工作流为**手动触发**（`workflow_dispatch`，见提交 940406d「本地调试期间暂停自动部署」），构建步骤是 `npm ci && npm run build`，产物发布到 Pages。
+
+恢复自动部署的条件：本手册的整改批次收敛、站点连续若干次构建与预览验收通过之后，把 `on: workflow_dispatch` 换回 `on: push: branches: [main]`（建议加 `paths` 过滤，只在 chapters/、site/、robot_descriptions/ 变化时触发），并同步更新本节文字。
 
 ## 分阶段实施
 
