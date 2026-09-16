@@ -98,8 +98,8 @@ const CFG = {
     <div class="mpc-fields">
       <div class="mpc-field"><span class="mpc-field-k">周期 k</span><span class="mpc-field-v" data-mpc-out="k">0</span></div>
       <div class="mpc-field"><span class="mpc-field-k">预测时域 N</span><span class="mpc-field-v" data-mpc-out="n">10 步</span></div>
-      <div class="mpc-field"><span class="mpc-field-k">位置 x</span><span class="mpc-field-v" data-mpc-out="x">0.000 m</span></div>
-      <div class="mpc-field"><span class="mpc-field-k">速度 v</span><span class="mpc-field-v" data-mpc-out="v">0.000 m/s</span></div>
+      <div class="mpc-field"><span class="mpc-field-k">位置 x (m)</span><span class="mpc-field-v" data-mpc-out="x">0.000</span></div>
+      <div class="mpc-field"><span class="mpc-field-k">速度 v (m/s)</span><span class="mpc-field-v" data-mpc-out="v">0.000</span></div>
       <div class="mpc-field"><span class="mpc-field-k">是否受扰</span><span class="mpc-field-v mpc-field-warn" data-mpc-out="dist">未受扰</span></div>
     </div>
     <div class="mpc-state" data-mpc-state>窗口在滑动：每个控制周期以当前状态重算一条 N 步计划，只执行第一步。</div>
@@ -212,8 +212,8 @@ const CFG = {
       if (elVelLabel) { elVelLabel.setAttribute("x", clamp((tx + tip) / 2, 80, 920).toFixed(1)); elVelLabel.textContent = Math.abs(state.v) > 0.03 ? "v = " + fmt(state.v, 2) + " m/s" : ""; }
       if (out.k) out.k.textContent = String(state.k);
       if (out.n) out.n.textContent = N + " 步";
-      if (out.x) out.x.textContent = fmt(state.x, 3) + " m";
-      if (out.v) out.v.textContent = fmt(state.v, 3) + " m/s";
+      if (out.x) out.x.textContent = fmt(state.x, 3);
+      if (out.v) out.v.textContent = fmt(state.v, 3);
       if (out.dist) out.dist.textContent = state.disturbed ? "已受扰" : "未受扰";
       if (elState) {
         if (finished) elState.textContent = "已到达目标并停稳：整段运动就是每周期「重算 + 只执行第一步」的结果。";
@@ -323,12 +323,11 @@ const CFG = {
   .mpc-btn:hover { border-color: var(--sl-color-accent); }
 
   .mpc-readout { max-width: 980px; margin: 0.7rem auto 0; display: flex; flex-direction: column; gap: 0.35rem; }
-  .mpc-fields { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.5rem; align-items: stretch; }
+  .mpc-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.4rem, 1fr)); gap: 0.5rem; align-items: stretch; }
   .mpc-field { display: flex; flex-direction: column; justify-content: flex-start; gap: 0.2rem; height: 4.6rem; box-sizing: border-box; margin: 0 !important; padding: 0.5rem 0.7rem; border: 1px solid var(--sl-color-gray-5); border-radius: 8px; }
   .mpc-field-k { color: var(--sl-color-gray-3); font-size: 0.9375rem; line-height: 1.5rem; height: 1.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .mpc-field-v { color: var(--sl-color-accent); font-size: 1.2rem; font-weight: 700; line-height: 1.75rem; height: 1.75rem; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .mpc-field-v { color: var(--sl-color-accent); font-size: 1.2rem; font-weight: 700; line-height: 1.75rem; height: 1.75rem; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
   .mpc-field-warn { color: light-dark(#b45309, #fbbf24); }
   .mpc-state { color: var(--sl-color-gray-2); font-size: 1rem; line-height: 1.6; }
-  @media (max-width: 60rem) { .mpc-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 40rem) { .mpc-fields { grid-template-columns: 1fr; } .mpc-row-title { flex-basis: 100%; } .mpc-slider { flex: 1 1 100%; } }
+  @media (max-width: 40rem) { .mpc-row-title { flex-basis: 100%; } .mpc-slider { flex: 1 1 100%; } }
 </style>
