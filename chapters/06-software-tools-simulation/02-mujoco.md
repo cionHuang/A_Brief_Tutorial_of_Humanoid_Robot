@@ -14,13 +14,13 @@ MuJoCo（Multi-Joint dynamics with Contact）是面向接触富集任务的物�
 
 ### Body、Joint 与 Geom
 
-MJCF 用 `<body>` 的嵌套层级表达运动树，每个 body 内挂 `<joint>`（运动关系）、`<geom>`（碰撞与可视化几何）和 `<inertial>`（动力学参数）。G1 的 `g1_29dof.xml` 中，`pelvis` 上挂着 `floating_base_joint`，类型为 `free`——这就是 4.3 节"qpos 7+29、qvel 6+29"维度关系的来源：自由关节在位置上占 7 个数（3 平移 + 4 四元数），速度上占 6 个数。加载模型后第一件事应是核对 `nq`、`nv`、`nu` 三个维度与预期一致。
+MJCF 用 `<body>` 的嵌套层级表达运动树，每个 body 内挂 `<joint>`（运动关系）、`<geom>`（碰撞与可视化几何）和 `<inertial>`（动力学参数）。G1 的 `g1_29dof.xml` 中，`pelvis` 上挂着 `floating_base_joint`，类型为 `free`——这就是 4.3 节"qpos 7+29、qvel 6+29"维度关系的来源：自由关节在位置上占 7 个数（3 平移 + 4 四元数），速度上占 6 个数。加载模型后第一件事应是核对 `nq`、`nv`、`nu` 三个维度与预期一致。[2][3]
 
 Geom 分 visual 和 collision 两类用途，碰撞几何的形状和摩擦参数直接决定足底接触行为。足底穿透或弹跳通常出在接触求解参数上：MuJoCo 用软接触模型，`solref`/`solimp` 控制接触的刚度与阻尼，地面 geom 的 `friction` 决定摩擦锥。这些参数调的是数值行为，与真实地面的摩擦系数之间没有直接等号。
 
 ### Actuator：ctrl 的语义由执行器类型决定
 
-开头"发位置指令却抽搐"的根因在这里。`<motor>` 型执行器的 `ctrl` 直接是广义力（对转动关节即力矩）；`<position>` 型执行器内部自带一个 PD，把 `ctrl` 解释为目标位置。`g1_29dof.xml` 定义了 29 个 `<motor>`，每个绑定同名关节，例如 `<motor name="left_hip_pitch_joint" joint="left_hip_pitch_joint"/>`——对 G1 官方 MJCF，`ctrl` 就是关节力矩。
+开头"发位置指令却抽搐"的根因在这里。`<motor>` 型执行器的 `ctrl` 直接是广义力（对转动关节即力矩）；`<position>` 型执行器内部自带一个 PD，把 `ctrl` 解释为目标位置。`g1_29dof.xml` 定义了 29 个 `<motor>`，每个绑定同名关节，例如 `<motor name="left_hip_pitch_joint" joint="left_hip_pitch_joint"/>`——对 G1 官方 MJCF，`ctrl` 就是关节力矩。[2]
 
 要在这种模型上做"位置控制"，需要在仿真循环外自己实现 PD：用 `qpos/qvel` 读出关节状态，按 4.5 节的阻抗公式算出力矩写入 `ctrl`，这正是 `unitree_rl_gym` 的 MuJoCo 部署示例（5.5 节链路）的做法，也和 G1 真机 `MotorCmd_` 的 `kp`/`kd` 接口语义对齐。[4]
 
@@ -45,7 +45,7 @@ MJCF 的 `<sensor>` 挂靠在 site 上。`g1_29dof.xml` 为 `imu_in_pelvis` 和 
 - **踝关节**：按 2.1 节 PR/AB 命名的关节索引做摆动实验，复现 4.5 节的踝摆动示例；
 - **重力补偿**：用 `mj_inverse` 或模型重力项算 $g(q)$ 作为前馈力矩，观察机器人是否能"挂"在半空，验证 4.3 节的动力学参数；
 - **接触观察**：开启接触力可视化，双支撑到单支撑切换时观察法向力的重新分配，对应 2.4 节的支撑域和 4.6 节的 ZMP；
-- **数据记录**：每步从 `mj_data` 取 `qpos`、`qvel`、`sensordata`、接触力和 `ctrl`，带仿真时间戳存盘——格式纪律与 6.1 节 rosbag2 相同，先记录再分析。
+- **数据记录**：每步从 `mj_data` 取 `qpos`、`qvel`、`sensordata`、接触力和 `ctrl`，带仿真时间戳存盘——格式纪律与 6.1 节 rosbag2 相同，先记录再分析。[3]
 
 ## G1 三个 MJCF 变体的差异
 
@@ -57,10 +57,6 @@ MJCF 的 `<sensor>` 挂靠在 site 上。`g1_29dof.xml` 为 `imu_in_pelvis` 和 
 
 切换变体时要同步更换的不只是文件名：关节索引顺序、动作向量维度、重力补偿参数和任何按索引写死的代码都要跟着改。锁腰模型中被固定的关节仍以 `fixed` 类型存在于模型树里，代码按名字而不是按位置索引关节，可以避开大部分这类错误。
 
-![MJCF 模型结构与 G1 仿真循环](assets/images/02-g1-mujoco-mjcf-sim-loop.png)
-
-图 6.2-1 以 G1 `g1_29dof` 无手、腰部可动模型为例，概览 MJCF 的 body/joint/geom 层级、自由关节的 qpos/qvel 维度、IMU site 上的陀螺仪与加速度计，以及"读状态—算力矩—写 ctrl—步进"的仿真循环和足底软接触。接触与噪声参数的取值决定仿真行为，与真实物理量之间没有直接等号。[4]
-
 ## 参考资料
 
 [1] Todorov, E., Erez, T., & Tassa, Y. “MuJoCo: A Physics Engine for Model-Based Control.” *IEEE/RSJ IROS*, 2012. MuJoCo 的设计目标与软接触模型原始论文。<https://doi.org/10.1109/IROS.2012.6386109>
@@ -69,4 +65,4 @@ MJCF 的 `<sensor>` 挂靠在 site 上。`g1_29dof.xml` 为 `imu_in_pelvis` 和 
 
 [3] Google DeepMind. *mujoco: Multi-Joint dynamics with Contact*. 本文使用提交 `44c118d712db5ca5d8c6264e4a21e3086e2ac952`，用于核对 MJCF 语义、`mj_data` 字段与仿真循环 API。<https://github.com/google-deepmind/mujoco/tree/44c118d712db5ca5d8c6264e4a21e3086e2ac952>
 
-[4] Unitree Robotics. *unitree_rl_gym: G1 robot description and RL example*. 官方 G1 模型与部署示例；本文使用提交 `276801e46c5d433564f24658bac64f254b7d2d4b`，用于核对 `g1_29dof.xml` 的 free joint、29 个 `<motor>`、IMU 传感器配置及 MuJoCo 部署中的 PD 力矩计算方式；图 6.2-1 的结构与参数即依据该仓库的 `g1_29dof.xml` 绘制。<https://github.com/unitreerobotics/unitree_rl_gym/tree/276801e46c5d433564f24658bac64f254b7d2d4b>
+[4] Unitree Robotics. *unitree_rl_gym: G1 robot description and RL example*. 官方 G1 模型与部署示例；本文使用提交 `276801e46c5d433564f24658bac64f254b7d2d4b`，用于核对 `g1_29dof.xml` 的 free joint、29 个 `<motor>`、IMU 传感器配置及 MuJoCo 部署中的 PD 力矩计算方式。<https://github.com/unitreerobotics/unitree_rl_gym/tree/276801e46c5d433564f24658bac64f254b7d2d4b>
