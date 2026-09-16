@@ -36,10 +36,6 @@ Foxglove 面向时间序列和日志回放：关节跟踪误差、`tau_est`、IM
 
 开头"没录接触力只能猜"的教训对应一条纪律：记录 Topic 的清单应按故障排查需求设计，而不是按"现在想看什么"设计。4.5–4.6 节与 5.3 节每节的排查清单，落到工程上就是 Foxglove 里的一组预设面板和 rosbag2 里的一组必录 Topic。
 
-![Gazebo、RViz 2 与 Foxglove 的三工具分工](assets/images/04-g1-gazebo-rviz2-foxglove.png)
-
-图：以 G1 `g1_29dof` 无手、腰部可动模型为例，对比 Gazebo（物理仿真，SDF 世界、传感器插件、`ros_gz` 桥与 `gz_ros2_control`）、RViz 2（RobotModel、TF 树、点云的空间可视化，不做物理计算）和 Foxglove（关节误差、`tau_est`、IMU、接触力的时间序列与 rosbag 回放）在 ROS 2 消息总线上的分工。图中结构用于解释工具边界；集成方式以各工具版本为准。
-
 ## 参考资料
 
 [1] Open Robotics. *Gazebo Documentation*. Gazebo 的 SDF、世界/模型插件与传感器插件官方文档。<https://gazebosim.org/docs>
