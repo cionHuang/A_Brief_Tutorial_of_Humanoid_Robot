@@ -61,10 +61,6 @@ Isaac Gym 大规模并行训练（PPO + 域随机化）
 
 操作任务的链路对称：遥操作采集（LeRobot 格式）→ BC/扩散策略训练 → 输出 5.4 节的末端增量或关节动作 → 经全身控制和关节阻抗执行。两条链路共享同一条纪律：学习模块的失效模式是"输出无法预测"，所以所有学习输出的下游都必须有模型驱动的保护层兜底。
 
-![G1 学习控制的训练到部署链路](assets/images/04-g1-learning-train-to-deploy.png)
-
-图：以 G1 `g1_29dof` 无手、腰部可动模型为例，概览并行仿真训练（PPO、奖励项、域随机化、课程学习）、遥操作示范采集、Sim2Sim 验证关口，以及策略输出关节目标位置经限幅后由低层 PD 执行的部署链路和安全保护层。图中频率为典型量级示意；具体训练配置与频率以所使用的示例工程为准。
-
 ## 参考资料
 
 [1] Ross, S., Gordon, G., & Bagnell, D. “A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning.” *AISTATS*, 2011. DAgger 与分布偏移问题的经典分析。<https://arxiv.org/abs/1011.0686>
