@@ -19,7 +19,7 @@
 | 学习与训练 | 16 | [见下](#学习与训练) |
 | 具身大模型 | 14 | [见下](#具身大模型) |
 | 仿真与工具链 | 21 | [见下](#仿真与工具链) |
-| 电气与总线 | 17 | [见下](#电气与总线) |
+| 电气与总线 | 18 | [见下](#电气与总线) |
 | ROS 2 与软件工程 | 5 | [见下](#ros-2-与软件工程) |
 
 ## 数学与坐标
@@ -254,6 +254,7 @@
 | [EtherCAT（Ethernet for Control Automation Technology）](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | 用主从帧处理组织多伺服节点、周期确定的多轴实时以太网 | 传阅接力册，一圈跑完所有关节同步 |
 | [分布式时钟（Distributed Clocks）](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | EtherCAT 让所有从站共用同一时间基准的机制 | 让所有从站对表，多轴才能同时动作 |
 | [DDS（Data Distribution Service）](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | 按 Topic 发布订阅、支持 QoS 的软件消息中间件 | 机器人内部的广播电台，按主题收发 |
+| [踝关节 PR/AB 模式（Ankle PR/AB Mode）](../02-mechanics/01-mechanisms-and-dof.mdx) | G1 低层接口区分踝部驱动方式的模式位（`LowCmd_.mode_pr`）：PR 按 pitch/roll 两个串联关节下发，AB 直接下发 A/B 两个并联电机；它与每个关节自己的使能位 `MotorCmd_.mode` 不是同一个字段 | 脚踝有两种说法：当两个关节，还是当两个电机 |
 | [QoS（Quality of Service）](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | 可靠性、持久性、历史深度、截止时间等消息投递策略 | 给每类消息定投递规矩 |
 | [抖动（Jitter）](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | 周期或消息到达时间相对理想值的变化量 | 数据到得有早有晚 |
 | [微控制器（Microcontroller Unit, MCU）](../03-electrical-embedded/05-mcu-realtime-embedded-software.mdx) | 把 CPU、存储、定时器、PWM、ADC 和通信外设集成在一颗芯片上 | 控制板上那颗集成了 CPU 和外设的芯片 |

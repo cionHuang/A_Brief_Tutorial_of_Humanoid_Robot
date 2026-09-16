@@ -138,11 +138,11 @@ import G1UrdfViewer from '../../../components/G1UrdfViewer.astro';
 
 | 变体 | 腰部 | 每条手臂 | 手 | 总 DoF |
 | --- | --- | --- | --- | --- |
-| `g1_23dof` | 1（只保留 yaw） | 5（腕部少 2 个自由度） | 无 | 23 |
+| `g1_23dof` | 1（只保留 yaw） | 5（腕部少 pitch 与 yaw 两个自由度，保留 roll） | 无 | 23 |
 | `g1_29dof` | 3 | 7 | 无 | 29 |
 | `g1_29dof_with_hand` | 3 | 7 | 每手 7（三指） | 29 + 14 |
 
-差在哪：23 DoF 比 29 DoF 少的是腰部的 roll/pitch 与每条手臂腕部的 2 个自由度；SDK 的索引注释会标出哪些编号在 23dof 上无效。本手册统一用 `g1_29dof`；需要锁腰对比时用 `g1_29dof_lock_waist`，需要操作时用 `g1_29dof_with_hand`。
+差在哪：23 DoF 比 29 DoF 少的是腰部的 roll/pitch 与每条手臂腕部的 2 个自由度；SDK 的索引注释会把 `LeftWristPitch`/`LeftWristYaw`（右侧 27/28）标为「NOTE INVALID for g1 23dof」[8]。本手册统一用 `g1_29dof`；需要锁腰对比时用 `g1_29dof_lock_waist`，需要操作时用 `g1_29dof_with_hand`。
 - 仿真模型中的刚体和关节，不一定完整反映真实硬件中的柔性、摩擦和热限制。[5]
 
 同样，“具身智能”也不等于“人形机器人”。读完本书你会发现，这套词汇体系在四足、轮式和机械臂上同样适用——人形机器人只是其中最复杂、也最适合教学的那一个本体。
@@ -162,3 +162,5 @@ import G1UrdfViewer from '../../../components/G1UrdfViewer.astro';
 [6] Auledas, M. *Intel RealSense D435 深度相机实拍*。图 1.2-1 取自 Wikimedia Commons，作者主页 <https://commons.wikimedia.org/wiki/User:Auledas>，文件页 <https://commons.wikimedia.org/wiki/File:Intel_Realsense_depth_camera_D435.jpg>，许可 CC BY-SA 4.0（相同方式共享）<https://creativecommons.org/licenses/by-sa/4.0/>。
 
 [7] Greenhill, R., & Elias, H.（Shadow Robot Company）. *Shadow Dexterous Hand 多指灵巧手实拍*。图 1.2-2 取自 Wikimedia Commons，文件页 <https://commons.wikimedia.org/wiki/File:Shadow_Hand_Bulb_large.jpg>，许可 CC BY-SA 3.0（相同方式共享）<https://creativecommons.org/licenses/by-sa/3.0/>。
+
+[8] Unitree Robotics. *unitree_sdk2：G1 低层示例与关节索引定义*. 本文使用提交 `9754cd153af3da471b0fe5f3aa535e426fb11db3`，用于核对关节索引别名与 23 DoF 上无效的编号。<https://github.com/unitreerobotics/unitree_sdk2/tree/9754cd153af3da471b0fe5f3aa535e426fb11db3/example/g1/low_level>
