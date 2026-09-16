@@ -83,7 +83,7 @@ const L2 = 108; // 小腿
 <script>
   import { setParts } from '../lib/tex.js';
 
-  // 角度约定：偏离竖直向下方向、向前为正，单位为度
+  // 角度约定：屈膝为正（小腿相对大腿向后摆），偏离竖直向下方向为正角；−5° 为轻微过伸
   const LIMITS = [-5, 165];
   const RAD = Math.PI / 180;
 
@@ -107,7 +107,7 @@ const L2 = 108; // 小腿
       if (Math.abs(deg) < 1) deg = deg < 0 ? -1 : 1;
       const end = { x: -r * Math.sin(deg * RAD), y: r * Math.cos(deg * RAD) };
       const large = Math.abs(deg) > 180 ? 1 : 0;
-      // SVG y 轴向下：正角（屏幕右侧）用逆时针 sweep=0，负角用顺时针 sweep=1
+      // SVG y 轴向下：正角落在屏幕左侧（屈膝向后），对应顺时针 sweep=1；负角反向为 sweep=0
       const sweep = deg < 0 ? 0 : 1;
       return `M 0 ${r} A ${r} ${r} 0 ${large} ${sweep} ${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
     };
