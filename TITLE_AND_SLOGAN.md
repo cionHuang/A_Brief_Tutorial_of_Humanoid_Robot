@@ -108,7 +108,7 @@ Slogan：一小时建立整机直觉，从 G1 开始。
 - [x] 确定英文标题：《Embodied AI, Explained — Through a Humanoid Robot》
 - [x] 确定中文 slogan：每个抽象术语，在机器人身上都有具体的样子。
 - [x] 确定英文 slogan：Every buzzword, shown on a real humanoid.
-- [ ] 更新 `site/astro.config.mjs` 的 title
-- [ ] 更新 `site/src/content/docs/index.mdx` 的 hero
-- [ ] 更新仓库 README 与 GitHub 仓库描述（README 由仓库内修改完成；GitHub 仓库描述需在 GitHub 网页设置）
-- [ ] 规划正文 i18n（中英文切换）工程
+- [x] 更新 `site/astro.config.mjs` 的 title
+- [x] 更新 `site/src/content/docs/index.mdx` 的 hero
+- [x] 更新仓库 README 与 GitHub 仓库描述（README 由仓库内修改完成；GitHub 仓库描述需在 GitHub 网页设置）
+- [ ] 规划正文 i18n（中英文切换）工程 —— 未开工；33 节英文版属独立工程，需另行立项

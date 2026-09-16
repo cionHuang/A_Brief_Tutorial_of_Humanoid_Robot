@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="听懂具身智能">
+  <rect width="32" height="32" rx="7" fill="#0f172a"/>
+  <g fill="#38bdf8">
+    <rect x="6.6"  y="12"   width="2.8" height="8"  rx="1.4"/>
+    <rect x="11.4" y="8.5"  width="2.8" height="15" rx="1.4" fill="#22d3ee"/>
+    <rect x="16.2" y="5.5"  width="2.8" height="21" rx="1.4" fill="#a5f3fc"/>
+    <rect x="21"   y="8.5"  width="2.8" height="15" rx="1.4" fill="#22d3ee"/>
+    <rect x="25.8" y="12"   width="2.8" height="8"  rx="1.4"/>
+  </g>
+</svg>
