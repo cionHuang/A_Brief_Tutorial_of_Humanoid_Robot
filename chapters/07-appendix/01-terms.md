@@ -66,7 +66,7 @@
 | [回差（Backlash）](../02-mechanics/03-transmission-and-joint-modules.mdx) | 输入方向反转时输出端重新建立啮合前的相对空行程 | 换方向时先空转一点点才咬上 |
 | [扭转刚度（Torsional Stiffness）](../02-mechanics/03-transmission-and-joint-modules.mdx) | 输出轴受力矩后抵抗角变形的能力，由传动链各环节串联决定 | 使劲拧一下，关节会扭过去多少 |
 | [力矩—速度包络（Torque-speed Envelope）](../02-mechanics/03-transmission-and-joint-modules.mdx) | 描述可用输出随速度、电压和温度变化的边界 | 电机的出力地图，越快越使不上劲 |
-| [降额（Derating）](../02-mechanics/03-transmission-and-joint-modules.mdx) | 温度或供电触限时主动降低允许输出以保护部件的行为 | 太热了自己收着点劲，免得烧坏 |
+| [热降额（Thermal Derating）](../02-mechanics/03-transmission-and-joint-modules.mdx) | 温度或供电触限时主动降低允许输出以保护部件的行为 | 太热了自己收着点劲，免得烧坏 |
 
 ## 运动学与动力学
 

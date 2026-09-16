@@ -10,7 +10,12 @@ import MjcfFieldSnippet from '../../../components/MjcfFieldSnippet.astro';
 
 > “同一个 G1，为什么在 MuJoCo 里的表现和文档里不一样？`ctrl` 到底该给位置还是力矩？脚底穿透是模型错了还是参数错了？”
 
-这四个现象在本节各有回收点：URDF 变布娃娃，对应“MJCF 的建模元素”里执行器的缺失（URDF 没有执行器定义）；发位置指令却抽搐，对应同一节“Actuator”里 `ctrl` 的语义由执行器类型决定；足底穿透或弹跳，对应“Body、Joint 与 Geom”里的接触参数 `solref`/`solimp`/`friction`；找不到网格，对应“先看全局”里 `meshdir` 与相对路径的组织方式。
+这四个现象在本节各有回收点：
+
+- URDF 变布娃娃：对应“MJCF 的建模元素”里执行器的缺失（URDF 没有执行器定义）；
+- 发位置指令却抽搐：对应同一节“Actuator”里 `ctrl` 的语义由执行器类型决定；
+- 足底穿透或弹跳：对应“Body、Joint 与 Geom”里的接触参数 `solref`/`solimp`/`friction`；
+- 找不到网格：对应“先看全局”里 `meshdir` 与相对路径的组织方式。
 
 > **一句话听懂**：MuJoCo 是对着接触富集任务设计的物理仿真器、MJCF 是它的模型描述格式；本节开头这些现象几乎都出在“模型描述不全 + 参数语义没对齐”，而不是物理引擎本身算错了。
 
