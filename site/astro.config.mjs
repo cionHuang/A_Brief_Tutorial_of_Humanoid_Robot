@@ -70,6 +70,7 @@ export default defineConfig({
         { label: '小脑：模型与实时运控', items: [{ autogenerate: { directory: '04-cerebellum-realtime-control' } }] },
         { label: '大脑：感知、规划、VLA 与 WAM', items: [{ autogenerate: { directory: '05-brain-perception-planning-vla-wam' } }] },
         { label: '软件与工具链', items: [{ autogenerate: { directory: '06-software-tools-simulation' } }] },
+        { label: '附录', items: [{ autogenerate: { directory: '07-appendix' } }] },
       ],
       tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
       pagination: true,
