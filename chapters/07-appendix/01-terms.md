@@ -66,7 +66,7 @@
 | [回差（Backlash）](../02-mechanics/03-transmission-and-joint-modules.mdx) | 输入方向反转时输出端重新建立啮合前的相对空行程 | 换方向时先空转一点点才咬上 |
 | [扭转刚度（Torsional Stiffness）](../02-mechanics/03-transmission-and-joint-modules.mdx) | 输出轴受力矩后抵抗角变形的能力，由传动链各环节串联决定 | 使劲拧一下，关节会扭过去多少 |
 | [力矩—速度包络（Torque-speed Envelope）](../02-mechanics/03-transmission-and-joint-modules.mdx) | 描述可用输出随速度、电压和温度变化的边界 | 电机的出力地图，越快越使不上劲 |
-| [热降额（Derating）](../02-mechanics/03-transmission-and-joint-modules.mdx) | 温度或供电触限时主动降低允许输出以保护部件的行为 | 太热了自己收着点劲，免得烧坏 |
+| [降额（Derating）](../02-mechanics/03-transmission-and-joint-modules.mdx) | 温度或供电触限时主动降低允许输出以保护部件的行为 | 太热了自己收着点劲，免得烧坏 |
 
 ## 运动学与动力学
 
@@ -113,8 +113,8 @@
 | [状态估计（State Estimation）](../04-cerebellum-realtime-control/04-state-estimation.mdx) | 用带噪声、带延迟的传感器数据推断机器人当前最可能的状态 | 把不完整的传感器拼成机器人现在的样子 |
 | [互补滤波（Complementary Filter）](../04-cerebellum-realtime-control/04-state-estimation.mdx) | 用高频陀螺仪跟踪快变、低频重力方向抑制长期漂移的融合方法 | 陀螺管快、加速度计管慢，按权重加起来 |
 | [卡尔曼滤波（Kalman Filter, KF）](../04-cerebellum-realtime-control/04-state-estimation.mdx) | 按预测和观测各自不确定度加权平均的递推估计方法 | 先用模型猜、再用传感器改 |
-| [扩展卡尔曼滤波（Extended Kalman Filter, EKF）](../04-cerebellum-realtime-control/04-state-estimation.mdx) | 在当前估计附近线性化非线性模型的卡尔曼滤波 | 非线性系统的卡尔曼滤波，边猜边线性化 |
-| [可观性（Observability）](../04-cerebellum-realtime-control/04-state-estimation.mdx) | 当前传感器和动作里是否包含某个状态的信息 | 靠现有传感器到底猜不猜得出来 |
+| [EKF（扩展卡尔曼滤波，Extended Kalman Filter）](../04-cerebellum-realtime-control/04-state-estimation.mdx) | 在当前估计附近线性化非线性模型的卡尔曼滤波 | 非线性系统的卡尔曼滤波，边猜边线性化 |
+| [可观测性（Observability）](../04-cerebellum-realtime-control/04-state-estimation.mdx) | 当前传感器和动作里是否包含某个状态的信息 | 靠现有传感器到底猜不猜得出来 |
 | [零偏（Bias）](../04-cerebellum-realtime-control/04-state-estimation.mdx) | 传感器静止时输出不为零的固定偏置，积分后造成漂移 | 静止时也不归零的小偏移，一积分就飘 |
 | [编码器（Encoder）](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 测量电机或关节位置与速度的传感器，分绝对式和增量式 | 关节上的角度尺 |
 | [绝对式编码器（Absolute Encoder）](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 上电即可直接给出当前位置、无需先找零点的编码器 | 一上电就知道自己在哪儿 |
@@ -151,12 +151,12 @@
 | [模型预测控制（Model Predictive Control, MPC）](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx) | 每周期以当前状态为起点在有限时域内求解、只执行第一步 | 滚动优化，每拍重新算、只执行第一步 |
 | [轨迹刷新（Replanning）](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx) | 新目标或新障碍出现时更新轨迹、须从当前执行点平滑衔接 | 计划变了要从现在接上，别硬切 |
 | [零力矩点（Zero-Moment Point, ZMP）](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | 地面上惯性力、重力和接触力绕水平轴合力矩为零的点 | 动态版的脚下重心投影 |
-| [线性倒立摆模型（Linear Inverted Pendulum Model, LIPM）](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | 质心高度近似不变、角动量可忽略时的简化双足模型 | 把机器人简化成一根会倒的杆 |
+| [线性倒立摆（Linear Inverted Pendulum Model, LIPM）](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | 质心高度近似不变、角动量可忽略时的简化双足模型 | 把机器人简化成一根会倒的杆 |
 | [捕获点（Capture Point, CP）](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | 由质心位置和速度组成、落脚其上可停稳的点 | 往哪迈一步能停住 |
 | [步态周期（Gait Cycle）](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | 双支撑相与单支撑相交替构成的行走循环 | 换脚撑住的一个循环 |
 | [摆动腿与支撑腿（Swing / Stance Leg）](../02-mechanics/04-foot-contact-and-stability.mdx) | 行走中腾空迈步的腿与承担主要地面反力的腿 | 一条腿抬起来走，另一条撑住 |
 | [地面反力（Ground Reaction Force, GRF）](../02-mechanics/04-foot-contact-and-stability.mdx) | 地面作用在支撑脚上的反作用力 | 地面对脚的回推力 |
-| [支撑多边形（Support Polygon）](../02-mechanics/04-foot-contact-and-stability.mdx) | 所有承载接触点在地面平面上的凸包 | 脚底吃力点圈出来的范围 |
+| [支撑多边形（Support Polygon）](../02-mechanics/04-foot-contact-and-stability.mdx) | 所有承载接触点在地面平面上的凸包 | 脚底吃力点圈出来的范围（4.6 节也叫支撑域） |
 | [稳定裕量（Stability Margin）](../02-mechanics/04-foot-contact-and-stability.mdx) | 重心投影到支撑多边形边界的最小距离等衡量指标 | 重心离支撑范围边缘还剩多少余量 |
 | [摩擦锥（Friction Cone）](../02-mechanics/04-foot-contact-and-stability.mdx) | 库仑摩擦下切向力不超过 μFn 所构成的可行力集合 | 地面最多能给多大横向力 |
 | [全身控制（Whole-Body Control, WBC）](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | 把所有关节当作整体、同时满足多任务和接触限位约束的控制 | 腿腰手一起算，别各管各的 |
@@ -205,7 +205,7 @@
 | [VLA（Vision-Language-Action）](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) | 输入图像、语言和机器人状态、直接输出动作的多模态大模型 | 看图、听指令、出动作合成一个模型 |
 | [WAM（World Action Model）](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md) | 同时建模世界如何变化和机器人应采取什么动作的学习模型 | 多学一件事：这样做世界会变成什么样 |
 | [世界模型（World Model）](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md) | 泛指预测世界如何变化的模型，WAM 是其中联合建模动作的一类 | 会预测未来的模型 |
-| [词元（Token）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 序列模型处理的最小单位，图像、语言、状态和动作都可切成词元 | 模型一口一口吃的那一小块 |
+| [token（词元）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 序列模型处理的最小单位，图像、语言、状态和动作都可切成词元 | 模型一口一口吃的那一小块 |
 | [蒸馏（Distillation）](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md) | 用大模型（教师）的输出或中间表征训练小模型（学生）的压缩方法 | 大模型教小模型，部署时只跑小的 |
 | [动作块（Action Chunk）](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) | 一次推理给出的未来若干步动作序列，用以掩盖推理延迟 | 一次算出一串动作，别一步一算 |
 | [视觉定位（Grounding）](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) | 把语言里的名词绑定到图像具体区域的过程 | 在画面里找到语言说的那个东西 |
