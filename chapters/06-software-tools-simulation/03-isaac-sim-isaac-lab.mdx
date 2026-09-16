@@ -1,5 +1,7 @@
 # 6.3 Isaac Sim 与 Isaac Lab
 
+import IsaacLabManagerSnippet from '../../../components/IsaacLabManagerSnippet.astro';
+
 ## 先看一个现场问题
 
 用单机 MuJoCo 训 G1 行走策略，一晚上只跑了几千万步，收敛遥遥无期；换到 Isaac Lab 开了 4096 个并行环境，训练吞吐上来了，但训出的策略回 MuJoCo 做 Sim2Sim 验证时直接摔倒。想加相机做视觉在环训练，一开 RTX（实时光线追踪）渲染，环境吞吐掉了一半以上。还有人把 URDF 直接导入 Isaac Sim，机器人加载出来了，关节方向和惯量却和官方 MJCF 对不上。
@@ -58,13 +60,33 @@ Isaac Sim 的相机走 RTX 光线追踪渲染，能输出 RGB、深度、分割�
 
 ### 把 MDP 拆成 Manager
 
-Isaac Lab 把 5.5 节的 MDP 要素工程化为一组管理器（Manager）：观测管理器（Observation Manager）拼装观测向量，动作管理器（Action Manager）把策略输出映射到关节目标或力矩，奖励管理器（Reward Manager）把奖励拆成带权重的独立项，终止管理器（Termination Manager）判定 episode 结束，事件管理器（Event Manager）负责域随机化和外部扰动。[3][4] 这套拆分的价值在于可组合：换一个奖励项、加一种随机化，只改配置不改框架。
+Isaac Lab 把 5.5 节的 MDP 要素工程化为一组管理器（Manager），每一项都是独立配置：
+
+**观测管理器（Observation Manager）**：拼装观测向量。
+
+<IsaacLabManagerSnippet variant="obs" />
+
+**动作管理器（Action Manager）**：把策略输出映射到关节目标或力矩。
+
+<IsaacLabManagerSnippet variant="act" />
+
+**奖励管理器（Reward Manager）**：把奖励拆成带权重的独立项。
+
+<IsaacLabManagerSnippet variant="reward" />
+
+**终止与事件管理器（Termination / Event Manager）**：判定 episode 结束，并负责域随机化与外部扰动。
+
+<IsaacLabManagerSnippet variant="term" />
+
+这套拆分的价值在于可组合：换一个奖励项、加一种随机化，只改配置不改框架。[3][4]
 
 > **一句话听懂**：Isaac Lab 把 MDP 拆成五个 Manager——观测、动作、奖励、终止、事件；换奖励项或加随机化只改配置，不动框架。
 
 ### 并行训练
 
 并行训练是 Lab 侧做的活：Isaac Lab 把物理仿真、渲染和策略前向都放在 GPU 上，数千个环境并行 rollout（一轮并行采样），省掉 CPU-GPU 之间的数据往返。[2] 开头“一晚上几千万步 vs 4096 环境”的差距就来自这里。算法侧，Isaac Lab 的强化学习训练默认用 PPO（Proximal Policy Optimization，近端策略优化）这类 on-policy 算法：环境数越多，单次策略更新之间能收集的样本越多，这也解释了为什么它和“单机跑几千万步”不是一个量级。
+
+<IsaacLabManagerSnippet variant="ppo" />
 
 > **一句话听懂**：并行训练的吞吐来自把物理、渲染和策略前向都放在 GPU 上、数千个环境一起 rollout；Isaac Lab 默认用 PPO 这类 on-policy 算法，环境数越多、单次更新之间的样本越多。
 
@@ -76,7 +98,7 @@ Isaac Lab 把 5.5 节的 MDP 要素工程化为一组管理器（Manager）：�
 - **物理并行度受接触复杂度影响**：接触越多、约束越复杂，每个环境在 GPU 上的物理开销越高，实际并行度低于环境数的名义值；
 - **为吞吐放松的物理参数就是 Sim2Sim 差异的来源**：并行训练常把接触求解迭代数一类参数调小以换吞吐，这使训练环境成为最“宽松”的仿真器，回到 MuJoCo 就容易暴露；
 - **并行训练是非确定性的**：浮点归约顺序与调度让同一配置两次训练结果不同，复现靠固定随机种子并记录配置，而不是靠重跑；
-- **版本未固定**：参考资料 [4] 已注明 Isaac Lab 在本书暂未固定版本，具体 API、任务名与参数名以所安装版本为准。
+- **版本要对齐**：上面这些配置片段固定在提交 `b0542fe`，而实际安装的 Isaac Lab 版本可能不同，具体 API、任务名与参数名以所安装版本为准（[4]）。
 
 > **一句话听懂**：并行的代价是显存限制环境数与分辨率、物理并行度受接触复杂度牵制、为吞吐放松的接触求解参数本身成为 Sim2Sim 差异来源，而且训练非确定性；具体 API 以所安装版本为准。
 
@@ -104,7 +126,7 @@ Isaac Lab 把 5.5 节的 MDP 要素工程化为一组管理器（Manager）：�
 
 [3] Mittal, M., et al. “Orbit: A Unified Simulation Framework for Interactive Robot Learning Environments.” *IEEE Robotics and Automation Letters*, 2023. Isaac Lab 前身 Orbit 的 Manager 化环境框架。<https://doi.org/10.1109/LRA.2023.3270034>
 
-[4] NVIDIA. *Isaac Lab Documentation*. 环境管理器、并行训练、G1 任务与平铺渲染的官方文档；IsaacLab 在本书 third_party 索引中暂未固定版本，使用时以所安装版本为准。<https://isaac-sim.github.io/IsaacLab/>
+[4] NVIDIA. *Isaac Lab*. 环境管理器、并行训练、G1 任务与平铺渲染（官方文档见 <https://isaac-sim.github.io/IsaacLab/>）；本文的 Manager 与 PPO 配置片段使用提交 `b0542fe2d45bf91c4e1d9ef6952b9c709c80b4e8`，API 与任务名仍以所安装版本为准。<https://github.com/isaac-sim/IsaacLab/tree/b0542fe2d45bf91c4e1d9ef6952b9c709c80b4e8>
 
 [5] NVIDIA. *Isaac Sim Documentation*. USD 资产管线、URDF/MJCF 导入器与 RTX 传感器官方文档。<https://docs.isaacsim.omniverse.nvidia.com/>
 

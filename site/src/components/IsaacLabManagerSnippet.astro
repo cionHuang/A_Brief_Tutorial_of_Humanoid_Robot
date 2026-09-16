@@ -1,0 +1,96 @@
+---
+/**
+ * 6.3 用：Isaac Lab 的 Manager 化环境与 PPO 配置高亮片段。
+ * variant="obs"    ：基础速度任务的观测组与观测项（含噪声）
+ * variant="act"    ：动作管理器——关节位置动作的 scale 与 default offset
+ * variant="reward" ：G1 的奖励项（带权重的独立项）
+ * variant="term"   ：G1 对终止与事件的覆盖（接触终止、关闭部分随机化）
+ * variant="ppo"    ：G1 的 PPO 配置（采样步数、迭代数、clip、学习率）
+ * 片段逐字摘自 isaac-sim/IsaacLab 固定提交 b0542fe，行号为原文件行号；许可 BSD-3-Clause。
+ */
+import SourceSnippet from './SourceSnippet.astro';
+
+const { variant = 'obs' } = Astro.props;
+const COMMIT = 'b0542fe2d45bf91c4e1d9ef6952b9c709c80b4e8';
+const BASE = 'source/isaaclab_tasks/isaaclab_tasks/manager_based/locomotion/velocity/velocity_env_cfg.py';
+const G1 = 'source/isaaclab_tasks/isaaclab_tasks/manager_based/locomotion/velocity/config/g1/rough_env_cfg.py';
+const PPO = 'source/isaaclab_tasks/isaaclab_tasks/manager_based/locomotion/velocity/config/g1/agents/rsl_rl_ppo_cfg.py';
+const src = (file, line) =>
+  'https://github.com/isaac-sim/IsaacLab/blob/' + COMMIT + '/' + file + '#L' + line;
+
+const cards = {
+  obs: [
+    {
+      role: 'ObservationsCfg · 观测组与观测项',
+      file: 'velocity_env_cfg.py',
+      url: src(BASE, 116),
+      lines: [
+        { n: 116, code: 'class ObservationsCfg:', hl: true, ann: '观测管理器：一个配置类' },
+        { n: 120, code: '    class PolicyCfg(ObsGroup):', hl: true, ann: '策略观测组' },
+        { n: 124, code: '        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))', hl: true, ann: '观测项自带噪声' },
+        { n: 133, code: '        actions = ObsTerm(func=mdp.last_action)', hl: true, ann: '把上一步动作也给策略' },
+      ],
+    },
+  ],
+  act: [
+    {
+      role: 'ActionsCfg · 策略输出怎么变成关节目标',
+      file: 'velocity_env_cfg.py',
+      url: src(BASE, 109),
+      lines: [
+        { n: 109, code: 'class ActionsCfg:', hl: true, ann: '动作管理器' },
+        { n: 112, code: '    joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True)', hl: true, ann: '动作缩放 0.5，以默认角为基准' },
+      ],
+    },
+  ],
+  reward: [
+    {
+      role: 'RewardsCfg · 奖励拆成带权重的独立项',
+      file: 'g1/rough_env_cfg.py',
+      url: src(G1, 20),
+      lines: [
+        { n: 20, code: 'class G1Rewards(RewardsCfg):', hl: true, ann: 'G1 覆盖奖励项' },
+        { n: 23, code: '    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)', hl: true, ann: '摔倒重罚：权重 -200' },
+        { n: 105, code: '    rewards: G1Rewards = G1Rewards()', hl: true, ann: '整组替换进环境' },
+        { n: 136, code: '        self.rewards.action_rate_l2.weight = -0.005', hl: true, ann: '调权重只改一行' },
+      ],
+    },
+  ],
+  term: [
+    {
+      role: 'TerminationsCfg / EventCfg · 终止与域随机化',
+      file: 'g1/rough_env_cfg.py',
+      url: src(G1, 115),
+      lines: [
+        { n: 115, code: '        self.events.push_robot = None', hl: true, ann: 'G1 覆盖：关掉推力扰动' },
+        { n: 152, code: '        self.terminations.base_contact.params["sensor_cfg"].body_names = "torso_link"', hl: true, ann: '躯干接触即终止' },
+      ],
+    },
+  ],
+  ppo: [
+    {
+      role: 'PPO 配置 · 采样与更新超参',
+      file: 'g1/agents/rsl_rl_ppo_cfg.py',
+      url: src(PPO, 12),
+      lines: [
+        { n: 12, code: 'class G1RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):', hl: true, ann: 'PPO runner 配置' },
+        { n: 13, code: '    num_steps_per_env = 24', hl: true, ann: '每个环境每轮采 24 步' },
+        { n: 14, code: '    max_iterations = 3000', hl: true, ann: '训练迭代上限' },
+        { n: 28, code: '        clip_param=0.2,', hl: true, ann: 'PPO 的裁剪范围' },
+        { n: 32, code: '        learning_rate=1.0e-3,', hl: true, ann: '学习率' },
+      ],
+    },
+  ],
+};
+
+const captions = {
+  obs: '片段逐字摘自 Isaac Lab 的 <code>velocity_env_cfg.py</code>（提交 <code>b0542fe</code>，BSD-3-Clause），行号为原文件行号。观测项可以按需增删，噪声范围直接写在配置里。',
+  act: '片段逐字摘自 Isaac Lab 的 <code>velocity_env_cfg.py</code>（提交 <code>b0542fe</code>）。<code>scale</code> 是动作缩放、<code>use_default_offset</code> 表示以默认关节角为基准；G1 的配置没有覆盖这条基础设置。',
+  reward: '片段逐字摘自 Isaac Lab 的 <code>config/g1/rough_env_cfg.py</code>（提交 <code>b0542fe</code>）。每个奖励项都是独立的 <code>RewTerm</code>，带自己的权重与参数；换奖励、调权重都只改配置。',
+  term: '片段逐字摘自 Isaac Lab 的 <code>config/g1/rough_env_cfg.py</code>（提交 <code>b0542fe</code>）。G1 在 <code>__post_init__</code> 里对继承来的终止与事件做覆盖：关闭部分随机化，把接触终止绑定到 <code>torso_link</code>。',
+  ppo: '片段逐字摘自 Isaac Lab 的 <code>config/g1/agents/rsl_rl_ppo_cfg.py</code>（提交 <code>b0542fe</code>）。每个环境每轮采 24 步，乘以环境数就是一次策略更新的样本量。',
+};
+
+const card = cards[variant] || cards.obs;
+---
+<SourceSnippet cards={card} caption={captions[variant] || captions.obs} />

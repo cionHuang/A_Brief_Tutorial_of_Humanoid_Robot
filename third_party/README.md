@@ -14,6 +14,7 @@
 | [rclcpp](https://github.com/ros2/rclcpp) | `05de6c894ec33a36e7837aab3b703353deee0adb` | Apache 2.0 | ROS 2 C++ 节点、Publisher/Subscription、参数和执行器 |
 | [geometry2](https://github.com/ros2/geometry2) | `2eccfcd2cc118c7fb92ef553022331f8749c0237` | BSD 3-Clause | TF2 坐标变换、Buffer、Listener 和广播器 |
 | [mujoco](https://github.com/google-deepmind/mujoco) | `44c118d712db5ca5d8c6264e4a21e3086e2ac952` | Apache 2.0 | MJCF、执行器、接触、传感器和仿真循环 |
+| [IsaacLab](https://github.com/isaac-sim/IsaacLab) | `b0542fe2d45bf91c4e1d9ef6952b9c709c80b4e8` | BSD 3-Clause | Manager 化环境（观测/动作/奖励/终止/事件）、G1 速度任务配置、PPO 配置和并行训练 |
 | [openvla](https://github.com/openvla/openvla) | `c8f03f48af692657d3060c19588038c7220e9af9` | MIT | VLA 推理、视觉语言输入、动作 token 化和策略调用 |
 | [lerobot](https://github.com/huggingface/lerobot) | `fbb811fca92504439792b97d216f0d00c2268382` | Apache 2.0 | 机器人数据集、遥操作、模仿学习和策略部署 |
 | [Parallel_Ankle_Joint](https://github.com/feidedao/Parallel_Ankle_Joint) | `1305e884a0ddfde147272985b477952cb1cc4dc6` | MIT | G1 并联踝简化模型的运动学参数、IK 解析解与踝部网格（2.1 节演示；作者声明为个人装配，非官方结构） |
@@ -31,12 +32,13 @@
 - Pinocchio 算法：`pinocchio/include/pinocchio/algorithm/`
 - MoveIt 核心与规划接口：`moveit2/moveit_core/`、`moveit2/moveit_ros/`
 - MuJoCo 核心 API：`mujoco/include/mujoco/`、`mujoco/src/`
+- Isaac Lab Manager 化环境：`IsaacLab/source/isaaclab_tasks/isaaclab_tasks/manager_based/locomotion/velocity/`
+- Isaac Lab G1 任务与 PPO：`.../velocity/config/g1/`、`.../velocity/config/g1/agents/`
 
 ## 后续资料
 
 以下仓库与后续章节相关，暂未固定版本：
 
-- [IsaacLab](https://github.com/isaac-sim/IsaacLab)：强化学习、Sim2Sim 和 Sim2Real；
 - [ros2/rclpy](https://github.com/ros2/rclpy)：ROS 2 Python 节点和 Topic 代码片段。
 
 ## 更新规则

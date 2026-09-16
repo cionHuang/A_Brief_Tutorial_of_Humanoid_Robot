@@ -62,7 +62,7 @@
 | --- | --- | --- |
 | [6.1 ROS 2 与机器人软件架构](../06-software-tools-simulation/01-ros2-software-architecture.md) | 20 分钟 | 1.2 |
 | [6.2 MuJoCo](../06-software-tools-simulation/02-mujoco.mdx) | 15 分钟 | 2.5、4.3 |
-| [6.3 Isaac Sim 与 Isaac Lab](../06-software-tools-simulation/03-isaac-sim-isaac-lab.md) | 15 分钟 | 6.2 |
+| [6.3 Isaac Sim 与 Isaac Lab](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx) | 15 分钟 | 6.2 |
 | [6.4 Gazebo、RViz 2 与 Foxglove](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md) | 10 分钟 | 6.1 |
 | [6.5 运动学与动力学工具库](../06-software-tools-simulation/05-kinematics-dynamics-libraries.md) | 10 分钟 | 4.2、4.3 |
 | [6.6 从仿真到真实系统](../06-software-tools-simulation/06-sim-to-real.md) | 15 分钟 | 6.2 |

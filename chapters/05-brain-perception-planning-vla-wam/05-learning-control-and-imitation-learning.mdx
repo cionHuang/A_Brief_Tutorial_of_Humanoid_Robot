@@ -99,7 +99,7 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 仿真到现实的差距（Reality Gap）来自三类差异：
 
-- **动力学差异**：接触模型、减速器摩擦与回差、执行器响应。仿真器之间也有差异，所以先在另一个仿真器里验证（[Sim2Sim](../06-software-tools-simulation/06-sim-to-real.md)，详见 6.6 节）——例如在 [Isaac Gym（6.3 节的 Isaac Lab 是其继任）](../06-software-tools-simulation/03-isaac-sim-isaac-lab.md) 里训练、到 [MuJoCo（6.2 节）](../06-software-tools-simulation/02-mujoco.mdx) 里部署——能用很低成本暴露"策略过拟合了训练仿真器"的问题；[5][7]
+- **动力学差异**：接触模型、减速器摩擦与回差、执行器响应。仿真器之间也有差异，所以先在另一个仿真器里验证（[Sim2Sim](../06-software-tools-simulation/06-sim-to-real.md)，详见 6.6 节）——例如在 [Isaac Gym（6.3 节的 Isaac Lab 是其继任）](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx) 里训练、到 [MuJoCo（6.2 节）](../06-software-tools-simulation/02-mujoco.mdx) 里部署——能用很低成本暴露"策略过拟合了训练仿真器"的问题；[5][7]
 - **传感器差异**：噪声、量化、零偏、安装误差（对应 4.4 节的估计误差来源）；
 - **延迟差异**：观测、推理、通信、执行各级的延迟在实机上更长且抖动更大。
 
