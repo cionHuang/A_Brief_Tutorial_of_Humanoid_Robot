@@ -23,7 +23,7 @@ const HATCH = Array.from({ length: 20 }, (_, i) => 30 + i * 19);
 const N = (tex) => ({ tex });
 ---
 
-<figure class="fc-demo">
+<figure class="fc-demo" data-friction-root>
   <svg viewBox="0 0 820 430" role="img" aria-label="摩擦锥交互演示：外力想让脚滑动，地面用摩擦平衡它；比较需要的切向力和摩擦上限，看脚是否打滑">
     <defs>
       <marker id="fc-mk-n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path class="fc-mk-n" d="M0 0 L10 5 L0 10 Z"></path></marker>
@@ -111,7 +111,7 @@ const N = (tex) => ({ tex });
 <script>
   import { setParts } from '../lib/tex.js';
 
-  document.querySelectorAll('.fc-demo').forEach((demo) => {
+  document.querySelectorAll('[data-friction-root]').forEach((demo) => {
     const FN_MAX = 400;
     const FT_MAX = 300;
     const OX = 475, OY = 215, PW = 300, PH = 120;
@@ -326,8 +326,8 @@ const N = (tex) => ({ tex });
         render();
       });
     });
-    fnSlider.addEventListener('input', render);
-    ftSlider.addEventListener('input', render);
+    if (fnSlider instanceof HTMLInputElement) fnSlider.addEventListener('input', render);
+    if (ftSlider instanceof HTMLInputElement) ftSlider.addEventListener('input', render);
 
     render();
   });

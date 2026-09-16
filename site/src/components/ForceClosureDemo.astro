@@ -15,7 +15,7 @@
 const CFG = { mu: 0.2, f1: 0, t1: 0.5, f2: 1, t2: 0.5 };
 ---
 
-<figure class="fc-demo" data-fc={JSON.stringify(CFG)}>
+<figure class="fc-demo" data-fc-root data-fc={JSON.stringify(CFG)}>
   <svg viewBox="0 0 980 384" role="img" aria-label="力封闭交互演示：俯视一个轴对齐矩形物体，两个带摩擦的圆形指垫压在物体边界上，各自画出指向物体内部的内法向箭头和半透明摩擦锥楔形；两接触点连线同时落在两个摩擦锥内时为绿色并判定力封闭，出锥时为橙红色；可拖动指垫或使用两个位置滑块改变接触点、调节摩擦系数，点击试抓观察物体被稳稳夹住或滑脱翻转飞出">
     <text class="fc-title" x="24" y="30">力封闭：连线要同时落在两个摩擦锥内</text>
     <text class="fc-legend" x="24" y="54">箭头 = 内法向 n　楔形 = 摩擦锥（半角 α = atan μ）　连线在锥内（绿）才封得住</text>
@@ -173,7 +173,7 @@ const CFG = { mu: 0.2, f1: 0, t1: 0.5, f2: 1, t2: 0.5 };
     return s;
   };
 
-  document.querySelectorAll(".fc-demo").forEach((demo) => {
+  document.querySelectorAll("[data-fc-root]").forEach((demo) => {
     if (!(demo instanceof HTMLElement)) return;
     const cfg = JSON.parse(demo.dataset.fc || "{}");
     const pick = (s) => demo.querySelector("[data-fc-" + s + "]");
@@ -272,7 +272,7 @@ const CFG = { mu: 0.2, f1: 0, t1: 0.5, f2: 1, t2: 0.5 };
 })();
 </script>
 
-<style is:global>
+<style>
   .fc-demo { margin: 1.5rem 0; }
   .fc-demo svg { display: block; width: 100%; max-width: 980px; height: auto; margin: 0 auto; touch-action: none; }
   .fc-demo svg text { paint-order: stroke fill; stroke: var(--sl-color-bg); stroke-width: 4px; stroke-linejoin: round; }

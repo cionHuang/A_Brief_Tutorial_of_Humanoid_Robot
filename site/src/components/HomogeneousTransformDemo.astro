@@ -455,10 +455,10 @@ const CFG = { world: WORLD, scale: SCALE, iso: ISO, lAxis: L_AXIS, range: R_GEO,
 
   /* 控件与读数 */
   .ht-controls { display: flex; flex-direction: column; gap: 0.55rem; max-width: 900px; margin: 0.55rem auto 0; }
-  .ht-row { display: flex; align-items: center; gap: 0.9rem; }
+  .ht-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; }
   .ht-row-title { flex: 0 0 2.6rem; color: var(--sl-color-gray-2); font-size: 0.8125rem; }
   .ht-btn { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.85rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
-  .ht-slider-label { display: flex; flex: 1 1 0; min-width: 0; align-items: center; gap: 0.45rem; margin: 0; font-size: 0.8125rem; color: var(--sl-color-gray-2); white-space: nowrap; }
+  .ht-slider-label { display: flex; flex: 1 1 12rem; min-width: 0; align-items: center; gap: 0.45rem; margin: 0; font-size: 0.8125rem; color: var(--sl-color-gray-2); white-space: nowrap; }
   .ht-range { flex: 1 1 auto; width: auto; min-width: 4rem; margin: 0; accent-color: var(--sl-color-accent); }
   .ht-val { flex: 0 0 3.4rem; text-align: right; font-variant-numeric: tabular-nums; color: var(--sl-color-accent); }
   .ht-val { color: var(--sl-color-accent); font-weight: 600; font-variant-numeric: tabular-nums; }
