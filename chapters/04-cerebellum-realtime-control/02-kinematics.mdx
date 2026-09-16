@@ -146,7 +146,7 @@ $$
 
 工作空间（Workspace）描述末端能够到达的位置或位姿集合，但“可到达”不等于“在所有方向上都能灵活运动”。在某些构型，雅可比的列或行变得线性相关，系统进入奇异位形（Singular Configuration）：某些方向的末端速度趋近于零，或为了追踪很小的末端速度需要很大的关节速度。
 
-可用最小奇异值 $\sigma_{\min}(\boldsymbol{J})$、条件数 $\kappa(\boldsymbol{J})$ 或可操作性指标监测这一问题。[3]下面的行列式指标适用于任务雅可比具有完整行秩的情形；如果 $\boldsymbol{J}$ 是降维任务或本身行秩不足，应优先看奇异值，而不是直接比较行列式：
+可用最小奇异值 $\sigma_{\min}(\boldsymbol{J})$、条件数（Condition Number） $\kappa(\boldsymbol{J})$ 或可操作性指标监测这一问题。[3]下面的行列式指标适用于任务雅可比具有完整行秩的情形；如果 $\boldsymbol{J}$ 是降维任务或本身行秩不足，应优先看奇异值，而不是直接比较行列式：
 
 $$
 w(\boldsymbol{q}) = \sqrt{\det(\boldsymbol{J}\boldsymbol{J}^\top)}
