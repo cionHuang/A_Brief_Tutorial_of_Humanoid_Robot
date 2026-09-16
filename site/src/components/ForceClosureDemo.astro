@@ -1,0 +1,334 @@
+---
+/**
+ * 5.4 用：力封闭（Force Closure）交互演示 —— 放在「### 抓取：从接触到力封闭」末尾、
+ * 「一句话听懂」之前。
+ *
+ * 模型（页面里真算，平面双点接触）：轴对齐矩形物体，左下角在 (0,0)，宽 W、高 H。
+ * 两个带摩擦的点接触 p1、p2 吸附在矩形边界上，内法向 n1、n2 为轴向单位向量；
+ * 摩擦系数 μ，摩擦锥半角 α = atan(μ)；u12 = normalize(p2 − p1)，u21 = −u12。
+ * 判据（双指点接触）：angle(u12, n1) < α 且 angle(u21, n2) < α ⟺ 力封闭。
+ * 即：两接触点连线必须同时落在两个摩擦锥内。|θ − α| < 0.5° 单列为“临界”。
+ *
+ * 拖动指垫时吸附到最近的面并把面内位置限制在 t ∈ [0.12, 0.88]，法向始终是明确的轴向单位向量。
+ * 教学量级，不代表任何真机参数。viewBox 980×460，SVG 内文字 ≥ 17px。
+ */
+const CFG = { mu: 0.2, f1: 0, t1: 0.5, f2: 1, t2: 0.5 };
+---
+
+<figure class="fc-demo" data-fc={JSON.stringify(CFG)}>
+  <svg viewBox="0 0 980 384" role="img" aria-label="力封闭交互演示：俯视一个轴对齐矩形物体，两个带摩擦的圆形指垫压在物体边界上，各自画出指向物体内部的内法向箭头和半透明摩擦锥楔形；两接触点连线同时落在两个摩擦锥内时为绿色并判定力封闭，出锥时为橙红色；可拖动指垫或使用两个位置滑块改变接触点、调节摩擦系数，点击试抓观察物体被稳稳夹住或滑脱翻转飞出">
+    <text class="fc-title" x="24" y="30">力封闭：连线要同时落在两个摩擦锥内</text>
+    <text class="fc-legend" x="24" y="54">箭头 = 内法向 n　楔形 = 摩擦锥（半角 α = atan μ）　连线在锥内（绿）才封得住</text>
+
+    <g class="fc-slipset" data-fc-slipset>
+      <rect class="fc-obj" x="350" y="120" width="280" height="196" rx="6"></rect>
+      <line class="fc-gravity" x1="490" y1="218" x2="490" y2="348" marker-end="url(#fc-garrow)"></line>
+      <text class="fc-label" x="478" y="288" text-anchor="end">mg</text>
+      <circle class="fc-com" cx="490" cy="218" r="6"></circle>
+      <text class="fc-label" x="506" y="244">质心</text>
+
+      <path class="fc-cone fc-cone-bad" data-fc-wedge="0" d=""></path>
+      <path class="fc-cone fc-cone-bad" data-fc-wedge="1" d=""></path>
+      <line class="fc-link fc-link-bad" data-fc-link x1="350" y1="218" x2="490" y2="120"></line>
+
+      <circle class="fc-dot" data-fc-dot="0" cx="350" cy="218" r="5.5"></circle>
+      <circle class="fc-dot" data-fc-dot="1" cx="490" cy="120" r="5.5"></circle>
+      <line class="fc-normal" data-fc-nrm="0" x1="350" y1="218" x2="468" y2="218" marker-end="url(#fc-narrow)"></line>
+      <line class="fc-normal" data-fc-nrm="1" x1="490" y1="120" x2="490" y2="238" marker-end="url(#fc-narrow)"></line>
+    </g>
+
+    <g class="fc-padwrap">
+      <circle class="fc-pad" data-fc-padc="0" cx="322" cy="218" r="28"></circle>
+      <circle class="fc-pad" data-fc-padc="1" cx="490" cy="92" r="28"></circle>
+      <circle class="fc-pad-hit" data-fc-pad="0" cx="322" cy="218" r="40"></circle>
+      <circle class="fc-pad-hit" data-fc-pad="1" cx="490" cy="92" r="40"></circle>
+    </g>
+
+    <defs>
+      <marker id="fc-narrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" markerUnits="userSpaceOnUse" orient="auto">
+        <path class="fc-nhead" d="M0,0 L10,5 L0,10 Z"></path>
+      </marker>
+      <marker id="fc-garrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" markerUnits="userSpaceOnUse" orient="auto">
+        <path class="fc-ghead" d="M0,0 L10,5 L0,10 Z"></path>
+      </marker>
+    </defs>
+  </svg>
+
+  <div class="fc-badges">
+    <span class="fc-badge fc-bad" data-fc-badge>不封闭 ✗</span>
+    <span class="fc-reason" data-fc-reason>正在计算…</span>
+  </div>
+
+  <div class="fc-controls">
+    <div class="fc-row">
+      <span class="fc-row-title">操作</span>
+      <button type="button" class="fc-btn" data-fc-try>试抓</button>
+      <span class="fc-hint">拖动两个指垫到不同面 / 不同位置，或调 μ，再看判定与「夹住还是滑脱」</span>
+    </div>
+    <div class="fc-row">
+      <span class="fc-row-title">参数</span>
+      <label class="fc-slider"><span class="fc-k">摩擦系数 μ</span><input class="fc-range" type="range" data-fc-mu min="0.05" max="1" step="0.01" value="0.2" /><span class="fc-v" data-fc-muv>0.20</span></label>
+    </div>
+    <div class="fc-row">
+      <span class="fc-row-title">接触点</span>
+      <label class="fc-slider"><span class="fc-k">指 1 沿边界</span><input class="fc-range" type="range" data-fc-pos="0" min="0" max="1" step="0.001" value="0.125" /><span class="fc-v" data-fc-posv="0">左面</span></label>
+      <label class="fc-slider"><span class="fc-k">指 2 沿边界</span><input class="fc-range" type="range" data-fc-pos="1" min="0" max="1" step="0.001" value="0.375" /><span class="fc-v" data-fc-posv="1">上面</span></label>
+    </div>
+  </div>
+
+  <div class="fc-readout">
+    <div class="fc-fields">
+      <div class="fc-field"><span class="fc-field-k">θ1（度）</span><span class="fc-field-v" data-fc-out="th1">35.0</span></div>
+      <div class="fc-field"><span class="fc-field-k">θ2（度）</span><span class="fc-field-v" data-fc-out="th2">55.0</span></div>
+      <div class="fc-field"><span class="fc-field-k">锥半角 α（度）</span><span class="fc-field-v" data-fc-out="alpha">11.3</span></div>
+      <div class="fc-field"><span class="fc-field-k">摩擦系数 μ</span><span class="fc-field-v" data-fc-out="mu">0.20</span></div>
+      <div class="fc-field"><span class="fc-field-k">指 1 所在面</span><span class="fc-field-v" data-fc-out="f1">左面</span></div>
+      <div class="fc-field"><span class="fc-field-k">指 1 位置（m）</span><span class="fc-field-v" data-fc-out="p1">0.350</span></div>
+      <div class="fc-field"><span class="fc-field-k">指 2 所在面</span><span class="fc-field-v" data-fc-out="f2">上面</span></div>
+      <div class="fc-field"><span class="fc-field-k">指 2 位置（m）</span><span class="fc-field-v" data-fc-out="p2">0.500</span></div>
+    </div>
+    <div class="fc-state fc-state-bad" data-fc-state>接触力封不住物体的运动方向：点「试抓」，看它滑脱翻转飞出。</div>
+    <div class="fc-note">判据（双指点接触）：u12 = normalize(p2 − p1)，u21 = −u12；θ1 = ∠(u12, n1)，θ2 = ∠(u21, n2)，α = atan(μ)。θ1 &lt; α 且 θ2 &lt; α ⟺ 力封闭，也就是两接触点连线必须同时落在两个摩擦锥内。</div>
+  </div>
+</figure>
+
+<script>
+(function () {
+  /* FC-CORE-START */
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const W = 1.0, H = 0.7;                 // 物体宽、高（m），左下角在 (0,0)
+  const tMin = 0.12, tMax = 0.88;         // 接触点在面内的允许区间（避开角点）
+  const VBW = 980, VBH = 384;             // viewBox 尺寸
+  const CX = 490, CY = 218, SCALE = 280;  // 场景映射：物体中心 → (CX, CY)
+  const PAD_R = 28, NLEN = 118, WLEN = 150, ARC_N = 12;
+  const FACES = [
+    { name: "左面", n: [1, 0] },
+    { name: "上面", n: [0, -1] },
+    { name: "右面", n: [-1, 0] },
+    { name: "下面", n: [0, 1] },
+  ];
+  const facePoint = (face, t) => {
+    if (face === 0) return [0, t * H];
+    if (face === 1) return [t * W, H];
+    if (face === 2) return [W, t * H];
+    return [t * W, 0];
+  };
+  const snapFace = (q) => {
+    let best = null;
+    for (let i = 0; i < FACES.length; i += 1) {
+      let t = i === 0 || i === 2 ? q[1] / H : q[0] / W;
+      t = clamp(t, tMin, tMax);
+      const p = facePoint(i, t);
+      const d = (p[0] - q[0]) * (p[0] - q[0]) + (p[1] - q[1]) * (p[1] - q[1]);
+      if (!best || d < best.d) best = { face: i, t: t, d: d };
+    }
+    return best;
+  };
+  const toS = (p) => [CX + (p[0] - W / 2) * SCALE, CY - (p[1] - H / 2) * SCALE];
+  const dirS = (n) => [n[0], -n[1]];
+  const wedgePath = (pS, nS, alpha) => {
+    const phi = Math.atan2(nS[1], nS[0]);
+    let d = "M " + pS[0].toFixed(1) + " " + pS[1].toFixed(1);
+    for (let k = 0; k <= ARC_N; k += 1) {
+      const a = phi - alpha + (2 * alpha * k) / ARC_N;
+      d += " L " + (pS[0] + Math.cos(a) * WLEN).toFixed(1) + " " + (pS[1] + Math.sin(a) * WLEN).toFixed(1);
+    }
+    return d + " Z";
+  };
+  /* FC-JUDGE-START */
+  const FC_EPS = (0.5 * Math.PI) / 180;
+  const fcAngle = (ax, ay, bx, by) => {
+    const la = Math.hypot(ax, ay), lb = Math.hypot(bx, by);
+    if (la < 1e-9 || lb < 1e-9) return null;
+    return Math.atan2(Math.abs(ax * by - ay * bx), ax * bx + ay * by);
+  };
+  const fcJudge = (p1, n1, p2, n2, mu) => {
+    const alpha = Math.atan(mu);
+    const th1 = fcAngle(p2[0] - p1[0], p2[1] - p1[1], n1[0], n1[1]);
+    const th2 = fcAngle(p1[0] - p2[0], p1[1] - p2[1], n2[0], n2[1]);
+    if (th1 === null || th2 === null) return { alpha: alpha, th1: null, th2: null, verdict: "fail" };
+    const m1 = alpha - th1, m2 = alpha - th2;
+    let verdict = "fail";
+    if (m1 > FC_EPS && m2 > FC_EPS) verdict = "closure";
+    else if (Math.min(Math.abs(m1), Math.abs(m2)) < FC_EPS) verdict = "critical";
+    return { alpha: alpha, th1: th1, th2: th2, m1: m1, m2: m2, verdict: verdict };
+  };
+  /* FC-JUDGE-END */
+  /* FC-CORE-END */
+
+  const DEG = 180 / Math.PI;
+  const fmt = (v, d) => (v == null ? "—" : Math.abs(v) < Math.pow(10, -d) / 2 ? "0." + "0".repeat(d) : (v < 0 ? "−" : "") + Math.abs(v).toFixed(d));
+  const badgeOf = (v) => (v === "closure" ? ["力封闭 ✓", "fc-ok"] : v === "critical" ? ["临界 ≈", "fc-warn"] : ["不封闭 ✗", "fc-bad"]);
+
+  const reasonOf = (j, sameFace) => {
+    if (j.th1 === null || j.th2 === null) return "两指重合：无法定义接触点连线。";
+    if (j.verdict === "closure") return "两接触点连线同时落在两个摩擦锥内：接触力能合力封住物体的运动方向。";
+    if (j.verdict === "critical") return "θ 与锥半角 α 只差不到 0.5°：接触力正好压在摩擦锥边界上，稍一扰动就滑脱。";
+    if (sameFace) return "两指压在同一面：两个内法向同向，连线必然垂直于法向（θ ≈ 90°），封不住运动方向。";
+    const bad = [];
+    if (j.alpha - j.th1 < -FC_EPS) bad.push("θ1");
+    if (j.alpha - j.th2 < -FC_EPS) bad.push("θ2");
+    let s = bad.join("、") + " 超出锥半角 α：两指连线偏出摩擦锥。";
+    if (j.alpha < (20 * Math.PI) / 180) s += "μ 偏小，锥太窄。";
+    return s;
+  };
+
+  document.querySelectorAll(".fc-demo").forEach((demo) => {
+    if (!(demo instanceof HTMLElement)) return;
+    const cfg = JSON.parse(demo.dataset.fc || "{}");
+    const pick = (s) => demo.querySelector("[data-fc-" + s + "]");
+    const slipset = pick("slipset"), elLink = pick("link"), svg = demo.querySelector("svg");
+    const padc = [pick('padc="0"'), pick('padc="1"')];
+    const hit = [pick('pad="0"'), pick('pad="1"')];
+    const dot = [pick('dot="0"'), pick('dot="1"')];
+    const nrm = [pick('nrm="0"'), pick('nrm="1"')];
+    const wedge = [pick('wedge="0"'), pick('wedge="1"')];
+    const out = { th1: pick('out="th1"'), th2: pick('out="th2"'), alpha: pick('out="alpha"'), mu: pick('out="mu"'), f1: pick('out="f1"'), p1: pick('out="p1"'), f2: pick('out="f2"'), p2: pick('out="p2"') };
+    const elBadge = pick("badge"), elReason = pick("reason"), elState = pick("state");
+    const tryBtn = pick("try"), muEl = pick("mu"), muV = pick("muv");
+    const posEl = [pick('pos="0"'), pick('pos="1"')], posV = [pick('posv="0"'), pick('posv="1"')];
+    if (!slipset || !elLink) return;
+
+    const st = { f: [{ face: cfg.f1 ?? 0, t: cfg.t1 ?? 0.5 }, { face: cfg.f2 ?? 1, t: cfg.t2 ?? 0.5 }], mu: cfg.mu ?? 0.2 };
+    let cur = null, resetTimer = 0, drag = -1;
+
+    const setAttr = (el, attrs) => { if (el) for (const k in attrs) el.setAttribute(k, attrs[k]); };
+    const setState = (txt, v) => {
+      if (!elState) return;
+      elState.textContent = txt;
+      elState.className = "fc-state " + (v === "closure" ? "fc-state-ok" : v === "critical" ? "fc-state-warn" : "fc-state-bad");
+    };
+    const setSlider = (i) => {
+      if (posEl[i]) posEl[i].value = String((st.f[i].face + (st.f[i].t - tMin) / (tMax - tMin)) / 4);
+      if (posV[i]) posV[i].textContent = FACES[st.f[i].face].name;
+    };
+
+    const render = () => {
+      const p = [facePoint(st.f[0].face, st.f[0].t), facePoint(st.f[1].face, st.f[1].t)];
+      const n = [FACES[st.f[0].face].n, FACES[st.f[1].face].n];
+      const j = fcJudge(p[0], n[0], p[1], n[1], st.mu);
+      const sameFace = st.f[0].face === st.f[1].face;
+      cur = j;
+      const pS = [toS(p[0]), toS(p[1])], nS = [dirS(n[0]), dirS(n[1])];
+      for (let i = 0; i < 2; i += 1) {
+        const pc = [pS[i][0] - nS[i][0] * PAD_R, pS[i][1] - nS[i][1] * PAD_R];
+        setAttr(padc[i], { cx: pc[0].toFixed(1), cy: pc[1].toFixed(1) });
+        setAttr(hit[i], { cx: pc[0].toFixed(1), cy: pc[1].toFixed(1) });
+        setAttr(dot[i], { cx: pS[i][0].toFixed(1), cy: pS[i][1].toFixed(1) });
+        setAttr(nrm[i], { x1: pS[i][0].toFixed(1), y1: pS[i][1].toFixed(1), x2: (pS[i][0] + nS[i][0] * NLEN).toFixed(1), y2: (pS[i][1] + nS[i][1] * NLEN).toFixed(1) });
+        setAttr(wedge[i], { d: wedgePath(pS[i], nS[i], j.alpha) });
+        const m = j.alpha - (i === 0 ? j.th1 : j.th2);
+        wedge[i].setAttribute("class", "fc-cone " + (m > FC_EPS ? "fc-cone-ok" : m < -FC_EPS ? "fc-cone-bad" : "fc-cone-warn"));
+      }
+      setAttr(elLink, { x1: pS[0][0].toFixed(1), y1: pS[0][1].toFixed(1), x2: pS[1][0].toFixed(1), y2: pS[1][1].toFixed(1) });
+      elLink.setAttribute("class", "fc-link " + (j.verdict === "closure" ? "fc-link-ok" : j.verdict === "critical" ? "fc-link-warn" : "fc-link-bad"));
+      if (out.th1) out.th1.textContent = j.th1 === null ? "—" : (j.th1 * DEG).toFixed(1);
+      if (out.th2) out.th2.textContent = j.th2 === null ? "—" : (j.th2 * DEG).toFixed(1);
+      if (out.alpha) out.alpha.textContent = (j.alpha * DEG).toFixed(1);
+      if (out.mu) out.mu.textContent = st.mu.toFixed(2);
+      if (out.f1) out.f1.textContent = FACES[st.f[0].face].name;
+      if (out.f2) out.f2.textContent = FACES[st.f[1].face].name;
+      if (out.p1) out.p1.textContent = fmt(st.f[0].face === 0 || st.f[0].face === 2 ? p[0][1] : p[0][0], 3);
+      if (out.p2) out.p2.textContent = fmt(st.f[1].face === 0 || st.f[1].face === 2 ? p[1][1] : p[1][0], 3);
+      if (muV) muV.textContent = st.mu.toFixed(2);
+      if (elBadge) { const b = badgeOf(j.verdict); elBadge.textContent = b[0]; elBadge.className = "fc-badge " + b[1]; }
+      if (elReason) elReason.textContent = reasonOf(j, sameFace);
+      setState(j.verdict === "closure" ? "接触力能合力封住物体：点「试抓」，看它下沉一点后被稳稳夹住。" : j.verdict === "critical" ? "处在临界：点「试抓」，多半会滑脱。" : "接触力封不住物体的运动方向：点「试抓」，看它滑脱翻转飞出。", j.verdict);
+    };
+
+    const interact = () => { demo.classList.remove("fc-grip", "fc-slip"); clearTimeout(resetTimer); render(); };
+
+    if (muEl instanceof HTMLInputElement) muEl.addEventListener("input", () => { st.mu = clamp(Number(muEl.value), 0.05, 1); if (muV) muV.textContent = st.mu.toFixed(2); interact(); });
+    posEl.forEach((el, i) => { if (!(el instanceof HTMLInputElement)) return; el.addEventListener("input", () => { const s = clamp(Number(el.value), 0, 0.9999); const face = Math.min(3, Math.floor(s * 4)); st.f[i] = { face: face, t: tMin + (s * 4 - face) * (tMax - tMin) }; if (posV[i]) posV[i].textContent = FACES[face].name; interact(); }); });
+    if (tryBtn instanceof HTMLButtonElement) tryBtn.addEventListener("click", () => {
+      demo.classList.remove("fc-grip", "fc-slip");
+      void slipset.getBoundingClientRect();
+      clearTimeout(resetTimer);
+      const v = cur ? cur.verdict : "fail";
+      if (v === "closure") { demo.classList.add("fc-grip"); setState("夹住了：力封闭成立，物体下沉一点后被稳稳夹住。", "closure"); }
+      else {
+        demo.classList.add("fc-slip");
+        setState(v === "critical" ? "滑脱了：判定处在临界，接触力压在摩擦锥边界上——几何上碰到了，但没真正抓住。" : "滑脱了：几何上碰到了，但接触力封不住，物体翻转飞出后复位。", "fail");
+        resetTimer = setTimeout(() => { demo.classList.remove("fc-slip"); render(); }, 1700);
+      }
+    });
+
+    const toModel = (e) => {
+      if (!svg) return [W / 2, H / 2];
+      const r = svg.getBoundingClientRect();
+      return [((e.clientX - r.left) / r.width) * VBW - CX, (CY - ((e.clientY - r.top) / r.height) * VBH)].map((v, k) => v / SCALE + (k === 0 ? W / 2 : H / 2));
+    };
+    hit.forEach((h, i) => { if (!h) return; h.addEventListener("pointerdown", (e) => { e.preventDefault(); drag = i; if (h.setPointerCapture) { try { h.setPointerCapture(e.pointerId); } catch { /* ignore */ } } h.classList.add("fc-grabbing"); }); });
+    if (svg) {
+      svg.addEventListener("pointermove", (e) => { if (drag < 0) return; const s = snapFace(toModel(e)); st.f[drag] = { face: s.face, t: s.t }; setSlider(drag); interact(); });
+      const end = () => { if (drag < 0) return; if (hit[drag]) hit[drag].classList.remove("fc-grabbing"); drag = -1; };
+      svg.addEventListener("pointerup", end);
+      svg.addEventListener("pointercancel", end);
+      svg.addEventListener("pointerleave", end);
+    }
+
+    setSlider(0); setSlider(1); render();
+  });
+})();
+</script>
+
+<style is:global>
+  .fc-demo { margin: 1.5rem 0; }
+  .fc-demo svg { display: block; width: 100%; max-width: 980px; height: auto; margin: 0 auto; touch-action: none; }
+  .fc-demo svg text { paint-order: stroke fill; stroke: var(--sl-color-bg); stroke-width: 4px; stroke-linejoin: round; }
+  .fc-title { fill: var(--sl-color-text); font-size: 26px; font-weight: 600; }
+  .fc-legend, .fc-label { fill: var(--sl-color-gray-2); font-size: 17px; }
+  .fc-obj { fill: var(--sl-color-gray-5); fill-opacity: 0.5; stroke: var(--sl-color-text); stroke-width: 2.5; }
+  .fc-com { fill: var(--sl-color-bg); stroke: var(--sl-color-text); stroke-width: 2; }
+  .fc-gravity { stroke: var(--sl-color-gray-2); stroke-width: 2.4; stroke-dasharray: 6 4; }
+  .fc-ghead { fill: var(--sl-color-gray-2); }
+  .fc-dot { fill: var(--sl-color-accent); stroke: var(--sl-color-bg); stroke-width: 1.5; }
+  .fc-normal { stroke: var(--sl-color-accent); stroke-width: 3; }
+  .fc-nhead { fill: var(--sl-color-accent); }
+  .fc-cone { stroke: var(--sl-color-gray-4); stroke-width: 1.2; }
+  .fc-cone-ok { fill: light-dark(#15803d, #4ade80); fill-opacity: 0.18; }
+  .fc-cone-bad { fill: light-dark(#dc2626, #f87171); fill-opacity: 0.2; }
+  .fc-cone-warn { fill: light-dark(#d97706, #fbbf24); fill-opacity: 0.22; }
+  .fc-link { fill: none; stroke-width: 3.2; stroke-dasharray: 9 6; }
+  .fc-link-ok { stroke: light-dark(#15803d, #4ade80); }
+  .fc-link-warn { stroke: light-dark(#d97706, #fbbf24); }
+  .fc-link-bad { stroke: light-dark(#dc2626, #f87171); }
+  .fc-pad { fill: var(--sl-color-accent); fill-opacity: 0.85; stroke: var(--sl-color-bg); stroke-width: 2; }
+  .fc-pad-hit { fill: transparent; cursor: grab; touch-action: none; }
+  .fc-pad-hit.fc-grabbing { cursor: grabbing; }
+  .fc-slipset, .fc-padwrap { transform-box: view-box; transform-origin: 490px 218px; }
+  .fc-grip .fc-slipset, .fc-grip .fc-padwrap { animation: fc-gripkf 0.55s ease-out forwards; }
+  .fc-slip .fc-slipset { animation: fc-slipkf 1s cubic-bezier(0.35, 0.05, 0.75, 0.6) forwards; }
+  @keyframes fc-gripkf { 0% { transform: translateY(0); } 45% { transform: translateY(10px); } 100% { transform: translateY(7px); } }
+  @keyframes fc-slipkf { 0% { transform: translate(0, 0) rotate(0deg); } 28% { transform: translate(8px, 26px) rotate(-7deg); } 100% { transform: translate(70px, 150px) rotate(-38deg); opacity: 0.12; } }
+
+  .fc-badges { max-width: 980px; margin: 0.7rem auto 0; display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+  .fc-badge { display: inline-flex; align-items: center; height: 2rem; padding: 0 0.8rem; border: 1.5px solid currentColor; border-radius: 999px; font-size: 1.15rem; font-weight: 700; white-space: nowrap; }
+  .fc-reason { color: var(--sl-color-gray-2); font-size: 1rem; line-height: 1.6; }
+  .fc-ok { color: light-dark(#15803d, #4ade80); }
+  .fc-bad { color: light-dark(#dc2626, #f87171); }
+  .fc-warn { color: light-dark(#d97706, #fbbf24); }
+
+  .fc-controls { display: flex; flex-direction: column; gap: 0.5rem; max-width: 980px; margin: 0.6rem auto 0; }
+  .fc-row { display: flex; align-items: center; gap: 0.6rem; margin: 0; flex-wrap: wrap; }
+  .fc-row-title { flex: 0 0 3.4rem; margin: 0; color: var(--sl-color-gray-2); font-size: 0.9375rem; }
+  .fc-slider { display: flex; flex: 1 1 16rem; min-width: 0; align-items: center; gap: 0.4rem; margin: 0; }
+  .fc-k { flex: 0 0 6.4rem; color: var(--sl-color-gray-2); font-size: 0.9375rem; }
+  .fc-range { flex: 1 1 auto; min-width: 4rem; margin: 0; accent-color: var(--sl-color-accent); }
+  .fc-v { flex: 0 0 4.6rem; text-align: right; color: var(--sl-color-accent); font-weight: 600; font-variant-numeric: tabular-nums; font-size: 0.9375rem; }
+  .fc-hint { margin: 0; color: var(--sl-color-gray-3); font-size: 0.9375rem; }
+  .fc-btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; height: 2.35rem; margin: 0; padding: 0 1.1rem; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-accent); font: inherit; font-size: 1rem; line-height: 1; cursor: pointer; }
+  .fc-btn:hover { border-color: var(--sl-color-accent); }
+
+  .fc-readout { max-width: 980px; margin: 0.7rem auto 0; display: flex; flex-direction: column; gap: 0.4rem; }
+  .fc-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.6rem, 1fr)); gap: 0.5rem; align-items: stretch; }
+  .fc-field { display: flex; flex-direction: column; justify-content: flex-start; gap: 0.2rem; height: 4.6rem; box-sizing: border-box; margin: 0 !important; padding: 0.5rem 0.7rem; border: 1px solid var(--sl-color-gray-5); border-radius: 8px; }
+  .fc-field-k { color: var(--sl-color-gray-3); font-size: 0.9375rem; line-height: 1.5rem; height: 1.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fc-field-v { color: var(--sl-color-accent); font-size: 1.2rem; font-weight: 700; line-height: 1.75rem; height: 1.75rem; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
+  .fc-state { font-size: 1rem; line-height: 1.6; font-weight: 600; }
+  .fc-state-ok { color: light-dark(#15803d, #4ade80); }
+  .fc-state-warn { color: light-dark(#d97706, #fbbf24); }
+  .fc-state-bad { color: light-dark(#dc2626, #f87171); }
+  .fc-note { color: var(--sl-color-gray-3); font-size: 0.9375rem; line-height: 1.6; }
+  @media (max-width: 40rem) { .fc-row-title { flex-basis: 100%; } .fc-slider { flex: 1 1 100%; } }
+</style>
