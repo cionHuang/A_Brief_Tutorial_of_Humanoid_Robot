@@ -47,16 +47,6 @@ MJCF 的 `<sensor>` 挂靠在 site 上。`g1_29dof.xml` 为 `imu_in_pelvis` 和 
 - **接触观察**：开启接触力可视化，双支撑到单支撑切换时观察法向力的重新分配，对应 2.4 节的支撑域和 4.6 节的 ZMP；
 - **数据记录**：每步从 `mj_data` 取 `qpos`、`qvel`、`sensordata`、接触力和 `ctrl`，带仿真时间戳存盘——格式纪律与 6.1 节 rosbag2 相同，先记录再分析。[3]
 
-## G1 三个 MJCF 变体的差异
-
-| 变体 | 关节执行器 | 腰部 | 手部 | 适用场景 |
-| --- | --- | --- | --- | --- |
-| `g1_29dof.xml` | 29 | yaw/roll/pitch 可动 | 无 | 行走、平衡、全身控制 |
-| `g1_29dof_lock_waist.xml` | 27 可动（腰部 roll/pitch 锁定） | 仅 yaw | 无 | 腿部步态调试、减少变量 |
-| `g1_29dof_with_hand.xml` | 43（含双手 14 个手指关节） | yaw/roll/pitch 可动 | 三指 7 DoF/手 | 操作、VLA/WAM（5.4、5.6、5.7 节） |
-
-切换变体时要同步更换的不只是文件名：关节索引顺序、动作向量维度、重力补偿参数和任何按索引写死的代码都要跟着改。锁腰模型中被固定的关节仍以 `fixed` 类型存在于模型树里，代码按名字而不是按位置索引关节，可以避开大部分这类错误。
-
 ## 参考资料
 
 [1] Todorov, E., Erez, T., & Tassa, Y. “MuJoCo: A Physics Engine for Model-Based Control.” *IEEE/RSJ IROS*, 2012. MuJoCo 的设计目标与软接触模型原始论文。<https://doi.org/10.1109/IROS.2012.6386109>
