@@ -1,0 +1,24 @@
+LeRobot 数据集片段（组件 LeRobotDatasetViewer.astro 使用，5.5 节）
+
+数据集  lerobot/svla_so101_pickplace
+许可    Apache-2.0
+revision f641879e22172be7e8161d5e6c1503c2d2feb657
+来源    https://huggingface.co/datasets/lerobot/svla_so101_pickplace
+        （本次经 hf-mirror.com 镜像下载；页面运行时不联网）
+
+片段    episode 0；原 episode 303 帧 @ 30 fps（10.1 s），任务
+        "pink lego brick into the transparent box"。等间隔抽 40 帧：
+        帧号 [0,8,15,...,302]，时间戳 0.0000…10.0667 s。
+        关节状态/动作 observation.state、action（float32[6]）取自
+        data/chunk-000/file-000.parquet，已内联进组件。
+
+sprite.jpg
+        5760×1350，8 列 × 5 行共 40 个单元，每单元 720×270：
+        左半 observation.images.up（俯视，360×270），
+        右半 observation.images.side（侧视，360×270）。
+        JPEG quality=82，535489 字节；sha256
+        555fa984c90c9168dd47c36287e7eff69fa5a1440b8ac37905cc887930aeaadf
+
+生成    ffmpeg（libdav1d）从数据集 videos/.../file-000.mp4 解码前 10.2 s，
+        -vsync 0 逐帧导出 JPEG；PIL 缩放到 360×270 并左右拼接为 sprite。
+        未修改任何帧的像素内容，仅缩放与拼接。

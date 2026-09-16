@@ -1,5 +1,7 @@
 # 5.5 学习控制与模仿学习
 
+import LeRobotDatasetViewer from '../../../components/LeRobotDatasetViewer.astro';
+
 ## 先看一个现场问题
 
 G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，换个仿真器验证时步态僵硬、轻微前倾，上实机后两脚打架直接摔倒。另一条线上，用遥操作采了 200 次抓杯示范训练的策略，杯子放在训练过的位置抓得很稳，把杯子挪开 10 厘米，机械臂就在空中犹豫抽动，最后停在了一个从未见过的姿态。
@@ -49,6 +51,10 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 | 任务与语言标注 | 这条示范在做什么（如“把红杯子递给我”），VLA 训练要用（5.6 节） |
 | 成功/失败标签 | 失败轨迹同样有训练价值，前提是保留“失败”这个事实 |
 | 标定参数 | 相机内外参、坐标变换版本；换了标定要记下来，否则数据不可复现 |
+
+上表是要记录的字段，下面用一个真实的 LeRobot 数据集片段把它们跑起来：拖动时间轴或用播放键逐帧查看，两台相机画面与关节状态、动作曲线上的游标始终对齐。[10]
+
+<LeRobotDatasetViewer />
 
 两个常踩的坑：**频率与同步**——图像 30 Hz、关节状态 500 Hz、动作指令 50 Hz，直接按帧拼会把不同时刻的数据凑成一帧，制造出并不存在的因果关系；**动作空间漂移**——采集中途换了动作空间却不标注，数据集会变成两种分布混在一起。
 
@@ -116,3 +122,5 @@ Isaac Gym 大规模并行训练（PPO + 域随机化）
 [8] Zhao, T., et al. “Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware.” *RSS*, 2023. 低成本主从遥操作与双臂精细操作的数据采集（ALOHA）。<https://arxiv.org/abs/2304.13705>
 
 [9] Open X-Embodiment Collaboration. “Open X-Embodiment: Robotic Learning Datasets and RT-X Models.” *ICRA*, 2024. 跨机构机器人数据集的组装、统一格式与规模。<https://arxiv.org/abs/2310.08864>
+
+[10] Hugging Face. *LeRobot Dataset: lerobot/svla_so101_pickplace*（SO-101 真机遥操作演示，任务 “pink lego brick into the transparent box”）。许可 Apache-2.0，本文使用 revision `f641879e22172be7e8161d5e6c1503c2d2feb657` 的 episode 0 片段，用于 5.5 节「数据采集」的可交互查看器。<https://huggingface.co/datasets/lerobot/svla_so101_pickplace>

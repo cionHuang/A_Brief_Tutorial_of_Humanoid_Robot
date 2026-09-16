@@ -1,0 +1,260 @@
+---
+/**
+ * 5.5 用：LeRobot 数据集片段查看器 —— 放在“### 数据采集”记录字段表之后。
+ *
+ * 数据是真实 LeRobot v3.0 数据集 lerobot/svla_so101_pickplace（Apache-2.0，
+ * revision f641879e…）的 episode 0：原始 episode 共 303 帧 @ 30 fps（10.1 s），
+ * 这里等间隔抽 40 帧覆盖完整 episode。每帧由 observation.images.up 与
+ * observation.images.side 两台 480×640 相机画面拼成 sprite 单元；
+ * observation.state / action（float32[6]）与帧号、时间戳取同一份 parquet。
+ *
+ * 呈现：CSS 背景定位切换 sprite 帧（无 canvas、无外部库、运行时不联网），
+ * 内联 SVG 画状态/动作曲线，竖游标与圆点随帧移动；播放/暂停、逐帧、时间轴。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import LeRobotDatasetViewer from '../../../components/LeRobotDatasetViewer.astro';
+ *   <LeRobotDatasetViewer />
+ */
+
+const baseUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const spriteUrl = baseUrl + 'lerobot-snippet/sprite.jpg';
+
+// ---- 片段：episode 0 的 40 个等间隔抽样帧 ----
+const FRAME_INDEX = [0, 8, 15, 23, 31, 39, 46, 54, 62, 70, 77, 85, 93, 101, 108, 116, 124, 132, 139, 147, 155, 163, 170, 178, 186, 194, 201, 209, 217, 225, 232, 240, 248, 256, 263, 271, 279, 287, 294, 302];
+const TIME = [0, 0.2667, 0.5, 0.7667, 1.0333, 1.3, 1.5333, 1.8, 2.0667, 2.3333, 2.5667, 2.8333, 3.1, 3.3667, 3.6, 3.8667, 4.1333, 4.4, 4.6333, 4.9, 5.1667, 5.4333, 5.6667, 5.9333, 6.2, 6.4667, 6.7, 6.9667, 7.2333, 7.5, 7.7333, 8, 8.2667, 8.5333, 8.7667, 9.0333, 9.3, 9.5667, 9.8, 10.0667];
+
+// observation.state / action：6 维，顺序为 shoulder_pan / shoulder_lift / elbow_flex / wrist_flex / wrist_roll / gripper
+const STATE = [[1.96,-98.74,98.92,74.82,-51.45,1.41],[1.96,-98.74,98.92,74.82,-48.62,1.41],[1.96,-98.74,98.92,74.82,-48.62,1.41],[1.96,-98.74,98.92,74.82,-48.62,1.41],[1.96,-98.74,99.01,74.82,-48.62,1.41],[1.96,-98.74,99.01,74.82,-48.62,1.41],[1.96,-98.74,99.01,74.82,-48.62,1.41],[1.96,-98.74,99.01,74.82,-48.62,1.41],[1.96,-98.74,99.01,74.82,-48.62,1.41],[1.96,-98.74,99.01,74.82,-48.62,1.41],[1.96,-98.74,99.01,74.82,-48.62,1.41],[1.96,-98.74,99.01,74.82,-48.62,1.41],[1.96,-98.74,99.01,74.82,-48.62,1.41],[7.62,-95.06,82.43,74.90,-48.62,5.57],[13.37,-61.64,62.17,72.87,-45.20,19.46],[13.21,-39.36,59.48,58.29,-47.45,20.60],[13.21,-22.03,48.63,53.29,-48.13,20.60],[11.94,-6.03,36.53,52.69,-48.47,20.60],[9.62,-4.44,36.62,52.69,-49.94,20.60],[8.74,-1.34,36.62,52.69,-49.94,20.60],[8.66,1.17,36.62,47.44,-50.43,20.60],[8.66,2.51,36.62,46.84,-50.43,20.60],[8.74,2.51,36.62,46.84,-50.53,6.98],[10.74,0.92,36.62,47.86,-50.33,6.98],[29.50,-12.65,36.62,61.85,-42.61,6.98],[51.46,-23.70,36.62,74.06,-36.02,6.98],[65.99,-23.70,36.62,77.62,-34.60,6.98],[80.92,-26.88,36.62,80.67,-34.41,6.98],[84.35,-26.88,34.65,83.21,-34.41,6.98],[80.44,-26.88,34.65,83.21,-34.46,12.28],[79.08,-26.88,34.65,83.21,-35.78,11.88],[57.29,-31.32,33.66,86.18,-43.83,1.21],[29.82,-43.38,41.01,81.43,-53.21,1.21],[10.82,-52.35,60.02,66.00,-58.63,1.21],[3.95,-58.21,70.95,65.24,-59.12,1.21],[4.11,-91.79,91.39,69.99,-59.17,1.21],[4.59,-98.83,97.67,74.74,-59.12,1.21],[4.51,-98.83,98.83,74.74,-59.12,1.21],[4.51,-98.83,98.83,74.74,-59.12,1.21],[4.51,-98.83,98.83,74.74,-59.12,1.21]];
+const ACTION = [[1.91,-99.41,99.54,74.84,-48.52,1.62],[1.91,-99.41,99.54,74.84,-48.52,1.62],[1.91,-99.41,99.54,74.84,-48.52,1.62],[1.91,-99.41,99.54,74.84,-48.52,1.62],[1.91,-99.41,99.54,74.84,-48.52,1.62],[1.91,-99.41,99.54,74.84,-48.52,1.62],[1.91,-99.41,99.54,74.84,-48.52,1.62],[1.91,-99.41,99.54,74.84,-48.52,1.62],[1.91,-99.41,99.54,74.84,-48.52,1.62],[1.91,-99.41,99.54,74.84,-48.52,1.62],[1.91,-99.41,99.54,74.84,-48.52,1.70],[1.99,-99.41,99.54,74.84,-48.52,1.70],[2.50,-99.33,90.35,74.84,-48.96,1.85],[10.07,-72.72,65.77,74.42,-48.03,15.92],[14.71,-52.34,55.48,66.94,-44.57,20.71],[13.09,-33.47,52.94,55.04,-48.18,20.71],[12.28,-13.01,38.19,52.32,-48.57,20.71],[10.88,-6.44,33.55,52.49,-49.40,20.71],[8.60,-3.24,35.55,51.72,-50.04,20.71],[8.60,-1.47,35.09,51.55,-50.53,20.71],[8.53,0.97,35.09,46.45,-50.57,20.32],[8.53,2.06,35.00,46.11,-50.62,18.78],[8.60,1.73,35.00,46.45,-50.57,1.16],[17.35,-7.45,35.00,53.93,-47.40,1.00],[41.25,-23.54,35.00,69.40,-38.51,1.00],[59.34,-26.32,35.00,75.78,-34.41,1.00],[74.04,-26.48,34.91,78.58,-34.31,1.00],[85.66,-28.17,31.27,83.26,-34.11,1.00],[84.12,-28.17,31.09,83.77,-34.46,1.39],[79.71,-28.17,31.18,83.77,-35.58,15.07],[72.79,-29.01,30.63,83.85,-37.34,0.85],[42.06,-38.61,30.81,86.40,-49.16,1.08],[19.41,-51.58,50.66,71.27,-57.46,1.16],[4.93,-54.27,64.86,64.64,-59.22,1.24],[4.34,-74.32,79.70,65.24,-59.22,1.24],[4.63,-99.49,92.81,76.37,-59.02,1.24],[4.41,-99.33,99.45,74.76,-58.93,1.47],[4.49,-99.41,99.45,74.76,-58.88,1.47],[4.49,-99.41,99.45,74.76,-58.88,1.47],[4.49,-99.41,99.45,74.76,-58.88,1.47]];
+
+// 画出的代表维度（其余 wrist_roll 量程小、省略）：key 为 6 维中的下标
+const DIMS = [
+  { key: 0, name: 'shoulder_pan', cls: 'ldv-d1' },
+  { key: 1, name: 'shoulder_lift', cls: 'ldv-d2' },
+  { key: 2, name: 'elbow_flex', cls: 'ldv-d3' },
+  { key: 3, name: 'wrist_flex', cls: 'ldv-d4' },
+  { key: 5, name: 'gripper', cls: 'ldv-d5' },
+];
+
+// ---- 曲线几何 ----
+const GX0 = 64, GX1 = 706, V_MIN = -110, V_MAX = 110;
+const S_TOP = 34, A_TOP = 182, PANEL_H = 108;
+const T0 = TIME[0], T1 = TIME[TIME.length - 1];
+const N = TIME.length;
+const xAt = (i) => GX0 + ((TIME[i] - T0) / (T1 - T0)) * (GX1 - GX0);
+const yAt = (v, top) => top + ((V_MAX - v) / (V_MAX - V_MIN)) * PANEL_H;
+const pathOf = (rows, key, top) =>
+  rows.map((row, i) => `${i ? 'L' : 'M'}${xAt(i).toFixed(1)} ${yAt(row[key], top).toFixed(1)}`).join(' ');
+const statePaths = DIMS.map((d) => pathOf(STATE, d.key, S_TOP));
+const actionPaths = DIMS.map((d) => pathOf(ACTION, d.key, A_TOP));
+
+// 传给运行时的数据：每帧游标圆点坐标 + 图例当前值
+const dots = STATE.map((row, i) => ({
+  x: Number(xAt(i).toFixed(1)),
+  s: DIMS.map((d) => Number(yAt(row[d.key], S_TOP).toFixed(1))),
+  a: DIMS.map((d) => Number(yAt(ACTION[i][d.key], A_TOP).toFixed(1))),
+}));
+const payload = {
+  n: N,
+  idx: FRAME_INDEX,
+  ts: TIME,
+  dots,
+  sv: DIMS.map((d) => STATE.map((row) => row[d.key])),
+  av: DIMS.map((d) => ACTION.map((row) => row[d.key])),
+  cols: 8,
+  rows: 5,
+};
+
+const X_TICKS = [0, 2.5, 5, 7.5, 10].map((t) => ({ t, x: GX0 + ((t - T0) / (T1 - T0)) * (GX1 - GX0) }));
+const Y_LINES = [100, 0, -100];
+---
+
+<figure class="ldv-root" data-ldv={JSON.stringify(payload)} style={`--ldv-sprite: url(${spriteUrl});`}>
+  <div class="ldv-head">
+    <p class="ldv-kicker">真实数据片段 · LeRobot v3.0</p>
+    <p class="ldv-title">lerobot/svla_so101_pickplace 的 episode 0</p>
+    <p class="ldv-lead">40 帧等间隔抽样自完整 episode（原始 303 帧 @ 30 fps），两台相机并排；拖动时间轴或用播放键逐帧查看，曲线游标同步移动。</p>
+  </div>
+
+  <div class="ldv-stage">
+    <div class="ldv-frame" data-ldv-frame role="img" aria-label="当前帧：左侧为 up 相机俯视工作台，右侧为 side 相机侧视；画面中是 SO-101 机械臂把一个粉色乐高积木放进透明盒子的过程"></div>
+    <div class="ldv-cap"><span>observation.images.up（俯视）</span><span>observation.images.side（侧视）</span></div>
+  </div>
+
+  <div class="ldv-controls">
+    <button type="button" class="ldv-btn ldv-play" data-ldv-play>▶ 播放</button>
+    <button type="button" class="ldv-btn" data-ldv-prev>◀ 上一帧</button>
+    <button type="button" class="ldv-btn" data-ldv-next>下一帧 ▶</button>
+    <input class="ldv-range" type="range" min="0" max={N - 1} step="1" value="0" data-ldv-range aria-label="时间轴：选择片段中的抽样帧" />
+    <span class="ldv-readout" data-ldv-readout>抽样帧 1/{N} · 原 episode 第 {FRAME_INDEX[0]} 帧 · t = 0.00 s</span>
+  </div>
+
+  <svg class="ldv-chart" viewBox="0 0 720 322" role="img" aria-label="关节状态与动作随时间的折线图：上方面板是 observation.state 实测关节值，下方面板是 action 下发目标，横轴为 episode 时间 0 到 10.07 秒；竖游标与圆点标记当前帧，随时间轴或播放同步移动">
+    <text class="ldv-panel-title" x="0" y="20">observation.state（实测关节值）</text>
+    <text class="ldv-panel-note" x="720" y="20" text-anchor="end">纵轴 −110…110（数据集原始读数）</text>
+    <text class="ldv-panel-title" x="0" y="168">action（下发的关节目标）</text>
+
+    {Y_LINES.map((v) => (
+      <g>
+        <line class={v === 0 ? 'ldv-zero' : 'ldv-grid'} x1={GX0} y1={yAt(v, S_TOP)} x2={GX1} y2={yAt(v, S_TOP)} />
+        <line class={v === 0 ? 'ldv-zero' : 'ldv-grid'} x1={GX0} y1={yAt(v, A_TOP)} x2={GX1} y2={yAt(v, A_TOP)} />
+        <text class="ldv-tick" x={GX0 - 6} y={yAt(v, S_TOP) + 4} text-anchor="end">{v}</text>
+      </g>
+    ))}
+    <rect class="ldv-panel" x={GX0} y={S_TOP} width={GX1 - GX0} height={PANEL_H} />
+    <rect class="ldv-panel" x={GX0} y={A_TOP} width={GX1 - GX0} height={PANEL_H} />
+
+    {statePaths.map((d, i) => <path class={`ldv-line ${DIMS[i].cls}`} d={d} />)}
+    {actionPaths.map((d, i) => <path class={`ldv-line ldv-dash ${DIMS[i].cls}`} d={d} />)}
+
+    <line class="ldv-cursor" data-ldv-cursor x1={dots[0].x} y1={S_TOP - 6} x2={dots[0].x} y2={A_TOP + PANEL_H + 6} />
+    <circle class="ldv-knob" data-ldv-knob cx={dots[0].x} cy={A_TOP + PANEL_H + 10} r="4.5" />
+    {DIMS.map((d, j) => <circle class={`ldv-dot ${d.cls}`} data-ldv-sdot={j} cx={dots[0].x} cy={dots[0].s[j]} r="3.6" />)}
+    {DIMS.map((d, j) => <circle class={`ldv-dot ${d.cls}`} data-ldv-adot={j} cx={dots[0].x} cy={dots[0].a[j]} r="3.6" />)}
+
+    <line class="ldv-axis" x1={GX0} y1={A_TOP + PANEL_H} x2={GX1} y2={A_TOP + PANEL_H} />
+    {X_TICKS.map((t) => (
+      <g>
+        <line class="ldv-axis" x1={t.x} y1={A_TOP + PANEL_H} x2={t.x} y2={A_TOP + PANEL_H + 5} />
+        <text class="ldv-tick" x={t.x} y={A_TOP + PANEL_H + 20} text-anchor="middle">{t.t} s</text>
+      </g>
+    ))}
+  </svg>
+
+  <ul class="ldv-legend">
+    {DIMS.map((d, j) => (
+      <li class="ldv-legend-item">
+        <span class={`ldv-swatch ${d.cls}`}></span>
+        <span class="ldv-legend-name">{d.name}</span>
+        <span class="ldv-legend-val" data-ldv-v={j}>—</span>
+      </li>
+    ))}
+    <li class="ldv-legend-item ldv-legend-hint"><span class="ldv-swatch ldv-dash ldv-d0"></span>实线 = 实测，虚线 = 目标；图例数值为“实测 / 目标”</li>
+  </ul>
+
+  <figcaption class="ldv-meta">
+    <div class="ldv-meta-card">
+      <p><span>数据集</span>lerobot/svla_so101_pickplace（SO-101 从臂真机遥操作）</p>
+      <p><span>许可</span>Apache-2.0 · revision f641879e22172be7e8161d5e6c1503c2d2feb657</p>
+      <p><span>episode</span>#0（共 50 个 episode / 11939 帧），长度 303 帧 · 30 fps · 10.1 s</p>
+      <p><span>本片段</span>40 帧等间隔抽样，覆盖完整 episode 0–10.07 s；这是完整数据集的一个片段</p>
+      <p><span>key 与形状</span>observation.state float32[6]；action float32[6]（shoulder_pan / shoulder_lift / elbow_flex / wrist_flex / wrist_roll / gripper）；observation.images.up、observation.images.side 均为 video 480×640×3</p>
+      <p><span>task</span>“pink lego brick into the transparent box”</p>
+      <p><span>来源</span><a href="https://huggingface.co/datasets/lerobot/svla_so101_pickplace" target="_blank" rel="noopener noreferrer">huggingface.co/datasets/lerobot/svla_so101_pickplace</a>（本次经 hf-mirror.com 下载后离线打包，页面运行时不联网）</p>
+    </div>
+  </figcaption>
+</figure>
+
+<script>
+  (function () {
+    const fmt = (v, d) => (v == null || !isFinite(v) ? "—" : (v < 0 ? "−" : "") + Math.abs(v).toFixed(d));
+    document.querySelectorAll(".ldv-root").forEach((root) => {
+      if (!(root instanceof HTMLElement)) return;
+      const data = JSON.parse(root.dataset.ldv || "{}");
+      if (!data.dots || !data.dots.length) return;
+      const frame = root.querySelector("[data-ldv-frame]");
+      const range = root.querySelector("[data-ldv-range]");
+      const readout = root.querySelector("[data-ldv-readout]");
+      const playBtn = root.querySelector("[data-ldv-play]");
+      const cursor = root.querySelector("[data-ldv-cursor]");
+      const knob = root.querySelector("[data-ldv-knob]");
+      const sDots = Array.from(root.querySelectorAll("[data-ldv-sdot]"));
+      const aDots = Array.from(root.querySelectorAll("[data-ldv-adot]"));
+      const valEls = Array.from(root.querySelectorAll("[data-ldv-v]"));
+      const n = data.n, cols = data.cols, rows = data.rows, STEP_MS = 110;
+      let i = 0, playing = false, acc = 0, last = 0;
+
+      const render = (k) => {
+        i = ((k % n) + n) % n;
+        const col = i % cols, row = Math.floor(i / cols);
+        if (frame) frame.style.backgroundPosition = (col / (cols - 1) * 100).toFixed(4) + "% " + (row / (rows - 1) * 100).toFixed(4) + "%";
+        const p = data.dots[i];
+        if (cursor) { cursor.setAttribute("x1", p.x); cursor.setAttribute("x2", p.x); }
+        if (knob) knob.setAttribute("cx", p.x);
+        sDots.forEach((d, j) => { d.setAttribute("cx", p.x); d.setAttribute("cy", p.s[j]); });
+        aDots.forEach((d, j) => { d.setAttribute("cx", p.x); d.setAttribute("cy", p.a[j]); });
+        if (range) range.value = String(i);
+        if (readout) readout.textContent = "抽样帧 " + (i + 1) + "/" + n + " · 原 episode 第 " + data.idx[i] + " 帧 · t = " + fmt(data.ts[i], 2) + " s";
+        valEls.forEach((el) => {
+          const j = Number(el.dataset.ldvV);
+          if (Number.isInteger(j) && data.sv && data.av) el.textContent = fmt(data.sv[j][i], 1) + " / " + fmt(data.av[j][i], 1);
+        });
+      };
+
+      const stop = () => { playing = false; if (playBtn) playBtn.textContent = "▶ 播放"; };
+      const tick = (now) => {
+        if (!playing) return;
+        if (!last) last = now;
+        acc += now - last; last = now;
+        if (acc >= STEP_MS) { acc = 0; render(i + 1); }
+        requestAnimationFrame(tick);
+      };
+
+      if (playBtn) playBtn.addEventListener("click", () => {
+        if (playing) { stop(); return; }
+        playing = true; last = 0; acc = 0; playBtn.textContent = "⏸ 暂停";
+        requestAnimationFrame(tick);
+      });
+      const prev = root.querySelector("[data-ldv-prev]");
+      const next = root.querySelector("[data-ldv-next]");
+      if (prev) prev.addEventListener("click", () => { stop(); render(i - 1); });
+      if (next) next.addEventListener("click", () => { stop(); render(i + 1); });
+      if (range) range.addEventListener("input", () => { stop(); render(Number(range.value)); });
+      render(0);
+    });
+  })();
+</script>
+
+<style is:global>
+  .ldv-root { margin: 1.6rem 0; padding: 1.1rem 1.15rem 0.9rem; border: 1px solid var(--sl-color-gray-5); border-radius: 12px; background: var(--sl-color-bg-nav); }
+  .ldv-head { margin: 0 0 0.75rem; }
+  .ldv-kicker { margin: 0; color: var(--sl-color-accent); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.04em; }
+  .ldv-title { margin: 0.18rem 0 0.3rem; color: var(--sl-color-text); font-size: 1.18rem; font-weight: 700; line-height: 1.45; }
+  .ldv-lead { margin: 0; color: var(--sl-color-gray-2); font-size: 0.95rem; line-height: 1.7; }
+  .ldv-stage { margin: 0.2rem 0 0.5rem; }
+  .ldv-frame { aspect-ratio: 720 / 270; width: 100%; border: 1px solid var(--sl-color-gray-5); border-radius: 8px; background-color: var(--sl-color-black); background-image: var(--ldv-sprite); background-repeat: no-repeat; background-size: 800% 500%; background-position: 0% 0%; }
+  .ldv-cap { display: flex; margin-top: 0.3rem; color: var(--sl-color-gray-3); font-size: 0.82rem; }
+  .ldv-cap span { flex: 1 1 50%; }
+  .ldv-cap span + span { text-align: right; }
+  .ldv-controls { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0 0.35rem; flex-wrap: wrap; }
+  .ldv-btn { display: inline-flex; align-items: center; box-sizing: border-box; height: 2.2rem; margin: 0; padding: 0 0.85rem; border: 1px solid var(--sl-color-gray-4); border-radius: 7px; background: var(--sl-color-bg); color: var(--sl-color-accent); font: inherit; font-size: 0.9rem; line-height: 1; cursor: pointer; }
+  .ldv-btn:hover { border-color: var(--sl-color-accent); }
+  .ldv-play { min-width: 6rem; justify-content: center; font-weight: 600; }
+  .ldv-range { flex: 1 1 14rem; min-width: 8rem; height: 1.6rem; margin: 0; accent-color: var(--sl-color-accent); cursor: pointer; }
+  .ldv-readout { flex: 0 0 auto; color: var(--sl-color-gray-2); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+  .ldv-chart { display: block; width: 100%; height: auto; margin: 0.2rem 0 0; }
+  .ldv-panel { fill: none; stroke: var(--sl-color-gray-5); stroke-width: 1; }
+  .ldv-grid { stroke: var(--sl-color-gray-5); stroke-width: 1; opacity: 0.5; }
+  .ldv-zero { stroke: var(--sl-color-gray-4); stroke-width: 1; stroke-dasharray: 4 4; opacity: 0.7; }
+  .ldv-axis { stroke: var(--sl-color-gray-4); stroke-width: 1.1; }
+  .ldv-panel-title { fill: var(--sl-color-text); font-size: 14px; font-weight: 700; }
+  .ldv-panel-note { fill: var(--sl-color-gray-3); font-size: 12px; }
+  .ldv-tick { fill: var(--sl-color-gray-2); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .ldv-line { fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .ldv-dash { stroke-dasharray: 5 4; stroke-width: 1.7; opacity: 0.95; }
+  .ldv-dot { fill: currentColor; stroke: var(--sl-color-bg-nav); stroke-width: 1.6; }
+  .ldv-cursor { stroke: var(--sl-color-text); stroke-width: 1.3; opacity: 0.55; }
+  .ldv-knob { fill: var(--sl-color-text); opacity: 0.7; }
+  .ldv-d0 { color: var(--sl-color-gray-2); }
+  .ldv-d1 { color: light-dark(#2563eb, #60a5fa); }
+  .ldv-d2 { color: light-dark(#16a34a, #4ade80); }
+  .ldv-d3 { color: light-dark(#ea580c, #fb923c); }
+  .ldv-d4 { color: light-dark(#9333ea, #c084fc); }
+  .ldv-d5 { color: light-dark(#dc2626, #f87171); }
+  .ldv-legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.3rem 0.9rem; margin: 0.5rem 0 0; padding: 0; list-style: none; }
+  .ldv-legend-item { display: flex; align-items: center; gap: 0.4rem; margin: 0 !important; color: var(--sl-color-gray-2); font-size: 0.88rem; }
+  .ldv-swatch { flex: 0 0 auto; width: 1.1rem; height: 0.2rem; border-radius: 2px; background: currentColor; }
+  .ldv-legend-name { color: var(--sl-color-text); font-weight: 600; }
+  .ldv-legend-val { margin-left: auto; color: var(--sl-color-gray-2); font-variant-numeric: tabular-nums; }
+  .ldv-legend-hint { grid-column: 1 / -1; color: var(--sl-color-gray-3); font-size: 0.82rem; }
+  .ldv-legend-hint .ldv-swatch { width: 1.4rem; }
+  .ldv-meta { margin: 0.85rem 0 0; }
+  .ldv-meta-card { padding: 0.7rem 0.85rem; border: 1px dashed var(--sl-color-gray-5); border-radius: 8px; }
+  .ldv-meta-card p { display: grid; grid-template-columns: 5.6rem 1fr; gap: 0.5rem; margin: 0.22rem 0 !important; color: var(--sl-color-gray-2); font-size: 0.88rem; line-height: 1.65; }
+  .ldv-meta-card p span { color: var(--sl-color-gray-3); font-weight: 600; }
+  .ldv-meta-card a { color: var(--sl-color-accent); }
+  @media (max-width: 44rem) {
+    .ldv-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ldv-meta-card p { grid-template-columns: 1fr; gap: 0.05rem; }
+  }
+</style>

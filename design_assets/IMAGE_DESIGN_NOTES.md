@@ -234,4 +234,17 @@
 - 用途：放在 5.3「## 时间参数化与速度约束」小节末尾，图解梯形速度剖面与速度 / 加速度（力矩）两类上限；
 - viewBox：`0 0 720 360`。
 
+## 5.5 LeRobot 数据集片段查看器（真实数据集片段 + 自绘曲线）
+
+### site/public/lerobot-snippet/sprite.jpg + site/src/components/LeRobotDatasetViewer.astro
+
+- 文件：`site/public/lerobot-snippet/sprite.jpg`（535,489 字节，5760×1350，JPEG quality 82，sha256 `555fa984c90c9168dd47c36287e7eff69fa5a1440b8ac37905cc887930aeaadf`）；配套来源说明 `site/public/lerobot-snippet/SOURCE.txt`；组件 `site/src/components/LeRobotDatasetViewer.astro`（40 帧的曲线数据直接内联在组件里，无独立数据文件）。
+- 内容：sprite 为 8 列 × 5 行共 40 个单元，每单元 720×270，左半是 `observation.images.up` 俯视相机、右半是 `observation.images.side` 侧视相机；40 帧等间隔抽样自完整 episode 0（原始 303 帧 @ 30 fps），覆盖 SO-101 从臂从初始位姿、下探、合拢夹爪抓起粉色乐高积木、搬到透明盒子并放入的完整过程。组件把 40 帧做成可拖动的帧播放器（CSS 背景定位，不用 canvas、不引外部库），并用内联 SVG 画出 `observation.state` 与 `action` 的关节曲线（6 维中画 5 条代表维度，实线为实测、虚线为目标），时间轴游标与帧一一对齐。
+- 用途：放在 5.5「### 数据采集」记录字段表之后，把「观测流、动作、时间戳、任务标注」等字段做成可交互实例；元数据卡列出数据集名、许可、episode 长度、fps、key/形状与 task 字符串。
+- 数据来源与许可：Hugging Face 数据集 `lerobot/svla_so101_pickplace`（真实 SO-101 从臂遥操作演示），许可 **Apache-2.0**，revision `f641879e22172be7e8161d5e6c1503c2d2feb657`，数据集主页 <https://huggingface.co/datasets/lerobot/svla_so101_pickplace>。本次下载经由 `hf-mirror.com` 镜像（huggingface.co 在本次可达网络中不可达），只取 `meta/info.json`、`meta/tasks.parquet`、`data/chunk-000/file-000.parquet` 与两台相机的 `videos/.../file-000.mp4`，解析后仅保留 40 帧抽样。
+- 数据处理：`meta/info.json` 给出 fps=30、total_episodes=50、total_frames=11939、robot_type=so100_follower；`data/chunk-000/file-000.parquet` 共 11939 行 7 列，取 `episode_index==0` 的 303 行；帧号与状态/动作直接来自该 parquet，时间戳来自其 `timestamp` 列。视频用 ffmpeg（libdav1d 解 AV1）顺序解码 episode 0 的全部帧，再用 PIL 缩放拼接成 sprite。
+- 标注性质：sprite 中的画面是数据集原始相机帧，未经修改，仅缩放与左右拼接；曲线由原始 `observation.state`/`action` 数值绘制，不是示意值；组件中的文字、配色与图标为本书自制。
+- 再生成：生成脚本为本次会话使用的临时脚本（已清理）。流程为 curl 取 parquet → pyarrow 读 episode 0 → 等间隔抽 40 个帧号 → ffmpeg 解码对应帧 → PIL 拼 sprite；若需换 episode 或帧窗，按同样流程重跑即可。
+
+
 
