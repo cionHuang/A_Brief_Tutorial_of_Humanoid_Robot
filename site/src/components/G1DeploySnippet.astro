@@ -16,7 +16,8 @@ const blob = (p, line) => REPO + p + '#L' + line;
 
 const cards = [
   {
-    role: 'legged_gym/envs/g1/g1_config.py · 训练配置：奖励尺度 + 域随机化',
+    step: { no: '①', name: '并行训练' },
+    role: '奖励与域随机化 · g1_config.py',
     file: cfgPath,
     url: blob(cfgPath, 28),
     lines: [
@@ -34,7 +35,8 @@ const cards = [
     ],
   },
   {
-    role: 'deploy/deploy_mujoco/deploy_mujoco.py · Sim2Sim：策略 50 Hz、物理 200 Hz',
+    step: { no: '②', name: 'Sim2Sim 验证' },
+    role: '策略 50 Hz、物理 200 Hz · deploy_mujoco.py',
     file: simPath,
     url: blob(simPath, 91),
     lines: [
@@ -50,7 +52,8 @@ const cards = [
     ],
   },
   {
-    role: 'deploy/deploy_real/deploy_real.py · 实机：把关节目标写进 LowCmd_',
+    step: { no: '③', name: '实机部署' },
+    role: '写 LowCmd_ 与 CRC · deploy_real.py',
     file: realPath,
     url: blob(realPath, 124),
     lines: [
@@ -67,4 +70,41 @@ const cards = [
 const caption = '片段逐字摘自 <code>unitree_rl_gym</code>（BSD-3-Clause）固定提交 <code>276801e4</code>，行号为原文件行号。三张卡片正对应正文那条链路：训练配置里 <code>decimation = 4</code> 决定了策略 50 Hz、物理 200 Hz；Sim2Sim 用 <code>torch.jit.load</code> 加载同一个策略、按同样的公式把动作换算成关节目标；实机侧还会先从初始姿态插值到目标位置（避免起步突变），再把同一组目标逐关节写进 <code>LowCmd_</code> 并算 CRC。训练时的奖励尺度与随机化范围、部署时的 <code>kps</code>/<code>kds</code> 都是这份配置的取值，换任务要重调。';
 ---
 
+<div class="g1-chain" role="group" aria-label="G1 训练到部署的链路">
+  <span class="g1-chain-item"><b>①</b>并行训练</span>
+  <span class="g1-chain-arrow">→</span>
+  <span class="g1-chain-item"><b>②</b>Sim2Sim</span>
+  <span class="g1-chain-arrow">→</span>
+  <span class="g1-chain-item"><b>③</b>部署与低层执行</span>
+</div>
+
 <SourceSnippet cards={cards} caption={caption} />
+
+<style>
+  .g1-chain {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.5rem;
+    margin: 1.5rem 0 0.25rem;
+  }
+  .g1-chain-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.65rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 999px;
+    background: var(--sl-color-bg-sidebar);
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  .g1-chain-item b {
+    color: var(--sl-color-accent);
+    font-weight: 800;
+  }
+  .g1-chain-arrow {
+    color: var(--sl-color-gray-3);
+    font-weight: 700;
+  }
+</style>

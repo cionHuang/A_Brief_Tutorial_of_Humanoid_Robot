@@ -22,6 +22,8 @@ interface Card {
   role: string;
   file: string;
   url?: string;
+  /** 可选：链路步骤（序号 + 步骤名）。有则在卡片头部以大字显示，供多步链路场景使用 */
+  step?: { no: string; name: string };
   lines: Line[];
 }
 
@@ -37,6 +39,12 @@ const { cards, caption } = Astro.props;
   {cards.map((card) => (
     <div class="src-card">
       <div class="src-card-head">
+        {card.step && (
+          <span class="src-step">
+            <b class="src-step-no">{card.step.no}</b>
+            <span class="src-step-name">{card.step.name}</span>
+          </span>
+        )}
         <span class="src-role">{card.role}</span>
         {card.url ? (
           <a class="src-file" href={card.url} target="_blank" rel="noopener noreferrer" title="在 GitHub 查看源码">{card.file}</a>
@@ -77,6 +85,24 @@ const { cards, caption } = Astro.props;
     padding: 0.35rem 0.75rem;
     border-bottom: 1px solid var(--sl-color-gray-5);
     background: var(--sl-color-bg-sidebar);
+  }
+  .src-step {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    flex: 0 0 auto;
+  }
+  .src-step-no {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--sl-color-accent);
+    line-height: 1;
+  }
+  .src-step-name {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--sl-color-text);
+    white-space: nowrap;
   }
   .src-role {
     font-size: 0.8125rem;
