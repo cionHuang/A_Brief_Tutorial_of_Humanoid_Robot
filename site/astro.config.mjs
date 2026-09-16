@@ -35,7 +35,6 @@ const chapterRedirects = {
   '/05-brain-perception-planning-vla-wam/04-learning-control-and-imitation-learning': redirectTo('/05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning'),
   '/05-brain-perception-planning-vla-wam/05-vla-and-advanced-ai': redirectTo('/05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai'),
   '/05-brain-perception-planning-vla-wam/06-wam-world-action-model': redirectTo('/05-brain-perception-planning-vla-wam/07-wam-world-action-model'),
-  '/05-brain-perception-planning-vla-wam/07-vla-wam-to-g1-control-interface': redirectTo('/05-brain-perception-planning-vla-wam/08-vla-wam-to-g1-control-interface'),
 };
 
 export default defineConfig({

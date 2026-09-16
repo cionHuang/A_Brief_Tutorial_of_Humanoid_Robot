@@ -44,7 +44,7 @@
 | [4.5 基础控制](../04-cerebellum-realtime-control/05-basic-control.mdx) | 20 分钟 | 4.2 |
 | [4.6 双足平衡与全身控制](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | 20 分钟 | 2.4、4.3、4.5 |
 
-## 第 5 章 大脑：感知、规划、VLA 与 WAM（约 2 小时）
+## 第 5 章 大脑：感知、规划、VLA 与 WAM（约 1 小时 45 分钟）
 
 | 小节 | 预计时间 | 前置知识 |
 | --- | --- | --- |
@@ -55,7 +55,6 @@
 | [5.5 学习控制与模仿学习](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx) | 20 分钟 | 4.5 |
 | [5.6 VLA 与高级 AI 推理模型](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) | 15 分钟 | 5.2、5.5 |
 | [5.7 WAM：世界动作模型](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md) | 15 分钟 | 5.6 |
-| [5.8 从 VLA/WAM 到 G1 控制接口](../05-brain-perception-planning-vla-wam/08-vla-wam-to-g1-control-interface.md) | 15 分钟 | 4.6、5.7 |
 
 ## 第 6 章 软件与工具链（约 1.5 小时）
 
