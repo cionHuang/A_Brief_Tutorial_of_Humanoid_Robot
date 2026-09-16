@@ -108,14 +108,16 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 ## G1：从训练到部署的一条链路
 
-以 [`unitree_rl_gym`](https://github.com/unitreerobotics/unitree_rl_gym) 的 G1 行走为例，训练到部署的完整链路是：[7]
+以 [`unitree_rl_gym`](https://github.com/unitreerobotics/unitree_rl_gym) 的 G1 行走为例，训练到部署分四步，每一步在官方仓库里都有对应目录（三个仓库都是 BSD-3-Clause）：[7]
 
-```text
-Isaac Gym 大规模并行训练（PPO + 域随机化）
-    → Sim2Sim 验证（MuJoCo 中跑同一策略）
-    → 部署：策略网络以 50 Hz 级频率输出各关节目标位置
-    → 低层按固定的 kp/kd 增益执行 PD 跟踪（4.5 节）
-```
+| 阶段 | 做什么 | 对应仓库与目录 |
+| --- | --- | --- |
+| 并行训练 | Isaac Gym 里成千上万个环境同时跑 PPO + 域随机化 | [`unitree_rl_gym/legged_gym/`](https://github.com/unitreerobotics/unitree_rl_gym/tree/main/legged_gym)：训练入口 `scripts/train.py`，G1 的观测、奖励与课程在 `envs/g1/` |
+| Sim2Sim | 把同一策略换到 MuJoCo 跑，确认它不依赖训练仿真器的特性 | 入口 [`deploy/deploy_mujoco/deploy_mujoco.py`](https://github.com/unitreerobotics/unitree_rl_gym/tree/main/deploy/deploy_mujoco)，或官方 [`unitree_mujoco`](https://github.com/unitreerobotics/unitree_mujoco)（`simulate/` 是仿真器，`unitree_robots/` 放各机型的 MJCF） |
+| 部署 | 策略网络以 50 Hz 级频率输出各关节目标位置 | [`deploy/deploy_real/`](https://github.com/unitreerobotics/unitree_rl_gym/tree/main/deploy/deploy_real)：中文说明在 `README.zh.md`，C++ 版在 `cpp_g1/`；预训练策略在 [`deploy/pre_train/g1/`](https://github.com/unitreerobotics/unitree_rl_gym/tree/main/deploy/pre_train/g1) |
+| 低层执行 | 按固定的 kp/kd 增益做 PD 跟踪 | [`unitree_sdk2`](https://github.com/unitreerobotics/unitree_sdk2) 的 `rt/lowcmd` 与 `MotorCmd_`（4.5 节） |
+
+想自己跑一遍，顺序大致是：克隆 `unitree_rl_gym` → 用 `legged_gym/scripts/train.py` 先跑通默认任务，再改奖励与随机化 → 拿 `deploy/pre_train/g1/` 里的策略在 `deploy_mujoco.py` 里做 Sim2Sim → 步态在 MuJoCo 里站得住之后，再按 `deploy_real` 的说明上实机。这条顺序不建议跳：Sim2Sim 是最便宜的一道关。
 
 注意这条链路里学习策略的边界：策略只决定"关节目标往哪走"，力矩级的稳定性、限幅和异常保护仍由低层和 3.6 节的安全链路承担。策略输出必须做限幅和变化率限制，未经 Sim2Sim 验证的策略不上实机，实机首跑必须有吊架或人工保护。
 
