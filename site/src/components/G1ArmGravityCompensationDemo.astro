@@ -231,10 +231,16 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
     <output class="gcarm-out gcarm-out-err" aria-live="polite"><span data-gcarm-tex="err" set:html={texParts(DEF_ERR_PARTS)}></span></output>
   </div>
 
+  <figcaption>
+    用 G1 官方 URDF 网格渲染的左臂（<code>g1_29dof.urdf</code>；肩 3 + 肘 1 + 腕 3 共 7 个可动关节，手为无手模型自带的固定橡胶手）：拖动滑块设定目标姿态，半透明幽灵臂停在目标姿态，实心臂按 K_p = 8 N·m/rad 的关节刚度跟随，下垂量按 Δ = −τ_g/K_p 算出后再夹到模型限位。关掉重力补偿，三条读数会同时变化——需电机承担的重力力矩、各关节实际角与偏差、手端位置差 |Δp|。关节顺序、轴线和限位逐字取自模型文件，网格为可视化模型，不代表真实硬件的内部结构；K_p 是演示参数，真机由控制器增益、电流环和负载共同决定，不能当作 G1 的伺服刚度。模型来源：
+    <a href="https://github.com/unitreerobotics/unitree_rl_gym/tree/main/resources/robots/g1_description">unitree_rl_gym</a>。
+  </figcaption>
+
 </figure>
 
 <script>
 import { texParts } from '../lib/tex.js';
+import { createVisibleRaf } from '../lib/visible-raf.js';
 (function () {
   const PIN = new Set(['pelvis', 'pelvis_contour_link', 'waist_yaw_link', 'waist_roll_link', 'torso_link', 'logo_link', 'waist_support_link', 'head_link',
     'left_shoulder_pitch_link', 'left_shoulder_roll_link', 'left_shoulder_yaw_link', 'left_elbow_link',
@@ -346,14 +352,13 @@ import { texParts } from '../lib/tex.js';
     let started = false;
     let scene; let camera; let renderer; let controls; let grid = null;
     let robot; let ghost; let modelGroup; let torsoLink;
-    let frame = 0;
-    let pageVisible = true;
+    let loop = null; // 由 visible-raf 统一调度：离屏/后台自动暂停
     let resizeObserver; let themeObserver; let mediaQuery;
     let probe = null;
     let disposed = false;
 
     const setState = (s, msg) => { demo.dataset.state = s; if (msg !== undefined && statusEl) statusEl.textContent = msg; };
-    const scheduleRender = () => { if (!frame && renderer && scene && camera) frame = requestAnimationFrame(render); };
+    const scheduleRender = () => { if (loop) loop.schedule(); };
     const reducedMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const syncOverlay = () => {
@@ -384,14 +389,29 @@ import { texParts } from '../lib/tex.js';
       return out.visible;
     };
 
-    const render = () => {
-      frame = 0;
-      if (!renderer || !scene || !camera || !pageVisible) return;
+    // 每帧只跑一条 rAF（由 visible-raf 统一调度）：先推进关节动画，再渲染一帧。
+    // 元素滚出视口或标签页切到后台时整条循环自动暂停，回来自动续。
+    const frameStep = () => {
+      if (disposed) return;
+      const step = reducedMotion() ? 1 : 0.16;
+      let moving = false;
+      for (let i = 0; i < live.length; i += 1) {
+        const d = desired[i] - live[i];
+        if (Math.abs(d) > 1e-4) { live[i] += d * step; moving = true; } else { live[i] = desired[i]; }
+      }
+      if (robot && (moving || dirty)) {
+        applyJoints(robot, live);
+        if (ghost) ghost.visible = !compOn;
+        updateReadout();
+        dirty = false;
+      } else if (robot && ghost) {
+        ghost.visible = !compOn;
+      }
+      if (!renderer || !scene || !camera) return;
       if (controls) controls.update();
       renderer.render(scene, camera);
       demo.dataset.rendered = 'true';
       syncOverlay();
-      if (dirty || !reducedMotion()) scheduleRender();
     };
 
     const resolveCssColor = (expr, fallback) => {
@@ -624,10 +644,12 @@ import { texParts } from '../lib/tex.js';
         fitCamera();
         updateReadout();
         dirty = true;
+        if (loop) loop.start(); // 连续渲染：离屏自动暂停，回来自动续
         scheduleRender();
       } catch (error) {
         console.error("G1 左臂重力补偿演示加载失败：", error);
         setState("error", "模型加载失败，请检查网络或资源路径");
+        disposeAll();
       }
     };
 
@@ -651,37 +673,28 @@ import { texParts } from '../lib/tex.js';
       scheduleRender();
     });
 
+    // 失败路径也要把 WebGL 上下文、观察者与监听还回去（旧实现只清状态文案）
+    const disposeAll = () => {
+      if (disposed) return;
+      disposed = true;
+      if (loop) loop.dispose();
+      if (resizeObserver) resizeObserver.disconnect();
+      if (themeObserver) themeObserver.disconnect();
+      if (mediaQuery) mediaQuery.removeEventListener("change", applyTheme);
+      if (controls) controls.dispose();
+      if (renderer) { renderer.dispose(); renderer.domElement.remove(); }
+      renderer = null;
+    };
+
     const start = () => {
       if (started || disposed) return;
       started = true;
       load();
     };
-    if ("IntersectionObserver" in window) {
-      const io = new IntersectionObserver((entries) => { if (entries.some((e) => e.isIntersecting)) { io.disconnect(); start(); } }, { rootMargin: "240px" });
-      io.observe(demo);
-    } else { start(); }
-    document.addEventListener("visibilitychange", () => { pageVisible = document.visibilityState === "visible"; if (pageVisible) scheduleRender(); });
-
-    const tick = () => {
-      if (disposed) return;
-      const step = reducedMotion() ? 1 : 0.16;
-      let moving = false;
-      for (let i = 0; i < live.length; i += 1) {
-        const d = desired[i] - live[i];
-        if (Math.abs(d) > 1e-4) { live[i] += d * step; moving = true; } else { live[i] = desired[i]; }
-      }
-      if (robot && (moving || dirty)) {
-        applyJoints(robot, live);
-        if (ghost) ghost.visible = !compOn;
-        updateReadout();
-        dirty = false;
-        scheduleRender();
-      } else if (robot && ghost) {
-        ghost.visible = !compOn;
-      }
-      requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
+    // 唯一的观察者与 visibilitychange 由 visible-raf 统一持有：
+    // 进视口才加载模型，离屏即停渲染，回来自动续（不再各自 observe）。
+    loop = createVisibleRaf(demo, { rootMargin: '240px', onEnter: () => start() });
+    loop.onFrame(frameStep);
   });
 })();
 </script>

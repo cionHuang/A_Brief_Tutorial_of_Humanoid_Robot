@@ -59,6 +59,7 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
 
 <script>
   import { setParts } from '../lib/tex.js';
+  import { createVisibleRaf } from '../lib/visible-raf.js';
 
   document.querySelectorAll('.ankle-demo').forEach((demo) => {
     /* ---------- 几何与 IK：移植自 feidedao/Parallel_Ankle_Joint 的 G1 简化模型 ---------- */
@@ -414,6 +415,7 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
     const loading = demo.querySelector('[data-ankle-loading]');
     let three = null; // { THREE, renderer, scene, camera, controls, refs }
     let threeStarted = false;
+    let loop = null; // 由 visible-raf 统一调度：离屏/后台自动暂停
 
     async function initThree() {
       const [threeModule, orbitModule, stlModule] = await Promise.all([
@@ -528,28 +530,31 @@ const meshBase = `${baseUrl}models/ankle-g1-simplified/`;
       new ResizeObserver(resize).observe(viewport);
       resize();
 
-      // 每帧渲染：场景小，恒速渲染保证热图选择即时反映到 3D
-      (function loop() {
-        requestAnimationFrame(loop);
-        controls.update();
-        renderer.render(scene, camera);
-      })();
+      // 每帧渲染：场景小，恒速渲染保证热图选择即时反映到 3D；
+      // 由 visible-raf 统一调度，滚出视口或切到后台即停（回来自动续）
+      if (loop) {
+        loop.onFrame(() => {
+          controls.update();
+          renderer.render(scene, camera);
+        });
+        loop.start();
+      }
 
       loading.dataset.done = 'true';
       return three;
     }
 
-    // 进视口才加载 three
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting) && !threeStarted) {
+    // 进视口才加载 three；同时由同一个调度器负责渲染循环的可见性（只此一个观察者）
+    loop = createVisibleRaf(viewport, {
+      onEnter: () => {
+        if (threeStarted) return;
         threeStarted = true;
         status.textContent = '正在加载 3D 视图…';
         initThree().then(updateScene).catch(() => {
           status.textContent = '3D 视图加载失败（热图不受影响）';
         });
-      }
+      },
     });
-    io.observe(viewport);
 
     function updateScene() {
       if (!three) return;

@@ -88,7 +88,7 @@ import { katexHtml } from '../lib/tex.js';
   <p class="fb-hint">默认恒速旋转；在左侧机构上按住曲柄即可接管，松手后从当前角度恢复恒速</p>
 
   <p class="fb-readout">
-    <span set:html={katexHtml('\\theta_{\\text{in}}')}></span> = <output class="fb-o-in">0</output>　<span set:html={katexHtml('\\theta_{\\text{out}}')}></span> = <output class="fb-o-out">0</output>　<span set:html={katexHtml('\\mathrm{d}\\theta_{\\text{out}}/\\mathrm{d}\\theta_{\\text{in}}')}></span> = <output class="fb-o-slope" aria-live="polite">0.00</output>　<span class="fb-status">正常传动</span>
+    <span set:html={katexHtml('\\theta_{\\text{in}}')}></span> = <output class="fb-o-in">0</output>　<span set:html={katexHtml('\\theta_{\\text{out}}')}></span> = <output class="fb-o-out">0</output>　<span set:html={katexHtml('\\mathrm{d}\\theta_{\\text{out}}/\\mathrm{d}\\theta_{\\text{in}}')}></span> = <output class="fb-o-slope">0.00</output>　<span class="fb-status" aria-live="polite">正常传动</span>
   </p>
 
   <div class="fb-gauges">
@@ -116,6 +116,7 @@ import { katexHtml } from '../lib/tex.js';
 
 <script>
   import { setParts } from '../lib/tex.js';
+  import { createVisibleRaf } from '../lib/visible-raf.js';
 
   document.querySelectorAll('.fb-demo').forEach((demo) => {
     // 机构参数（示意，满足 Grashof 曲柄摇杆条件：s + l ≤ p + q）
@@ -292,7 +293,8 @@ import { katexHtml } from '../lib/tex.js';
       setParts(oIn, [{ tex: inDeg.toFixed(0) + '^\\circ' }]);
       setParts(oOut, [{ tex: outDeg.toFixed(1) + '^\\circ' }]);
       setParts(oSlope, [{ tex: s.slope.toFixed(2) }]);
-      statusEl.textContent = nearDead ? '接近死点：输出几乎不动' : '正常传动';
+      const statusText = nearDead ? '接近死点：输出几乎不动' : '正常传动';
+      if (statusEl.textContent !== statusText) statusEl.textContent = statusText;
 
       // 仪表：输出角速度条 + 硬顶力矩指令（误差累积，饱和爆红）
       const now = performance.now();
@@ -316,18 +318,18 @@ import { katexHtml } from '../lib/tex.js';
       demo.classList.toggle('fb-overload', demand >= 0.85);
     }
 
-    // 自动恒速旋转
+    // 自动恒速旋转：由 visible-raf 统一调度，滚出视口或切到后台即停。
+    // 减弱动态效果（reduced）下本来就不自动旋转，连循环都不用起。
     let last = performance.now();
-    function tick(now) {
+    const loop = createVisibleRaf(demo);
+    loop.onFrame((now) => {
       const dt = Math.min((now - last) / 1000, 0.1);
       last = now;
-      if (!manual && !reduced) {
-        th1 += OMEGA * dt;
-        render();
-      }
-      requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
+      if (manual || reduced) return;
+      th1 += OMEGA * dt;
+      render();
+    });
+    if (!reduced) loop.start();
 
     // 拖动接管：按住曲柄手柄或机构区域，松手恢复自动恒速
     function setFromEvent(e) {
