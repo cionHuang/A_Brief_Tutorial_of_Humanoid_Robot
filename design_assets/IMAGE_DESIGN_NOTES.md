@@ -246,5 +246,14 @@
 - 标注性质：sprite 中的画面是数据集原始相机帧，未经修改，仅缩放与左右拼接；曲线由原始 `observation.state`/`action` 数值绘制，不是示意值；组件中的文字、配色与图标为本书自制。
 - 再生成：生成脚本为本次会话使用的临时脚本（已清理）。流程为 curl 取 parquet → pyarrow 读 episode 0 → 等间隔抽 40 个帧号 → ffmpeg 解码对应帧 → PIL 拼 sprite；若需换 episode 或帧窗，按同样流程重跑即可。
 
+## 5.5 VR 遥操作 G1 动图（图 5.5-1）
+
+- 文件：`chapters/05-brain-perception-planning-vla-wam/assets/images/g1-vr-teleoperation.gif`
+- 内容：VR 遥操作下 G1 灵巧手完成操作任务的过程，双目相机视角（左俯视 / 右侧视），24 帧动图
+- 来源：GalaxyGeneralRobotics/OpenWBT 仓库 `img/demo.webp`（<https://github.com/GalaxyGeneralRobotics/OpenWBT>）。该仓库实现用 Apple Vision Pro 对 Unitree G1/H1 做全身遥操作（README 原文可核对）
+- 许可：**Apache-2.0**（仓库 LICENSE；`xr_teleoperate` 等仓库为 NOASSERTION，已排除）
+- 处理：用 sharp 把 24 页动画 WebP 缩放至宽 640 并转 GIF（colours=160, effort=7）：640×360、24 帧、2.73 MB；未修改画面内容，仅缩放与转码。站点构建时 Astro 会再转成动画 WebP（实测 pages=24，动画保留）
+- 用途：5.5「### 遥操作」小节末尾，配合正文讲「VR 手柄 / 头显驱动」这一类遥操作
+
 
 
