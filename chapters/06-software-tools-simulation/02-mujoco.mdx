@@ -84,7 +84,7 @@ MJCF 的 `<sensor>` 挂靠在 site 上（site 是模型上不带质量、只用�
 
 <MjcfFieldSnippet variant="site" />
 
-`g1_29dof.xml` 为 `imu_in_pelvis` 和 `imu_in_torso` 两个 site 各配置了一个 `<gyro>` 和一个 `<accelerometer>`，且都带 `noise` 和 `cutoff` 属性——例如陀螺仪 `noise="5e-4"`、加速度计 `noise="1e-2"`。这些参数让仿真输出更接近真实传感器特性，4.4 节状态估计和 5.5 节域随机化里“传感器差异”一项，在 MuJoCo 里对应的就是这组参数的调节范围。仿真传感器读数经过零偏和噪声注入后，才可以和 SDK 消息做有意义的对比。
+`g1_29dof.xml` 为 `imu_in_pelvis` 和 `imu_in_torso` 两个 site 各配置了一个 `<gyro>` 和一个 `<accelerometer>`，且都带 `noise` 和 `cutoff` 属性——例如陀螺仪 `noise="5e-4"`、加速度计 `noise="1e-2"`。这些参数让仿真输出带上真实传感器的典型缺陷（噪声与带宽限制），但它们是官方模型给出的仿真参数，是否与真机一致需要另行标定，**不能当作 G1 的传感器指标**。4.4 节状态估计和 5.5 节域随机化里“传感器差异”一项，在 MuJoCo 里对应的就是这组参数的调节范围。仿真传感器读数经过零偏和噪声注入后，才可以和 SDK 消息做有意义的对比。
 
 <MjcfFieldSnippet variant="sensor" />
 

@@ -91,7 +91,7 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 ### 域随机化与课程学习
 
-域随机化（Domain Randomization, DR）在训练时随机改变仿真参数——连杆质量、地面摩擦、电机强度、传感器噪声、外力扰动、延迟——让策略无法依赖任何一组具体参数，被迫学会在参数不确定下完成任务。[4] 课程学习（Curriculum Learning）则按难度递进安排训练：先平地低速，再逐渐加坡度、推力和复杂地形。两者配合，是当前腿式机器人策略鲁棒性的主要来源。
+域随机化（Domain Randomization, DR）在训练时随机改变仿真参数——连杆质量、地面摩擦、电机强度、传感器噪声、外力扰动、延迟——让策略无法依赖任何一组具体参数，被迫学会在参数不确定下完成任务。[4] 课程学习（Curriculum Learning）则按难度递进安排训练：先平地低速，再逐渐加坡度、推力和复杂地形。[12]两者配合，是当前腿式机器人策略鲁棒性的主要来源。
 
 > **一句话听懂**：域随机化让策略在训练时见不到两组完全一样的参数，逼它不依赖任何一组；课程学习把难度排好序。两者合起来，才是腿式机器人策略抗扰的主要来源。
 
@@ -144,3 +144,5 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 [10] Hugging Face. *LeRobot Dataset: lerobot/svla_so101_pickplace*（SO-101 真机遥操作演示，任务 “pink lego brick into the transparent box”）。许可 Apache-2.0，本文使用 revision `f641879e22172be7e8161d5e6c1503c2d2feb657` 的 episode 0 片段，用于 5.5 节「数据采集」的可交互查看器。<https://huggingface.co/datasets/lerobot/svla_so101_pickplace>
 
 [11] GalaxyGeneralRobotics. *OpenWBT: Whole-Body Teleoperation of the Unitree G1 and H1 Humanoid Robot with Apple Vision Pro*. 许可 Apache-2.0；图 5.5-1 取自其仓库 `img/demo.webp`（VR 遥操作下的 G1 灵巧手操作，双目相机视角）。<https://github.com/GalaxyGeneralRobotics/OpenWBT>
+
+[12] Bengio, Y., Louradour, J., Collobert, R., & Weston, J. “Curriculum Learning.” *ICML*, 2009. 课程学习：按难度递进安排训练样本的原始论文。<https://doi.org/10.1145/1553374.1553380>

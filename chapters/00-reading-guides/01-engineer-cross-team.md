@@ -11,7 +11,7 @@
 | 1 | [2.1 机构、关节与自由度](../02-mechanics/01-mechanisms-and-dof.mdx) | 机械说"到限位了""接近死点了"时，知道在说什么 | 全读 |
 | 2 | [2.3 传动与关节模组](../02-mechanics/03-transmission-and-joint-modules.mdx) | 减速比、回差、峰值扭矩决定你能向电机要什么性能 | 全读 |
 | 3 | [2.4 足部、接触与稳定性](../02-mechanics/04-foot-contact-and-stability.mdx) | 理解支撑多边形、摩擦锥对控制策略的约束 | 全读 |
-| 4 | [2.2 结构设计、材料与刚柔性](../02-mechanics/02-links-structure-and-materials.mdx) | 结构改动会怎样影响质量、惯量和动力学参数 | 读前半 |
+| 4 | [2.2 结构设计、材料与刚柔性](../02-mechanics/02-links-structure-and-materials.mdx) | 结构改动会怎样影响质量、惯量和动力学参数 | 读到「质量、质心与转动惯量」为止 |
 | 5 | [2.5 机器人描述文件](../02-mechanics/05-robot-description-files.mdx) | URDF/MJCF 是机械和软件交接的界面；格式差异与模型版本管理 | 读开头 |
 
 ## 你要和电气/嵌入式同学协作
@@ -21,8 +21,8 @@
 | 1 | [3.2 电机、驱动器与伺服控制](../03-electrical-embedded/02-motors-drivers-servo-control.mdx) | FOC、电流环、kp/kd 在驱动器里是怎么跑的 | 全读 |
 | 2 | [3.4 实时通信与总线](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | CAN/EtherCAT/DDS 的带宽和延迟决定控制周期上限 | 全读 |
 | 3 | [3.5 MCU、实时系统与嵌入式软件](../03-electrical-embedded/05-mcu-realtime-embedded-software.mdx) | 为什么控制指令必须按固定周期下发，抖动意味着什么 | 全读 |
-| 4 | [3.1 电源系统](../03-electrical-embedded/01-power-system.mdx) | 峰值功率和降额为什么会限制动作幅度 | 读开头 |
-| 5 | [3.3 传感器与数据采集](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 编码器、IMU 的精度和时间同步如何影响状态估计 | 读开头 |
+| 4 | [3.1 电源系统](../03-electrical-embedded/01-power-system.mdx) | 峰值功率与持续功率的差距为什么会限制动作幅度 | 读开头 |
+| 5 | [3.3 传感器与数据采集](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 编码器、IMU 的精度和时间同步如何影响状态估计 | 读开头 + 末尾「采样、时间戳与同步」 |
 | 6 | [3.6 电气安全与系统保护](../03-electrical-embedded/06-electrical-safety-and-protection.mdx) | 过流、过温保护触发时，机器人为什么会"突然卸力" | 读开头 |
 
 ## 你要和算法同学协作

@@ -72,7 +72,7 @@
 
 ## intel-realsense-d435-photo.jpg
 
-**Intel RealSense D435 深度相机实拍图**（3472×4624，约 2.2 MB）。
+**Intel RealSense D435 深度相机实拍图**（4624×3472，约 2.2 MB）。
 
 当前位置：`chapters/01-system-overview/assets/images/intel-realsense-d435-photo.jpg`
 
