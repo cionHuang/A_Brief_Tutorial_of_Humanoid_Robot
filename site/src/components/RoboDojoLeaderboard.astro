@@ -1,0 +1,78 @@
+---
+/**
+ * 5.6 用：嵌入 RoboDojo 公开榜单（第三方页面，随其发布实时更新）。
+ * 只通过 iframe 引用，不复制其数据；许可为 RoboDojo Non-Commercial Research License，
+ * 仅用于非商业的研究、教育与评测。跨域 iframe 无法自适应高度且可能被浏览器策略拦截，
+ * 因此把“新窗口打开”入口放在框上方，作为始终可见的降级路径。
+ */
+---
+<figure class="rd-embed">
+  <p class="rd-open">
+    <a href="https://robodojo-benchmark.com/leaderboard" target="_blank" rel="noopener noreferrer">在新窗口打开 RoboDojo 实时榜单 ↗</a>
+    <span class="rd-note">榜单是第三方页面、需要联网；若下方区域空白，点这里即可。</span>
+  </p>
+  <div class="rd-frame">
+    <iframe
+      src="https://robodojo-benchmark.com/leaderboard"
+      title="RoboDojo 公开榜单（第三方实时页面）"
+      loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade"
+    ></iframe>
+  </div>
+  <figcaption>
+    榜单由 <a href="https://robodojo-benchmark.com/" target="_blank" rel="noopener noreferrer">RoboDojo</a>（AI MMLab Club）维护、随其发布更新，本书只嵌入、不复制数据。
+    许可：RoboDojo Non-Commercial Research License（非商业研究、教育与评测用途）。
+  </figcaption>
+</figure>
+
+<style>
+  .rd-embed {
+    margin: 1.5rem 0;
+  }
+  .rd-open {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem 0.75rem;
+    margin: 0 0 0.5rem;
+    font-size: 0.9375rem;
+  }
+  .rd-open a {
+    font-weight: 600;
+    color: var(--sl-color-accent);
+    text-decoration: none;
+    border-bottom: 1px solid var(--sl-color-accent);
+  }
+  .rd-note {
+    color: var(--sl-color-gray-3);
+    font-size: 0.875rem;
+  }
+  .rd-frame {
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #ffffff;
+  }
+  .rd-frame iframe {
+    display: block;
+    width: 100%;
+    height: 640px;
+    border: 0;
+  }
+  .rd-embed figcaption {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-2);
+    line-height: 1.6;
+  }
+  .rd-embed figcaption a {
+    color: var(--sl-color-accent);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--sl-color-gray-4);
+  }
+  @media (max-width: 40rem) {
+    .rd-frame iframe {
+      height: 480px;
+    }
+  }
+</style>
