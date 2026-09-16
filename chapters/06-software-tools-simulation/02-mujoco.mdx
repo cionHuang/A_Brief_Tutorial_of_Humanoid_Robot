@@ -16,7 +16,7 @@ import MjcfFieldSnippet from '../../../components/MjcfFieldSnippet.astro';
 
 ## MuJoCo 是什么、为什么用它
 
-MuJoCo（Multi-Joint dynamics with Contact）是面向接触富集任务（contact-rich tasks）的物理仿真器，腿式机器人和操作学习的主流训练/验证环境都建立在它之上。[1] 它和一般刚体仿真器最不一样的地方是接触模型：MuJoCo 用软接触（soft contact），把碰撞当成可穿透的弹簧—阻尼系统求解，而不是把接触当成不可违背的硬约束；足底、手指这类持续接触的场景因此数值上更稳。它只用 CPU 就能跑，单次仿真的确定性与可复现性好，开源并由 Google DeepMind 维护。[1][2]
+MuJoCo（Multi-Joint dynamics with Contact）是面向接触富集任务（contact-rich tasks）的物理仿真器，也是腿式机器人策略做 Sim2Sim 验证的常用环境。[1] 它和一般刚体仿真器最不一样的地方是接触模型：MuJoCo 用软接触（soft contact），把碰撞当成可穿透的弹簧—阻尼系统求解，而不是把接触当成不可违背的硬约束；足底、手指这类持续接触的场景因此数值上更稳。它只用 CPU 就能跑，单次仿真的确定性与可复现性好，开源并由 Google DeepMind 维护。[1][2]
 
 在工具链里它只占一个位置，别的仿真器各管一段：Isaac Sim / Isaac Lab 擅长 GPU 大规模并行训练与视觉在环（6.3 节），Gazebo 擅长 ROS 2 集成与场景搭建（6.4 节），MuJoCo 擅长精确接触，以及把训练出来的策略做 Sim2Sim 验证。换句话说，它不是“训练环境”，而是“把接触算准、把策略验一遍”的地方。
 
@@ -44,7 +44,7 @@ MuJoCo（Multi-Joint dynamics with Contact）是面向接触富集任务（conta
 最短跑通路径只有四步，顺序不能反：
 
 1. **选模型、改 `include`**：当前 `scene.xml` 里写的是 `include file="g1_12dof.xml"`，而本手册只保留了 `g1_29dof` 系列三个变体，所以第一步就是把它改成目标模型文件名；
-2. **加载后核对 `nq`/`nv`/`nu`**：这三个是模型的维度（位置、速度与执行器的个数），自由关节模型应是位置 7+29、速度 6+29、执行器 29；
+2. **加载后核对 `nq`/`nv`/`nu`**：这三个是模型的维度（位置、速度与执行器的个数）。以 `g1_29dof.xml` 为例是位置 7+29、速度 6+29、执行器 29；换变体后按同一通式复核：位置 = 7 + 关节数、速度 = 6 + 关节数、执行器 = 关节数（锁腰变体 34/33/27，带手变体 50/49/43）；
 3. **用 `mj_step` 推进**：按固定仿真步长一步步向前积分；
 4. **读 `sensordata`**：从 `mj_data` 里取传感器读数，和期望行为对照。
 
@@ -74,7 +74,7 @@ Geom 分 visual 和 collision 两类用途，碰撞几何的形状和摩擦参�
 
 <MjcfFieldSnippet variant="actuator" />
 
-要在这种模型上做“位置控制”，需要在仿真循环外自己实现 PD：用 `qpos/qvel` 读出关节状态，按 4.5 节的阻抗公式算出力矩写入 `ctrl`，这正是 `unitree_rl_gym` 的 MuJoCo 部署示例（5.5 节链路）的做法，也和 G1 真机 `MotorCmd_` 的 `kp`/`kd` 接口语义对齐。[4]
+要在这种模型上做“位置控制”，需要在仿真循环外自己实现 PD：用 `qpos/qvel` 读出关节状态，按 4.5 节的阻抗公式算出力矩写入 `ctrl`，这正是 `unitree_rl_gym` 的 MuJoCo 部署示例（5.5 节链路）的做法，接口形状与 G1 真机 `MotorCmd_` 的 `kp`/`kd` 一致。[4] 但要提醒：仿真循环外手写的 PD 与真机固件内部的 PD 不是一回事——真机的 `kp`/`kd` 由电机固件在自己的控制周期里执行，更新率、限幅与状态反馈都不同，仿真里调好的增益必须逐关节重标，不能直接搬到实机。
 
 > **一句话听懂**：`ctrl` 给的是位置还是力矩，完全由执行器类型决定——`<motor>` 直接吃广义力，`<position>` 内部自带 PD；G1 官方 MJCF 是 29 个 `<motor>`，想要位置控制得在循环外自己写 PD。
 
@@ -97,7 +97,7 @@ MJCF 的 `<sensor>` 挂靠在 site 上（site 是模型上不带质量、只用�
 - **`include` 指向的模型存在**：当前 `scene.xml` 写的是 `include file="g1_12dof.xml"`，本手册只保留 `g1_29dof`、`g1_29dof_lock_waist`、`g1_29dof_with_hand` 三个变体，使用前必须改成目标模型文件名；
 - **网格路径对得上**：`<compiler angle="radian" meshdir="meshes"/>` 里的 `meshdir` 按当前 XML 所在目录解析，移动 `scene.xml` 或模型文件时要保持 `meshes/` 的相对位置不变，否则加载报找不到 STL；
 - **关节数与命名**：与预期模型一致；
-- **`nq/nv/nu` 维度**：自由关节模型应为位置 7+29、速度 6+29、执行器 29；
+- **`nq/nv/nu` 维度**：以 `g1_29dof.xml` 为例应为位置 7+29、速度 6+29、执行器 29（锁腰 34/33/27、带手 50/49/43，通式见前文）；
 - **IMU 位置**：`imu_in_pelvis` 与 `imu_in_torso` 两个 site 存在且位置合理；
 - **碰撞 geom 是否齐全**：足底、膝、肘这些会接触的地方不能只有 visual geom；
 - **足底初始是否与地面轻微穿透**：穿透会在第一步触发接触力冲击。

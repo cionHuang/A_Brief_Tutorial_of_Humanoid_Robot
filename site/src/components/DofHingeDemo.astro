@@ -76,7 +76,7 @@ const L2 = 108; // 小腿
 
   <figcaption>
     只有一个膝关节时，用 <span set:html={katexHtml('\\theta')}></span> 一个数字就能描述这条腿的姿势，即 1 DoF。
-    膝关节活动范围 <span set:html={katexHtml('-5^\\circ \\sim 165^\\circ')}></span> 取自 G1 的 URDF 模型文件，G1 的膝关节正是这样一个 1 DoF 关节；腿长比例为示意。
+    膝关节活动范围 <span set:html={katexHtml('-5^\\circ \\sim 165^\\circ')}></span> 取自 G1 的 URDF 模型文件，正方向为屈膝（小腿相对大腿向后摆），−5° 为轻微过伸；G1 的膝关节正是这样一个 1 DoF 关节。图中机器人面朝右方（脚掌朝右），因此屈膝表现为小腿向左摆；该范围是模型 limit 字段的取值，不代表真机实测能力上限。腿长比例为示意。
   </figcaption>
 </figure>
 
@@ -105,10 +105,10 @@ const L2 = 108; // 小腿
     const arcPath = (r, deg) => {
       // 避免 0° 时出现零长度弧与残留箭头
       if (Math.abs(deg) < 1) deg = deg < 0 ? -1 : 1;
-      const end = { x: r * Math.sin(deg * RAD), y: r * Math.cos(deg * RAD) };
+      const end = { x: -r * Math.sin(deg * RAD), y: r * Math.cos(deg * RAD) };
       const large = Math.abs(deg) > 180 ? 1 : 0;
       // SVG y 轴向下：正角（屏幕右侧）用逆时针 sweep=0，负角用顺时针 sweep=1
-      const sweep = deg < 0 ? 1 : 0;
+      const sweep = deg < 0 ? 0 : 1;
       return `M 0 ${r} A ${r} ${r} 0 ${large} ${sweep} ${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
     };
 
@@ -118,7 +118,7 @@ const L2 = 108; // 小腿
       shankLabel.setAttribute('transform', `rotate(${-knee} 17 56)`);
       arc.setAttribute('d', arcPath(46, knee));
       const half = (knee * RAD) / 2;
-      glyph.setAttribute('transform', `translate(${(62 * Math.sin(half)).toFixed(1)} ${(62 * Math.cos(half) + 5).toFixed(1)})`);
+      glyph.setAttribute('transform', `translate(${(-62 * Math.sin(half)).toFixed(1)} ${(62 * Math.cos(half) + 5).toFixed(1)})`);
       slider.value = knee;
       setParts(output, [{ tex: `${Math.round(knee)}^\\circ` }]);
       setParts(anglesOut, [{ tex: `\\theta = ${Math.round(knee)}^\\circ` }]);

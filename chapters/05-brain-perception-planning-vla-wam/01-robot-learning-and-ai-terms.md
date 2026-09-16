@@ -30,7 +30,7 @@
 - **层与前向**：网络由若干层叠加，一次**前向传播**就是“输入 → 逐层计算 → 输出”。
 - **训练与推理**：训练是在数据集上反复迭代求参数，$\theta^*=\arg\min_\theta \mathbb{E}_{(x,y)\sim D}\left[L(f_\theta(x),y)\right]$；**推理则是固定参数后做一次前向**。机器人上电后跑的都是推理，所以“一次推理多久、多久能出一次”比“训练了多久”更决定能不能用。
 - **损失与过拟合**：损失衡量输出与目标的差距；过拟合是“把训练集背下来了，换一批数据就不行”。
-- **数据集与标注**：数据从哪来、标签谁给、分布是否覆盖真实场景，往往比模型结构更决定成败；数据集格式、采集与训练工具链可参考 LeRobot 等开源实现。[6][9]
+- **数据集与标注**：数据从哪来、标签谁给、分布是否覆盖真实场景，往往比模型结构更决定成败；数据集格式、采集与训练工具链可参考 LeRobot 等开源实现。[8]
 
 ## 表示：token 与嵌入
 
@@ -69,13 +69,13 @@ $$
 
 *图 5.1-4 为什么动作不能直接回归：同一个指令下动作不止一个正确答案，直接回归会把多个可行方案平均成一个不可行的动作。*
 
-- **扩散（Diffusion）**：训练时给真实动作逐步加噪，$x_t=\sqrt{\bar{\alpha}_t}\,x_0+\sqrt{1-\bar{\alpha}_t}\,\epsilon$；网络学的就是“给定加噪后的 $x_t$ 和时间 $t$，预测所加的噪声”，$\min_\theta \mathbb{E}\left\|\epsilon-\epsilon_\theta(x_t,t)\right\|^2$。采样时从纯噪声出发，迭代去噪得到动作。[3][8]
+- **扩散（Diffusion）**：训练时给真实动作逐步加噪，$x_t=\sqrt{\bar{\alpha}_t}\,x_0+\sqrt{1-\bar{\alpha}_t}\,\epsilon$；网络学的就是“给定加噪后的 $x_t$ 和时间 $t$，预测所加的噪声”，$\min_\theta \mathbb{E}\left\|\epsilon-\epsilon_\theta(x_t,t)\right\|^2$。采样时从纯噪声出发，迭代去噪得到动作。[3][7]
 
 ![扩散的训练与采样：逐步加噪，再从噪声迭代去噪](assets/images/ai-diffusion-denoise.svg)
 
 *图 5.1-5 扩散：训练时逐步给动作加噪，采样时从纯噪声出发、迭代去噪得到动作。*
 
-- **流匹配（Flow Matching）**：直接学一个速度场 $v_\theta(x,t)$，采样时解常微分方程 $\frac{dx}{dt}=v_\theta(x,t)$，从噪声积分到动作。[4][7]
+- **流匹配（Flow Matching）**：直接学一个速度场 $v_\theta(x,t)$，采样时解常微分方程 $\frac{dx}{dt}=v_\theta(x,t)$，从噪声积分到动作。[4][6]
 
 ![流匹配：学习速度场，从噪声沿流线积分到动作](assets/images/ai-flow-matching.svg)
 
@@ -109,7 +109,7 @@ $$
 | 运动规划（5.3） | 采样、优化、轨迹优化 | 目标位姿 → 关节轨迹 | 10–100 Hz | 只给可行轨迹，不负责执行 |
 | 双臂操作（5.4） | 抓取、接触、双臂协同 | 目标 → 末端与手指动作 | 与规划同级 | 动作空间必须与下游一致 |
 | 学习控制（5.5） | 模仿学习、强化学习 | 观测 → 策略输出 | 训练离线、推理 10–100 Hz | 学出来的输出必须有兜底 |
-| VLA（5.6） | 多模态大模型 + 动作头 | 图像 + 语言 + 状态 → 动作块 | 1–10 Hz | 负责任务理解，不做毫秒级闭环 |
+| VLA（5.6） | 多模态大模型 + 动作头 | 图像 + 语言 + 状态 → 动作块 | 推理典型 1–10 Hz 量级 | 负责任务理解，不做毫秒级闭环 |
 | WAM（5.7） | 联合预测世界变化与动作（动作条件） | 观测 + 动作 → 未来观测 + 动作 | 低频、可异步 | 预测结果不等于物理可行 |
 
 ## 一句话听懂
@@ -136,10 +136,9 @@ $$
 
 [5] Brohan, A., et al. “RT-1: Robotics Transformer for Real-World Control at Scale.” *RSS*, 2023. 动作 token 化与大规模真实机器人数据训练。<https://arxiv.org/abs/2212.06817>
 
-[6] Kim, M. J., et al. “OpenVLA: An Open-Source Vision-Language-Action Model.” *arXiv*, 2024. 开源 VLA 模型与动作解码接口。<https://arxiv.org/abs/2406.09246>
 
-[7] Black, K., et al. “π0: A Vision-Language-Action Flow Model for General Robot Control.” *arXiv*, 2024. 流匹配动作生成与动作块输出。<https://arxiv.org/abs/2410.24164>
+[6] Black, K., et al. “π0: A Vision-Language-Action Flow Model for General Robot Control.” *arXiv*, 2024. 流匹配动作生成与动作块输出。<https://arxiv.org/abs/2410.24164>
 
-[8] Chi, C., et al. “Diffusion Policy: Visuomotor Policy Learning via Action Diffusion.” *RSS*, 2023. 用扩散生成动作序列的机器人策略。<https://arxiv.org/abs/2303.04137>
+[7] Chi, C., et al. “Diffusion Policy: Visuomotor Policy Learning via Action Diffusion.” *RSS*, 2023. 用扩散生成动作序列的机器人策略。<https://arxiv.org/abs/2303.04137>
 
-[9] Hugging Face. *LeRobot: Making AI for Robotics More Accessible*. 数据集格式、采集与训练流水线的开源参考实现。<https://github.com/huggingface/lerobot>
+[8] Hugging Face. *LeRobot: Making AI for Robotics More Accessible*. 数据集格式、采集与训练流水线的开源参考实现。<https://github.com/huggingface/lerobot>
