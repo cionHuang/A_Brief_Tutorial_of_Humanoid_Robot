@@ -69,6 +69,30 @@ const cards = {
       ],
     },
   ],
+  bodycore: [
+    {
+      role: 'body / joint / inertial / geom · 结构四件套',
+      file: XML,
+      url: src(XML, 44),
+      lines: [
+        { n: 44, code: '    <body name="pelvis" pos="0 0 0.793">', hl: true, ann: 'body：刚体层级与位姿' },
+        { n: 45, code: '      <inertial pos="0 0 -0.07605" quat="1 0 -0.000399148 0" mass="3.813" diaginertia="0.010549 0.0093089 0.0079184"/>', hl: true, ann: 'inertial：质量、质心与惯量' },
+        { n: 46, code: '      <joint name="floating_base_joint" type="free" limited="false" actuatorfrclimited="false"/>', hl: true, ann: 'free joint：7+29 / 6+29 的来源' },
+        { n: 47, code: '      <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.2 0.2 0.2 1" mesh="pelvis"/>', hl: true, ann: 'geom：显示 / 碰撞几何' },
+      ],
+    },
+  ],
+  site: [
+    {
+      role: 'site · 传感器与参考点的安装位置',
+      file: XML,
+      url: src(XML, 50),
+      lines: [
+        { n: 50, code: '      <site name="imu_in_pelvis" size="0.01" pos="0.04525 0 -0.08339"/>', hl: true, ann: 'site：pelvis 的 IMU 安装点' },
+        { n: 148, code: '            <site name="imu_in_torso" size="0.01" pos="-0.03959 -0.00224 0.13792"/>', hl: true, ann: 'site：torso 的 IMU 安装点' },
+      ],
+    },
+  ],
   actuator: [
     {
       role: 'actuator · 驱动定义与 ctrl 的语义',
@@ -86,8 +110,6 @@ const cards = {
       file: XML,
       url: src(XML, 273),
       lines: [
-        { n: 50, code: '      <site name="imu_in_pelvis" size="0.01" pos="0.04525 0 -0.08339"/>', hl: true, ann: 'site：pelvis 的 IMU 安装点' },
-        { n: 148, code: '            <site name="imu_in_torso" size="0.01" pos="-0.03959 -0.00224 0.13792"/>', hl: true, ann: 'site：torso 的 IMU 安装点' },
         { n: 276, code: '    <gyro name="imu-pelvis-angular-velocity" site="imu_in_pelvis" noise="5e-4" cutoff="34.9"/>', hl: true, ann: 'gyro：噪声与截止频率' },
         { n: 277, code: '    <accelerometer name="imu-pelvis-linear-acceleration" site="imu_in_pelvis" noise="1e-2" cutoff="157"/>', hl: true, ann: 'accelerometer：测哪个点' },
       ],
@@ -105,6 +127,8 @@ const cards = {
         { n: 20, code: '    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>', hl: true, ann: 'floor：地面 geom' },
       ],
     },
+  ],
+  compiler: [
     {
       role: 'g1_29dof.xml · compiler：单位与网格目录',
       file: XML,
@@ -145,9 +169,12 @@ const captions = {
   motor: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>）。<code>actuator</code> 和 <code>sensor</code> 与刚体写在同一个 MJCF 里，这是它与 URDF 最直观的差别之一。',
   free: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>）。<code>type="free"</code> 让 <code>pelvis</code> 相对世界有 6 个自由度；<code>qpos</code>/<code>qvel</code> 的长度因此不等于电机数量。',
   state: "片段逐字摘自 <code>g1_29dof.xml</code> 与 <code>g1_29dof.urdf</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为各自原文件行号。<code>site</code> 的 <code>pos</code> 与 URDF <code>fixed joint</code> 的 <code>origin</code> 是同一个安装位姿的两种写法：MJCF 把 IMU 作为 site 挂在刚体上，URDF 则用空 link 加固定关节给它一个坐标系。这些定义只说明安装位置和仿真噪声，不等于真实硬件的偏置、延迟和量程。",
+  bodycore: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为原文件行号。一个 body 里同时挂 joint、geom 与 inertial；<code>type="free"</code> 就是 4.3 节 qpos 7+29、qvel 6+29 的来源。',
+  site: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>）。site 不带质量，只标记位置与坐标系；两个 IMU 的安装点分别挂在 pelvis 与 torso 上。',
+  compiler: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>）。<code>meshdir</code> 按当前 XML 所在目录解析，移动模型文件时必须保持 <code>meshes/</code> 的相对位置。',
   actuator: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为原文件行号。<code>ctrl</code> 是每个执行器一路的控制输入，它的含义由执行器类型决定。',
   sensor: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>）。<code>site</code> 标记传感器的安装点，<code>noise</code> 与 <code>cutoff</code> 决定读数离真实传感器有多近——5.5 节域随机化里“传感器差异”调的就是这组参数。',
-  scene: 'scene.xml 取自 unitree_rl_gym 的 g1_description（<code>main</code> 分支，该文件不在其他片段固定的 <code>276801e</code> 提交内），与随书副本逐字一致；<code>compiler</code> 一行摘自 <code>g1_29dof.xml</code>，行号为原文件行号。',
+  scene: '片段逐字摘自随书 <code>scene.xml</code>（源自 unitree_rl_gym 的 g1_description；该文件不在其他片段固定的 <code>276801e</code> 提交内，所以链接指向它的 <code>main</code> 分支），与随书副本逐字一致，行号为原文件行号。',
 };
 
 const card = cards[variant] || cards.body;
