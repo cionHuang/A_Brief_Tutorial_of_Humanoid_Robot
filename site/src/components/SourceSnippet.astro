@@ -147,12 +147,16 @@ const { cards, caption } = Astro.props;
     user-select: none;
   }
   .src-code {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
     white-space: pre;
     color: var(--sl-color-text);
     background: none;
     padding: 0;
   }
   .src-ann {
+    flex: 0 0 auto;
     margin-left: auto;
     padding-left: 1.5rem;
     white-space: nowrap;

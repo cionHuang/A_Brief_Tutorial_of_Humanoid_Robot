@@ -1,5 +1,7 @@
 # 6.2 MuJoCo
 
+import MjcfFieldSnippet from '../../../components/MjcfFieldSnippet.astro';
+
 ## 先看一个现场问题
 
 把 G1 的 URDF 直接拖进 MuJoCo：机器人加载出来了，却像布娃娃一样瘫在地上——URDF 里没有执行器定义。换成官方 MJCF 后机器人能站了，但控制循环一发“位置指令”就抽搐——`g1_29dof.xml` 里的执行器是力矩电机，期望的是力矩而不是目标位置。足底接触地面时偶尔还会穿透或弹跳，换了一个场景文件，模型又加载失败，提示找不到网格文件。
@@ -46,6 +48,8 @@ MuJoCo（Multi-Joint dynamics with Contact）是面向接触富集任务（conta
 
 `<compiler angle="radian" meshdir="meshes"/>` 规定了角度单位与网格目录；移动模型文件时必须保持 `meshes/` 的相对位置不变，否则加载报找不到 STL。
 
+<MjcfFieldSnippet variant="scene" />
+
 后面几节就挂在这条链上：MJCF 的建模元素决定模型怎么被描述，Actuator 决定 `ctrl` 怎么被解释，场景与加载决定它能不能跑起来，加载检查清单决定跑得对不对，控制实验是拿它来做什么。
 
 > **一句话听懂**：一次仿真只有三件东西——机器人 MJCF、场景文件 `scene.xml` 和 `meshes/`；最短链路是选模型并改 `include`、核对 `nq/nv/nu`、`mj_step` 推进、读 `sensordata`，后面每一节都是这条链上的一段。
@@ -56,13 +60,19 @@ MuJoCo（Multi-Joint dynamics with Contact）是面向接触富集任务（conta
 
 MJCF 用 `<body>` 的嵌套层级表达运动树，每个 body 内挂 `<joint>`（运动关系）、`<geom>`（碰撞与可视化几何）和 `<inertial>`（动力学参数）。G1 的 `g1_29dof.xml` 中，`pelvis` 上挂着 `floating_base_joint`，类型为 `free`——这就是 4.3 节“qpos 7+29、qvel 6+29”维度关系的来源：自由关节在位置上占 7 个数（3 平移 + 4 四元数），速度上占 6 个数。加载模型后第一件事应是核对 `nq`、`nv`、`nu` 三个维度与预期一致。[2][3]
 
+<MjcfFieldSnippet variant="free" />
+
 Geom 分 visual 和 collision 两类用途，碰撞几何的形状和摩擦参数直接决定足底接触行为。足底穿透或弹跳通常出在接触求解参数上：MuJoCo 用软接触模型，`solref`/`solimp` 控制接触的刚度与阻尼（它们是求解器用的数值参数，不是可测量的物理量），地面 geom 的 `friction` 决定摩擦锥。这些参数调的是数值行为，与真实地面的摩擦系数之间没有直接等号。
+
+<MjcfFieldSnippet variant="body" />
 
 > **一句话听懂**：body 嵌套成运动树，joint 决定它怎么动，geom 决定它怎么碰；足底穿透或弹跳先查 `solref`/`solimp` 与 `friction`，而不是先怀疑机身尺寸。
 
 ### Actuator：ctrl 的语义由执行器类型决定
 
 开头“发位置指令却抽搐”的根因在这里。`<motor>` 型执行器的 `ctrl` 直接是广义力（对转动关节即力矩）；`<position>` 型执行器内部自带一个 PD，把 `ctrl` 解释为目标位置。（`ctrl` 是控制输入，每个执行器一路。）`g1_29dof.xml` 定义了 29 个 `<motor>`，每个绑定同名关节，例如 `<motor name="left_hip_pitch_joint" joint="left_hip_pitch_joint"/>`——对 G1 官方 MJCF，`ctrl` 就是关节力矩。[2]
+
+<MjcfFieldSnippet variant="actuator" />
 
 要在这种模型上做“位置控制”，需要在仿真循环外自己实现 PD：用 `qpos/qvel` 读出关节状态，按 4.5 节的阻抗公式算出力矩写入 `ctrl`，这正是 `unitree_rl_gym` 的 MuJoCo 部署示例（5.5 节链路）的做法，也和 G1 真机 `MotorCmd_` 的 `kp`/`kd` 接口语义对齐。[4]
 
@@ -71,6 +81,8 @@ Geom 分 visual 和 collision 两类用途，碰撞几何的形状和摩擦参�
 ### Sensor：带噪声和滤波的仿真传感器
 
 MJCF 的 `<sensor>` 挂靠在 site 上（site 是模型上不带质量、只用来标记位置和坐标系的点）。`g1_29dof.xml` 为 `imu_in_pelvis` 和 `imu_in_torso` 两个 site 各配置了一个 `<gyro>` 和一个 `<accelerometer>`，且都带 `noise` 和 `cutoff` 属性——例如陀螺仪 `noise="5e-4"`、加速度计 `noise="1e-2"`。这些参数让仿真输出更接近真实传感器特性，4.4 节状态估计和 5.5 节域随机化里“传感器差异”一项，在 MuJoCo 里对应的就是这组参数的调节范围。仿真传感器读数经过零偏和噪声注入后，才可以和 SDK 消息做有意义的对比。
+
+<MjcfFieldSnippet variant="sensor" />
 
 > **一句话听懂**：MJCF 的传感器挂在 site 上，`noise` 和 `cutoff` 决定读数离真实传感器有多近；5.5 节里“传感器差异”的域随机化，调的就是这组参数。
 

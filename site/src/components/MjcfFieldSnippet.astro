@@ -5,6 +5,9 @@
  * variant="motor" ：actuator 的 motor 与 sensor 的 gyro / accelerometer
  * variant="free"  ：floating_base_joint（自由基座）
  * variant="state" ：4.4 状态估计用——两个 IMU 的 site / sensor 定义，以及它们对应的 URDF 固定 link/joint
+ * variant="actuator"：6.2 用——actuator 块与 motor 声明（ctrl 的语义）
+ * variant="sensor"  ：6.2 用——两个 IMU 的 site 与 gyro / accelerometer（噪声与截止频率）
+ * variant="scene"   ：6.2 用——scene.xml 的 include / 视角 / 光照 / 地面，加 compiler 的单位与网格目录
  * 片段逐字摘自 robot_descriptions/g1/ 下的 g1_29dof.xml 与 g1_29dof.urdf（unitree_rl_gym 固定提交），保留原文件行号。
  */
 import SourceSnippet from './SourceSnippet.astro';
@@ -66,6 +69,51 @@ const cards = {
       ],
     },
   ],
+  actuator: [
+    {
+      role: 'actuator · 驱动定义与 ctrl 的语义',
+      file: XML,
+      url: src(XML, 241),
+      lines: [
+        { n: 241, code: '  <actuator>', hl: true, ann: 'actuator：控制输入映射到关节' },
+        { n: 245, code: '    <motor name="left_knee_joint" joint="left_knee_joint"/>', hl: true, ann: 'motor：ctrl 即关节力矩' },
+      ],
+    },
+  ],
+  sensor: [
+    {
+      role: 'sensor · 仿真传感器与它的安装点',
+      file: XML,
+      url: src(XML, 273),
+      lines: [
+        { n: 50, code: '      <site name="imu_in_pelvis" size="0.01" pos="0.04525 0 -0.08339"/>', hl: true, ann: 'site：pelvis 的 IMU 安装点' },
+        { n: 148, code: '            <site name="imu_in_torso" size="0.01" pos="-0.03959 -0.00224 0.13792"/>', hl: true, ann: 'site：torso 的 IMU 安装点' },
+        { n: 276, code: '    <gyro name="imu-pelvis-angular-velocity" site="imu_in_pelvis" noise="5e-4" cutoff="34.9"/>', hl: true, ann: 'gyro：噪声与截止频率' },
+        { n: 277, code: '    <accelerometer name="imu-pelvis-linear-acceleration" site="imu_in_pelvis" noise="1e-2" cutoff="157"/>', hl: true, ann: 'accelerometer：测哪个点' },
+      ],
+    },
+  ],
+  scene: [
+    {
+      role: 'scene.xml · 模型之外的世界',
+      file: 'scene.xml',
+      url: 'https://github.com/unitreerobotics/unitree_rl_gym/blob/main/resources/robots/g1_description/scene.xml#L2',
+      lines: [
+        { n: 2, code: '  <include file="g1_12dof.xml"/>', hl: true, ann: 'include：拼进机器人模型' },
+        { n: 9, code: '    <global azimuth="-140" elevation="-20"/>', hl: true, ann: 'global：默认视角' },
+        { n: 19, code: '    <light pos="1 0 3.5" dir="0 0 -1" directional="true"/>', hl: true, ann: 'light：只影响可视化' },
+        { n: 20, code: '    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>', hl: true, ann: 'floor：地面 geom' },
+      ],
+    },
+    {
+      role: 'g1_29dof.xml · compiler：单位与网格目录',
+      file: XML,
+      url: src(XML, 2),
+      lines: [
+        { n: 2, code: '  <compiler angle="radian" meshdir="meshes"/>', hl: true, ann: 'meshdir 按 XML 所在目录解析' },
+      ],
+    },
+  ],
   state: [
     {
       role: 'MJCF · IMU 的安装点与仿真传感器',
@@ -97,6 +145,9 @@ const captions = {
   motor: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>）。<code>actuator</code> 和 <code>sensor</code> 与刚体写在同一个 MJCF 里，这是它与 URDF 最直观的差别之一。',
   free: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>）。<code>type="free"</code> 让 <code>pelvis</code> 相对世界有 6 个自由度；<code>qpos</code>/<code>qvel</code> 的长度因此不等于电机数量。',
   state: "片段逐字摘自 <code>g1_29dof.xml</code> 与 <code>g1_29dof.urdf</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为各自原文件行号。<code>site</code> 的 <code>pos</code> 与 URDF <code>fixed joint</code> 的 <code>origin</code> 是同一个安装位姿的两种写法：MJCF 把 IMU 作为 site 挂在刚体上，URDF 则用空 link 加固定关节给它一个坐标系。这些定义只说明安装位置和仿真噪声，不等于真实硬件的偏置、延迟和量程。",
+  actuator: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为原文件行号。<code>ctrl</code> 是每个执行器一路的控制输入，它的含义由执行器类型决定。',
+  sensor: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>）。<code>site</code> 标记传感器的安装点，<code>noise</code> 与 <code>cutoff</code> 决定读数离真实传感器有多近——5.5 节域随机化里“传感器差异”调的就是这组参数。',
+  scene: 'scene.xml 取自 unitree_rl_gym 的 g1_description（<code>main</code> 分支，该文件不在其他片段固定的 <code>276801e</code> 提交内），与随书副本逐字一致；<code>compiler</code> 一行摘自 <code>g1_29dof.xml</code>，行号为原文件行号。',
 };
 
 const card = cards[variant] || cards.body;
