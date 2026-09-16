@@ -28,7 +28,7 @@ const chapterRedirects = {
   '/06-simulation-tools-integration/03-gazebo-rviz2-foxglove': redirectTo('/06-software-tools-simulation/04-gazebo-rviz2-foxglove'),
   '/06-simulation-tools-integration/04-kinematics-dynamics-libraries': redirectTo('/06-software-tools-simulation/05-kinematics-dynamics-libraries'),
   '/06-simulation-tools-integration/05-sim-to-real': redirectTo('/06-software-tools-simulation/06-sim-to-real'),
-  // 第五章插入 5.1 后，原 5.1–5.7 顺延为 5.2–5.8：旧小节 URL 重定向到新路径
+  // 第五章插入 5.1 后，原 5.1–5.6 顺延为 5.2–5.7：旧小节 URL 重定向到新路径（原 5.7 对应的“到 G1 控制接口”一节已删除）
   '/05-brain-perception-planning-vla-wam/01-perception-system': redirectTo('/05-brain-perception-planning-vla-wam/02-perception-system'),
   '/05-brain-perception-planning-vla-wam/02-motion-planning': redirectTo('/05-brain-perception-planning-vla-wam/03-motion-planning'),
   '/05-brain-perception-planning-vla-wam/03-dual-arm-manipulation-and-dexterous-hands': redirectTo('/05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands'),
