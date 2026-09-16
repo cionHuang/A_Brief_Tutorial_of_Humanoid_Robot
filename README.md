@@ -428,22 +428,27 @@ G1 不单独作为某个大章，而是根据具体知识点穿插在各个小�
 ### A. G1 模型文件索引
 
 - 文件名、用途、DoF、腰部配置、手部配置、URDF/MJCF、网格和版本。
+- 实现：`chapters/07-appendix/02-model-index.md`（含上游 README 中未纳入本教学版本的 9 个变体）。
 
 ### B. G1 关节索引
 
-- 关节名称、索引、所属部位、旋转轴、适用 DoF、锁腰适配和带手适配。
+- 关节名称、索引、所属部位、旋转轴、限位、锁腰适配、带手适配，以及 SDK 索引别名与注释。
+- 实现：`chapters/07-appendix/03-joint-index.md`（脚本生成，SDK 索引顺序与 URDF 关节顺序逐项比对一致）。
 
 ### C. G1 消息接口
 
-- `LowCmd`、`LowState`、`MotorCmd`、`MotorState`、`IMUState`、`BmsState`、`PressSensorState`、DDS Topic 和 ROS 2 Message。
+- `LowCmd`、`LowState`、`MotorCmd`、`MotorState`、`IMUState`、`BmsState`、`PressSensorState` 的字段与类型；DDS Topic 与 ROS 2 Message 的对应关系另行说明。
+- 实现：`chapters/07-appendix/04-messages.md`（53 个字段，类型逐行取自固定提交的 IDL）。
 
 ### D. 工具与安装
 
 - MuJoCo、ROS 2、Gazebo、RViz 2、Isaac Sim、Isaac Lab、Pinocchio、Drake、MoveIt 2、Foxglove 和 LeRobot。
+- 状态：**规划中**（工具定位见第 6 章各节，安装步骤以各项目官方文档为准）。
 
 ### E. 公式索引
 
 - 坐标变换、旋转矩阵、四元数、正运动学、雅可比、动力学、PID、阻抗控制、ZMP 和质心动力学。
+- 状态：**规划中**（每条公式要写清「它解决什么问题」与其出处小节，需人工整理）。
 
 ### F. 术语速查表
 
@@ -453,6 +458,7 @@ G1 不单独作为某个大章，而是根据具体知识点穿插在各个小�
 
 ### G. 第三方代码资料规范
 
+- 状态：站内暂无独立页面；完整规范见仓库根的 `third_party/README.md`。
 - 需要展示代码时，优先引用 `third_party/` 中的官方上游仓库和官方示例。
 - 每个代码片段注明仓库、相对路径和固定提交 SHA；专有词汇首次出现时同时给出源码出处。
 - 第三方源码只作为教学参考，不复制整个仓库；各仓库许可证以其目录中的原始文件为准。
