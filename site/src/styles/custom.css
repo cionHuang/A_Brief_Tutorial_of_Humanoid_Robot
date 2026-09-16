@@ -1,6 +1,21 @@
 /* KaTeX 数学公式样式（含字体），通过 Vite 从 node_modules 解析 */
 @import 'katex/dist/katex.min.css';
 
+/* 首页 hero slogan：中文一行、英文一行；英文作次要排版 */
+.hero .tagline {
+  line-height: 1.45;
+}
+.hero .tagline .hero-tagline-zh,
+.hero .tagline .hero-tagline-en {
+  display: block;
+}
+.hero .tagline .hero-tagline-en {
+  margin-top: 0.45rem;
+  font-size: 0.8em;
+  letter-spacing: 0.01em;
+  opacity: 0.72;
+}
+
 /* 中文长文阅读优化：放大正文字号、放宽行高 */
 .sl-markdown-content {
   font-size: 1.125rem; /* 18px，默认 16px 对中文偏小 */
