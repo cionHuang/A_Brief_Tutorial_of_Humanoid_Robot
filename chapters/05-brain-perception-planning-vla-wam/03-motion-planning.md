@@ -27,8 +27,6 @@
 
 还有一条分岔要在开头看清楚：机械臂、移动底盘这类问题，解是**连续**的路径或轨迹；双足行走要先做**离散**决策——下一步踩在哪块地上、这一步能不能踩。接下来的小节先讲连续轨迹怎么生成（在哪个空间、怎么加时间、怎么保证不撞），再讲离散的足步规划，最后讲用什么方法算、多久刷新一次。
 
-落到 G1：官方 SDK2 的接口分成两层。高层运动接口给的是速度、站立、阻尼这类整体指令，走路怎么规划由机器人内部完成，调用方不碰关节；低层 `rt/lowcmd` 直接下发 `MotorCmd_`（位置、速度、力矩和增益），规划、平衡、限幅全由调用方自己负责。[6] 选高层等于放弃自定义规划，选低层等于接手整条链路——本节讲的规划层，只在后一种用法里才由你来写。
-
 > **一句话听懂**：规划不是一个程序，是四层节奏不同的程序叠在一起：上层决定“去做什么”，下层决定“这一毫秒怎么动”，中间靠时间戳对齐。
 
 ## 关节空间与笛卡尔空间
@@ -118,5 +116,3 @@ $$
 [4] Schulman, J., et al. “Motion Planning with Sequential Convex Optimization and Convex Collision Checking.” *International Journal of Robotics Research*, 2014. TrajOpt：序列凸优化轨迹规划。<https://doi.org/10.1177/0278364914528132>
 
 [5] Wieber, P.-B. “Trajectory Free Linear Model Predictive Control for Stable Walking in the Presence of Strong Perturbations.” *IEEE-RAS Humanoids*, 2006. 以 LIPM 为预测模型的行走 MPC 经典工作。<https://doi.org/10.1109/ICHR.2006.321397>
-
-[6] Unitree Robotics. *unitree_sdk2: G1 robot SDK version 2*. 官方 SDK2 接口定义；本文使用提交 `9754cd153af3da471b0fe5f3aa535e426fb11db3`，用于核对 G1 高层运动接口与低层 `MotorCmd_`/`rt/lowcmd` 接口的边界。<https://github.com/unitreerobotics/unitree_sdk2/tree/9754cd153af3da471b0fe5f3aa535e426fb11db3>
