@@ -145,6 +145,10 @@ import LowCmdLowStateSnippet from '../../../components/LowCmdLowStateSnippet.ast
 
 ## 几个基本术语
 
+层与层之间流动着三样东西：**电、数据、目标**。它们都要穿过上面说的那些接口，但各自受不同约束——能量流看功率与热，数据流看格式与时延，控制流看层级与节奏。
+
+这三个词和 [1.4 节](../01-system-overview/04-from-task-to-motor.mdx)总图里的叫法是同一件事的两套说法：那张图的**纵向功能链**就是这里的控制流，**上行（状态）与下行（指令）两条链**就是这里的数据流。下文统一用总图的叫法，这里先把三个词立起来。
+
 ### 能量流（Power Flow）
 
 能量流（Power Flow）描述电能如何从电池出发，经过 BMS、DC-DC、配电板，分配到驱动器、计算平台、传感器和安全系统。设计能量流时需要注意：峰值功率、持续功率、压降、热耗、急停切断路径。[2]
@@ -161,7 +165,7 @@ import LowCmdLowStateSnippet from '../../../components/LowCmdLowStateSnippet.ast
 
 控制流（Control Flow）描述“任务目标 → 轨迹 → 全身控制 → 关节控制 → 电流环”的逐层分解。每一层都把上一层的抽象目标翻译成下一层更具体的命令。[1][5]
 
-> **一句话听懂**：控制流回答“目标怎么被一步步翻译成动作”——任务目标 → 轨迹 → 全身控制 → 关节控制 → 电流环，每层只做自己那一小步。
+> **一句话听懂**：控制流回答“目标怎么被一步步翻译成动作”——每一层只做自己那一小步，剩下的交给下一层。
 
 ## 这些层在 G1 上叫什么
 
@@ -174,8 +178,6 @@ import LowCmdLowStateSnippet from '../../../components/LowCmdLowStateSnippet.ast
 <LowCmdLowStateSnippet />
 
 这两个消息的字段含义在 3.2、[3.4 节](../03-electrical-embedded/04-real-time-communication-and-buses.mdx)展开，完整字段表见附录 D。
-
-注意，官方示例中的 500 Hz（2 ms）是该示例控制线程的配置，不代表 G1 所有工作模式都固定使用这个频率。
 
 G1 的 URDF 中还固定了 `d435_link` 和 `mid360_link`，分别对应 RGB-D 相机和激光雷达的安装位姿。它们目前在仿真中可能没有实际传感器数据，但在软件与工具链层已经预留了视觉/激光感知的坐标系接口。
 
