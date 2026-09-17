@@ -12,6 +12,8 @@
 
 先交代两个后面反复出现的缩写：**VLA**（Vision-Language-Action，视觉-语言-动作模型，见 [5.6 节](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx)）与 **WAM**（World Action Model，世界动作模型，见 [5.7 节](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md)）。也先划清章节边界：整机的总图（纵向功能链、频率、算力与两个闭环）见 [1.4 节](../01-system-overview/04-from-task-to-motor.mdx)，本节只负责把词认全；第五章是**大脑**层（感知、规划、操作、学习、VLA/WAM），回答“去做什么”；**小脑**层（状态估计、平衡与全身控制）是第四章，回答“这一毫秒怎么动”。这一章从一套词汇清单开始（5.1），然后依次是感知（5.2）、规划（5.3）、操作（5.4）、学习（5.5），最后是 VLA（5.6）与 WAM（5.7）。
 
+> **在整机里的位置**：这一节属于“任务与智能层”；上游是示范与试错数据，下游是本章各节的模型与策略。总图见 [1.4 节](../01-system-overview/04-from-task-to-motor.mdx)。
+
 ## 模型从哪来：三条路
 
 - **规则与经典控制**：控制器由人设计，行为可预测、可证明（PID、WBC，见 4.5、[4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)）；

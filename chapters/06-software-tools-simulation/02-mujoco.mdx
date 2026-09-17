@@ -19,6 +19,8 @@ import MjcfFieldSnippet from '../../../components/MjcfFieldSnippet.astro';
 
 > **一句话听懂**：MuJoCo 是对着接触富集任务设计的物理仿真器、MJCF 是它的模型描述格式；本节开头这些现象几乎都出在“模型描述不全 + 参数语义没对齐”，而不是物理引擎本身算错了。
 
+> **在整机里的位置**：这一节属于“横向基础设施：仿真与工具”；上游是模型与控制指令，下游是策略验证与部署。总图见 [1.4 节](../01-system-overview/04-from-task-to-motor.mdx)。
+
 ## MuJoCo 是什么、为什么用它
 
 MuJoCo（Multi-Joint dynamics with Contact）是面向接触富集任务（contact-rich tasks）的物理仿真器，也是腿式机器人策略做 Sim2Sim 验证的常用环境。[1] 它和一般刚体仿真器最不一样的地方是接触模型：MuJoCo 用软接触（soft contact），把碰撞当成可穿透的弹簧—阻尼系统求解，而不是把接触当成不可违背的硬约束；足底、手指这类持续接触的场景因此数值上更稳。它只用 CPU 就能跑，单次仿真的确定性与可复现性好，开源并由 Google DeepMind 维护。[1][2]

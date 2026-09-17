@@ -19,6 +19,8 @@ import IsaacLabManagerSnippet from '../../../components/IsaacLabManagerSnippet.a
 
 > **一句话听懂**：Isaac Sim 负责“世界像不像”，Isaac Lab 负责“怎么把成千上万个机器人塞进这个世界里练”——一个是仿真器，一个是长在它上面的训练框架。
 
+> **在整机里的位置**：这一节属于“横向基础设施：仿真与工具”；上游是资产与任务定义，下游是训练出的策略。总图见 [1.4 节](../01-system-overview/04-from-task-to-motor.mdx)。
+
 ## 两个东西、两种角色：Isaac Sim 与 Isaac Lab
 
 Isaac Sim 是 NVIDIA 基于 Omniverse（NVIDIA 的仿真与协作平台底座）构建的 GPU 高保真仿真平台，负责物理仿真（引擎是 PhysX 一类 GPU 物理引擎）、RTX 光线追踪渲染、传感器模拟、URDF/MJCF 导入器，以及 USD 场景格式。[4][5] Isaac Lab 是跑在它之上的机器人学习框架，负责把强化学习任务拆成 Manager 化环境、在 GPU 上并行训练、接入策略。
