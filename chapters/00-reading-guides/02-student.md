@@ -12,7 +12,7 @@
 | [1.2 人形机器人：定义、构造与 G1](../01-system-overview/02-humanoid-robot-anatomy.mdx) | 15 分钟 | 1.1 |
 | [1.3 人形机器人系统架构](../01-system-overview/03-humanoid-robot-system-architecture.mdx) | 15 分钟 | 1.1、1.2 |
 
-## 第 2 章 机械（约 1 小时 30 分钟）
+## 第 2 章 机械与本体（约 1 小时 30 分钟）
 
 | 小节 | 预计时间 | 建议先读 |
 | --- | --- | --- |

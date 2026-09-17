@@ -1,4 +1,4 @@
-# 6.4 Gazebo、RViz 2 与 Foxglove
+# 6.4 Gazebo、RViz 2 与 Foxglove：仿真、看空间、看时间
 
 ## 先看一个现场问题
 
