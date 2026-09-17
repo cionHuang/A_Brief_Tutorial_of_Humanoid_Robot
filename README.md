@@ -30,7 +30,7 @@
 **一、系统总览**（3 节）
 - [1.1 具身智能是什么](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/01-system-overview/01-what-is-embodied-ai/)
 - [1.2 人形机器人：定义、构造与 G1](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/01-system-overview/02-humanoid-robot-anatomy/)
-- [1.3 人形机器人系统架构：分层、接口与一条指令的旅程](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/01-system-overview/03-humanoid-robot-system-architecture/)
+- [1.3 人形机器人系统架构：分层与接口](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/01-system-overview/03-humanoid-robot-system-architecture/)
 - [1.4 从一句话到电机：整机总图](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/01-system-overview/04-from-task-to-motor/)
 
 **二、机械与本体**（5 节）
