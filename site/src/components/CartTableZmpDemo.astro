@@ -229,7 +229,7 @@ const CFG = {
       // 小车：水平放置，底部落在桌面在质心处的抬高上
       const cartBottom = PZ - gap * sin;
       const cartTop = cartBottom - CART_H;
-      if (elCart) { elCart.setAttribute("x", (cartX - CART_W / 2).toFixed(1)); elCart.setAttribute("y", cartTop.toFixed(1)); elCart.setAttribute("class", fell ? "ct2-cart ct2-cart-fall" : "ct2-cart"); }
+      if (elCart) { elCart.setAttribute("x", (cartX - CART_W / 2).toFixed(1)); elCart.setAttribute("y", cartTop.toFixed(1)); elCart.classList.toggle("ct2-cart-fall", fell); }
       if (elWheelL) { elWheelL.setAttribute("cx", (cartX - CART_W * 0.28).toFixed(1)); elWheelL.setAttribute("cy", cartBottom.toFixed(1)); }
       if (elWheelR) { elWheelR.setAttribute("cx", (cartX + CART_W * 0.28).toFixed(1)); elWheelR.setAttribute("cy", cartBottom.toFixed(1)); }
       const comY = cartTop + CART_H / 2;

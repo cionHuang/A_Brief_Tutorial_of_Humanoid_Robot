@@ -218,10 +218,13 @@ const CFG = { mu: 0.2, f1: 0, t1: 0.5, f2: 1, t2: 0.5 };
         setAttr(nrm[i], { x1: pS[i][0].toFixed(1), y1: pS[i][1].toFixed(1), x2: (pS[i][0] + nS[i][0] * NLEN).toFixed(1), y2: (pS[i][1] + nS[i][1] * NLEN).toFixed(1) });
         setAttr(wedge[i], { d: wedgePath(pS[i], nS[i], j.alpha) });
         const m = j.alpha - (i === 0 ? j.th1 : j.th2);
-        wedge[i].setAttribute("class", "fc-cone " + (m > FC_EPS ? "fc-cone-ok" : m < -FC_EPS ? "fc-cone-bad" : "fc-cone-warn"));
+        // 只增删状态类，不能用 setAttribute("class", ...) 覆盖：那会抹掉 Astro 作用域类，样式全部失配
+        wedge[i].classList.remove("fc-cone-ok", "fc-cone-bad", "fc-cone-warn");
+        wedge[i].classList.add(m > FC_EPS ? "fc-cone-ok" : m < -FC_EPS ? "fc-cone-bad" : "fc-cone-warn");
       }
       setAttr(elLink, { x1: pS[0][0].toFixed(1), y1: pS[0][1].toFixed(1), x2: pS[1][0].toFixed(1), y2: pS[1][1].toFixed(1) });
-      elLink.setAttribute("class", "fc-link " + (j.verdict === "closure" ? "fc-link-ok" : j.verdict === "critical" ? "fc-link-warn" : "fc-link-bad"));
+      elLink.classList.remove("fc-link-ok", "fc-link-warn", "fc-link-bad");
+      elLink.classList.add(j.verdict === "closure" ? "fc-link-ok" : j.verdict === "critical" ? "fc-link-warn" : "fc-link-bad");
       if (out.th1) out.th1.textContent = j.th1 === null ? "—" : (j.th1 * DEG).toFixed(1);
       if (out.th2) out.th2.textContent = j.th2 === null ? "—" : (j.th2 * DEG).toFixed(1);
       if (out.alpha) out.alpha.textContent = (j.alpha * DEG).toFixed(1);
