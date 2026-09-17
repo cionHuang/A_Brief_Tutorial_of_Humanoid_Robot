@@ -24,7 +24,7 @@ G1 站在平地上时，关节编码器读数几乎不变，IMU 却显示躯干�
 
 ### 机器人状态向量
 
-一个用于全身控制的状态可以抽象为：
+先用一句话说清这一节要估计的是什么：**机器人现在什么样，要靠一组数描述**——每个关节转到哪、转多快，身体在世界里的姿态、位置和速度，传感器的零偏，以及脚有没有踩实。写成符号就是：
 
 $$
 \boldsymbol{x} = \{\boldsymbol{q}_j, \dot{\boldsymbol{q}}_j, \boldsymbol{R}_{WB}, \boldsymbol{p}_{WB}, \boldsymbol{v}_{WB}, \boldsymbol{b}_g, \boldsymbol{b}_a, c_{\mathrm{contact}}\}
