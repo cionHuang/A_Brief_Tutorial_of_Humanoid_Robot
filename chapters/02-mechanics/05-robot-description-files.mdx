@@ -98,6 +98,8 @@ URDF 和 MJCF 不是“谁更真实”的关系，而是边界不同：
 
 > **一句话听懂**：URDF 管“机器人长什么样、怎么动”，说的是机器人结构本身；MJCF 在此基础上，把“待在什么世界里、怎么被驱动、怎么被感知”也一起写了进去。好比一个是零件图，另一个是连场地和遥控一起打包的说明书。
 
+回到开头：同一个 G1 在两个工具里表现不同，问题不在模型文件本身，而在解析器与字段语义——一边按自己的约定解释了关节轴线与碰撞几何，另一边没有。核对时先问“这个字段、这个解析器怎么读”，再问“模型对不对”。
+
 ## 参考资料
 
 [1] Open Robotics. *URDF Documentation*. ROS 2 官方文档，机器人模型、Link、Joint、Visual、Collision 和 Inertial 说明。<https://docs.ros.org/en/humble/Tutorials/Intermediate/URDF/URDF-Main.html>

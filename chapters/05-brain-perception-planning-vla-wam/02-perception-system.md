@@ -87,6 +87,8 @@ SLAM（Simultaneous Localization and Mapping，同步定位与建图）在建图
 
 > **一句话听懂**：感知的输出不是一张图，而是一组带坐标系、时间戳和置信度的结构化字段——少一个字段，下游就多一种出错方式。
 
+回到开头：点云的两层重影、抓取偏出的 20 厘米、黑色桌面上缺掉的那一片深度，根因都在标定、坐标系约定与时间戳，而不是“相机不行”——相机只负责成像，把这些换算做对才是感知系统的活。
+
 ## 参考资料
 
 [1] Hartley, R., & Zisserman, A. *Multiple View Geometry in Computer Vision*, 2nd ed. Cambridge University Press, 2004. 相机模型、内参外参标定与双目几何的标准教材。

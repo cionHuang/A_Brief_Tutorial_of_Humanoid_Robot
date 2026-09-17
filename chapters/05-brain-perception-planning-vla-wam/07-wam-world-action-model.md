@@ -119,6 +119,8 @@ WAM 的预测仍然是学习出来的近似，不是物理定律本身。它会�
 
 > **一句话听懂**：判断 WAM 别看画面像不像，要看把它接进决策回路后下游任务有没有变好；预测得准却选不出更好的动作，就是没用。
 
+回到开头：如果模型能先预测“这样动下去下一帧会看到什么”，它确实有机会在抓空之前停下来——但 WAM 自己也会预测错，预测得像不等于物理可行。这一条，也正是判断一个 WAM 能不能上机时的第一项检查。
+
 ## 参考资料
 
 [1] Lopetegui Gonzalez, J. A., Pacaud, P., & Schmid, C. “Spatially Aware World Action Model via Geometric Latent Diffusion.” *arXiv*, 2026. WAM 联合动作、RGB 与深度预测的代表工作。<https://arxiv.org/abs/2609.02531>
