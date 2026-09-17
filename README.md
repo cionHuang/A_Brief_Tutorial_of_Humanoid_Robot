@@ -107,10 +107,13 @@
 
 ## 版权与使用
 
-- 书稿文字与自制图表：版权归作者所有。转载或引用请注明出处并附本仓库（或在线阅读）链接；商业用途请先联系作者。
-- 宇树 G1 模型文件：来自 Unitree 官方开源仓库，BSD 3-Clause，见 `robot_descriptions/g1/SOURCE.md`。
-- 平行踝简化网格等第三方代码：MIT，见 [third_party/README.md](./third_party/README.md)。
-- 实拍照片：来自 Wikimedia Commons，CC BY-SA 3.0 / 4.0 或 CC0，逐张署名见各节参考资料与 [docs/IMAGE_DESIGN_NOTES.md](./docs/IMAGE_DESIGN_NOTES.md)。
+| 内容 | 许可 |
+| --- | --- |
+| 书稿文字、自制图表与配图 | [**CC BY-NC-SA 4.0**](./LICENSE)（署名—非商业性使用—相同方式共享）。转载或引用请注明出处并附本仓库（或在线阅读）链接；商业用途请先联系作者 |
+| `site/` 站点代码、脚本与交互组件 | [**MIT**](./LICENSE-CODE) |
+| 宇树 G1 模型文件 | BSD 3-Clause（Unitree 官方开源仓库），见 [`robot_descriptions/g1/SOURCE.md`](./robot_descriptions/g1/SOURCE.md) |
+| 平行踝简化网格等第三方代码 | MIT，见 [`third_party/README.md`](./third_party/README.md) |
+| 实拍照片 | Wikimedia Commons，CC BY-SA 3.0 / 4.0 或 CC0，逐张署名见各节参考资料与 [`docs/IMAGE_DESIGN_NOTES.md`](./docs/IMAGE_DESIGN_NOTES.md) |
 
 ## 参与编写 / 本地构建
 
