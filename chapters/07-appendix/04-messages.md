@@ -1,6 +1,6 @@
 # 附录 C G1 消息接口
 
-本附录列出 G1 低层接口的 7 个 IDL 类型，字段名与类型逐行取自 unitree_sdk2 固定提交 `9754cd153af3da471b0fe5f3aa535e426fb11db3` 的 `include/unitree/idl/hg/` 头文件（`unitree_hg` 系列）。"在 g1_ankle_swing_example.cpp 中"一列只代表**官方 G1 低层踝摆示例**是否访问过该字段；它不代表字段是否有效，也不代表官方所有示例的用法。单位、坐标系、分量顺序与有效标志都以目标固件版本为准（3.2、3.3、3.4 节）。
+本附录列出 G1 低层接口的 7 个 IDL 类型，字段名与类型逐行取自 unitree_sdk2 固定提交 `9754cd153af3da471b0fe5f3aa535e426fb11db3` 的 `include/unitree/idl/hg/` 头文件（`unitree_hg` 系列）。“在 g1_ankle_swing_example.cpp 中”一列只代表**官方 G1 低层踝摆示例**是否访问过该字段；它不代表字段是否有效，也不代表官方所有示例的用法。单位、坐标系、分量顺序与有效标志都以目标固件版本为准（3.2、3.3、3.4 节）。
 
 ## LowCmd_
 
@@ -113,4 +113,4 @@ IMU 状态；嵌在 `LowState_` 的 `imu_state` 里。头文件：`include/unitr
 
 ## 参考资料
 
-[1] Unitree Robotics. *unitree_sdk2: Unitree robot SDK version 2*. 固定提交 `9754cd153af3da471b0fe5f3aa535e426fb11db3`；7 个类型的字段名与类型取自 `include/unitree/idl/hg/` 下的 `LowCmd_.hpp`、`LowState_.hpp`、`MotorCmd_.hpp`、`MotorState_.hpp`、`IMUState_.hpp`、`BmsState_.hpp`、`PressSensorState_.hpp`；"是否出现"一列与 Topic 名取自 `example/g1/low_level/g1_ankle_swing_example.cpp`。<https://github.com/unitreerobotics/unitree_sdk2/tree/9754cd153af3da471b0fe5f3aa535e426fb11db3/include/unitree/idl/hg>
+[1] Unitree Robotics. *unitree_sdk2: Unitree robot SDK version 2*. 固定提交 `9754cd153af3da471b0fe5f3aa535e426fb11db3`；7 个类型的字段名与类型取自 `include/unitree/idl/hg/` 下的 `LowCmd_.hpp`、`LowState_.hpp`、`MotorCmd_.hpp`、`MotorState_.hpp`、`IMUState_.hpp`、`BmsState_.hpp`、`PressSensorState_.hpp`；“是否出现”一列与 Topic 名取自 `example/g1/low_level/g1_ankle_swing_example.cpp`。<https://github.com/unitreerobotics/unitree_sdk2/tree/9754cd153af3da471b0fe5f3aa535e426fb11db3/include/unitree/idl/hg>
