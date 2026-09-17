@@ -22,8 +22,8 @@ import MpcRecedingHorizonDemo from '../../../components/MpcRecedingHorizonDemo.a
 
 | 层 | 所在章节 | 回答什么 | 典型周期 |
 | --- | --- | --- | --- |
-| 小脑 | 第 4 章 | 这一毫秒怎么动（状态估计、平衡、全身控制） | 100–1000 Hz 以上 |
-| 大脑 | 第 5 章 | 去做什么（感知、规划、操作、学习、VLA/WAM） | 1–100 Hz |
+| 小脑 | 第 4 章 | 这一毫秒怎么动（状态估计、平衡、全身控制） | 200 Hz–1 kHz（滚动优化可低至 100 Hz） |
+| 大脑 | 第 5 章 | 去做什么（感知、规划、操作、学习、VLA/WAM） | 任务 0.1–1 Hz、规划 10–100 Hz |
 
 在人形机器人上，规划要分四层，相邻两层的时间尺度大约差一个量级（具体数值以各系统实现为准）：
 
@@ -31,7 +31,7 @@ import MpcRecedingHorizonDemo from '../../../components/MpcRecedingHorizonDemo.a
 | --- | --- | --- |
 | 任务与行为层 | 任务 0.1–1 Hz、行为与技能 1–10 Hz | 目标选择、任务切换 |
 | 运动规划/足步规划 | 10–100 Hz | 生成或更新轨迹与落脚点 |
-| **模型预测控制（MPC）**/WBC | 100–1000 Hz | 滚动优化、任务分配 |
+| **模型预测控制（MPC）**/WBC | 200 Hz–1 kHz（MPC 可低至 100 Hz） | 滚动优化、任务分配 |
 | 关节控制 | 500 Hz–数 kHz | 阻抗/力矩执行（见 [4.5 节](../04-cerebellum-realtime-control/05-basic-control.mdx)） |
 
 MPC 的完整含义见本节末尾「怎么算：采样、轨迹优化与 MPC」。
