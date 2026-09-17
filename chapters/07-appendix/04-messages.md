@@ -107,7 +107,7 @@ IMU 状态；嵌在 `LowState_` 的 `imu_state` 里。头文件：`include/unitr
 ## 使用这些字段时的四条纪律
 
 - **模式位与使能位不是一回事**：PR/AB 在 `LowCmd_.mode_pr`，逐关节的 `MotorCmd_.mode` 是使能位（1=Enable、0=Disable）。
-- **数组容量 ≠ 实际关节数**：`motor_cmd` / `motor_state` 长度 35，G1 使用前 29 条；照抄"G1_NUM_MOTOR"这类常量前先确认机型。
+- **数组容量 ≠ 实际关节数**：`motor_cmd` / `motor_state` 长度 35，G1 使用前 29 条；照抄`G1_NUM_MOTOR`这类常量前先确认机型。
 - **估计值不是实测值**：`tau_est` 是估计力矩；`IMUState_.quaternion` 的分量顺序、`rpy` 的轴序都要与固件核对。
 - **写了 CRC 才不会被丢弃**：`LowCmd_.crc` 是整帧校验，写错会静默丢弃（3.6 节）。
 

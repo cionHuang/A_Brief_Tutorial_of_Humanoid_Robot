@@ -12,7 +12,7 @@ import G1UrdfViewer from '../../../components/G1UrdfViewer.astro';
 
 > “像人”到底要像到什么程度？为什么脸和身高都不重要，而有两条腿、能主动迈步才是硬标准？
 
-这正是“人形机器人”的定义要回答的问题。
+“人形机器人”的定义，就是从这个“像到什么程度”说起的。
 
 ## 人形机器人的定义
 
@@ -84,7 +84,7 @@ import G1UrdfViewer from '../../../components/G1UrdfViewer.astro';
 
 末端执行器（End Effector）是机器人运动链末端、直接与环境或目标物体交互的部件，例如脚、手掌、夹爪或灵巧手。[2][3]
 
-注意别和**执行器（Actuator）**混了：执行器是出力的部件（电机、减速器和驱动器，见上文与 [2.3 节](../02-mechanics/03-transmission-and-joint-modules.mdx)），末端执行器是运动链末端与环境交互的部件——中文只差一个字，指的不是同一件事。
+注意别和**执行器（Actuator）**混了：执行器是出力的部件（电机、减速器和驱动器，见上文与 [2.3 节](../02-mechanics/03-transmission-and-joint-modules.mdx)），末端执行器是运动链末端与环境交互的部件。中文只差一个字，指的不是同一件事。
 
 对于人形机器人：
 
@@ -142,7 +142,7 @@ import G1UrdfViewer from '../../../components/G1UrdfViewer.astro';
 | `g1_29dof` | 3 | 7 | 无 | 29 |
 | `g1_29dof_with_hand` | 3 | 7 | 每手 7（三指） | 29 + 14 |
 
-差在哪：23 DoF 比 29 DoF 少的是腰部的 roll/pitch 与每条手臂腕部的 2 个自由度；SDK 的索引注释会把 `LeftWristPitch`/`LeftWristYaw`（右侧 27/28）标为「NOTE INVALID for g1 23dof」[8]。本手册统一用 `g1_29dof`；需要锁腰对比时用 `g1_29dof_lock_waist`，需要操作时用 `g1_29dof_with_hand`。
+差在哪：23 DoF 比 29 DoF 少的是腰部的 roll/pitch 与每条手臂腕部的 2 个自由度；SDK 的索引注释会把 `LeftWristPitch`/`LeftWristYaw`（右侧 27/28）标为 `NOTE INVALID for g1 23dof`[8]。本手册统一用 `g1_29dof`；需要锁腰对比时用 `g1_29dof_lock_waist`，需要操作时用 `g1_29dof_with_hand`。
 - 仿真模型中的刚体和关节，不一定完整反映真实硬件中的柔性、摩擦和热限制。[5]
 
 同样，“具身智能”也不等于“人形机器人”。读完本书你会发现，这套词汇体系在四足、轮式和机械臂上同样适用——人形机器人只是其中最复杂、也最适合教学的那一个本体。
