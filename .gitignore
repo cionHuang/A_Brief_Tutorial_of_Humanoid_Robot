@@ -1,0 +1,10 @@
+# 依赖与构建产物
+node_modules/
+dist/
+.astro/
+
+# 本地审计与临时文件（不随仓库发布）
+audit/
+*.log
+*.tmp
+.DS_Store

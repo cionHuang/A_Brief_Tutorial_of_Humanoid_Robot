@@ -1,6 +1,6 @@
 # 图片素材说明
 
-本文档说明新增图片素材的设计目的，供后续编辑本项目的 agent 查阅。新增素材可先暂存于项目根目录的 `design_assets/`；正式接入页面后移动到对应章节的 `chapters/<章节>/assets/images/`，并在下方记录当前位置。注意 `.md` 说明文档不能放进 `src/content/docs/`，否则会被 Starlight 当成页面渲染。
+本文档记录每张图片素材的设计目的、来源、许可与署名要求，供后续编辑本书时查阅。新增素材直接放进对应章节的 `chapters/<章节>/assets/images/`，并在下方补一条记录（含来源、许可与署名要求）；实拍图必须在该节参考资料里逐张署名。注意 `.md` 说明文档不能放进 `src/content/docs/`，否则会被 Starlight 当成页面渲染。
 
 ## embodied-ai-keyword-collage.png
 

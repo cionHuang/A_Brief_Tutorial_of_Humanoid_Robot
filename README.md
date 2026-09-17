@@ -4,477 +4,130 @@
 >
 > *Embodied AI, Explained — Through a Humanoid Robot. Every buzzword, shown on a real humanoid.*
 
-## 项目定位
+**📖 在线阅读：<https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/>**
 
-这本手册定位为一张“具身领域词汇地图”，不展开完整的机器人学推导。它面向刚进入具身智能、人形机器人或机器人 AI 的读者，帮助结构、电气/嵌入式、算法/软件从业者在最短时间内听懂对方的术语，知道每个概念在系统中的位置，以及它会对上下游造成什么影响。
+---
 
-初版重点是快速建立共同语言和系统级直觉，不追求让读者独立完成双足行走、强化学习训练或真实硬件部署。
+## 这是一本什么书
 
-## 写作原则
+机器人项目里，机械、嵌入式、算法、软件说的是四套语言，产品与 PR 还要把技术讲给外面的人听。这本书把它们翻译成同一套，并且让每个抽象术语都在一台真实的**宇树 G1 人形机器人**上找到对应：它是什么、解决什么问题、落在系统的哪一层、对上下游有什么约束。
 
-- 先讲人话，再给英文术语、缩写和公式；
-- 每个专业“黑话”首次出现时必须同时给出规范英文表达；有常用缩写时一并标注，后续可使用中文名和缩写简称；
-- 介绍任何专业概念前，先用一个真实工程现象或现场问题引入；
-- 每个黑话至少回答“它是什么、解决什么问题、在系统哪一层”；
-- 用最少的数学解释关键关系，不用推导堆砌篇幅；
-- 每个概念都尽量连接到一个真实工程接口或 G1 模型参数；
-- 明确区分理论模型、仿真近似和真实机器人行为；
-- 重点训练跨专业沟通，而不是要求读者立刻成为某一方向专家。
+- **33 节正文 + 3 篇阅读路线 + 4 页 G1 速查附录**；
+- 每个术语都给**中英对照**（如“浮动基座（Floating Base）”），并在首次出现处用一条 **一句话听懂** 收束，全书 285 条；
+- 所有 G1 参数、消息字段与模型行为都**标注来源**，可以逐个点开核对；
+- 关键概念配**可操作的交互演示**：URDF 模型查看、ZMP 小车、PID 调参、摩擦锥、力封闭、Isaac Lab 训练配置等。
 
-## 交叉验证与引用规范
+## 三种读法
 
-每个小节撰写完成后，必须对其中出现的专业“黑话”和关键结论做一次交叉验证，再进入发布流程。交叉验证至少覆盖以下内容：
+| 你是 | 怎么读 | 大约需要 |
+| --- | --- | --- |
+| **跨部门工程师** | [按部门查词](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/01-engineer-cross-team/)：这周和谁开会、和谁联调，就补谁的语言 | 每次 15–30 分钟 |
+| **在校学生** | [顺序通读](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/02-student/)：每节附预计时长与建议先读的顺序 | 8–10 小时 |
+| **产品 / PR** | [速通 21 节](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/03-product-pr/)：读到每节第一条“一句话听懂”即可 | 约 1 小时 10 分钟 |
 
-- 黑话的定义、适用范围和常见别名是否准确；
-- 公式、单位、符号、正负方向和前提条件是否完整；
-- 理论模型、仿真实现和真实硬件之间的差异是否被明确说明；
-- G1 的型号、DoF、关节名称、接口字段和模型行为是否与实际资料一致。
+## 目录
 
-资料优先级按以下顺序选择：教材和专著、同行评审论文或学术会议论文、标准和官方技术文档、机器人厂商的官方资料、维护良好的开源项目文档。论坛、博客和二手转载只能作为线索，不能作为关键定义的唯一依据。重要黑话尽量使用两类以上相互独立的资料进行比对；如果不同资料采用了不同定义或约定，应在正文中说明差异及本文采用的约定。
+**一、系统总览**（3 节）
+- [1.1 具身智能是什么](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/01-system-overview/01-what-is-embodied-ai/)
+- [1.2 人形机器人：定义、构造与 G1](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/01-system-overview/02-humanoid-robot-anatomy/)
+- [1.3 人形机器人系统架构：分层、接口与一条指令的旅程](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/01-system-overview/03-humanoid-robot-system-architecture/)
 
-正文采用顺序编号引用，例如“浮动基座（Floating Base）表示不固定在地面上的机器人基座 [1]”。每个小节末尾设置“参考资料”小节，列出作者、标题、出版物或项目、年份、链接/DOI，以及资料类型。引用必须能够直接支撑对应的定义、公式或事实，不使用与正文无关的链接堆砌篇幅。
+**二、机械与本体**（5 节）
+- [2.1 机构、关节与自由度](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/02-mechanics/01-mechanisms-and-dof/)
+- [2.2 结构设计、材料与刚柔性：从承力路径到质量分布](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/02-mechanics/02-links-structure-and-materials/)
+- [2.3 传动与关节模组](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/02-mechanics/03-transmission-and-joint-modules/)
+- [2.4 足部、接触与稳定性](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/02-mechanics/04-foot-contact-and-stability/)
+- [2.5 机器人描述文件：机械与软件之间的契约](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/02-mechanics/05-robot-description-files/)
 
-## 配图规范
+**三、电气与嵌入式**（6 节）
+- [3.1 电源系统](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/03-electrical-embedded/01-power-system/)
+- [3.2 电机、驱动器与伺服控制](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/03-electrical-embedded/02-motors-drivers-servo-control/)
+- [3.3 传感器与数据采集：测量、坐标、时间与误差](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/03-electrical-embedded/03-sensors-and-data-acquisition/)
+- [3.4 实时通信与总线](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/03-electrical-embedded/04-real-time-communication-and-buses/)
+- [3.5 MCU、实时系统与嵌入式软件：从平台选型到最坏执行时间](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/03-electrical-embedded/05-mcu-realtime-embedded-software/)
+- [3.6 电气安全与系统保护](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/03-electrical-embedded/06-electrical-safety-and-protection/)
 
-遇到仅靠文字难以建立空间关系、信号流或因果关系的内容，必须配图；能用表格或一段话说清的不配图。
+**四、小脑：模型、状态估计与实时运控**（6 节）
+- [4.1 机器人数学基础](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/04-cerebellum-realtime-control/01-robot-mathematics-foundations/)
+- [4.2 运动学](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/04-cerebellum-realtime-control/02-kinematics/)
+- [4.3 动力学](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/04-cerebellum-realtime-control/03-dynamics/)
+- [4.4 状态估计：从测量到状态](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/04-cerebellum-realtime-control/04-state-estimation/)
+- [4.5 基础控制](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/04-cerebellum-realtime-control/05-basic-control/)
+- [4.6 双足平衡与全身控制：判据与手段](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/04-cerebellum-realtime-control/06-balance-and-whole-body-control/)
 
-优先配图的场景包括：
+**五、大脑：感知、规划、VLA 与 WAM**（7 节）
+- [5.1 机器人学习与 AI 词汇](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms/)
+- [5.2 感知系统](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/05-brain-perception-planning-vla-wam/02-perception-system/)
+- [5.3 运动规划：大脑与小脑之间的桥](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/05-brain-perception-planning-vla-wam/03-motion-planning/)
+- [5.4 双臂操作与灵巧手](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands/)
+- [5.5 学习控制：模仿学习、强化学习与 Sim2Real](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning/)
+- [5.6 VLA：视觉-语言-动作模型](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai/)
+- [5.7 WAM：世界动作模型](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/05-brain-perception-planning-vla-wam/07-wam-world-action-model/)
 
-- 机器人整机层级、模块边界和数据流；
-- 连杆、关节、死点、奇异位形和坐标系；
-- 电机、减速器、驱动器和控制环；
-- 电源树、通信拓扑、线程和时间线；
-- 传感器安装位置、坐标变换和状态估计；
-- 运动学/动力学中的受力、支撑域和接触关系；
-- ROS 2 节点、Topic、TF 和规划控制链路；
-- G1 无手/锁腰/带手模型及其差异；
-- Manipulation、VLA 的视觉—语言—动作链路，以及 WAM 的动作—世界变化预测链路。
+**六、软件与工具链**（6 节）
+- [6.1 ROS 2 与机器人软件架构](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/06-software-tools-simulation/01-ros2-software-architecture/)
+- [6.2 MuJoCo：接触仿真与 Sim2Sim 验证](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/06-software-tools-simulation/02-mujoco/)
+- [6.3 Isaac Sim 与 Isaac Lab：GPU 并行训练](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/06-software-tools-simulation/03-isaac-sim-isaac-lab/)
+- [6.4 Gazebo、RViz 2 与 Foxglove：仿真、看空间、看时间](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/06-software-tools-simulation/04-gazebo-rviz2-foxglove/)
+- [6.5 运动学与动力学工具库：什么时候该调用哪个](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/06-software-tools-simulation/05-kinematics-dynamics-libraries/)
+- [6.6 软件工程与版本管理：代码、模型、参数、固件、数据](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/06-software-tools-simulation/06-software-engineering-and-versioning/)
 
-### 当前实际做法
+**附录**
+- [附录 F 术语速查表](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/07-appendix/01-terms/)
+- [附录 A G1 模型文件索引](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/07-appendix/02-model-index/)
+- [附录 B G1 关节索引](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/07-appendix/03-joint-index/)
+- [附录 C G1 消息接口](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/07-appendix/04-messages/)
 
-- **优先自制矢量图**：自包含 SVG（无外链字体、无外部位图、无 emoji），深浅色主题下都能正常显示；整图带浅色底 panel，配色沿用第 5 章既有色板（底 #f8fafc、描边 #cbd5e1、主文字 #0f172a、次文字 #475569、蓝 #2563eb、绿 #16a34a、橙红 #ea580c、灰 #94a3b8）。正文图注只保留一句话说明，不写来源与许可。
-- **实拍与真实数据图**：实拍必须是有明确许可的照片，署名与许可要求记进 design_assets/IMAGE_DESIGN_NOTES.md；真实数据渲染图必须写明数据来源与处理流程，并声明配色与文字标注为本书自制。
-- **不伪造**：概念示意图不得伪装成 G1 的真实结构图；涉及 G1 的图必须注明使用无手、锁腰还是带手模型。
-- **台账**：每张图在 design_assets/IMAGE_DESIGN_NOTES.md 留一条记录（设计目的、尺寸与体量、内容构成、素材来源与许可、再生成方式、当前位置）。
-- **图内文字**：主标注与正文同量级，缩到 720 px 宽仍清晰可读；不使用难以辨认的小字。
+## 每一节怎么读
 
-## 概念讲解模板
+每一节都从“现场问题”开始、以“参考资料”结束，中间是同一套顺序：
 
-每个专业概念必须按以下顺序展开：
-
-1. **先出现一个工程现象**：让读者看到“哪里不对”；
-2. **还原现场提问**：使用工程师真实会说的话；
-3. **给出黑话名称**：说明这个现象在本专业里叫什么，并给出规范英文表达和常用缩写；
-4. **用直觉解释原因**：先讲机构、信号或系统行为，再给公式；
-5. **连接上下游影响**：说明机械、电气、算法和软件分别需要注意什么；
-6. **落到 G1**：指出对应的模型、关节、消息或仿真现象；
-7. **交叉验证并引用**：用论文、教材、标准或官方资料核对定义和关键结论，在正文对应位置添加编号引用，并在小节末尾列出参考资料。
-
-例如介绍“连杆结构死区”时，不能直接从“死点位置”和雅可比矩阵开始，而应先从现场问题开始：
-
-> 关节移动到某个位置后，电机还在输出，连杆却几乎不动；算法同学会问：“为什么关节移动到这个位置就动不了了？为什么在这个关节位置程序计算会报错？”
-
-第一步先给出机械答案：四连杆接近共线位置时会出现连杆机构的死区/死点，输入运动很难继续转换成有效的输出运动，机构的传动能力显著下降。第二步再连接算法语言：同一个位置在运动学模型中表现为雅可比矩阵接近奇异，逆运动学和速度映射因此变得病态，程序可能报错或给出极端关节速度。最后再说明它如何影响关节限位、轨迹规划、控制器限幅和 G1 腿部/踝部的连杆或并联传动模型。
-
-也就是说，本例首先引入的是“连杆结构死区”这一机械黑话；“雅可比奇异”是随后建立机械与算法共同语言时才出现的第二个黑话，不能取代前者。
-
-这类“先看到故障，再认识术语”的顺序是本手册的固定叙事方式。
-
-## 贯穿案例：Unitree G1
-
-G1 不单独作为某个大章，而是根据具体知识点穿插在各个小节中：
-
-- 机械小节：用 G1 说明自由度、关节布局、连杆、惯量、碰撞模型和 URDF/MJCF；
-- 电气小节：用 G1 说明执行器命令、状态消息、IMU、足底压力、DDS 和控制周期；
-- 算法小节：用 G1 说明运动学、动力学、状态估计、PID、阻抗、平衡和全身控制；
-- 软件小节：用 G1 说明 ROS 2、TF、SDK、仿真接口和数据记录；
-- Manipulation/VLA/WAM 小节：切换到带灵巧手的 G1，说明视觉操作、双臂协同、手部动作空间、VLA 输出和 WAM 预测链路。
-
-### G1 模型使用规范
-
-| 使用场景 | 模型约定 |
+| 每一节里的块 | 你会看到什么 |
 | --- | --- |
-| 系统总览、机械、电气、嵌入式 | `g1_29dof` 无灵巧手 |
-| 运动学、动力学、平衡、控制 | 使用无手模型；腰部按展示需求选择锁定或非锁定 |
-| ROS 2、DDS、低层控制 | 使用无手模型对应的 SDK/消息接口 |
-| Manipulation、双臂操作、灵巧手 | `g1_29dof_with_hand`，并注明具体手型 |
-| VLA、WAM、视觉操作、模仿学习 | 带手模型，并明确 Dex1、Dex3、Inspire 等手型 |
+| 现场问题 | 一段真实场景，末尾是一句被引用的提问。每节开头的固定标题 |
+| 术语名称（中英对照） | 本节的核心词，第一次出现就给英文原词 |
+| 一句话听懂 | 紧跟术语的加粗结论句，用大白话说清它是什么 |
+| 上下游影响 | 这一层怎么影响别的层，又被谁约束 |
+| G1 落地 | 这些说法在宇树 G1 上的具体落点：模型、关节、消息或仿真现象 |
+| 参考资料 | 编号来源，可以点开逐个核对。每节末尾的固定标题 |
 
-每个涉及 G1 的小节都应注明：模型文件、DoF、是否带手、腰部状态、URDF/MJCF、仿真器、关节顺序和坐标系约定。腰部锁定必须说明是使用官方锁腰模型，还是对模型做了 fixed/约束修改。
+所以：**赶时间**就只读现场问题、术语定义和紧跟其后的第一条“一句话听懂”；**要查词**直接搜术语名；**要核对数字**翻到节末。
 
-当前模型资产位于 [`robot_descriptions/g1/`](./robot_descriptions/g1/)，来源和许可说明见 [`SOURCE.md`](./robot_descriptions/g1/SOURCE.md)。
+## 关于 G1 与数据来源
 
-## 教学主线
+全书用宇树 G1 作唯一贯穿案例，按内容切换模型变体（无手 `g1_29dof`、锁腰 `g1_29dof_lock_waist`、带手 `g1_29dof_with_hand`）。
 
-```text
-系统总览
-→ 机械
-→ 电气与嵌入式
-→ 小脑：模型、状态估计与实时运控
-→ 大脑：感知、规划、VLA 与 WAM
-→ 软件与工具链
+- G1 模型文件：[robot_descriptions/g1/](./robot_descriptions/g1/)，来源、固定提交与许可见 [SOURCE.md](./robot_descriptions/g1/SOURCE.md)；
+- 第三方代码与网格（含平行踝简化模型）：[third_party/](./third_party/)；
+- 关节顺序、消息字段与模型变体差异：[附录 A/B/C](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/07-appendix/02-model-index/)。
+
+## 勘误与反馈
+
+错别字、术语不一致、来源对不上，或者某一节没讲清楚——都欢迎提到 [Issues](https://github.com/cionHuang/A_Brief_Tutorial_of_Humanoid_Robot/issues)。**技术上说不清的地方尤其欢迎**，这本书的目标就是把它们讲清楚。
+
+## 版权与使用
+
+- 书稿文字与自制图表：版权归作者所有。转载或引用请注明出处并附本仓库（或在线阅读）链接；商业用途请先联系作者。
+- 宇树 G1 模型文件：来自 Unitree 官方开源仓库，BSD 3-Clause，见 `robot_descriptions/g1/SOURCE.md`。
+- 平行踝简化网格等第三方代码：MIT，见 [third_party/README.md](./third_party/README.md)。
+- 实拍照片：来自 Wikimedia Commons，CC BY-SA 3.0 / 4.0 或 CC0，逐张署名见各节参考资料与 [docs/IMAGE_DESIGN_NOTES.md](./docs/IMAGE_DESIGN_NOTES.md)。
+
+## 参与编写 / 本地构建
+
+| 目录 | 内容 |
+| --- | --- |
+| `chapters/` | 正文源文件（33 节 + 3 篇导读 + 4 页附录），改内容改这里 |
+| `site/` | Astro + Starlight 站点；构建时由 `site/scripts/sync-content.mjs` 从 `chapters/` 同步生成页面（生成物不入库） |
+| `robot_descriptions/`、`third_party/` | G1 模型与第三方资产及其来源记录 |
+| `docs/` | [写作与配图规范](./docs/AUTHORING.md)、[站点技术路线](./docs/WEBSITE.md)、[图片素材台账](./docs/IMAGE_DESIGN_NOTES.md)、[命名讨论记录](./docs/NAMING.md) |
+
+本地预览需要 Node 22：
+
+```bash
+cd site
+npm ci
+npm run dev      # 本地预览；改 chapters/ 会自动同步
+npm run build    # 生成静态站点到 site/dist
 ```
 
-每个小节统一回答：先遇到什么现实问题、这个黑话是什么意思、它解决什么问题、在系统哪一层、输入输出是什么、关键参数是什么、对上下游有哪些约束、G1 如何体现该问题；需要空间或流程解释时，同时提供图片 Prompt。
-
-# 章节大纲
-
-## 第一部分 系统总览
-
-### 1. 具身智能是什么（正文 1.1）
-
-- 具身智能的定义：身体、闭环、在交互中学习
-- 具身智能与纯软件 AI 的区别
-- 物理 AI 与具身智能的关系：学术脉络与产业脉络的用词差异
-- 莫拉维克悖论：为什么"动起来"比"聪明"更难
-- 为什么选择人形机器人作为贯穿案例：技术栈最全、迁移性最强、有完整开源实例
-
-### 2. 人形机器人：定义、构造与 G1（正文 1.2）
-
-- 人形机器人的定义：结构接近人体、能够主动运动
-- 基本黑话：自由度（DoF）、执行器、传感器、浮动基座、末端执行器
-- 用 G1 的下肢、腰部、上肢、头部说明典型人形结构
-- 不同专业视角下的同一台 G1
-- G1 模型变体（23/29 DoF、锁腰、带手）与仿真模型的边界
-
-### 3. 人形机器人系统架构（正文 1.3）
-
-- 硬件架构：本体、执行器、传感器、电源、计算、通信、安全
-- 软件架构：驱动、状态读取、状态估计、控制、规划、感知、行为、VLA、WAM
-- 能量流、数据流、控制流
-- 一条指令从任务目标到关节运动的路径
-- 坐标系、单位、采样频率、控制频率、延迟、限位和安全状态
-- 用 G1 的 `LowCmd`、`LowState`、IMU、SDK、ROS 2 和仿真接口串起闭环
-
-## 第二部分 机械与本体
-
-### 4. 机构、关节与自由度（正文 2.1）
-
-- 机构拓扑与建模抽象：刚体、基座、连杆、关节和运动链的层级关系（只定义几何/运动关系，不展开材料与承载）
-- 自由度、广义坐标、工作空间和运动范围
-- 四连杆机构、传动角、死点/死区，以及它们在算法中的奇异表现
-- 髋、膝、踝、腰、肩、肘、腕和头部关节
-- 串联、并联和混合机构
-- 关节轴线、右手系、正负方向、零位和限位
-- G1 29 DoF 的自由度分布、关节名称和索引
-- G1 踝关节 PR/AB 模式与机构关系
-- G1 锁腰和非锁腰模型的自由度差异
-
-### 5. 结构设计、材料与刚柔性（正文 2.2）
-
-- 承力路径：壳体、支架、轴承座、紧固件、线束和模块化连接
-- 材料属性、应力、应变、强度、刚度、屈曲和结构变形
-- 质量、质心、转动惯量，以及结构改动对动力学的影响
-- 弹性变形、塑性变形、连接刚度和结构变形边界
-- 疲劳、冲击、热管理、线束和维护之间的工程权衡
-- 轻量化设计的收益、代价与验证流程
-- 使用 G1 STL、URDF/MJCF `inertial`、visual/collision 参数说明模型与真实结构的边界
-
-### 6. 传动与关节模组（正文 2.3）
-
-- 电机、减速器、编码器、驱动器、输出轴、轴承和限位结构
-- 谐波、行星、摆线、滚珠丝杠和同步带
-- 减速比、效率、输出力矩、输出速度、回差、摩擦、刚度和寿命
-- 峰值力矩、持续力矩、冲击力矩和输出限幅
-- 铜损、铁损、减速器损耗、壳体散热、温升和降额
-- 以 G1 髋、膝、踝和手臂关节进行模组拆解
-- 明确 G1 公开资料能说明的参数和无法说明的内部设计
-
-### 7. 足部、接触与稳定性（正文 2.4）
-
-- 足底尺寸、刚度、材料、传感器和碰撞模型
-- 法向力、切向力、摩擦锥、接触点和接触切换
-- 单脚/双脚支撑、支撑多边形、重心投影和稳定性
-- 腰部自由度、躯干姿态及其对平衡和操作的影响
-- 对比 G1 锁腰与非锁腰模型
-- 在 G1 模型中观察足底接触、地面反力和支撑域变化
-
-### 8. 机器人描述文件（正文 2.5）
-
-- URDF：Link、Joint、Visual、Collision、Inertial、Limit、Material
-- MJCF：Body、Joint、Geom、Actuator、Sensor、Contact、Equality
-- URDF 与 MJCF 的表达能力、动力学、接触和执行器差异
-- DoF、腰部、手部、关节顺序和模型版本管理
-- 对照 G1 无手、锁腰和带手 URDF/MJCF
-- 网格文件、相对路径和模型加载检查
-
-## 第三部分 电气与嵌入式
-
-### 9. 电源系统（正文 3.1）
-
-- 电芯、电池包、电压、电流、容量、峰值功率和持续功率
-- BMS：监测、均衡、过充、过放、过流和短路保护
-- 电源树：电池、驱动器、计算平台、传感器和 DC-DC
-- 站立、行走、操作和计算功耗
-- G1 公开 BMS 接口能说明什么，不能说明什么
-- 仿真能耗模型与真实系统的差异
-
-### 10. 电机、驱动器与伺服控制（正文 3.2）
-
-- 无刷直流电机、永磁同步电机和伺服电机
-- 三相逆变器、PWM、电流采样和编码器
-- Clarke/Park 变换、d/q 轴和 FOC 基础
-- 电流环、速度环、位置环、前馈和力矩控制
-- 摩擦、回差、死区、饱和、温升、延迟和编码器误差
-- 使用 G1 的 `q`、`dq`、`tau`、`kp`、`kd` 解释接口层伺服控制
-
-### 11. 传感器与数据采集（正文 3.3）
-
-- 绝对/增量编码器、角度、角速度、零位和分辨率
-- 加速度计、陀螺仪、姿态、偏置和漂移
-- 六维力/力矩、足底压力、接触和载荷估计
-- 电流、温度、RGB、深度和激光传感器
-- 坐标标定、内外参、零偏、时间戳、同步和插值
-- 读取 G1 `MotorState`、`IMUState` 和 `PressSensorState`
-
-### 12. 实时通信与总线（正文 3.4）
-
-- CAN、CAN-FD、EtherCAT、UART、SPI、I2C 的定位
-- DDS：Topic、Publisher、Subscriber、QoS、Domain 和网络接口
-- 带宽、延迟、同步、拓扑、丢帧、乱序、超时和重连
-- 关节索引、单位、时间戳、消息版本和兼容性
-- 使用 G1 的 `rt/lowcmd`、`rt/lowstate`、`rt/secondary_imu`
-- 解析 G1 `LowCmd`、`LowState` 和 `MotorCmd`
-
-### 13. MCU、实时系统与嵌入式软件（正文 3.5）
-
-- MCU、DSP、SoC、工控机、GPU 和边缘计算平台
-- GPIO、ADC、PWM、定时器、DMA、中断和看门狗
-- 裸机、RTOS、任务、优先级、队列和缓存
-- 控制周期、执行时间、时间抖动、端到端延迟和优先级反转
-- 初始化、运行、降级、故障、急停、恢复和模式切换
-- 分析 G1 低层示例中的 500 Hz/2 ms 控制循环
-
-### 14. 电气安全与系统保护（正文 3.6）
-
-- 急停、能量切断、降扭矩和安全继电器
-- 过流、过压、欠压、过温、超速、超位、失联和编码器异常
-- 位置、速度、扭矩、加速度和变化率限制
-- 仿真输出上限、异常值、NaN 和自动停止
-- G1 SDK 的模式切换、低层输出保护和仿真/实机边界
-
-## 第四部分 小脑：模型、状态估计与实时运控
-
-> 编号对照：本部分在正文中按 4.1–4.6 编号，与下面的章纲序号 15–20 一一对应。
-
-本章对应“小脑”层：不决定机器人要完成什么任务，而负责把上层目标转化为稳定、可执行、可反馈的运动。
-
-### 15. 机器人数学基础（正文 4.1）
-
-- 向量、矩阵、内积、外积、叉乘和范数
-- 欧拉角、旋转矩阵、轴角、四元数和插值
-- 齐次变换、世界/基座/关节/末端/传感器坐标系
-- 用 G1 腿部、手臂、IMU 和 TF 树说明坐标关系
-
-### 16. 运动学（正文 4.2）
-
-- 正运动学、逆运动学和连杆变换
-- 解析解、数值解、优化求解和冗余自由度
-- 雅可比：速度映射和力矩映射
-- 奇异位形、可操作性和阻尼最小二乘
-- 关节限位、自碰撞、接触和姿态约束
-- 计算 G1 足端、手端正逆运动学和雅可比
-- 对比 G1 锁腰与非锁腰的运动学差异
-
-### 17. 动力学（正文 4.3）
-
-- 质量、惯量、重心、动量、角动量和外力
-- 刚体动力学：惯性、科氏/离心、重力和接触项
-- 正动力学、逆动力学、重力补偿和前馈力矩
-- 地面反力、接触雅可比、支撑约束和摩擦约束
-- 质量、惯量、摩擦和电机参数辨识
-- 从 G1 MJCF 读取参数并分析锁腰/非锁腰差异
-
-### 18. 状态估计（正文 4.4）
-
-- 关节位置、速度、加速度和差分滤波
-- 陀螺仪积分、重力方向和互补滤波
-- 卡尔曼滤波、预测、更新、协方差和 EKF
-- 浮动基座姿态、速度、位置和足底接触
-- 结合 G1 编码器、IMU 和足底压力进行状态估计
-
-### 19. 基础控制（正文 4.5）
-
-- 误差、稳定性、带宽、饱和和动态响应
-- PID、抗积分饱和、微分滤波和参数整定
-- 位置、速度、加速度轨迹和前馈
-- 重力补偿、摩擦补偿和低速控制
-- 阻抗控制、柔顺性和接触控制
-- 使用 G1 单关节、踝关节和腕关节说明控制器
-
-### 20. 双足平衡与全身控制（正文 4.6）
-
-- 支撑域、重心、ZMP、捕获点和接触切换
-- 质心轨迹、线动量、角动量和躯干补偿
-- 多任务、任务优先级、关节限位、接触约束和力矩约束
-- 站立、抬腿、摆动腿、支撑腿、步态周期和落脚点
-- 比较 G1 锁腰与非锁腰的平衡能力
-- 使用 G1 同时保持躯干、足底和手端任务
-
-## 第五部分 大脑：感知、规划、VLA 与 WAM
-
-本章对应“大脑”层：理解环境、选择目标、预测动作后果，并把高级意图交给第 4 章的小脑层执行。
-
-### 21. 机器人学习与 AI 词汇（正文 5.1）
-
-- 模型从哪来：规则与经典控制、从数据学、从试错学
-- 神经网络最小词汇：参数、层、前向、训练与推理、损失、过拟合
-- 表示：token 与嵌入，动作如何变成 token
-- 架构：Transformer 与注意力，为什么 VLA/WAM 用它、代价是什么
-- 生成：扩散与流匹配，为什么能生成连续动作块
-- 学习范式：监督、模仿、强化、自监督；离线与在线；样本效率
-- 机器人与通用 AI 的差异：sim2real、分布偏移、实时性与安全
-- 分工表：感知、规划、操作、学习控制、VLA、WAM 各用什么方法、输出什么、频率多少
-### 22. 感知系统（正文 5.2）
-
-- RGB、深度、双目、鱼眼和相机标定
-- 目标检测、分割、深度、点云、平面和障碍物
-- 视觉/激光里程计、SLAM、世界坐标系和定位
-- 目标位姿、类别、置信度、点云、坐标系、时间戳和延迟
-
-### 23. 运动规划：大脑与小脑之间的桥（正文 5.3）
-
-- 关节空间和笛卡尔空间轨迹
-- 时间参数化、速度/加速度约束
-- 足步规划：离散落脚点选择、地形与障碍约束、与步态时序的接口
-- 自碰撞、环境碰撞和安全距离
-- 约束优化、轨迹优化和 MPC 基础
-- 规划频率、控制频率、轨迹刷新、延迟和失败降级
-- 对比 G1 高层运动接口与低层关节接口
-
-### 24. 双臂操作与灵巧手（正文 5.4）
-
-- 末端执行器、抓取、推拉、搬运、接触和双臂协同
-- G1 29 DoF with hand 的手部关节、质量、惯量和碰撞模型
-- Dex1、Dex3、Inspire 等手型的差异
-- 关节、末端、手指、位置/速度/力矩和轨迹动作空间
-- 腰部参与、躯干补偿、足部稳定和全身约束
-- 明确 G1 带手模型的动作维度与具体手型
-
-### 25. 学习控制（正文 5.5）
-
-- 行为克隆、示范数据、状态-动作映射和分布偏移
-- 遥操作：主从臂、动捕/手套、VR 手柄、外骨骼，以及重定向、延迟与操作者一致性
-- 数据采集：多路流与时间同步、动作空间一致性、成功/失败标签、规模与覆盖度
-- 强化学习：状态、动作、奖励、环境、策略和价值函数
-- 观测、动作、奖励、域随机化、扰动和课程学习
-- Sim2Sim、Sim2Real、动力学/传感器/延迟差异
-- 使用 G1 locomotion 和 manipulation 任务说明训练到部署的链路
-
-### 26. VLA（正文 5.6）
-
-- Vision、Language、Action 和多模态输入输出
-- 任务理解、子任务分解、操作目标、规划、控制和执行
-- VLA 不替代低层控制，不承担毫秒级闭环
-- 末端位姿、增量动作、关节动作、手指动作和技能调用
-- 图像、语言、机器人状态、双臂/手部动作、成功标签和失败轨迹
-- G1 带手模型、遥操作数据、LeRobot、Isaac Lab manipulation
-- VLA 输出到 G1 控制器：动作解码、逆运动学、全身控制和安全过滤
-
-### 27. WAM：世界动作模型（正文 5.7）
-
-- World Action Model 的定义：联合建模动作与世界未来状态
-- WAM 与 VLA 的输入、输出、训练目标和工程边界
-- 未来观测预测、动作序列预测、策略评估和短期滚动
-- WAM 作为策略、可学习仿真器和教师模型
-- 人形机器人中的相机自我运动、浮动基座、手臂与支撑腿耦合
-- 预测误差不等于物理可行性，WAM 不绕过状态估计、WBC 和安全层
-
-## 第六部分 软件与工具链
-
-### 28. ROS 2 与机器人软件架构（正文 6.1）
-
-- Node、Topic、Service、Action、Parameter 和 Launch
-- TF 树、静态/动态变换、时间戳和坐标查询
-- `ros2_control`：Hardware Interface、Controller、Broadcaster、Manager
-- 硬件接口、状态估计、控制器、规划器、行为和任务模块划分
-- rosbag2、日志、参数记录、Foxglove 和 RViz 2
-- 使用 G1 ROS 2 消息、低层状态和控制接口说明软件边界
-
-### 29. MuJoCo（正文 6.2）
-
-- Body、Joint、Geom、Actuator、Sensor 和 Contact
-- 场景、地面、碰撞、执行器、传感器和模型加载
-- 位置/力矩控制、踝关节、重力补偿、接触和数据记录
-
-### 30. Isaac Sim 与 Isaac Lab（正文 6.3）
-
-- USD、资产、传感器、物理仿真和 GPU 加速
-- 环境、观测、动作、奖励、终止条件和并行训练
-- G1 速度控制、行走、模仿学习、抓取、堆叠和 Whole-body 任务
-- G1 Isaac Lab 资产与 MJCF/URDF 的关系
-
-### 31. Gazebo、RViz 2 与 Foxglove（正文 6.4）
-
-- Gazebo 的 ROS 2 集成、传感器、控制器和插件
-- RViz 2 的 G1 RobotModel、TF、JointState、点云和图像
-- Foxglove 的关节状态、IMU、接触力、误差、时间序列和回放
-
-### 32. 运动学与动力学工具库（正文 6.5）
-
-- Pinocchio：G1 正运动学、雅可比、动力学、逆动力学和碰撞
-- Drake：多体动力学、约束、轨迹优化、接触和控制
-- MoveIt 2：G1 手臂规划、末端规划、碰撞和双臂操作
-
-### 33. 软件工程与版本管理（正文 6.6）
-
-- 模块边界与配置管理：硬件抽象、控制器、规划器、感知、仿真、工具与参数
-- 版本五元组：代码、模型、参数、固件、数据各自的版本载体与变更影响
-- Git、提交、标签与语义化版本
-- 可复现性：环境固定、随机种子、日志与数据、结果归档
-
-## 附录
-
-### A. G1 模型文件索引
-
-- 文件名、用途、DoF、腰部配置、手部配置、URDF/MJCF、网格和版本。
-- 实现：`chapters/07-appendix/02-model-index.md`（含上游 README 中未纳入本教学版本的 9 个变体）。
-
-### B. G1 关节索引
-
-- 关节名称、索引、所属部位、旋转轴、限位、锁腰适配、带手适配，以及 SDK 索引别名与注释。
-- 实现：`chapters/07-appendix/03-joint-index.md`（脚本生成，SDK 索引顺序与 URDF 关节顺序逐项比对一致）。
-
-### C. G1 消息接口
-
-- `LowCmd`、`LowState`、`MotorCmd`、`MotorState`、`IMUState`、`BmsState`、`PressSensorState` 的字段与类型；DDS Topic 与 ROS 2 Message 的对应关系另行说明。
-- 实现：`chapters/07-appendix/04-messages.md`（53 个字段，类型逐行取自固定提交的 IDL）。
-
-### D. 工具与安装
-
-- MuJoCo、ROS 2、Gazebo、RViz 2、Isaac Sim、Isaac Lab、Pinocchio、Drake、MoveIt 2、Foxglove 和 LeRobot。
-- 状态：**规划中**（工具定位见第 6 章各节，安装步骤以各项目官方文档为准）。
-
-### E. 公式索引
-
-- 坐标变换、旋转矩阵、四元数、正运动学、雅可比、动力学、PID、阻抗控制、ZMP 和质心动力学。
-- 状态：**规划中**（每条公式要写清「它解决什么问题」与其出处小节，需人工整理）。
-
-### F. 术语速查表
-
-- 收录正文第 1–6 章的专业术语与缩写，按 13 类分组（数学与坐标、机构结构与传动、运动学与动力学、控制与执行、状态估计与传感、感知与视觉、规划步态与稳定性、操作与抓取、学习与训练、具身大模型、仿真与工具链、电气与总线、ROS 2 与软件工程）。
-- 每条给出**专业解释**与**一句话听懂**两层简洁解释，术语名做成链接，点击跳到解释它的章节文件。
-- 实现：`chapters/07-appendix/01-terms.md`（共 186 条）。
-
-### G. 第三方代码资料规范
-
-- 状态：站内暂无独立页面；完整规范见仓库根的 `third_party/README.md`。
-- 需要展示代码时，优先引用 `third_party/` 中的官方上游仓库和官方示例。
-- 每个代码片段注明仓库、相对路径和固定提交 SHA；专有词汇首次出现时同时给出源码出处。
-- 第三方源码只作为教学参考，不复制整个仓库；各仓库许可证以其目录中的原始文件为准。
-- 来自单个示例的控制频率、关节数量或硬件参数，必须明确标注为“示例配置”，不能泛化为所有 G1 或所有人形机器人。
-
-## v0.1 首发范围：先掌握核心具身黑话
-
-首发版本必须讲清：
-
-1. 系统总览和模块边界；
-2. 机械结构、关节、执行器和机器人描述文件；
-3. 电源、传感器、通信、嵌入式和实时性；
-4. 机器人数学、运动学、动力学、状态估计、基础控制和全身控制；
-5. 感知、运动规划、Manipulation、学习控制、VLA 和 WAM 的系统位置；
-6. G1 无手、锁腰和带手模型的使用规范；
-7. ROS 2、软件架构和仿真工具定位；
-8. 工程调试、版本管理和安全边界。
-
-首发版本不展开完整视觉算法、复杂足步规划、高级全身控制推导、强化学习训练细节、VLA/WAM 模型训练细节、灵巧手底层驱动和真实硬件部署流程。
+推送到 `main` 后由 GitHub Actions 自动构建并发布到 GitHub Pages。
