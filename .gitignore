@@ -8,3 +8,4 @@ audit/
 *.log
 *.tmp
 .DS_Store
+_work/
