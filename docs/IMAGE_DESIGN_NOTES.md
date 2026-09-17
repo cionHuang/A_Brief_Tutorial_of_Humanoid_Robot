@@ -36,7 +36,7 @@
 
 ### 再生成 / 修改
 
-源素材与生成脚本保留在仓库外的 `素材工作目录/`（Playwright 抓取的 `shots/` 原始截图、仿推文卡片 `tweets.html`、PIL 拼图脚本输出）。如需调整布局、替换素材或改尺寸，基于该目录重新生成后覆盖本文件即可，文件名保持不变以便引用方无需改动。
+源素材与生成脚本保留在仓库外的素材工作目录（Playwright 抓取的 `shots/` 原始截图、仿推文卡片 `tweets.html`、PIL 拼图脚本输出）。如需调整布局、替换素材或改尺寸，基于该目录重新生成后覆盖本文件即可，文件名保持不变以便引用方无需改动。
 
 ## physical-ai-keyword-collage.png
 
@@ -68,7 +68,7 @@
 
 ### 再生成 / 修改
 
-源素材与生成脚本在 `素材工作目录/`（`shots_pai/` 原始截图、仿推文卡片 `tweets_pai.html`）。
+源素材与生成脚本在同一素材工作目录（`shots_pai/` 原始截图、仿推文卡片 `tweets_pai.html`）。
 
 ## intel-realsense-d435-photo.jpg
 
@@ -90,7 +90,7 @@
 
 ### 同类备选
 
-更多传感器实拍图链接（LiDAR、IMU、触觉传感器、真机搭载图等，均来自 Wikimedia Commons）见 `素材工作目录里的 commons_results.json`，按需下载并在本节补充同样的署名信息。
+更多传感器实拍图链接（LiDAR、IMU、触觉传感器、真机搭载图等，均来自 Wikimedia Commons）见素材工作目录里的 `commons_results.json`，按需下载并在本节补充同样的署名信息。
 
 ## shadow-dexterous-hand-photo.jpg
 
