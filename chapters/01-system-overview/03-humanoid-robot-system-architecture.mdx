@@ -153,6 +153,8 @@ import LowCmdLowStateSnippet from '../../../components/LowCmdLowStateSnippet.ast
 
 <LowCmdLowStateSnippet />
 
+这两个消息的字段含义在 3.2、3.4 节展开，完整字段表见附录 C。
+
 注意，官方示例中的 500 Hz（2 ms）是该示例控制线程的配置，不代表 G1 所有工作模式都固定使用这个频率。
 
 G1 的 URDF 中还固定了 `d435_link` 和 `mid360_link`，分别对应 RGB-D 相机和激光雷达的安装位姿。它们目前在仿真中可能没有实际传感器数据，但在软件与工具链层已经预留了视觉/激光感知的坐标系接口。
