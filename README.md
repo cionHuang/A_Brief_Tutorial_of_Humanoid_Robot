@@ -133,4 +133,4 @@ npm run dev      # 本地预览；改 chapters/ 会自动同步
 npm run build    # 生成静态站点到 site/dist
 ```
 
-推送到 `main` 后由 GitHub Actions 自动构建并发布到 GitHub Pages。
+站点发布用 GitHub Actions（[`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml)）：在仓库 `Settings → Pages → Source` 选择 **GitHub Actions** 后，可在 Actions 页手动运行该工作流发布。
