@@ -78,6 +78,34 @@ import ForceClosureDemo from '../../../components/ForceClosureDemo.astro';
 
 还要说明手型的边界：本手册使用的 `g1_29dof_with_hand` 是**每手 7 DoF 的三指手**（thumb 3 + middle 2 + index 2，实测自描述文件），因此带手模型的整机动作维度是 29 + 14。Dex1、Dex3、Inspire 等手型的自由度、力矩与接口各不相同，本书不展开，以厂商资料为准——写“手部动作维度”时务必注明是哪种手。
 
+## 移动与操作是一个整体：Loco-Manipulation
+
+读到这里，“走”和“抓”看起来是两件事：行走在第 4 章讲，抓取在本章讲。但在真实任务里，它们经常是**同一件事**：
+
+- **搬箱子**：手要稳住箱子，腿要稳住自己；箱子越重，越要先把重心压到合适的位置再抬；
+- **开门**：手能不能拉到门把手，取决于脚站在哪、腰能转多少；
+- **推车、推门**：要一边走一边维持某个方向的持续推力，而这份推力的来源是脚底摩擦（见 [2.4 节](../02-mechanics/04-foot-contact-and-stability.mdx)的摩擦锥）。
+
+这类任务在文献里叫 **loco-manipulation**（移动操作），也叫全身操作（Whole-body Manipulation）：**腿、腰、臂、手一起解同一个问题**，而不是“先走过去、再伸手抓”。
+
+为什么不能拆开做？三个原因：
+
+1. **力的来源在下不在上**：手臂能施加多大力，上限由脚与地面的接触决定（[2.4 节](../02-mechanics/04-foot-contact-and-stability.mdx)、[4.3 节](../04-cerebellum-realtime-control/03-dynamics.mdx)）；
+2. **移动改变“够不够得到”**：同一个抓取位姿，站近一步够得到，站远一步就够不着——所以“站哪儿”本身就是操作规划的一部分；
+3. **腰是枢纽**：腰部关节同时影响平衡（[4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)）和手臂可达范围；锁腰模型最先失去的，就是这类“边走边操作”的能力。
+
+对系统认知来说，它给出一条分工边界：
+
+| 层 | 在这类任务里负责什么 |
+| --- | --- |
+| 任务与行为层 | 决定“先挪一步再抓”还是“伸手就够得到” |
+| 运动与规划层 | 同时规划落脚点与抓取位姿（[5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)的落脚规划 + 本节的抓取） |
+| 实时控制层 | 在一个全身优化里分配腿、腰、臂、手的任务（[4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)的全身控制） |
+
+所以看到“人形机器人搬箱子”的视频时，正确的理解不是“行走模块加抓取模块各干一半”，而是**一个全身问题被同时解掉**——这也是人形机器人相对“轮式底盘 + 机械臂”最大的不同。
+
+> **一句话听懂**：搬箱子、开门、推车不是“先走再抓”，而是腿、腰、臂、手一起解——手能出多大力由脚底接触决定，站哪儿本身就是操作的一部分（loco-manipulation）。
+
 ## 参考资料
 
 [1] Murray, R. M., Li, Z., & Sastry, S. S. *A Mathematical Introduction to Robotic Manipulation*. CRC Press, 1994. 抓取、接触与力封闭的数学基础教材。
