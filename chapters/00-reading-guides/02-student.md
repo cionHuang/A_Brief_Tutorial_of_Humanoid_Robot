@@ -6,13 +6,14 @@
 
 需要查词时用[附录 A 术语速查表](../07-appendix/01-terms.md)（中英对照 + 一句话解释）；G1 的模型文件、关节索引与消息字段分别在[附录 B](../07-appendix/02-model-index.md)、[附录 C](../07-appendix/03-joint-index.md)、[附录 D](../07-appendix/04-messages.md)。
 
-## 第 1 章 系统总览（约 40 分钟）
+## 第 1 章 系统总览（约 55 分钟）
 
 | 小节 | 预计时间 | 建议先读 |
 | --- | --- | --- |
 | [1.1 具身智能是什么](../01-system-overview/01-what-is-embodied-ai.mdx) | 10 分钟 | 无 |
 | [1.2 人形机器人：定义、构造与 G1](../01-system-overview/02-humanoid-robot-anatomy.mdx) | 15 分钟 | 1.1 |
 | [1.3 人形机器人系统架构](../01-system-overview/03-humanoid-robot-system-architecture.mdx) | 15 分钟 | 1.1、1.2 |
+| [1.4 从一句话到电机：整机总图](../01-system-overview/04-from-task-to-motor.mdx) | 15 分钟 | 1.3 |
 
 ## 第 2 章 机械与本体（约 1 小时 30 分钟）
 
