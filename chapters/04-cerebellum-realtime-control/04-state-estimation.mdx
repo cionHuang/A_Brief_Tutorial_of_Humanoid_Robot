@@ -30,7 +30,11 @@ $$
 \boldsymbol{x} = \{\boldsymbol{q}_j, \dot{\boldsymbol{q}}_j, \boldsymbol{R}_{WB}, \boldsymbol{p}_{WB}, \boldsymbol{v}_{WB}, \boldsymbol{b}_g, \boldsymbol{b}_a, c_{\mathrm{contact}}\}
 $$
 
+这里的 $\boldsymbol{q}_j\in\mathbb{R}^{29}$ 只是 **29 个驱动关节**；浮动基座的位姿自由度不在其中（[2.1 节](../02-mechanics/01-mechanisms-and-dof.mdx)解释过“数关节”与“整机自由度”的区别），所以状态写成“关节块 + 基座块”并列。
+
 这是一个**分块状态**：各块的数学对象和维度并不相同——以本手册的 G1 29 DoF 模型为例，$\boldsymbol{q}_j,\dot{\boldsymbol{q}}_j\in\mathbb{R}^{29}$，$\boldsymbol{R}_{WB}\in SO(3)$，$\boldsymbol{p}_{WB},\boldsymbol{v}_{WB},\boldsymbol{b}_g,\boldsymbol{b}_a\in\mathbb{R}^{3}$，$c_{\mathrm{contact}}$ 是离散的接触状态或置信度。其中 $\boldsymbol{q}_j$、$\dot{\boldsymbol{q}}_j$ 是关节位置和速度，$\boldsymbol{R}_{WB}$、$\boldsymbol{p}_{WB}$、$\boldsymbol{v}_{WB}$ 是基座相对世界的姿态、位置和速度，$\boldsymbol{b}_g$、$\boldsymbol{b}_a$ 是陀螺仪和加速度计的零偏（Bias）。实现时通常把它们拼成一个列向量，但拼接顺序、单位和更新方式各不相同。具体系统还可能加入足端滑移速度、IMU 外参、关节偏置和传感器延迟等扩展状态。
+
+本节回答“**我自己**现在是什么状态”；环境与目标的状态由感知负责（[5.2 节](../05-brain-perception-planning-vla-wam/02-perception-system.md)）——两者的输出必须落在同一个坐标系、同一个时刻上，否则“看到杯子”和“手在哪”就对不上。
 
 状态不是把所有消息字段拼在一起。`MotorState` 的角度是关节测量，IMU 的加速度是传感器坐标系中的比力，足底压力是局部接触证据；估计器必须说明每一项的坐标系、单位、时间和不确定度，才能把它们组合成可供控制器使用的 $\hat{\boldsymbol{x}}$。
 
