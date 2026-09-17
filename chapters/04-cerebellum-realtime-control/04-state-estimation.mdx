@@ -122,6 +122,8 @@ $$
 
 IMU 可以快速提供角速度和重力方向，适合估计基座 roll/pitch；yaw 往往需要外部参考或足端/视觉里程计。姿态误差内部应使用旋转矩阵、四元数或局部旋转向量，输出给人看的 roll-pitch-yaw 只是显示接口。
 
+> **一句话听懂**：姿态里 roll/pitch 靠重力能自己纠回来，yaw 不行——它得找外部参考（视觉、激光或足端里程计），否则会一直慢慢转偏。
+
 ### 速度
 
 基座速度可以由 IMU 比力积分得到，也可以通过接触脚速度约束、关节编码器和运动学雅可比反推。单独积分会受加速度计零偏和姿态误差影响，接触脚速度又会受足底滑移和模型误差影响，因此常用多源融合：
@@ -129,6 +131,8 @@ IMU 可以快速提供角速度和重力方向，适合估计基座 roll/pitch�
 $$
 \hat{\boldsymbol{v}}_{\mathrm{base}} = \operatorname{Fuse}\!\left(\boldsymbol{v}_{\mathrm{imu,integrated}}, \boldsymbol{v}_{\mathrm{foot,kinematic}}, \boldsymbol{c}_{\mathrm{contact}}\right)
 $$
+
+> **一句话听懂**：基座速度没有哪个传感器能直接给——积分 IMU 怕零偏，接触脚反推怕打滑，所以两条路一起走、按接触状态加权。
 
 ### 位置
 
