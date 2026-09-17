@@ -32,7 +32,7 @@
 | [5.1 机器人学习与 AI 词汇](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 策略、训练、推理、Transformer——和 AI 团队对话的入场券 |
 | [5.2 感知系统](../05-brain-perception-planning-vla-wam/02-perception-system.md) | 相机、深度、SLAM——机器人怎么“看见” |
 | [5.4 双臂操作与灵巧手](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx) | 抓取、灵巧手——“机器人会干活”具体指什么 |
-| [5.6 VLA 与高级 AI 推理模型](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) | VLA——“大模型装进机器人”的真实含义 |
+| [5.6 VLA](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) | VLA——“大模型装进机器人”的真实含义 |
 | [5.7 WAM：世界动作模型](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md) | WAM——“预测动作后果”和“直接输出动作”有什么区别 |
 
 ## 第四步：理解工程现实（约 10 分钟）
@@ -40,7 +40,7 @@
 | 小节 | 你将听懂 |
 | --- | --- |
 | [6.6 软件工程与版本管理](../06-software-tools-simulation/06-software-engineering-and-versioning.md) | 五个维度的版本管理——为什么“上周还能走”必须能核查 |
-| [3.6 电气安全与保护](../03-electrical-embedded/06-electrical-safety-and-protection.mdx) | 急停、过流、过温——产品宣传中不能乱说的部分 |
+| [3.6 电气安全与系统保护](../03-electrical-embedded/06-electrical-safety-and-protection.mdx) | 急停、过流、过温——产品宣传中不能乱说的部分 |
 
 ## 写文案时的两个提醒
 
