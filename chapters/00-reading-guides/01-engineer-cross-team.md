@@ -9,7 +9,7 @@
 | 顺序 | 小节 | 为什么读 | 读法 |
 | --- | --- | --- | --- |
 | 1 | [2.1 机构、关节与自由度](../02-mechanics/01-mechanisms-and-dof.mdx) | 机械说“到限位了”“接近死点了”时，知道在说什么 | 全读 |
-| 2 | [2.3 传动与关节模组](../02-mechanics/03-transmission-and-joint-modules.mdx) | 减速比、回差、峰值扭矩决定你能向电机要什么性能 | 全读 |
+| 2 | [2.3 传动与关节模组](../02-mechanics/03-transmission-and-joint-modules.mdx) | 减速比、回差、峰值力矩决定你能向电机要什么性能 | 全读 |
 | 3 | [2.4 足部、接触与稳定性](../02-mechanics/04-foot-contact-and-stability.mdx) | 理解支撑多边形、摩擦锥对控制策略的约束 | 全读 |
 | 4 | [2.2 结构设计、材料与刚柔性](../02-mechanics/02-links-structure-and-materials.mdx) | 结构改动会怎样影响质量、惯量和动力学参数 | 读到「质量、质心与转动惯量」为止 |
 | 5 | [2.5 机器人描述文件](../02-mechanics/05-robot-description-files.mdx) | URDF/MJCF 是机械和软件交接的界面；格式差异与模型版本管理 | 读开头 |
@@ -32,7 +32,7 @@
 | 1 | [4.1 机器人数学基础](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) | 坐标系和旋转表示是所有算法对话的通用语 | 全读 |
 | 2 | [4.2 运动学](../04-cerebellum-realtime-control/02-kinematics.mdx) | IK 报“目标不可达”时，分清是几何问题还是代码问题 | 全读 |
 | 3 | [4.5 基础控制](../04-cerebellum-realtime-control/05-basic-control.mdx) | “把 kp 调大”意味着什么，机器人会有什么表现 | 全读 |
-| 4 | [4.6 双足平衡与全身控制](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | ZMP、支撑多边形、全身控制任务栈 | 读前半 |
+| 4 | [4.6 双足平衡与全身控制](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | ZMP、支撑多边形、全身控制的任务栈 | 读前半 |
 | 5 | [4.4 状态估计](../04-cerebellum-realtime-control/04-state-estimation.mdx) | 为什么“机器人以为自己在哪里”和“实际在哪里”会不一样 | 读开头 |
 | 6 | [4.3 动力学](../04-cerebellum-realtime-control/03-dynamics.mdx) | 质量、惯量参数的改动如何传导到关节力矩需求 | 读开头 |
 
