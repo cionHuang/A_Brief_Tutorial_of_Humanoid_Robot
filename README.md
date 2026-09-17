@@ -73,10 +73,10 @@
 - [6.6 软件工程与版本管理：代码、模型、参数、固件、数据](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/06-software-tools-simulation/06-software-engineering-and-versioning/)
 
 **附录**
-- [附录 F 术语速查表](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/07-appendix/01-terms/)
-- [附录 A G1 模型文件索引](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/07-appendix/02-model-index/)
-- [附录 B G1 关节索引](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/07-appendix/03-joint-index/)
-- [附录 C G1 消息接口](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/07-appendix/04-messages/)
+- [附录 A 术语速查表](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/07-appendix/01-terms/)
+- [附录 B G1 模型文件索引](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/07-appendix/02-model-index/)
+- [附录 C G1 关节索引](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/07-appendix/03-joint-index/)
+- [附录 D G1 消息接口](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/07-appendix/04-messages/)
 
 ## 每一节怎么读
 
@@ -99,7 +99,7 @@
 
 - G1 模型文件：[robot_descriptions/g1/](./robot_descriptions/g1/)，来源、固定提交与许可见 [SOURCE.md](./robot_descriptions/g1/SOURCE.md)；
 - 第三方代码与网格（含平行踝简化模型）：[third_party/](./third_party/)；
-- 关节顺序、消息字段与模型变体差异：[附录 A/B/C](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/07-appendix/02-model-index/)。
+- 关节顺序、消息字段与模型变体差异：[附录 B/C/D](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/07-appendix/02-model-index/)。
 
 ## 勘误与反馈
 

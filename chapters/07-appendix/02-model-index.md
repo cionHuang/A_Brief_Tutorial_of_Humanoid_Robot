@@ -1,4 +1,4 @@
-# 附录 A G1 模型文件索引
+# 附录 B G1 模型文件索引
 
 本表列出本手册随仓库保留的 G1 描述文件。全部文件来自 unitree_rl_gym 固定提交 `276801e46c5d433564f24658bac64f254b7d2d4b` 的 `resources/robots/g1_description/`，在本仓库的副本位于 `robot_descriptions/g1/`（下载分支、日期与许可见该目录的 `SOURCE.md`）。
 
