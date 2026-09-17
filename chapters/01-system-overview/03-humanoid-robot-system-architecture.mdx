@@ -177,7 +177,7 @@ import LowCmdLowStateSnippet from '../../../components/LowCmdLowStateSnippet.ast
 
 <LowCmdLowStateSnippet />
 
-这两个消息的字段含义在 3.2、[3.4 节](../03-electrical-embedded/04-real-time-communication-and-buses.mdx)展开，完整字段表见附录 D。
+这两个消息的字段含义在 3.2、[3.4 节](../03-electrical-embedded/04-real-time-communication-and-buses.mdx)展开，完整字段表见附录 D。代码里那个 2 ms 控制周期落在频率金字塔的哪一档、适用范围又是什么，见 [1.4 节](../01-system-overview/04-from-task-to-motor.mdx)。
 
 G1 的 URDF 中还固定了 `d435_link` 和 `mid360_link`，分别对应 RGB-D 相机和激光雷达的安装位姿。它们目前在仿真中可能没有实际传感器数据，但在软件与工具链层已经预留了视觉/激光感知的坐标系接口。
 
