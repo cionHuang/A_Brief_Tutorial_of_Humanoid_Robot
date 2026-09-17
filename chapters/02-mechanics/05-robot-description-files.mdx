@@ -17,7 +17,7 @@ import MjcfFieldSnippet from '../../../components/MjcfFieldSnippet.astro';
 
 ### 从机构到字段：Link、Joint 与树结构
 
-2.1 节讲了连杆、关节和运动链；在 URDF 这种单一父节点的结构里，运动链就长成一棵运动树（Kinematic Tree）。这里把同一套概念落到文件字段上。URDF（Unified Robot Description Format）用 `link` 描述刚体，用 `joint` 描述父子 link 之间的运动关系。一串 link 和 joint 从根部向末端展开，构成运动树。标准 URDF 的基本结构是树，而不是带闭环约束的任意机构图；四连杆等闭环机构通常需要额外插件、约束或转换后的近似模型。[1]
+[2.1 节](../02-mechanics/01-mechanisms-and-dof.mdx)讲了连杆、关节和运动链；在 URDF 这种单一父节点的结构里，运动链就长成一棵运动树（Kinematic Tree）。这里把同一套概念落到文件字段上。URDF（Unified Robot Description Format）用 `link` 描述刚体，用 `joint` 描述父子 link 之间的运动关系。一串 link 和 joint 从根部向末端展开，构成运动树。标准 URDF 的基本结构是树，而不是带闭环约束的任意机构图；四连杆等闭环机构通常需要额外插件、约束或转换后的近似模型。[1]
 
 > **一句话听懂**：URDF 把机器人拆成一堆 `link`（零件），再用 `joint`（关节）从根一路串到手脚，变成一棵“家谱树”。因为每个零件只能有一个上级，四连杆那种首尾相连的机构就没法直接写进去。
 

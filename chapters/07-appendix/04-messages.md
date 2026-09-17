@@ -1,6 +1,6 @@
 # 附录 D G1 消息接口
 
-本附录列出 G1 低层接口的 7 个 IDL 类型，字段名与类型逐行取自 unitree_sdk2 固定提交 `9754cd153af3da471b0fe5f3aa535e426fb11db3` 的 `include/unitree/idl/hg/` 头文件（`unitree_hg` 系列）。“在 g1_ankle_swing_example.cpp 中”一列只代表**官方 G1 低层踝摆示例**是否访问过该字段；它不代表字段是否有效，也不代表官方所有示例的用法。单位、坐标系、分量顺序与有效标志都以目标固件版本为准（3.2、3.3、3.4 节）。
+本附录列出 G1 低层接口的 7 个 IDL 类型，字段名与类型逐行取自 unitree_sdk2 固定提交 `9754cd153af3da471b0fe5f3aa535e426fb11db3` 的 `include/unitree/idl/hg/` 头文件（`unitree_hg` 系列）。“在 g1_ankle_swing_example.cpp 中”一列只代表**官方 G1 低层踝摆示例**是否访问过该字段；它不代表字段是否有效，也不代表官方所有示例的用法。单位、坐标系、分量顺序与有效标志都以目标固件版本为准（3.2、3.3、[3.4 节](../03-electrical-embedded/04-real-time-communication-and-buses.mdx)）。
 
 ## LowCmd_
 
@@ -109,7 +109,7 @@ IMU 状态；嵌在 `LowState_` 的 `imu_state` 里。头文件：`include/unitr
 - **模式位与使能位不是一回事**：PR/AB 在 `LowCmd_.mode_pr`，逐关节的 `MotorCmd_.mode` 是使能位（1=Enable、0=Disable）。
 - **数组容量 ≠ 实际关节数**：`motor_cmd` / `motor_state` 长度 35，G1 使用前 29 条；照抄`G1_NUM_MOTOR`这类常量前先确认机型。
 - **估计值不是实测值**：`tau_est` 是估计力矩；`IMUState_.quaternion` 的分量顺序、`rpy` 的轴序都要与固件核对。
-- **写了 CRC 才不会被丢弃**：`LowCmd_.crc` 是整帧校验，写错会静默丢弃（3.6 节）。
+- **写了 CRC 才不会被丢弃**：`LowCmd_.crc` 是整帧校验，写错会静默丢弃（[3.6 节](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)）。
 
 ## 参考资料
 

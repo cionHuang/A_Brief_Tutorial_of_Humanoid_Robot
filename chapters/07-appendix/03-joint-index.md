@@ -41,7 +41,7 @@
 - “锁腰变体”列取自 `g1_29dof_lock_waist.urdf`：只有 `waist_roll_joint`、`waist_pitch_joint` 的关节类型由 `revolute` 变为 `fixed`（本表标 **固定**），其余 27 个仍为 `revolute`；被固定的关节不再贡献自由度。
 - “带手变体”列取自 `g1_29dof_with_hand.urdf`：29 个机体关节全部存在，因此该列取值均为“存在”；真正的差异是额外增加的 14 个手指关节（见下一张表）。
 - 关节轴写在模型坐标系里：`0 1 0` = 绕 y 轴（pitch）、`1 0 0` = 绕 x 轴（roll）、`0 0 1` = 绕 z 轴（yaw）；正方向按右手定则，零位以模型文件为准。角度换算按 1 rad = 57.2958°。
-- 表中的限位是**模型 `limit` 字段**的取值，不代表真机实测能力上限（见 2.1、2.5 节）。
+- 表中的限位是**模型 `limit` 字段**的取值，不代表真机实测能力上限（见 2.1、[2.5 节](../02-mechanics/05-robot-description-files.mdx)）。
 
 ## SDK 索引别名（同一索引、两套名字）
 
@@ -99,7 +99,7 @@
 | 25 N·m / 37 rad/s | 10 | left_shoulder_pitch、left_shoulder_roll、left_shoulder_yaw、left_elbow、left_wrist_roll、right_shoulder_pitch、right_shoulder_roll、right_shoulder_yaw、right_elbow、right_wrist_roll |
 | 5 N·m / 22 rad/s | 4 | left_wrist_pitch、left_wrist_yaw、right_wrist_pitch、right_wrist_yaw |
 
-说明：这一组数字同样是**模型 `limit` 字段**的取值，属仿真/模型参数，**不等于真机的峰值或持续输出能力**——真机的持续输出还受温升、驱动器限流与传动效率约束（见 2.3 节与 6.2 节）。
+说明：这一组数字同样是**模型 `limit` 字段**的取值，属仿真/模型参数，**不等于真机的峰值或持续输出能力**——真机的持续输出还受温升、驱动器限流与传动效率约束（见 [2.3 节](../02-mechanics/03-transmission-and-joint-modules.mdx)与 [6.2 节](../06-software-tools-simulation/02-mujoco.mdx)）。
 
 ## 参考资料
 

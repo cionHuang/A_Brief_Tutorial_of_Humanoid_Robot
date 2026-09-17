@@ -156,7 +156,7 @@
 | [步态周期（Gait Cycle）](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | 双支撑相与单支撑相交替构成的行走循环 | 换脚撑住的一个循环 |
 | [摆动腿与支撑腿（Swing / Stance Leg）](../02-mechanics/04-foot-contact-and-stability.mdx) | 行走中腾空迈步的腿与承担主要地面反力的腿 | 一条腿抬起来走，另一条撑住 |
 | [地面反力（Ground Reaction Force, GRF）](../02-mechanics/04-foot-contact-and-stability.mdx) | 地面作用在支撑脚上的反作用力 | 地面对脚的回推力 |
-| [支撑多边形（Support Polygon）](../02-mechanics/04-foot-contact-and-stability.mdx) | 所有承载接触点在地面平面上的凸包 | 脚底吃力点圈出来的范围（4.6 节也叫支撑域） |
+| [支撑多边形（Support Polygon）](../02-mechanics/04-foot-contact-and-stability.mdx) | 所有承载接触点在地面平面上的凸包 | 脚底吃力点圈出来的范围（[4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)也叫支撑域） |
 | [稳定裕量（Stability Margin）](../02-mechanics/04-foot-contact-and-stability.mdx) | 重心投影到支撑多边形边界的最小距离等衡量指标 | 重心离支撑范围边缘还剩多少余量 |
 | [摩擦锥（Friction Cone）](../02-mechanics/04-foot-contact-and-stability.mdx) | 库仑摩擦下切向力不超过 μFn 所构成的可行力集合 | 地面最多能给多大横向力 |
 | [全身控制（Whole-Body Control, WBC）](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | 把所有关节当作整体、同时满足多任务和接触限位约束的控制 | 腿腰手一起算，别各管各的 |

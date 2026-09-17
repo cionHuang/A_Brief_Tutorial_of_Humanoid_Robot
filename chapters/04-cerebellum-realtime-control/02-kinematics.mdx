@@ -154,7 +154,7 @@ $$
 
 当 $w$ 很小或 $\kappa$ 很大时，应减小步长、改变任务姿态、切换冗余姿态或停止向奇异区域推进。
 
-它与前文的四连杆死点、4.1 节的万向节锁都使用了“局部映射病态”这一数学语言，但三者的性质并不相同：
+它与前文的四连杆死点、[4.1 节](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx)的万向节锁都使用了“局部映射病态”这一数学语言，但三者的性质并不相同：
 
 | | 四连杆死点（[2.1](../02-mechanics/01-mechanisms-and-dof.mdx)） | 万向节锁（[4.1](./01-robot-mathematics-foundations.mdx)） | 奇异位形（本节） |
 | --- | --- | --- | --- |
@@ -163,7 +163,7 @@ $$
 | 典型信号 | 传动角接近 $0^\circ$、机构雅可比病态 | $\det(\boldsymbol{E}) = \cos\theta \to 0$ | $\sigma_{\min}(\boldsymbol{J})$ 变小、$\kappa(\boldsymbol{J})$ 变大、$w(\boldsymbol{q}) \to 0$ |
 | 常用应对 | 改杆长或传动角、避开该构型 | 改用四元数或旋转矩阵 | 改冗余姿态或任务、阻尼最小二乘、限速 |
 
-所以遇到“推不动”时，先问退化来自哪里：机械传动、姿态表示，还是当前构型下的任务映射。三者混为一谈，就会出现 4.1 节提醒的那种错误——去换电机或改机构，而真正的问题只是一个坐标选择。
+所以遇到“推不动”时，先问退化来自哪里：机械传动、姿态表示，还是当前构型下的任务映射。三者混为一谈，就会出现 [4.1 节](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx)提醒的那种错误——去换电机或改机构，而真正的问题只是一个坐标选择。
 
 速度逆解常用阻尼最小二乘（Damped Least Squares, DLS）：
 

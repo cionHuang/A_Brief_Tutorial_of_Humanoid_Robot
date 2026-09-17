@@ -23,7 +23,7 @@ import IsaacLabManagerSnippet from '../../../components/IsaacLabManagerSnippet.a
 
 Isaac Sim 是 NVIDIA 基于 Omniverse（NVIDIA 的仿真与协作平台底座）构建的 GPU 高保真仿真平台，负责物理仿真（引擎是 PhysX 一类 GPU 物理引擎）、RTX 光线追踪渲染、传感器模拟、URDF/MJCF 导入器，以及 USD 场景格式。[4][5] Isaac Lab 是跑在它之上的机器人学习框架，负责把强化学习任务拆成 Manager 化环境、在 GPU 上并行训练、接入策略。
 
-一句话说清分工：**Isaac Sim 提供平台，Isaac Lab 提供跑在这个平台上的学习流程。** 本节后续每一节都会标出自己属于哪一侧。它和 6.2 节 MuJoCo 的分工也可以一句话说清：MuJoCo 擅长单机精确的接触仿真与部署验证，Isaac 系列擅长数千环境并行的强化学习训练和视觉在环（Vision-in-the-Loop）训练。
+一句话说清分工：**Isaac Sim 提供平台，Isaac Lab 提供跑在这个平台上的学习流程。** 本节后续每一节都会标出自己属于哪一侧。它和 [6.2 节](../06-software-tools-simulation/02-mujoco.mdx) MuJoCo 的分工也可以一句话说清：MuJoCo 擅长单机精确的接触仿真与部署验证，Isaac 系列擅长数千环境并行的强化学习训练和视觉在环（Vision-in-the-Loop）训练。
 
 > **一句话听懂**：Isaac Sim 是 GPU 仿真平台（物理、渲染、传感器、导入器、USD），Isaac Lab 是跑在它上面的学习流程（Manager 环境、并行训练、策略接入）；两者是平台和使用者的关系。
 
@@ -37,7 +37,7 @@ Isaac Sim 是 NVIDIA 基于 Omniverse（NVIDIA 的仿真与协作平台底座）
 → 验证关口（MuJoCo 做 Sim2Sim → 实机，见 6.2 节）
 ```
 
-后面几节就挂在这条链上：“USD 与资产”对应前两段（导入资产、组装场景），“Isaac Lab 的强化学习环境”对应中间两段（并行环境、策略训练），“什么时候用 Isaac、什么时候不用”决定这条链值不值得走；最后一段验证关口不归 Isaac，交给 6.2 节 MuJoCo 与随后的实机流程。
+后面几节就挂在这条链上：“USD 与资产”对应前两段（导入资产、组装场景），“Isaac Lab 的强化学习环境”对应中间两段（并行环境、策略训练），“什么时候用 Isaac、什么时候不用”决定这条链值不值得走；最后一段验证关口不归 Isaac，交给 [6.2 节](../06-software-tools-simulation/02-mujoco.mdx) MuJoCo 与随后的实机流程。
 
 > **一句话听懂**：导入资产 → 组装场景（Sim）→ 并行环境 → 策略训练（Lab）→ MuJoCo 与实机验证；后面每一节都挂在这条链的某一段上。
 
@@ -51,7 +51,7 @@ Isaac Sim 的场景格式是 USD（Universal Scene Description）：一种支持
 
 ### 从 URDF/MJCF 到 USD
 
-G1 进入 Isaac Sim 走导入器：URDF Importer 或 MJCF Importer 把模型转换成 USD 资产。转换不是无损的，导入后必须逐项核对：关节轴线与正负方向、限位、惯量参数、碰撞网格、执行器增益。开头“关节方向和惯量对不上”，多数发生在这一步——不同导入器版本对 URDF 关节约定和网格缩放的处理有差异。核对的标准答案永远是从官方源文件（2.5 节、6.2 节）重新计算，而不是在两个转换结果之间互相对照。[6]
+G1 进入 Isaac Sim 走导入器：URDF Importer 或 MJCF Importer 把模型转换成 USD 资产。转换不是无损的，导入后必须逐项核对：关节轴线与正负方向、限位、惯量参数、碰撞网格、执行器增益。开头“关节方向和惯量对不上”，多数发生在这一步——不同导入器版本对 URDF 关节约定和网格缩放的处理有差异。核对的标准答案永远是从官方源文件（[2.5 节](../02-mechanics/05-robot-description-files.mdx)、[6.2 节](../06-software-tools-simulation/02-mujoco.mdx)）重新计算，而不是在两个转换结果之间互相对照。[6]
 
 > **一句话听懂**：导入器把 URDF/MJCF 转成 USD，但转换有损；导入后按关节轴线与正负方向、限位、惯量参数、碰撞网格、执行器增益逐项核对，基准是官方源文件而不是两个转换结果。
 
@@ -65,7 +65,7 @@ Isaac Sim 的相机走 RTX 光线追踪渲染，能输出 RGB、深度、分割�
 
 ### 把 MDP 拆成 Manager
 
-Isaac Lab 把 5.5 节的 MDP 要素工程化为一组管理器（Manager），每一项都是独立配置：
+Isaac Lab 把 [5.5 节](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx)的 MDP 要素工程化为一组管理器（Manager），每一项都是独立配置：
 
 **观测管理器（Observation Manager）**：拼装观测向量。
 
@@ -111,13 +111,13 @@ Isaac Lab 把 5.5 节的 MDP 要素工程化为一组管理器（Manager），�
 
 | 需求 | 首选工具 | 理由 |
 | --- | --- | --- |
-| 单机精确接触仿真、部署前验证 | MuJoCo（6.2 节） | 接触模型成熟，API 轻量，与部署代码同源 |
+| 单机精确接触仿真、部署前验证 | MuJoCo（[6.2 节](../06-software-tools-simulation/02-mujoco.mdx)） | 接触模型成熟，API 轻量，与部署代码同源 |
 | 大规模 RL 训练 | Isaac Lab | GPU 并行数千环境 |
 | 视觉在环训练 | Isaac Sim/Lab | RTX 渲染与分割标注 |
-| ROS 2 集成、传感器插件生态 | Gazebo/RViz 2（6.4 节） | 与 ROS 2 消息和 TF 原生衔接 |
-| 运动学/动力学算法计算 | Pinocchio/Drake（6.5 节） | 库而非仿真器，嵌入自己的代码 |
+| ROS 2 集成、传感器插件生态 | Gazebo/RViz 2（[6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md)） | 与 ROS 2 消息和 TF 原生衔接 |
+| 运动学/动力学算法计算 | Pinocchio/Drake（[6.5 节](../06-software-tools-simulation/05-kinematics-dynamics-libraries.md)） | 库而非仿真器，嵌入自己的代码 |
 
-门槛与成本也要算进来：Isaac 需要 NVIDIA GPU（RTX 系列，显存直接决定并行规模），装驱动、配 Omniverse/Isaac 环境与版本管理是一笔固定开销，启动比 CPU 仿真器慢得多；它不适合做部署验证——部署与验证应交给 6.2 节的 MuJoCo 与真机。
+门槛与成本也要算进来：Isaac 需要 NVIDIA GPU（RTX 系列，显存直接决定并行规模），装驱动、配 Omniverse/Isaac 环境与版本管理是一笔固定开销，启动比 CPU 仿真器慢得多；它不适合做部署验证——部署与验证应交给 [6.2 节](../06-software-tools-simulation/02-mujoco.mdx)的 MuJoCo 与真机。
 
 工具选择经常比算法选择更影响进度。一个常见误区是用并行训练环境做最终验证：吞吐优化的物理参数让训练环境本身成为最“宽松”的仿真器，验证应始终在与训练不同的环境里进行。
 

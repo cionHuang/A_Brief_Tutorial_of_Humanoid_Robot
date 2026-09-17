@@ -23,18 +23,18 @@ import MjcfFieldSnippet from '../../../components/MjcfFieldSnippet.astro';
 
 MuJoCo（Multi-Joint dynamics with Contact）是面向接触富集任务（contact-rich tasks）的物理仿真器，也是腿式机器人策略做 Sim2Sim 验证的常用环境。[1] 它和一般刚体仿真器最不一样的地方是接触模型：MuJoCo 用软接触（soft contact），把碰撞当成可穿透的弹簧—阻尼系统求解，而不是把接触当成不可违背的硬约束；足底、手指这类持续接触的场景因此数值上更稳。它只用 CPU 就能跑，单次仿真的确定性与可复现性好，开源并由 Google DeepMind 维护。[1][2]
 
-在工具链里它只占一个位置，别的仿真器各管一段：Isaac Sim / Isaac Lab 擅长 GPU 大规模并行训练与视觉在环（6.3 节），Gazebo 擅长 ROS 2 集成与场景搭建（6.4 节），MuJoCo 擅长精确接触，以及把训练出来的策略做 Sim2Sim 验证。换句话说，它不是“训练环境”，而是“把接触算准、把策略验一遍”的地方。
+在工具链里它只占一个位置，别的仿真器各管一段：Isaac Sim / Isaac Lab 擅长 GPU 大规模并行训练与视觉在环（[6.3 节](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx)），Gazebo 擅长 ROS 2 集成与场景搭建（[6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md)），MuJoCo 擅长精确接触，以及把训练出来的策略做 Sim2Sim 验证。换句话说，它不是“训练环境”，而是“把接触算准、把策略验一遍”的地方。
 
 在本书里，MuJoCo 有四个具体用途：
 
 - 跑本手册保留的 G1 模型（`g1_29dof.xml` 等三个变体）；
-- 验证训练出来的策略，就是 5.5 节的 Sim2Sim 链路；
-- 与工具库交叉验证动力学（6.5 节）；
+- 验证训练出来的策略，就是 [5.5 节](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx)的 Sim2Sim 链路；
+- 与工具库交叉验证动力学（[6.5 节](../06-software-tools-simulation/05-kinematics-dynamics-libraries.md)）；
 - 做不需要 GPU 的控制实验（本节最后一节）。
 
-**边界：高保真视觉渲染和上万环境并行训练不是它的强项。** 需要照片级画面或上千至上万个环境同时采样，应该走 6.3 节的 GPU 仿真路线；MuJoCo 的价值在接触数值精确、单次运行确定，而不在吞吐和画面。
+**边界：高保真视觉渲染和上万环境并行训练不是它的强项。** 需要照片级画面或上千至上万个环境同时采样，应该走 [6.3 节](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx)的 GPU 仿真路线；MuJoCo 的价值在接触数值精确、单次运行确定，而不在吞吐和画面。
 
-> **一句话听懂**：MuJoCo 是 CPU 上就能跑的接触仿真器，强在精确接触、确定性与 Sim2Sim 验证；大规模并行训练和视觉在环交给 6.3 节，ROS 2 场景交给 6.4 节。
+> **一句话听懂**：MuJoCo 是 CPU 上就能跑的接触仿真器，强在精确接触、确定性与 Sim2Sim 验证；大规模并行训练和视觉在环交给 [6.3 节](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx)，ROS 2 场景交给 [6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md)。
 
 ## 先看全局：模型由哪几部分组成、最短跑通路径
 
@@ -65,7 +65,7 @@ MuJoCo（Multi-Joint dynamics with Contact）是面向接触富集任务（conta
 
 ### Body、Joint 与 Geom
 
-MJCF 用 `<body>` 的嵌套层级表达运动树，每个 body 内挂 `<joint>`（运动关系）、`<geom>`（碰撞与可视化几何）和 `<inertial>`（动力学参数）。G1 的 `g1_29dof.xml` 中，`pelvis` 上挂着 `floating_base_joint`，类型为 `free`——这就是 4.3 节“qpos 7+29、qvel 6+29”维度关系的来源：自由关节在位置上占 7 个数（3 平移 + 4 四元数），速度上占 6 个数。加载模型后第一件事应是核对 `nq`、`nv`、`nu` 三个维度与预期一致。[2][3]
+MJCF 用 `<body>` 的嵌套层级表达运动树，每个 body 内挂 `<joint>`（运动关系）、`<geom>`（碰撞与可视化几何）和 `<inertial>`（动力学参数）。G1 的 `g1_29dof.xml` 中，`pelvis` 上挂着 `floating_base_joint`，类型为 `free`——这就是 [4.3 节](../04-cerebellum-realtime-control/03-dynamics.mdx)“qpos 7+29、qvel 6+29”维度关系的来源：自由关节在位置上占 7 个数（3 平移 + 4 四元数），速度上占 6 个数。加载模型后第一件事应是核对 `nq`、`nv`、`nu` 三个维度与预期一致。[2][3]
 
 <MjcfFieldSnippet variant="bodycore" />
 
@@ -79,7 +79,7 @@ Geom 分 visual 和 collision 两类用途，碰撞几何的形状和摩擦参�
 
 <MjcfFieldSnippet variant="actuator" />
 
-要在这种模型上做“位置控制”，需要在仿真循环外自己实现 PD：用 `qpos/qvel` 读出关节状态，按 4.5 节的阻抗公式算出力矩写入 `ctrl`，这正是 `unitree_rl_gym` 的 MuJoCo 部署示例（5.5 节链路）的做法，接口形状与 G1 真机 `MotorCmd_` 的 `kp`/`kd` 一致。[4] 但要提醒：仿真循环外手写的 PD 与真机固件内部的 PD 不是一回事——真机的 `kp`/`kd` 由电机固件在自己的控制周期里执行，更新率、限幅与状态反馈都不同，仿真里调好的增益必须逐关节重标，不能直接搬到实机。
+要在这种模型上做“位置控制”，需要在仿真循环外自己实现 PD：用 `qpos/qvel` 读出关节状态，按 [4.5 节](../04-cerebellum-realtime-control/05-basic-control.mdx)的阻抗公式算出力矩写入 `ctrl`，这正是 `unitree_rl_gym` 的 MuJoCo 部署示例（[5.5 节](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx)链路）的做法，接口形状与 G1 真机 `MotorCmd_` 的 `kp`/`kd` 一致。[4] 但要提醒：仿真循环外手写的 PD 与真机固件内部的 PD 不是一回事——真机的 `kp`/`kd` 由电机固件在自己的控制周期里执行，更新率、限幅与状态反馈都不同，仿真里调好的增益必须逐关节重标，不能直接搬到实机。
 
 > **一句话听懂**：`ctrl` 给的是位置还是力矩，完全由执行器类型决定——`<motor>` 直接吃广义力，`<position>` 内部自带 PD；G1 官方 MJCF 是 29 个 `<motor>`，想要位置控制得在循环外自己写 PD。
 
@@ -89,11 +89,11 @@ MJCF 的 `<sensor>` 挂靠在 site 上（site 是模型上不带质量、只用�
 
 <MjcfFieldSnippet variant="site" />
 
-`g1_29dof.xml` 为 `imu_in_pelvis` 和 `imu_in_torso` 两个 site 各配置了一个 `<gyro>` 和一个 `<accelerometer>`，且都带 `noise` 和 `cutoff` 属性——例如陀螺仪 `noise="5e-4"`、加速度计 `noise="1e-2"`。这些参数让仿真输出带上真实传感器的典型缺陷（噪声与带宽限制），但它们是官方模型给出的仿真参数，是否与真机一致需要另行标定，**不能当作 G1 的传感器指标**。4.4 节状态估计和 5.5 节域随机化里“传感器差异”一项，在 MuJoCo 里对应的就是这组参数的调节范围。仿真传感器读数经过零偏和噪声注入后，才可以和 SDK 消息做有意义的对比。
+`g1_29dof.xml` 为 `imu_in_pelvis` 和 `imu_in_torso` 两个 site 各配置了一个 `<gyro>` 和一个 `<accelerometer>`，且都带 `noise` 和 `cutoff` 属性——例如陀螺仪 `noise="5e-4"`、加速度计 `noise="1e-2"`。这些参数让仿真输出带上真实传感器的典型缺陷（噪声与带宽限制），但它们是官方模型给出的仿真参数，是否与真机一致需要另行标定，**不能当作 G1 的传感器指标**。[4.4 节](../04-cerebellum-realtime-control/04-state-estimation.mdx)状态估计和 [5.5 节](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx)域随机化里“传感器差异”一项，在 MuJoCo 里对应的就是这组参数的调节范围。仿真传感器读数经过零偏和噪声注入后，才可以和 SDK 消息做有意义的对比。
 
 <MjcfFieldSnippet variant="sensor" />
 
-> **一句话听懂**：MJCF 的传感器挂在 site 上，`noise` 和 `cutoff` 决定读数离真实传感器有多近；5.5 节里“传感器差异”的域随机化，调的就是这组参数。
+> **一句话听懂**：MJCF 的传感器挂在 site 上，`noise` 和 `cutoff` 决定读数离真实传感器有多近；[5.5 节](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx)里“传感器差异”的域随机化，调的就是这组参数。
 
 ## 加载检查清单与常见错误
 
@@ -113,11 +113,11 @@ MJCF 的 `<sensor>` 挂靠在 site 上（site 是模型上不带质量、只用�
 
 前面几章的概念都可以在 G1 MJCF 上直接变成实验：
 
-- **位置/力矩控制对比**：给同一关节分别写固定力矩和 PD 位置跟踪，观察响应差异，直观理解 4.5 节的阻抗接口；
-- **踝关节**：按 2.1 节 PR/AB 命名的关节索引做摆动实验，复现 4.5 节的踝摆动示例；
-- **重力补偿**：用 `mj_inverse`（逆动力学：给定目标加速度反解所需力矩）或模型重力项算 $g(q)$ 作为前馈力矩，观察机器人是否能“挂”在半空，验证 4.3 节的动力学参数；
-- **接触观察**：开启接触力可视化，双支撑到单支撑切换时观察法向力的重新分配，对应 2.4 节的支撑域和 4.6 节的 ZMP；
-- **数据记录**：每步从 `mj_data` 取 `qpos`、`qvel`、`sensordata`、接触力和 `ctrl`，带仿真时间戳存盘——格式纪律与 6.1 节 rosbag2 相同，先记录再分析。[3]
+- **位置/力矩控制对比**：给同一关节分别写固定力矩和 PD 位置跟踪，观察响应差异，直观理解 [4.5 节](../04-cerebellum-realtime-control/05-basic-control.mdx)的阻抗接口；
+- **踝关节**：按 [2.1 节](../02-mechanics/01-mechanisms-and-dof.mdx) PR/AB 命名的关节索引做摆动实验，复现 [4.5 节](../04-cerebellum-realtime-control/05-basic-control.mdx)的踝摆动示例；
+- **重力补偿**：用 `mj_inverse`（逆动力学：给定目标加速度反解所需力矩）或模型重力项算 $g(q)$ 作为前馈力矩，观察机器人是否能“挂”在半空，验证 [4.3 节](../04-cerebellum-realtime-control/03-dynamics.mdx)的动力学参数；
+- **接触观察**：开启接触力可视化，双支撑到单支撑切换时观察法向力的重新分配，对应 [2.4 节](../02-mechanics/04-foot-contact-and-stability.mdx)的支撑域和 [4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)的 ZMP；
+- **数据记录**：每步从 `mj_data` 取 `qpos`、`qvel`、`sensordata`、接触力和 `ctrl`，带仿真时间戳存盘——格式纪律与 [6.1 节](../06-software-tools-simulation/01-ros2-software-architecture.md) rosbag2 相同，先记录再分析。[3]
 
 > **一句话听懂**：前面几章的概念都能在这条最短链上变成实验——位置/力矩控制、踝摆动、重力补偿、接触力观察和数据记录，不需要 GPU，一台笔记本就能跑。
 

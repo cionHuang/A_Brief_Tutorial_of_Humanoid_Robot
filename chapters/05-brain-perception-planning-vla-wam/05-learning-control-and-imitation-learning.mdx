@@ -11,7 +11,7 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 > “仿真里满分的策略，为什么一换环境就垮？示范数据里没出现过的状态，策略会怎么反应？训练时到底该随机化什么？”
 
-学习控制（Learning-based Control）用从数据中训练出的策略（Policy）替代或补充手工设计的控制器。4.5–4.6 节与 5.3 节是模型驱动：先建模再求解；本节是数据驱动：先采集或生成经验，再拟合出控制行为。工程上两者几乎总是混合使用——学习策略输出的目标，最终仍由 4.5 节的关节阻抗接口执行。
+学习控制（Learning-based Control）用从数据中训练出的策略（Policy）替代或补充手工设计的控制器。4.5–[4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)与 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)是模型驱动：先建模再求解；本节是数据驱动：先采集或生成经验，再拟合出控制行为。工程上两者几乎总是混合使用——学习策略输出的目标，最终仍由 [4.5 节](../04-cerebellum-realtime-control/05-basic-control.mdx)的关节阻抗接口执行。
 
 > **一句话听懂**：模型驱动是“先建模再求解”，数据驱动是“先跑出经验再拟合”；两条路不是二选一，学习策略输出的目标最后仍由模型驱动的控制器执行。
 
@@ -42,7 +42,7 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 三个工程细节决定数据好不好用。一是**重定向（Retargeting）**：人手和机器人手的关节数、指长、工作空间都不同，“人的姿势”必须换算成“机器人能执行的关节角”，换算有偏差，示范就带上一层系统性误差。二是**延迟与反馈**：操作者看到的画面和力反馈都有延迟，延迟越大动作越保守、越容易抖动，这些抖动会原样进数据集。三是**操作者一致性**：同一个任务换个人做，速度、抓取点、松手时机都不同，示范越多、风格越杂，策略要拟合的分布越宽。
 
-落到 G1：带手模型上常见的组合是主从臂或 VR 手柄驱动，动作空间取 5.4 节的末端增量或手指原语。LeRobot 把采集、数据集格式与训练串成一条流水线，是本书采用的参考实现。[6][8]
+落到 G1：带手模型上常见的组合是主从臂或 VR 手柄驱动，动作空间取 [5.4 节](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx)的末端增量或手指原语。LeRobot 把采集、数据集格式与训练串成一条流水线，是本书采用的参考实现。[6][8]
 
 > **一句话听懂**：遥操作是把“人做得到、机器人还不会”的那段差距人工补上；四种设备的差别在于覆盖的动作有多细、有没有力反馈，而重定向和延迟会在示范里留下系统性误差。
 
@@ -56,10 +56,10 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 | 字段 | 说明 |
 | --- | --- |
-| 观测流 | RGB/深度图像、关节位置与速度；各路采样率不同，必须按时间戳对齐（3.3 节） |
-| 动作 | 与 5.4 节一致的动作空间定义；换动作空间等于换数据集 |
+| 观测流 | RGB/深度图像、关节位置与速度；各路采样率不同，必须按时间戳对齐（[3.3 节](../03-electrical-embedded/03-sensors-and-data-acquisition.md)） |
+| 动作 | 与 [5.4 节](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx)一致的动作空间定义；换动作空间等于换数据集 |
 | 时间戳 | 每路数据的测量时刻，而不是消息到达时刻 |
-| 任务与语言标注 | 这条示范在做什么（如“把红杯子递给我”），VLA 训练要用（5.6 节） |
+| 任务与语言标注 | 这条示范在做什么（如“把红杯子递给我”），VLA 训练要用（[5.6 节](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx)） |
 | 成功/失败标签 | 失败轨迹同样有训练价值，前提是保留“失败”这个事实 |
 | 标定参数 | 相机内外参、坐标变换版本；换了标定要记下来，否则数据不可复现 |
 
@@ -71,7 +71,7 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 规模与质量的关系值得单说：示范数据决定策略的上限。几十到几百条精心采集的示范，往往比几千条随手采的更能训出稳定策略，因为分布偏移的严重程度由**示范覆盖了多少真实会遇到的状态**决定，而不是由条数决定。跨机构的大规模数据集（如 Open X-Embodiment）解决的是另一件事——让模型见到更多机器人、更多任务；具体到一台 G1 上的任务，本地采集的覆盖度仍然决定成败。[9]
 
-注意区分两个“数据采集”：3.3 节的数据采集指传感器把物理量变成数据（采样率、时间戳、误差模型），本节的“数据采集”指把人的示范变成训练数据——共同点是时间同步，其余问题完全不同。
+注意区分两个“数据采集”：[3.3 节](../03-electrical-embedded/03-sensors-and-data-acquisition.md)的数据采集指传感器把物理量变成数据（采样率、时间戳、误差模型），本节的“数据采集”指把人的示范变成训练数据——共同点是时间同步，其余问题完全不同。
 
 > **一句话听懂**：数据采集是把示范完整、同步、带标注地记下来；数据决定策略的上限，算法只决定能多接近这个上限。
 
@@ -99,11 +99,11 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 仿真到现实的差距（Reality Gap）来自三类差异：
 
-- **动力学差异**：接触模型、减速器摩擦与回差、执行器响应。仿真器之间也有差异，所以先在另一个仿真器里验证（[Sim2Sim](../06-software-tools-simulation/02-mujoco.mdx)，详见 6.2 节）——例如在 [Isaac Gym（6.3 节的 Isaac Lab 是其继任）](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx) 里训练、到 [MuJoCo（6.2 节）](../06-software-tools-simulation/02-mujoco.mdx) 里做 Sim2Sim 验证——能用很低成本暴露“策略过拟合了训练仿真器”的问题；[5][7]
-- **传感器差异**：噪声、量化、零偏、安装误差（对应 4.4 节的估计误差来源）；
+- **动力学差异**：接触模型、减速器摩擦与回差、执行器响应。仿真器之间也有差异，所以先在另一个仿真器里验证（[Sim2Sim](../06-software-tools-simulation/02-mujoco.mdx)，详见 [6.2 节](../06-software-tools-simulation/02-mujoco.mdx)）——例如在 [Isaac Gym（6.3 节的 Isaac Lab 是其继任）](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx) 里训练、到 [MuJoCo（6.2 节）](../06-software-tools-simulation/02-mujoco.mdx) 里做 Sim2Sim 验证——能用很低成本暴露“策略过拟合了训练仿真器”的问题；[5][7]
+- **传感器差异**：噪声、量化、零偏、安装误差（对应 [4.4 节](../04-cerebellum-realtime-control/04-state-estimation.mdx)的估计误差来源）；
 - **延迟差异**：观测、推理、通信、执行各级的延迟在实机上更长且抖动更大。
 
-弥合手段按性价比排序：域随机化是最通用的保险；系统辨识（System Identification；即 4.3 节的参数辨识）把真实质量、摩擦和执行器特性测回来，直接缩小动力学差距；执行器模型（Actuator Model）把电机的非线性响应显式建进仿真；延迟建模把固定延迟和随机抖动注入训练。[5]
+弥合手段按性价比排序：域随机化是最通用的保险；系统辨识（System Identification；即 [4.3 节](../04-cerebellum-realtime-control/03-dynamics.mdx)的参数辨识）把真实质量、摩擦和执行器特性测回来，直接缩小动力学差距；执行器模型（Actuator Model）把电机的非线性响应显式建进仿真；延迟建模把固定延迟和随机抖动注入训练。[5]
 
 > **一句话听懂**：仿真与现实的差距就三类——动力学、传感器、延迟；先换一个仿真器验证（Sim2Sim）能以很低成本暴露“过拟合训练仿真器”，再用域随机化、系统辨识和执行器模型缩小真机差距。
 
@@ -115,9 +115,9 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 想自己跑一遍，顺序大致是：克隆 `unitree_rl_gym` → 用 `legged_gym/scripts/train.py` 先跑通默认任务，再改奖励与随机化 → 拿 `deploy/pre_train/g1/` 里的策略在 `deploy_mujoco.py` 里做 Sim2Sim → 步态在 MuJoCo 里站得住之后，再按 `deploy_real` 的说明上实机。这条顺序不建议跳：Sim2Sim 是最便宜的一道关。
 
-注意这条链路里学习策略的边界：策略只决定“关节目标往哪走”，力矩级的稳定性、限幅和异常保护仍由低层和 3.6 节的安全链路承担。策略输出必须做限幅和变化率限制，未经 Sim2Sim 验证的策略不上实机，实机首跑必须有吊架或人工保护。
+注意这条链路里学习策略的边界：策略只决定“关节目标往哪走”，力矩级的稳定性、限幅和异常保护仍由低层和 [3.6 节](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)的安全链路承担。策略输出必须做限幅和变化率限制，未经 Sim2Sim 验证的策略不上实机，实机首跑必须有吊架或人工保护。
 
-操作任务的链路对称：遥操作采集（LeRobot 格式）→ BC/扩散策略训练 → 输出 5.4 节的末端增量或关节动作 → 经全身控制和关节阻抗执行。两条链路共享同一条纪律：学习模块的失效模式是“输出无法预测”，所以所有学习输出的下游都必须有模型驱动的保护层兜底。
+操作任务的链路对称：遥操作采集（LeRobot 格式）→ BC/扩散策略训练 → 输出 [5.4 节](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx)的末端增量或关节动作 → 经全身控制和关节阻抗执行。两条链路共享同一条纪律：学习模块的失效模式是“输出无法预测”，所以所有学习输出的下游都必须有模型驱动的保护层兜底。
 
 > **一句话听懂**：学习策略只负责“关节目标往哪走”，力矩、限幅和异常保护仍在模型驱动的低层；所以“未经 Sim2Sim 验证不上实机”这条纪律，比策略用什么网络更关键。
 
@@ -125,7 +125,7 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 上线不是终点。真机跑起来以后，把日志（传感器、动作、成败标记）记下来，回放找出失败片段——哪一次抓空了、哪一次被撞了——清洗标注后进数据集，再训练、再评测，然后重新部署。这就是常说的数据闭环：**采集 → 训练 → 评测 → 部署 → 回采 → 再训练**，每一圈都会让下一版比上一版更接近真实工况。
 
-这也解释了为什么第 6 章的日志、数据集与版本管理不是“工具而已”（见 6.6 节）：没有它们，闭环的每一圈都要从头再来一遍；有了它们，失败样本才会自动变成下一轮训练数据。评测怎么做、为什么“演示成功”不等于“能力达标”，见 5.6 节。
+这也解释了为什么第 6 章的日志、数据集与版本管理不是“工具而已”（见 [6.6 节](../06-software-tools-simulation/06-software-engineering-and-versioning.md)）：没有它们，闭环的每一圈都要从头再来一遍；有了它们，失败样本才会自动变成下一轮训练数据。评测怎么做、为什么“演示成功”不等于“能力达标”，见 [5.6 节](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx)。
 
 > **一句话听懂**：现代机器人模型不是“训练一次就完事”，而是采集 → 训练 → 评测 → 部署 → 回采 → 再训练，一圈一圈往上走；日志与版本管理就是让每一圈都能接得上的那根线。
 
@@ -149,7 +149,7 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 [9] Open X-Embodiment Collaboration. “Open X-Embodiment: Robotic Learning Datasets and RT-X Models.” *ICRA*, 2024. 跨机构机器人数据集的组装、统一格式与规模。<https://arxiv.org/abs/2310.08864>
 
-[10] Hugging Face. *LeRobot Dataset: lerobot/svla_so101_pickplace*（SO-101 真机遥操作演示，任务 “pink lego brick into the transparent box”）。许可 Apache-2.0，本文使用 revision `f641879e22172be7e8161d5e6c1503c2d2feb657` 的 episode 0 片段，用于 5.5 节「数据采集」的可交互查看器。<https://huggingface.co/datasets/lerobot/svla_so101_pickplace>
+[10] Hugging Face. *LeRobot Dataset: lerobot/svla_so101_pickplace*（SO-101 真机遥操作演示，任务 “pink lego brick into the transparent box”）。许可 Apache-2.0，本文使用 revision `f641879e22172be7e8161d5e6c1503c2d2feb657` 的 episode 0 片段，用于 [5.5 节](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx)「数据采集」的可交互查看器。<https://huggingface.co/datasets/lerobot/svla_so101_pickplace>
 
 [11] GalaxyGeneralRobotics. *OpenWBT: Whole-Body Teleoperation of the Unitree G1 and H1 Humanoid Robot with Apple Vision Pro*. 许可 Apache-2.0；图 5.5-1 取自其仓库 `img/demo.webp`（VR 遥操作下的 G1 灵巧手操作，双目相机视角）。<https://github.com/GalaxyGeneralRobotics/OpenWBT>
 
