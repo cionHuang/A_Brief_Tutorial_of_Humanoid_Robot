@@ -1,7 +1,7 @@
 ---
 /**
  * 左乘与右乘对比演示：同一个“转 90°”，ΔT（左乘）让机器人绕世界原点被搬走，
- * TΔ（右乘）让它原地转身。两个面板并排，可重播。
+ * TΔ（右乘）让它原地转身；下方给出四个齐次矩阵，旋转块相同、平移块不同。
  * 纯 SVG + SMIL；脚本只负责触发 beginElement 与 prefers-reduced-motion 兜底。
  */
 
@@ -46,6 +46,35 @@ const prepared = panels.map((p) => {
   const arcEndY = ORIGIN_Y + RX * U;
   return { ...p, robotX, robotY, from, to, arcR, arcEndY };
 });
+
+// 四个齐次矩阵（2D，3×3）：左两列是旋转块，右一列是平移块
+const matrices = [
+  {
+    title: '初始位姿 T',
+    rows: [['1', '0', '2'], ['0', '1', '2'], ['0', '0', '1']],
+    note: '位置 (2, 2)，朝向 0°',
+    changed: [],
+  },
+  {
+    title: '变换 Δ（绕原点转 90°）',
+    rows: [['0', '−1', '0'], ['1', '0', '0'], ['0', '0', '1']],
+    note: '只有旋转，没有平移',
+    changed: [],
+  },
+  {
+    title: '左乘 Δ · T',
+    rows: [['0', '−1', '−2'], ['1', '0', '2'], ['0', '0', '1']],
+    note: '位置变成 (−2, 2)：旧位置也被 Δ 的旋转带走了',
+    changed: [[0, 2], [1, 2]],
+  },
+  {
+    title: '右乘 T · Δ',
+    rows: [['0', '−1', '2'], ['1', '0', '2'], ['0', '0', '1']],
+    note: '位置仍是 (2, 2)：原地转身',
+    changed: [],
+  },
+];
+const isChanged = (m, r, c) => m.changed.some(([rr, cc]) => rr === r && cc === c);
 ---
 
 <figure class="lrm-demo" data-lrm-demo>
@@ -90,7 +119,6 @@ const prepared = panels.map((p) => {
           <circle cx={p.robotX} cy={p.robotY} r="46" class="lrm-hint" fill="none"></circle>
         )}
 
-        {/* 起始位姿的浅影，用来对比“位置变没变” */}
         <g class="lrm-ghost" transform={'translate(' + p.robotX + ' ' + p.robotY + ')'}>
           <rect x="-15" y="-15" width="30" height="30" rx="6" class="lrm-body"></rect>
           <path d="M 15 -7 L 27 0 L 15 7 Z" class="lrm-nose"></path>
@@ -116,11 +144,39 @@ const prepared = panels.map((p) => {
       </g>
     ))}
   </svg>
+
+  <div class="lrm-matrices">
+    {matrices.map((m) => (
+      <div class="lrm-matrix">
+        <p class="lrm-matrix-title">{m.title}</p>
+        <div class="lrm-grid-m">
+          {m.rows.map((row, r) =>
+            row.map((cell, c) => (
+              <span
+                class={
+                  'lrm-cell' +
+                  (c === 2 ? ' lrm-cell-p' : '') +
+                  (r === 2 ? ' lrm-cell-homo' : '') +
+                  (isChanged(m, r, c) ? ' lrm-cell-changed' : '')
+                }
+              >
+                {cell}
+              </span>
+            )),
+          )}
+        </div>
+        <p class="lrm-matrix-note">{m.note}</p>
+      </div>
+    ))}
+  </div>
+  <p class="lrm-legend">左两列 = 旋转部分 R，右一列 = 平移部分 p（最后一行是齐次坐标的固定行）。</p>
+
   <div class="lrm-controls">
     <button type="button" class="lrm-replay">重播这个动作</button>
   </div>
   <figcaption>
     同一个“转 90°”，写在乘号左边（Δ·T）是在世界坐标系里动手，机器人被绕着世界原点搬走；写在右边（T·Δ）是在自身坐标系里动手，机器人原地转身。
+    两个结果的旋转块相同、平移块不同——这就是左乘与右乘的全部差别。平面里两次旋转可交换，所以这里旋转块看不出差别；到了三维，如果 Δ 的转轴与当前姿态不同，旋转块也会变，但“左乘在世界系、右乘在自身系”这条规则不变。
   </figcaption>
 </figure>
 
@@ -201,8 +257,64 @@ const prepared = panels.map((p) => {
   .lrm-nose {
     fill: var(--sl-color-accent);
   }
+
+  .lrm-matrices {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem 1rem;
+    max-width: 664px;
+    margin: 1rem auto 0;
+  }
+  .lrm-matrix {
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 8px;
+    padding: 0.5rem 0.7rem 0.55rem;
+    text-align: left;
+  }
+  .lrm-matrix-title {
+    margin: 0 0 0.3rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--sl-color-text);
+  }
+  .lrm-grid-m {
+    display: grid;
+    grid-template-columns: repeat(3, 2.4rem);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.875rem;
+  }
+  .lrm-cell {
+    padding: 0.1rem 0.35rem;
+    text-align: right;
+    color: var(--sl-color-text);
+  }
+  .lrm-cell-p {
+    border-left: 1px solid var(--sl-color-gray-5);
+    color: var(--sl-color-accent);
+  }
+  .lrm-cell-homo {
+    color: var(--sl-color-gray-3);
+  }
+  .lrm-cell-changed {
+    background: var(--sl-color-accent-low);
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .lrm-matrix-note,
+  .lrm-legend {
+    margin: 0.35rem 0 0;
+    font-size: 0.75rem;
+    color: var(--sl-color-gray-2);
+    text-align: left;
+    line-height: 1.5;
+  }
+  .lrm-legend {
+    max-width: 664px;
+    margin: 0.6rem auto 0;
+  }
+
   .lrm-controls {
-    margin-top: 0.6rem;
+    margin-top: 0.7rem;
   }
   .lrm-replay {
     font: inherit;
