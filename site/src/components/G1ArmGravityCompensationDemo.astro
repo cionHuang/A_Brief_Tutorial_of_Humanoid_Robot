@@ -184,6 +184,7 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
       <div class="gcarm-tag" data-gcarm-tag="sp">肩</div>
       <div class="gcarm-tag" data-gcarm-tag="el">肘</div>
       <div class="gcarm-tag" data-gcarm-tag="wr">腕</div>
+      <div class="gcarm-tag gcarm-tag-target" data-gcarm-tag="ghost">目标姿态（半透明臂）</div>
     </div>
     <div class="gcarm-mode" data-gcarm-mode>重力补偿：开</div>
     <div class="gcarm-torques" data-gcarm-float role="group" aria-label="此刻的重力力矩">
@@ -335,6 +336,7 @@ import { createVisibleRaf } from '../lib/visible-raf.js';
     const live = target.slice();
     let compOn = true;
     let dirty = true;
+    let ghostDirty = true; // 幽灵臂需要重新贴合“当前目标姿态”
     let desired = target.slice();
     const recompute = () => { desired = compOn ? target.slice() : sagFrom(target).actual; dirty = true; };
     recompute();
@@ -345,7 +347,7 @@ import { createVisibleRaf } from '../lib/visible-raf.js';
       ranges[c.key] = demo.querySelector('[data-gcarm-joint="' + c.key + '"]');
       vals[c.key] = demo.querySelector('[data-gcarm-val="' + c.key + '"]');
     });
-    const tags = { sp: demo.querySelector('[data-gcarm-tag="sp"]'), el: demo.querySelector('[data-gcarm-tag="el"]'), wr: demo.querySelector('[data-gcarm-tag="wr"]') };
+    const tags = { sp: demo.querySelector('[data-gcarm-tag="sp"]'), el: demo.querySelector('[data-gcarm-tag="el"]'), wr: demo.querySelector('[data-gcarm-tag="wr"]'), ghost: demo.querySelector('[data-gcarm-tag="ghost"]') };
     const tex = { comp: demo.querySelector('[data-gcarm-tex="comp"]'), sag: demo.querySelector('[data-gcarm-tex="sag"]'), err: demo.querySelector('[data-gcarm-tex="err"]') };
 
     let THREE_NS = null;
@@ -371,6 +373,13 @@ import { createVisibleRaf } from '../lib/visible-raf.js';
         const vis = project(robot.joints[pair[1]], buf);
         node.style.transform = 'translate(' + buf.x.toFixed(1) + 'px,' + buf.y.toFixed(1) + 'px)';
         node.style.opacity = vis ? '1' : '0';
+      }
+      const ghostNode = tags.ghost;
+      if (ghostNode) {
+        const buf = posBuf.ghost || (posBuf.ghost = { x: 0, y: 0, visible: false });
+        const vis = !!ghost && ghost.visible && project(ghost.joints['left_wrist_yaw_joint'], buf);
+        ghostNode.style.transform = 'translate(' + buf.x.toFixed(1) + 'px,' + buf.y.toFixed(1) + 'px)';
+        ghostNode.style.opacity = vis ? '1' : '0';
       }
     };
     const overlayEl = demo.querySelector('[data-gcarm-overlay]');
@@ -399,9 +408,14 @@ import { createVisibleRaf } from '../lib/visible-raf.js';
         const d = desired[i] - live[i];
         if (Math.abs(d) > 1e-4) { live[i] += d * step; moving = true; } else { live[i] = desired[i]; }
       }
-      if (robot && (moving || dirty)) {
+      if (robot && (moving || dirty || ghostDirty)) {
         applyJoints(robot, live);
-        if (ghost) ghost.visible = !compOn;
+        if (ghost) {
+          // 幽灵臂必须停在“当前目标姿态”：只在加载时设一次的话，
+          // 拖动滑块后再关补偿，会看到一条姿态对不上的手臂
+          if (ghostDirty) { applyJoints(ghost, target); ghostDirty = false; }
+          ghost.visible = !compOn;
+        }
         updateReadout();
         dirty = false;
       } else if (robot && ghost) {
@@ -658,6 +672,7 @@ import { createVisibleRaf } from '../lib/visible-raf.js';
       if (!(el instanceof HTMLInputElement)) return;
       el.addEventListener("input", () => {
         target[CHAIN.indexOf(c)] = Number(el.value) * D2R;
+        ghostDirty = true;
         recompute();
         updateReadout();
         scheduleRender();
@@ -711,6 +726,7 @@ import { createVisibleRaf } from '../lib/visible-raf.js';
 
   .gcarm-overlay { position: absolute; inset: 0; pointer-events: none; }
   .gcarm-tag { position: absolute; top: 0; left: 0; padding: 0.05rem 0.3rem; border-radius: 5px; background: color-mix(in srgb, var(--sl-color-bg) 78%, transparent); color: var(--sl-color-accent); font-size: 0.8125rem; font-weight: 700; white-space: nowrap; transition: opacity 0.15s linear; }
+  .gcarm-tag-target { padding: 0.05rem 0.35rem; border-style: dashed; border-color: var(--sl-color-orange, #ea580c); color: var(--sl-color-orange, #ea580c); white-space: nowrap; }
   .gcarm-torques { position: absolute; left: 0.65rem; top: 0.65rem; min-width: 8.5rem; padding: 0.4rem 0.55rem; border: 1px solid var(--sl-color-gray-5); border-radius: 8px; background: color-mix(in srgb, var(--sl-color-bg) 88%, transparent); font-size: 0.75rem; line-height: 1.45; }
   .gcarm-mode { position: absolute; right: 0.65rem; top: 0.65rem; padding: 0.15rem 0.5rem; border: 1px solid var(--sl-color-gray-5); border-radius: 999px; background: color-mix(in srgb, var(--sl-color-bg) 86%, transparent); color: var(--sl-color-accent); font-size: 0.75rem; }
   .gcarm-mode.gcarm-mode-off { border-color: var(--sl-color-orange, #ea580c); color: var(--sl-color-orange, #ea580c); }
