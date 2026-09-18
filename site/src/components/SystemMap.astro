@@ -4,6 +4,9 @@
  * 第一章结尾的唯一总结图，也是后续各章「在整机里的位置」共同引用的那张图。
  * 纯 SVG + CSS，无 JS；静态图，便于读者反复回看。
  *
+ * 画布宽度与 G1 指令旅程图（viewBox 约 660、max-width 640）接近，
+ * 在正文列宽下按约 1:1 渲染，字号也就与那张图相当。
+ *
  * 使用方式（仅限 .mdx 小节）：
  *   import SystemMap from '../../../components/SystemMap.astro';
  *   <SystemMap />
@@ -23,28 +26,31 @@ const infra = [
   { name: '计算平台', note: 'GPU、CPU、实时 CPU、MCU 的分工' },
   { name: '安全', note: '急停与硬件保护 + 运行时安全过滤' },
   { name: '数据与日志', note: '记录 → 回放 → 失败挖掘 → 数据集' },
-  { name: '仿真与工具', note: 'MuJoCo、Isaac Sim／Lab、Gazebo、RViz 2' },
+  { name: '仿真与工具', note: 'MuJoCo、Isaac Sim／Lab、Gazebo 等' },
   { name: '配置、模型与标定', note: 'URDF／MJCF、参数、版本' },
 ];
 
-const BOX_X = 112, BOX_W = 340, BOX_H = 64, STEP = 74, TOP = 64;
-const INFRA_X = 492, INFRA_W = 372;
+const BOX_X = 78, BOX_W = 312, BOX_H = 66, STEP = 76, TOP = 60;
+const INFRA_X = 432, INFRA_W = 252;
+const ARROW_DOWN_X = 60, ARROW_UP_X = 406;
 const boxY = (i) => TOP + i * STEP;
 const ENV_Y = boxY(levels.length - 1) + BOX_H + 14;
-const ARROW_DOWN_X = 96, ARROW_UP_X = 468;
 const ENV_MID = ENV_Y + 23;
 const FLOOR = ENV_Y + 46;
+const MID_Y = (TOP + FLOOR) / 2;
 
 const downPath = 'M ' + ARROW_DOWN_X + ' ' + TOP + ' V ' + FLOOR;
 const envStub = 'M ' + (BOX_X + BOX_W) + ' ' + ENV_MID + ' H ' + ARROW_UP_X;
 const upPath = 'M ' + ARROW_UP_X + ' ' + ENV_MID + ' V ' + (TOP + 6);
+const feedbackLabelX = ARROW_UP_X + 14;
+const feedbackRotate = 'rotate(-90 ' + feedbackLabelX + ' ' + MID_Y + ')';
 ---
 
 <figure class="system-map">
   <svg
-    viewBox="0 0 880 660"
+    viewBox="0 0 700 640"
     role="img"
-    aria-label="整机总图：任务与智能、行为与技能、运动与规划、实时控制、驱动与嵌入式、机械执行六层自上而下构成纵向功能链，各自标注典型频率；机械执行层作用于环境，环境经传感器与状态估计把状态自下而上汇报回各层；右侧为横跨所有层的横向基础设施，包括中间件、计算平台、安全、数据与日志、仿真与工具、配置模型与标定。"
+    aria-label="整机总图：任务与智能、行为与技能、运动与规划、实时控制、驱动与嵌入式、机械执行六层自上而下构成纵向功能链，各自标注典型频率；机械执行层作用于环境，环境经传感器与感知与状态估计把状态自下而上汇报回各层；右侧为横跨所有层的横向基础设施，包括中间件、计算平台、安全、数据与日志、仿真与工具、配置模型与标定。"
   >
     <defs>
       <marker id="sysmap-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -56,38 +62,38 @@ const upPath = 'M ' + ARROW_UP_X + ' ' + ENV_MID + ' V ' + (TOP + 6);
       <g class={'sysmap-node sysmap-node-' + lv.tone}>
         <rect x={BOX_X} y={boxY(i)} width={BOX_W} height={BOX_H} rx="8" class="sysmap-box"></rect>
         <rect x={BOX_X} y={boxY(i)} width="4" height={BOX_H} class="sysmap-bar"></rect>
-        <text x={BOX_X + 18} y={boxY(i) + 26} class="sysmap-name">{lv.name}</text>
-        <text x={BOX_X + 18} y={boxY(i) + 46} class="sysmap-what">{lv.what}</text>
-        <text x={BOX_X + BOX_W - 14} y={boxY(i) + 26} text-anchor="end" class="sysmap-freq">{lv.freq}</text>
+        <text x={BOX_X + 16} y={boxY(i) + 27} class="sysmap-name">{lv.name}</text>
+        <text x={BOX_X + 16} y={boxY(i) + 48} class="sysmap-what">{lv.what}</text>
+        <text x={BOX_X + BOX_W - 12} y={boxY(i) + 27} text-anchor="end" class="sysmap-freq">{lv.freq}</text>
       </g>
     ))}
 
     <rect x={BOX_X} y={ENV_Y} width={BOX_W} height="46" rx="8" class="sysmap-env"></rect>
-    <text x={BOX_X + 18} y={ENV_MID} class="sysmap-env-label" dominant-baseline="central">
+    <text x={BOX_X + 16} y={ENV_MID} class="sysmap-env-label" dominant-baseline="central">
       环境：地面、物体、人
     </text>
 
     <path d={downPath} class="sysmap-flow" fill="none" marker-end="url(#sysmap-arrow)"></path>
-    <text x={ARROW_DOWN_X} y={TOP - 14} text-anchor="middle" class="sysmap-flow-label">目标往下</text>
+    <text x={ARROW_DOWN_X} y={TOP - 12} text-anchor="middle" class="sysmap-flow-label">目标往下</text>
     <path d={envStub} class="sysmap-flow" fill="none"></path>
     <path d={upPath} class="sysmap-flow" fill="none" marker-end="url(#sysmap-arrow)"></path>
-    <text x={ARROW_UP_X} y={TOP - 14} text-anchor="middle" class="sysmap-flow-label">状态往上</text>
-    <text x={ARROW_UP_X + 14} y={(TOP + FLOOR) / 2} class="sysmap-flow-label" transform={'rotate(-90 ' + (ARROW_UP_X + 14) + ' ' + (TOP + FLOOR) / 2 + ')'} text-anchor="middle">
+    <text x={ARROW_UP_X} y={TOP - 12} text-anchor="middle" class="sysmap-flow-label">状态往上</text>
+    <text x={feedbackLabelX} y={MID_Y} class="sysmap-flow-label" transform={feedbackRotate} text-anchor="middle">
       传感器 → 感知与状态估计
     </text>
 
     <rect x={INFRA_X} y={TOP} width={INFRA_W} height={FLOOR - TOP} rx="10" class="sysmap-infra"></rect>
-    <text x={INFRA_X + 20} y={TOP + 30} class="sysmap-infra-title">横向基础设施</text>
-    <text x={INFRA_X + 20} y={TOP + 50} class="sysmap-infra-sub">横跨每一层，但不属于任何一层</text>
+    <text x={INFRA_X + 18} y={TOP + 28} class="sysmap-infra-title">横向基础设施</text>
+    <text x={INFRA_X + 18} y={TOP + 47} class="sysmap-infra-sub">横跨每一层，但不属于任何一层</text>
     {infra.map((it, i) => (
       <g>
-        <text x={INFRA_X + 20} y={TOP + 86 + i * 44} class="sysmap-infra-name">{it.name}</text>
-        <text x={INFRA_X + 20} y={TOP + 104 + i * 44} class="sysmap-infra-note">{it.note}</text>
+        <text x={INFRA_X + 18} y={TOP + 82 + i * 46} class="sysmap-infra-name">{it.name}</text>
+        <text x={INFRA_X + 18} y={TOP + 100 + i * 46} class="sysmap-infra-note">{it.note}</text>
       </g>
     ))}
-    <text x={INFRA_X + 20} y={TOP + 372} class="sysmap-infra-note">它们不在动作链上，也不产生动作。</text>
-    <text x={INFRA_X + 20} y={TOP + 390} class="sysmap-infra-note">把 ROS 当成「大脑下面的一层」，就会问出</text>
-    <text x={INFRA_X + 20} y={TOP + 408} class="sysmap-infra-note">「它在控制之上还是之下」这种没有答案的问题。</text>
+    <text x={INFRA_X + 18} y={TOP + 392} class="sysmap-infra-note">它们不在动作链上，也不产生动作。</text>
+    <text x={INFRA_X + 18} y={TOP + 410} class="sysmap-infra-note">把 ROS 当成「大脑下面的一层」，就会问出</text>
+    <text x={INFRA_X + 18} y={TOP + 428} class="sysmap-infra-note">「它在控制之上还是之下」——没有答案。</text>
   </svg>
   <figcaption>
     整机总图：目标自上而下被逐层翻译（任务 → 行为 → 运动 → 控制 → 驱动 → 机械），状态自下而上汇报（传感器 → 感知与状态估计 → 各层决策）；
@@ -103,7 +109,7 @@ const upPath = 'M ' + ARROW_UP_X + ' ' + ENV_MID + ' V ' + (TOP + 6);
   .system-map svg {
     display: block;
     margin: 0 auto;
-    max-width: 880px;
+    max-width: 700px;
     width: 100%;
     height: auto;
   }
@@ -135,7 +141,7 @@ const upPath = 'M ' + ARROW_UP_X + ' ' + ENV_MID + ' V ' + (TOP + 6);
   }
   .sysmap-name {
     fill: var(--sl-color-text);
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 600;
   }
   .sysmap-what {
