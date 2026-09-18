@@ -109,7 +109,10 @@ const comWorld = (links) => {
   }
   return out;
 };
-// G_j(q)：关节 j 以远各段重力矩沿关节轴的分量之和
+// G_j(q)：关节 j 以远各段重力矩沿关节轴的分量之和。
+// 符号约定与正文 τ_hold ≈ g(q) 一致：返回的是“电机为保持姿态需要承担的力矩”。
+// 因此重力力矢量取 +mg ẑ；若写成 −mg ẑ 会整体反号，关掉补偿后手臂会被算成
+// 向上升（势能升高），与物理和正文都相反。
 const gravityTorques = (q) => {
   const { joints, links } = fk(q);
   const com = comWorld(links);
@@ -121,7 +124,7 @@ const gravityTorques = (q) => {
       const info = COM[downstream.link];
       if (!info) continue;
       const r = [com[downstream.link][0] - j.p[0], com[downstream.link][1] - j.p[1], com[downstream.link][2] - j.p[2]];
-      const gg = cross(r, [0, 0, -info.m * 9.81]);
+      const gg = cross(r, [0, 0, info.m * 9.81]);
       acc += j.u[0] * gg[0] + j.u[1] * gg[1] + j.u[2] * gg[2];
     }
     out[c.name] = acc;
@@ -144,7 +147,7 @@ const DEF_ERR = Math.hypot(DEF_W[0] - DEF_W2[0], DEF_W[1] - DEF_W2[1], DEF_W[2] 
 const fmt1 = (v) => (Math.abs(v) < 0.05 ? '0.0' : (v < 0 ? '−' : '') + Math.abs(v).toFixed(1));
 const fmt2 = (v) => (Math.abs(v) < 0.005 ? '0.00' : (v < 0 ? '−' : '') + Math.abs(v).toFixed(2));
 const EXPR = (s) => ({ tex: s });
-const DEF_TAU_PARTS = [{ text: '需电机承担的重力力矩：' }].concat(
+const DEF_TAU_PARTS = [{ text: '需电机承担的重力力矩（正负号表示方向）：' }].concat(
   SLIDERS.map((c, i) => (i ? [{ text: '　' }, { text: c.label + ' ' }, EXPR(fmt1(DEF_G[c.name]) + '\\ \\text{N·m}')] : [{ text: c.label + ' ' }, EXPR(fmt1(DEF_G[c.name]) + '\\ \\text{N·m}')])).flat(),
 );
 const DEF_SAG_PARTS = [{ text: '关补偿后的实际角（偏差 Δ = −τ_g/K_p）：' }].concat(
@@ -319,7 +322,7 @@ import { createVisibleRaf } from '../lib/visible-raf.js';
           const info = COM[downstream.link];
           if (!info) continue;
           const r = [com[downstream.link][0] - j.p[0], com[downstream.link][1] - j.p[1], com[downstream.link][2] - j.p[2]];
-          const gg = cross(r, [0, 0, -info.m * 9.81]);
+          const gg = cross(r, [0, 0, info.m * 9.81]);
           acc += j.u[0] * gg[0] + j.u[1] * gg[1] + j.u[2] * gg[2];
         }
         out[c.name] = acc;
@@ -472,7 +475,7 @@ import { createVisibleRaf } from '../lib/visible-raf.js';
       const G = gravityTorques(CHAIN.map((c) => c.def * D2R));
       const g0 = G.left_shoulder_pitch_joint;
       demo.dataset.tauShoulder = g0.toFixed(3);
-      if (!(g0 > 0.5 && g0 < 4)) errs.push("肩 pitch 力矩异常 " + g0.toFixed(3));
+      if (!(Math.abs(g0) > 0.5 && Math.abs(g0) < 4)) errs.push("肩 pitch 力矩异常 " + g0.toFixed(3));
       demo.dataset.selfcheck = errs.length ? errs.join("; ") : "ok";
       if (errs.length) console.warn("[gcarm] 自检:", errs.join("; "));
       return errs;
@@ -533,7 +536,7 @@ import { createVisibleRaf } from '../lib/visible-raf.js';
       const wTarget = fk(target).links[WRIST_LINK].p;
       const wActual = fk(live).links[WRIST_LINK].p;
       const err = Math.hypot(wTarget[0] - wActual[0], wTarget[1] - wActual[1], wTarget[2] - wActual[2]);
-      const compParts = [{ text: "需电机承担的重力力矩：" }];
+      const compParts = [{ text: "需电机承担的重力力矩（正负号表示方向）：" }];
       CHAIN.filter((c) => c.movable).forEach((c, i) => {
         if (i) compParts.push({ text: "　" });
         compParts.push({ text: c.label + " " });
