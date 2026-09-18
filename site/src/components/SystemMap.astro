@@ -72,6 +72,9 @@ const upPath = 'M ' + ARROW_UP_X + ' ' + ENV_MID + ' V ' + (TOP + 6);
     <path d={envStub} class="sysmap-flow" fill="none"></path>
     <path d={upPath} class="sysmap-flow" fill="none" marker-end="url(#sysmap-arrow)"></path>
     <text x={ARROW_UP_X} y={TOP - 14} text-anchor="middle" class="sysmap-flow-label">状态往上</text>
+    <text x={ARROW_UP_X + 14} y={(TOP + FLOOR) / 2} class="sysmap-flow-label" transform={'rotate(-90 ' + (ARROW_UP_X + 14) + ' ' + (TOP + FLOOR) / 2 + ')'} text-anchor="middle">
+      传感器 → 感知与状态估计
+    </text>
 
     <rect x={INFRA_X} y={TOP} width={INFRA_W} height={FLOOR - TOP} rx="10" class="sysmap-infra"></rect>
     <text x={INFRA_X + 20} y={TOP + 30} class="sysmap-infra-title">横向基础设施</text>
