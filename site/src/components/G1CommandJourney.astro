@@ -1,8 +1,8 @@
 ---
 /**
- * G1 指令旅程图：一条指令从任务目标出发，依次经过大脑层、小脑层、
- * 软件与工具链层、电气与嵌入式层、机械与本体层，再经 LowState 回报
- * 和状态估计回到大脑，形成闭环。每个节点标注所在层并带层配色；
+ * G1 指令旅程图：一条指令从任务目标出发，依次经过行为与技能层、运动与
+ * 规划层、实时控制层、驱动与嵌入式层、机械执行层（横向基础设施负责消息
+ * 封装与回报），再经 LowState 回报和状态估计回到闭环。每个节点标注所在层并带层配色；
  * 光点逐站向下流动，到站时节点发光；底部虚线弧表示进入下一拍。
  * 纯 SVG + CSS/SMIL，无 JS 依赖。
  * 遵循 prefers-reduced-motion：用户系统开启减弱动态效果时光点静止。
@@ -15,15 +15,15 @@
 // 旅程节点，按指令流动顺序排列；cls 决定层标注与发光配色
 const steps = [
   { label: '外部任务：ROS 2 / Python 脚本发布“向前走 0.5 米”的目标', layer: '起点', cls: 'plain' },
-  { label: '行为状态机选择“行走”技能，调用步态规划器', layer: '大脑层', cls: 'brain' },
-  { label: '规划器输出未来若干步的足底目标、躯干姿态、质心轨迹', layer: '大脑层', cls: 'brain' },
-  { label: '全身控制器把躯干/足底任务映射成 29 个关节的位置/速度/力矩目标', layer: '小脑层', cls: 'cerebellum' },
-  { label: 'ROS 2 Topic 或 DDS rt/lowcmd 消息封装成 LowCmd', layer: '软件与工具链层', cls: 'software' },
-  { label: '控制线程按设定周期发布 LowCmd（500 Hz，即 2 ms）', layer: '电气与嵌入式层', cls: 'elec' },
-  { label: '电机驱动器解析 LowCmd，跑电流环，驱动 29 个关节模组', layer: '电气与嵌入式层', cls: 'elec' },
-  { label: '机器人本体运动，编码器和 IMU 测量新状态', layer: '机械与本体层', cls: 'mech' },
-  { label: '数据流：LowState 返回 MotorState、IMUState 等状态', layer: '软件与工具链层', cls: 'software' },
-  { label: '状态估计更新浮动基座和关节状态', layer: '小脑层', cls: 'cerebellum' },
+  { label: '行为状态机选择“行走”技能，调用步态规划器', layer: '行为与技能层', cls: 'brain' },
+  { label: '规划器输出未来若干步的足底目标、躯干姿态、质心轨迹', layer: '运动与规划层', cls: 'brain' },
+  { label: '全身控制器把躯干/足底任务映射成 29 个关节的位置/速度/力矩目标', layer: '实时控制层', cls: 'cerebellum' },
+  { label: 'ROS 2 Topic 或 DDS rt/lowcmd 消息封装成 LowCmd', layer: '横向基础设施', cls: 'software' },
+  { label: '控制线程按设定周期发布 LowCmd（500 Hz，即 2 ms）', layer: '驱动与嵌入式层', cls: 'elec' },
+  { label: '电机驱动器解析 LowCmd，跑电流环，驱动 29 个关节模组', layer: '驱动与嵌入式层', cls: 'elec' },
+  { label: '机器人本体运动，编码器和 IMU 测量新状态', layer: '机械执行层', cls: 'mech' },
+  { label: '数据流：LowState 返回 MotorState、IMUState 等状态', layer: '横向基础设施', cls: 'software' },
+  { label: '状态估计更新浮动基座和关节状态', layer: '实时控制层', cls: 'cerebellum' },
   { label: '闭环完成，回到任务层等待下一拍', layer: '回到起点', cls: 'plain' },
 ];
 
@@ -80,7 +80,7 @@ const returnDot = {
   <svg
     viewBox="0 0 640 596"
     role="img"
-    aria-label="G1 指令旅程图：外部任务经大脑层的行为决策与规划、小脑层的全身控制、软件与工具链层的 LowCmd 封装、电气与嵌入式层的 500 Hz 发布和电机驱动、机械与本体层的本体运动，再经 LowState 回报和小脑层状态估计回到闭环；光点逐站流动，到站节点发光"
+    aria-label="G1 指令旅程图：外部任务经行为与技能层的技能选择、运动与规划层的步态与质心规划、实时控制层的全身控制、横向基础设施的 LowCmd 封装、驱动与嵌入式层的 500 Hz 发布和电机驱动、机械执行层的本体运动，再经 LowState 回报和实时控制层的状态估计回到闭环；光点逐站流动，到站节点发光"
   >
     <defs>
       <marker id="gcj-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -129,7 +129,7 @@ const returnDot = {
       </circle>
     </g>
   </svg>
-  <figcaption>一条指令的旅程：任务目标逐层细化，穿过大脑、小脑、工具链、电气与本体，再由 LowState 回报和状态估计回到闭环；光点流动的顺序就是指令实际的流动顺序。</figcaption>
+  <figcaption>同一条链在 G1 上的样子：任务目标逐层细化，穿过行为与技能层、运动与规划层、实时控制层、驱动与嵌入式层，直到机械执行层；再由 LowState 回报和状态估计回到闭环。光点流动的顺序就是指令实际的流动顺序。</figcaption>
 </figure>
 
 <style>

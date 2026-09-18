@@ -34,6 +34,8 @@ const chapterRedirects = {
   '/05-brain-perception-planning-vla-wam/04-learning-control-and-imitation-learning': redirectTo('/05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning'),
   '/05-brain-perception-planning-vla-wam/05-vla-and-advanced-ai': redirectTo('/05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai'),
   '/05-brain-perception-planning-vla-wam/06-wam-world-action-model': redirectTo('/05-brain-perception-planning-vla-wam/07-wam-world-action-model'),
+  // 第一章由 4 节收敛为 3 节：原 1.4 的内容并入 1.3，旧 URL 重定向
+  '/01-system-overview/04-from-task-to-motor': redirectTo('/01-system-overview/03-humanoid-robot-system-architecture'),
 };
 
 export default defineConfig({

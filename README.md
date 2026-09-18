@@ -12,8 +12,8 @@
 
 机器人项目里，机械、嵌入式、算法、软件说的是四套语言，产品与 PR 还要把技术讲给外面的人听。这本书把它们翻译成同一套，并且让每个抽象术语都在一台真实的**宇树 G1 人形机器人**上找到对应：它是什么、解决什么问题、落在系统的哪一层、对上下游有什么约束。
 
-- **34 节正文 + 3 篇阅读路线 + 4 页 G1 速查附录**；
-- 每个术语都给**中英对照**（如“浮动基座（Floating Base）”），并在首次出现处用一条 **一句话听懂** 收束，全书 315 条；
+- **33 节正文 + 3 篇阅读路线 + 4 页 G1 速查附录**；
+- 每个术语都给**中英对照**（如“浮动基座（Floating Base）”），并在首次出现处用一条 **一句话听懂** 收束，全书 301 条；
 - 所有 G1 参数、消息字段与模型行为都**标注来源**，可以逐个点开核对；
 - 关键概念配**可操作的交互演示**：URDF 模型查看、ZMP 小车、PID 调参、摩擦锥、力封闭、Isaac Lab 训练配置等。
 
@@ -23,15 +23,14 @@
 | --- | --- | --- |
 | **跨部门工程师** | [按部门查词](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/01-engineer-cross-team/)：这周和谁开会、和谁联调，就补谁的语言 | 每次 15–30 分钟 |
 | **在校学生** | [顺序通读](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/02-student/)：每节附预计时长与建议先读的顺序 | 8–10 小时 |
-| **产品 / PR** | [速通 22 节](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/03-product-pr/)：读到每节第一条“一句话听懂”即可 | 约 1 小时 10 分钟 |
+| **产品 / PR** | [速通 21 节](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/03-product-pr/)：读到每节第一条“一句话听懂”即可 | 约 1 小时 10 分钟 |
 
 ## 目录
 
 **一、系统总览**（3 节）
-- [1.1 具身智能是什么](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/01-system-overview/01-what-is-embodied-ai/)
-- [1.2 人形机器人：定义、构造与 G1](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/01-system-overview/02-humanoid-robot-anatomy/)
-- [1.3 人形机器人系统架构：分层与接口](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/01-system-overview/03-humanoid-robot-system-architecture/)
-- [1.4 从一句话到电机：整机总图](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/01-system-overview/04-from-task-to-motor/)
+- [1.1 我们到底在研究什么：具身智能与人形机器人](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/01-system-overview/01-what-is-embodied-ai/)
+- [1.2 一台人形机器人里面有什么：以 G1 为例](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/01-system-overview/02-humanoid-robot-anatomy/)
+- [1.3 从任务到电机：一台现代人形机器人如何运行](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/01-system-overview/03-humanoid-robot-system-architecture/)
 
 **二、机械与本体**（5 节）
 - [2.1 机构、关节与自由度](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/02-mechanics/01-mechanisms-and-dof/)
@@ -120,7 +119,7 @@
 
 | 目录 | 内容 |
 | --- | --- |
-| `chapters/` | 正文源文件（34 节 + 3 篇导读 + 4 页附录），改内容改这里 |
+| `chapters/` | 正文源文件（33 节 + 3 篇导读 + 4 页附录），改内容改这里 |
 | `site/` | Astro + Starlight 站点；构建时由 `site/scripts/sync-content.mjs` 从 `chapters/` 同步生成页面（生成物不入库） |
 | `robot_descriptions/`、`third_party/` | G1 模型与第三方资产及其来源记录 |
 | `docs/` | [写作与配图规范](./docs/AUTHORING.md)、[站点技术路线](./docs/WEBSITE.md)、[图片素材台账](./docs/IMAGE_DESIGN_NOTES.md)、[命名讨论记录](./docs/NAMING.md) |
