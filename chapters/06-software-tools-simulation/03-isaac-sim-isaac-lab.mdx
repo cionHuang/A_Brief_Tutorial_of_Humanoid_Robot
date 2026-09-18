@@ -53,7 +53,7 @@ Isaac Sim 的场景格式是 USD（Universal Scene Description）：一种支持
 
 ### 从 URDF/MJCF 到 USD
 
-G1 进入 Isaac Sim 走导入器：URDF Importer 或 MJCF Importer 把模型转换成 USD 资产。转换不是无损的，导入后必须逐项核对：关节轴线与正负方向、限位、惯量参数、碰撞网格、执行器增益。开头“关节方向和惯量对不上”，多数发生在这一步——不同导入器版本对 URDF 关节约定和网格缩放的处理有差异。核对的标准答案永远是从官方源文件（[2.5 节](../02-mechanics/05-robot-description-files.mdx)、[6.2 节](../06-software-tools-simulation/02-mujoco.mdx)）重新计算，而不是在两个转换结果之间互相对照。[6]
+G1 进入 Isaac Sim 走导入器：URDF Importer 或 MJCF Importer 把模型转换成 USD 资产。转换不是无损的，导入后必须逐项核对：关节轴线与正负方向、限位、惯量参数、碰撞网格、执行器增益。开头“关节方向和惯量对不上”，多数发生在这一步——不同导入器版本对 URDF 关节约定和网格缩放的处理有差异。核对通常以官方源文件为基准（[2.5 节](../02-mechanics/05-robot-description-files.mdx)、[6.2 节](../06-software-tools-simulation/02-mujoco.mdx)）重新计算，而不是在两个转换结果之间互相对照。[6]
 
 > **一句话听懂**：导入器把 URDF/MJCF 转成 USD，但转换有损；导入后按关节轴线与正负方向、限位、惯量参数、碰撞网格、执行器增益逐项核对，基准是官方源文件而不是两个转换结果。
 
@@ -121,7 +121,7 @@ Isaac Lab 把 [5.5 节](../05-brain-perception-planning-vla-wam/05-learning-cont
 
 门槛与成本也要算进来：Isaac 需要 NVIDIA GPU（RTX 系列，显存直接决定并行规模），装驱动、配 Omniverse/Isaac 环境与版本管理是一笔固定开销，启动比 CPU 仿真器慢得多；它不适合做部署验证——部署与验证应交给 [6.2 节](../06-software-tools-simulation/02-mujoco.mdx)的 MuJoCo 与真机。
 
-工具选择经常比算法选择更影响进度。一个常见误区是用并行训练环境做最终验证：吞吐优化的物理参数让训练环境本身成为最“宽松”的仿真器，验证应始终在与训练不同的环境里进行。
+工具选择经常比算法选择更影响进度。一个常见误区是用并行训练环境做最终验证：吞吐优化的物理参数让训练环境本身成为最“宽松”的仿真器，验证通常要在与训练不同的环境里进行。
 
 > **一句话听懂**：大规模训练和视觉在环选 Isaac，单机精确接触与部署验证留给 6.2 的 MuJoCo，ROS 2 集成留给 6.4 的 Gazebo；用 Isaac 的前提是有 NVIDIA RTX GPU，并接受安装、版本管理和启动的成本。
 

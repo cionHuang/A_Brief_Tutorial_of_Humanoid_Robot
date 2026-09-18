@@ -25,7 +25,7 @@ import MjcfFieldSnippet from '../../../components/MjcfFieldSnippet.astro';
 
 MuJoCo（Multi-Joint dynamics with Contact）是面向接触富集任务（contact-rich tasks）的物理仿真器，也是腿式机器人策略做 Sim2Sim 验证的常用环境。[1] 它和一般刚体仿真器最不一样的地方是接触模型：MuJoCo 用软接触（soft contact），把碰撞当成可穿透的弹簧—阻尼系统求解，而不是把接触当成不可违背的硬约束；足底、手指这类持续接触的场景因此数值上更稳。它只用 CPU 就能跑，单次仿真的确定性与可复现性好，开源并由 Google DeepMind 维护。[1][2]
 
-在工具链里它只占一个位置，别的仿真器各管一段：Isaac Sim / Isaac Lab 擅长 GPU 大规模并行训练与视觉在环（[6.3 节](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx)），Gazebo 擅长 ROS 2 集成与场景搭建（[6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md)），MuJoCo 擅长精确接触，以及把训练出来的策略做 Sim2Sim 验证。换句话说，它不是“训练环境”，而是“把接触算准、把策略验一遍”的地方。
+在工具链里它只占一个位置，别的仿真器各管一段：Isaac Sim / Isaac Lab 擅长 GPU 大规模并行训练与视觉在环（[6.3 节](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx)），Gazebo 擅长 ROS 2 集成与场景搭建（[6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md)），MuJoCo 擅长精确接触，以及把训练出来的策略做 Sim2Sim 验证。换句话说，在本教程这条链路里，它主要不是训练环境，而是“把接触算准、把策略验一遍”的地方（MuJoCo 本身也能用于训练，MJX 那条路线就支持 GPU 并行）。
 
 在本书里，MuJoCo 有四个具体用途：
 
