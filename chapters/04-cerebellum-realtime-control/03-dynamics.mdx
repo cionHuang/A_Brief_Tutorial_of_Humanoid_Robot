@@ -83,7 +83,7 @@ $$
 \boldsymbol{\tau}_{\mathrm{req}} = \boldsymbol{M}(\boldsymbol{q})\ddot{\boldsymbol{q}} + \boldsymbol{C}(\boldsymbol{q}, \dot{\boldsymbol{q}})\dot{\boldsymbol{q}} + \boldsymbol{g}(\boldsymbol{q}) + \boldsymbol{\tau}_{\mathrm{fric}} - \boldsymbol{J}_c(\boldsymbol{q})^\top \boldsymbol{\lambda} - \boldsymbol{\tau}_{\mathrm{ext}}
 $$
 
-它就是把上面那条正动力学方程移项得到的：接触力和外力项原来在方程右边，移项之后要变号——前后两式对照时，不要只因为符号不同就判断实现错了。它常用于轨迹前馈、重力补偿、力矩限幅和动力学一致性检查。逆动力学算出的 $\boldsymbol{\tau}_{\mathrm{req}}$ 不是可以直接发送给电机的最终命令，还要经过电机常数、减速比、效率、温升、通信延迟和安全限幅等执行器层处理。[1][3]
+它就是把上面那条正动力学方程移项得到的：接触力和外力项原来在方程右边，移项之后要变号——前后两式对照时，不要只因为符号不同就判断实现错了。实现上也不需要求质量矩阵的逆——常用的是递归算法，计算量随关节数近似线性增长。它常用于轨迹前馈、重力补偿、力矩限幅和动力学一致性检查。逆动力学算出的 $\boldsymbol{\tau}_{\mathrm{req}}$ 不是可以直接发送给电机的最终命令，还要经过电机常数、减速比、效率、温升、通信延迟和安全限幅等执行器层处理。[1][3]
 
 > **一句话听懂**：逆动力学反过来：“我想让它这样动，每个关节得出多大力。”它是算前馈和重力补偿的主力，但算出来的力矩还不能直接发给电机——中间还隔着减速比、效率、温升和限幅。
 

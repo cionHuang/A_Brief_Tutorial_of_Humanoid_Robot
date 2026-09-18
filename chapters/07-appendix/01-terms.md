@@ -68,6 +68,7 @@
 | [扭转刚度（Torsional Stiffness）](../02-mechanics/03-transmission-and-joint-modules.mdx) | 输出轴受力矩后抵抗角变形的能力，由传动链各环节串联决定 | 使劲拧一下，关节会扭过去多少 |
 | [力矩—速度包络（Torque-speed Envelope）](../02-mechanics/03-transmission-and-joint-modules.mdx) | 描述可用输出随速度、电压和温度变化的边界 | 电机的出力边界，越快越使不上劲 |
 | [热降额（Thermal Derating）](../02-mechanics/03-transmission-and-joint-modules.mdx) | 温度或供电触限时主动降低允许输出以保护部件的行为 | 太热了自己收着点劲，免得烧坏 |
+| [死区（Dead Zone，机构）](../02-mechanics/01-mechanisms-and-dof.mdx) | 机构学里指输入变化而输出不动的区间；与电气里的“死区时间”（上下桥臂之间为避免直通而留的开关间隔，见 3.2）不是一回事 | 输入动了一点、输出没动的那么一段 |
 
 ## 运动学与动力学
 
@@ -174,6 +175,7 @@
 | [力封闭（Force Closure）](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx) | 接触点布局与摩擦能封住物体所有可能运动方向的判据 | 接触力能不能封住物体怎么跑 |
 | [动作空间（Action Space）](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx) | 算法下发的动作形态，如关节、末端增量、手指原语或轨迹 | 算法眼里的手有哪几种给法 |
 | [双臂协同（Bimanual Coordination）](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx) | 双臂搬运时维护两手相对位姿约束的协同方式 | 两只手一起搬，相对位置不能变 |
+| [移动操作（Loco-Manipulation）](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx) | 把腿、腰、臂、手当作一个整体同时求解的全身操作问题，而不是“先走过去、再伸手抓” | 边走边干活，全身一起解 |
 
 ## 学习与训练
 
@@ -195,6 +197,7 @@
 | [RoboDojo](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) | 仿真加真机统一的操作策略评测基准，含公开榜单与隐藏校验布局 | 第三方摆的考场，成绩公开可查 |
 | [系统辨识（System Identification）](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx) | 用真实数据估计质量、摩擦和执行器特性的方法 | 把真机的参数测回来补进模型 |
 | [遥操作（Teleoperation）](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx) | 人通过输入设备实时驱动机器人并把过程录成示范 | 人远程带着机器人做，顺手录下来 |
+| [重定向（Retargeting）](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx) | 把人的动作换算成机器人能执行的关节角：两者关节数、指长与工作空间都不同，换算会带来系统偏差 | 把“人的动作”翻译成“这台机器人能做出来的动作” |
 
 ## 具身大模型
 

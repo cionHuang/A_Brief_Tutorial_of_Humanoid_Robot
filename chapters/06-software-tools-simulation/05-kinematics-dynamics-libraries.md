@@ -162,7 +162,7 @@ MoveIt 2 把 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-plannin
 
 边界再强调一次：MoveIt 2 擅长手臂自由空间规划与碰撞规避，不做动态步行与全身平衡；把它的规划输出接入 G1 时，时间参数化（把一条几何路径变成带时间戳、满足速度与加速度限制的轨迹）、速度限幅和 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)的刷新纪律仍由调用方保证。Pinocchio 与 Drake 的选择也别忘记模型的核对纪律——二者都以 URDF/SDF 建模，导入后的检查项与仿真器相同（6.3、[6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md)）。
 
-> **一句话听懂**：实时算量选 Pinocchio、写优化选 Drake、ROS 2 里做手臂规划选 MoveIt 2、只做模型核对就两库加仿真器交叉验证、动态步行与全身平衡归 [4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) WBC；规划输出的时间参数化、限幅与刷新纪律永远由调用方保证。
+> **一句话听懂**：实时算量选 Pinocchio、写优化选 Drake、ROS 2 里做手臂规划选 MoveIt 2、只做模型核对就两库加仿真器交叉验证、动态步行与全身平衡归 [4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) WBC；规划输出的时间参数化、限幅与刷新纪律最终由调用方负责（有些框架自带时间参数化适配器，但边界条件与限幅仍要调用方把关）。
 
 ## 参考资料
 
