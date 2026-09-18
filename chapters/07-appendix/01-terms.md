@@ -27,6 +27,7 @@
 | 术语 | 专业解释 | 一句话听懂 |
 | --- | --- | --- |
 | [叉乘（Cross Product）](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) | 三维向量运算，结果垂直于两向量，方向由右手定则决定 | 从两个方向量出一个垂直方向，力矩就这么来 |
+| [左乘与右乘（Left / Right Multiplication）](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) | 变换写在乘号左侧（ΔT）表示在世界坐标系里生效，写在右侧（TΔ）表示在自身坐标系里生效 | 左乘绕世界、右乘绕自己 |
 | [旋转矩阵（Rotation Matrix）](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) | 3×3 正交矩阵，行列式为 +1，用于坐标系间旋转和向量变换 | 用 9 个数表示朝向，没有欧拉角那种死角 |
 | [欧拉角（Euler Angles）](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) | 依次绕三个轴旋转的姿态表示，如 roll、pitch、yaw，须声明轴序 | 依次绕三个轴转多少度，直观但轴序必须说清 |
 | [万向节锁（Gimbal Lock）](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) | 中间角为 ±90° 时两旋转轴重合、姿态参数化退化的现象 | 三个角度描述不了某些姿态，反算数值会乱跳 |

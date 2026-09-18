@@ -55,11 +55,11 @@
 | [3.5 MCU、实时系统与嵌入式软件](../03-electrical-embedded/05-mcu-realtime-embedded-software.mdx) | 15 分钟 | 3.4 |
 | [3.6 电气安全与系统保护](../03-electrical-embedded/06-electrical-safety-and-protection.mdx) | 10 分钟 | 3.1、3.2 |
 
-## 第 4 章 小脑：模型、状态估计与实时运控（约 2 小时 35 分钟，全书核心）
+## 第 4 章 小脑：模型、状态估计与实时运控（约 2 小时 40 分钟，全书核心）
 
 | 小节 | 预计时间 | 建议先读 |
 | --- | --- | --- |
-| [4.1 机器人数学基础](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) | 45 分钟 | 线性代数基础 |
+| [4.1 机器人数学基础](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) | 50 分钟 | 线性代数基础 |
 | [4.2 运动学](../04-cerebellum-realtime-control/02-kinematics.mdx) | 25 分钟 | 4.1 |
 | [4.3 动力学](../04-cerebellum-realtime-control/03-dynamics.mdx) | 20 分钟 | 2.2、4.2 |
 | [4.4 状态估计](../04-cerebellum-realtime-control/04-state-estimation.mdx) | 25 分钟 | 3.3、4.1 |

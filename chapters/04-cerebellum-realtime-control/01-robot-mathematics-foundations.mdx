@@ -1,5 +1,6 @@
 # 4.1 机器人数学基础
 
+import LeftRightMultiplyDemo from '../../../components/LeftRightMultiplyDemo.astro';
 import VectorProductDemo from '../../../components/VectorProductDemo.astro';
 import GimbalLockDemo from '../../../components/GimbalLockDemo.astro';
 import HomogeneousTransformDemo from '../../../components/HomogeneousTransformDemo.astro';
@@ -120,6 +121,23 @@ $$
 如果一个所谓的旋转矩阵不再正交，或行列式远离 $+1$，它可能混入了缩放、反射或数值误差。反复积分和插值后，应检查并在必要时重新正交化，而不是默认九个浮点数永远构成合法旋转。
 
 > **一句话听懂**：转置是把矩阵“翻个个儿”，逆是“把变换抵消掉”。旋转矩阵有个便宜可占：它的逆就是转置，不用真求逆。不过要是这九个数不再满足旋转条件，说明混进了缩放或误差，得重新正交化。
+
+### 左乘与右乘（Left / Right Multiplication）
+
+“矩阵乘法不满足交换律”这句话，在机器人里不是数学上的小脾气，而是**两种不同的动作**。
+
+假设机器人当前的位姿是 $T$，现在要对它施加一个变换 $\Delta$（比如“转 90°”）。写在乘号的哪一边，决定这个动作是在**谁的坐标系**里做的：
+
+- **左乘**：$T' = \Delta T$——$\Delta$ 在**世界坐标系**里生效，机器人被绕着世界原点搬走：位置和朝向都变；
+- **右乘**：$T' = T \Delta$——$\Delta$ 在**机器人自身的坐标系**里生效，机器人原地转身：只有朝向变，位置不变。
+
+口诀：**左乘绕世界，右乘绕自己**。平移也一样——左乘是“沿世界轴移动”，右乘是“沿自身轴移动”。机器人一旦转过身，“向前走一米”和“沿世界 x 方向走一米”就不再是同一件事，这正是运动学与轨迹生成里最常见的错误来源（[4.2 节](../04-cerebellum-realtime-control/02-kinematics.mdx)会反复用到）。
+
+下面这个动效把两种情况并排放在一起：同样是“转 90°”，左边那台被绕世界原点甩了出去，右边那台只在原地转身。
+
+<LeftRightMultiplyDemo />
+
+> **一句话听懂**：同一个变换，写在乘号左边是在世界坐标系里动手（东西会被搬走），写在右边是在自身坐标系里动手（原地转身）——“向前走一米”还是“向世界前方走一米”，差别就在这里。
 
 ## 姿态的四种常见表示
 

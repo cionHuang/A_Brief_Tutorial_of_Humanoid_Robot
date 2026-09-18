@@ -1,0 +1,227 @@
+---
+/**
+ * 左乘与右乘对比演示：同一个“转 90°”，ΔT（左乘）让机器人绕世界原点被搬走，
+ * TΔ（右乘）让它原地转身。两个面板并排，可重播。
+ * 纯 SVG + SMIL；脚本只负责触发 beginElement 与 prefers-reduced-motion 兜底。
+ */
+
+const U = 44; // 1 个世界单位 = 44px
+const ORIGIN_Y = 210;
+const RX = 2, RY = 2; // 机器人位于世界坐标 (2, 2)
+
+const panels = [
+  {
+    key: 'left',
+    originX: 168,
+    label: '左乘：T′ = Δ · T',
+    sub: 'Δ 在世界坐标系里生效',
+    effect: '绕着世界原点被搬走：位置和朝向都变',
+    hint: 'arc',
+    pivot: 'world',
+  },
+  {
+    key: 'right',
+    originX: 496,
+    label: '右乘：T′ = T · Δ',
+    sub: 'Δ 在自身坐标系里生效',
+    effect: '原地转身：只有朝向变，位置不变',
+    hint: 'circle',
+    pivot: 'self',
+  },
+];
+
+const gridX = (cx) => [-3, -2, -1, 0, 1, 2, 3].map((k) => cx + k * U);
+const gridY = (cy) => [-4, -3, -2, -1, 0, 1, 2, 3].map((k) => cy + k * U);
+
+const prepared = panels.map((p) => {
+  const robotX = p.originX + RX * U;
+  const robotY = ORIGIN_Y - RY * U;
+  // additive="sum" 时，旋转中心要写成“平移之后的局部坐标”：
+  // 左乘绕世界原点，右乘绕自身原点（局部 (0,0)）
+  const dx = p.pivot === 'world' ? p.originX - robotX : 0;
+  const dy = p.pivot === 'world' ? ORIGIN_Y - robotY : 0;
+  const from = '0 ' + dx + ' ' + dy;
+  const to = '90 ' + dx + ' ' + dy;
+  const arcR = Math.sqrt(RX * RX + RY * RY) * U;
+  const arcEndY = ORIGIN_Y + RX * U;
+  return { ...p, robotX, robotY, from, to, arcR, arcEndY };
+});
+---
+
+<figure class="lrm-demo" data-lrm-demo>
+  <svg
+    viewBox="0 0 664 366"
+    role="img"
+    aria-label="左乘与右乘对比：同一个转 90 度，左乘 Δ·T 让机器人绕世界原点转到下方，位置和朝向都改变；右乘 T·Δ 让机器人停在原地只改变朝向。"
+  >
+    <defs>
+      <marker id="lrm-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="lrm-arrow-head"></path>
+      </marker>
+    </defs>
+
+    {prepared.map((p) => (
+      <g class="lrm-panel">
+        <rect x={p.originX - 160} y="8" width="320" height="350" rx="10" class="lrm-frame"></rect>
+        <text x={p.originX} y="30" text-anchor="middle" class="lrm-label">{p.label}</text>
+        <text x={p.originX} y="48" text-anchor="middle" class="lrm-sub">{p.sub}</text>
+
+        {gridX(p.originX).map((x) => (
+          <line x1={x} y1="60" x2={x} y2="352" class="lrm-grid"></line>
+        ))}
+        {gridY(ORIGIN_Y).map((y) => (
+          <line x1={p.originX - 152} y1={y} x2={p.originX + 152} y2={y} class="lrm-grid"></line>
+        ))}
+
+        <path d={'M ' + (p.originX - 140) + ' ' + ORIGIN_Y + ' H ' + (p.originX + 140)} class="lrm-axis" marker-end="url(#lrm-arrow)"></path>
+        <path d={'M ' + p.originX + ' ' + (ORIGIN_Y + 120) + ' V ' + (ORIGIN_Y - 120)} class="lrm-axis" marker-end="url(#lrm-arrow)"></path>
+        <text x={p.originX + 146} y={ORIGIN_Y + 14} class="lrm-axis-label">x</text>
+        <text x={p.originX + 8} y={ORIGIN_Y - 126} class="lrm-axis-label">y</text>
+        <circle cx={p.originX} cy={ORIGIN_Y} r="3.5" class="lrm-origin"></circle>
+        <text x={p.originX - 8} y={ORIGIN_Y + 18} text-anchor="end" class="lrm-axis-label">世界原点</text>
+
+        {p.hint === 'arc' ? (
+          <path
+            d={'M ' + p.robotX + ' ' + p.robotY + ' A ' + p.arcR + ' ' + p.arcR + ' 0 0 1 ' + p.robotX + ' ' + p.arcEndY}
+            class="lrm-hint"
+            fill="none"
+          ></path>
+        ) : (
+          <circle cx={p.robotX} cy={p.robotY} r="46" class="lrm-hint" fill="none"></circle>
+        )}
+
+        {/* 起始位姿的浅影，用来对比“位置变没变” */}
+        <g class="lrm-ghost" transform={'translate(' + p.robotX + ' ' + p.robotY + ')'}>
+          <rect x="-15" y="-15" width="30" height="30" rx="6" class="lrm-body"></rect>
+          <path d="M 15 -7 L 27 0 L 15 7 Z" class="lrm-nose"></path>
+        </g>
+
+        <g transform={'translate(' + p.robotX + ' ' + p.robotY + ')'}>
+          <g>
+            <rect x="-15" y="-15" width="30" height="30" rx="6" class="lrm-body"></rect>
+            <path d="M 15 -7 L 27 0 L 15 7 Z" class="lrm-nose"></path>
+          </g>
+          <animateTransform
+            attributeName="transform"
+            type="rotate"
+            additive="sum"
+            from={p.from}
+            to={p.to}
+            dur="1.6s"
+            begin="indefinite"
+            fill="freeze"></animateTransform>
+        </g>
+
+        <text x={p.originX} y="344" text-anchor="middle" class="lrm-effect">{p.effect}</text>
+      </g>
+    ))}
+  </svg>
+  <div class="lrm-controls">
+    <button type="button" class="lrm-replay">重播这个动作</button>
+  </div>
+  <figcaption>
+    同一个“转 90°”，写在乘号左边（Δ·T）是在世界坐标系里动手，机器人被绕着世界原点搬走；写在右边（T·Δ）是在自身坐标系里动手，机器人原地转身。
+  </figcaption>
+</figure>
+
+<script>
+  const root = document.querySelector('[data-lrm-demo]');
+  const play = () => {
+    if (!root) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    root.querySelectorAll('animateTransform').forEach((a) => {
+      a.setAttribute('dur', reduce ? '0.001s' : '1.6s');
+      a.beginElement();
+    });
+  };
+  if (root) {
+    const btn = root.querySelector('.lrm-replay');
+    if (btn) btn.addEventListener('click', play);
+    if (document.readyState === 'complete') play();
+    else window.addEventListener('load', play);
+  }
+</script>
+
+<style>
+  .lrm-demo {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+  .lrm-demo svg {
+    display: block;
+    margin: 0 auto;
+    max-width: 664px;
+    width: 100%;
+    height: auto;
+  }
+  .lrm-frame {
+    fill: none;
+    stroke: var(--sl-color-gray-5);
+    stroke-width: 1;
+  }
+  .lrm-grid {
+    stroke: var(--sl-color-gray-6);
+    stroke-width: 1;
+    stroke-dasharray: 2 5;
+  }
+  .lrm-axis {
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 1.5;
+  }
+  .lrm-arrow-head {
+    fill: var(--sl-color-gray-3);
+  }
+  .lrm-axis-label,
+  .lrm-sub,
+  .lrm-effect {
+    fill: var(--sl-color-gray-2);
+    font-size: 11px;
+  }
+  .lrm-label {
+    fill: var(--sl-color-text);
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+  .lrm-origin {
+    fill: var(--sl-color-gray-2);
+  }
+  .lrm-hint {
+    stroke: var(--sl-color-gray-4);
+    stroke-width: 1.5;
+    stroke-dasharray: 5 4;
+  }
+  .lrm-ghost {
+    opacity: 0.22;
+  }
+  .lrm-body {
+    fill: var(--sl-color-bg);
+    stroke: var(--sl-color-accent);
+    stroke-width: 2;
+  }
+  .lrm-nose {
+    fill: var(--sl-color-accent);
+  }
+  .lrm-controls {
+    margin-top: 0.6rem;
+  }
+  .lrm-replay {
+    font: inherit;
+    font-size: 0.8125rem;
+    padding: 0.3rem 0.9rem;
+    color: var(--sl-color-text);
+    background: var(--sl-color-bg);
+    border: 1px solid var(--sl-color-gray-4);
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .lrm-replay:hover {
+    border-color: var(--sl-color-accent);
+    color: var(--sl-color-accent);
+  }
+  .lrm-demo figcaption {
+    margin-top: 0.85rem;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-2);
+    text-align: left;
+  }
+</style>
