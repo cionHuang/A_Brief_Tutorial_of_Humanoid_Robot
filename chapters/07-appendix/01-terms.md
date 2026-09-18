@@ -53,7 +53,7 @@
 | [自由度（Degree of Freedom, DoF）](../02-mechanics/01-mechanisms-and-dof.mdx) | 描述构型所需的最少独立变量数，转动关节各贡献一个 | 要几个数字才能把机器人的姿势说清楚 |
 | [四连杆机构（Four-bar Linkage）](../02-mechanics/01-mechanisms-and-dof.mdx) | 四根杆首尾铰接的闭合平面机构，理想平面模型下只剩一个自由度 | 四根杆连成一圈，实际只有一个独立自由度 |
 | [死点（Dead Center）](../02-mechanics/01-mechanisms-and-dof.mdx) | 曲柄与连杆共线的构型，输出速度为零、机构雅可比接近奇异 | 某个姿势下输入还在转、输出却几乎不动 |
-| [空间并联机构（Parallel Mechanism）](../02-mechanics/01-mechanisms-and-dof.mdx) | 多条支链共同驱动同一末端的闭环机构，刚度高、承载大 | 多个电机从不同方向一起推同一个部件 |
+| [空间并联机构（Parallel Mechanism）](../02-mechanics/01-mechanisms-and-dof.mdx) | 多条支链共同驱动同一末端的闭环机构，通常刚度更高、承载更大 | 多个电机从不同方向一起推同一个部件 |
 | [关节轴线（Joint Axis）](../02-mechanics/01-mechanisms-and-dof.mdx) | 关节允许运动的方向，写在 URDF 的 axis 字段，决定正方向 | 这根关节绕哪根轴转，反了就朝反方向动 |
 | [零位（Zero Position）](../02-mechanics/01-mechanisms-and-dof.mdx) | 关节角算作零时的姿态基准，需对齐编码器、模型和装配零位 | 关节角为 0 时这条腿摆成什么样 |
 | [关节限位（Joint Limits）](../02-mechanics/01-mechanisms-and-dof.mdx) | 位置、速度和力矩约束，取机械、驱动器和软件中最严的一层 | 关节最多转到哪、最多使多大劲 |

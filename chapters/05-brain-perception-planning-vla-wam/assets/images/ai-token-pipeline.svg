@@ -71,6 +71,6 @@
     <text x="512" y="226" text-anchor="start" font-size="15" fill="#475569">未来 N 步的关节 / 末端动作</text>
 
     <rect x="40" y="270" width="640" height="40" rx="12" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
-    <text x="360" y="296" text-anchor="middle" font-size="17" font-weight="700" fill="#0f172a">VLA / WAM 的通用套路：输入切成 token，输出也是 token（动作 token）</text>
+    <text x="360" y="296" text-anchor="middle" font-size="17" font-weight="700" fill="#0f172a">常见套路：输入切成 token，输出可以是动作 token、连续动作或动作块</text>
   </g>
 </svg>

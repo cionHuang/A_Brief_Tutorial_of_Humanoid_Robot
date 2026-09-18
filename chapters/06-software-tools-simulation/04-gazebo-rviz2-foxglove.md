@@ -1,6 +1,6 @@
 # 6.4 Gazebo、RViz 2 与 Foxglove：仿真、看空间、看时间
 
-## 先看一个现场问题
+## 一个模型，两个工具，两种表现
 
 把 G1 的 URDF 加载进 RViz 2，模型站得笔直、关节拖动都正常；同一个模型放进 Gazebo，一取消暂停就瘫在地上——RViz 里根本没有物理。换过来，Gazebo 里控制器终于加载成功，机器人能站了，但行走时偶尔抽一下；想查原因，rosbag 里只录了关节状态，没录接触力和控制器内部误差，只能看着现象猜。
 
@@ -13,8 +13,6 @@
 - “RViz 里对、Gazebo 里瘫”：对应 RViz 2 一节——RViz 2 只渲染消息、不计算物理；
 - “Gazebo 里能站、行走偶尔抽一下”：对应“ROS 2 集成与控制器”里仿真时序那一句（物理步长、接触求解、实时率与控制器更新节奏不匹配）；
 - “rosbag 只录了关节状态、没录接触力只能猜”：对应 Foxglove 一节的记录清单纪律。
-
-> **一句话听懂**：这三个现象分别指向三件工具各自的边界——RViz 2 不算物理、Gazebo 有自己的仿真时序、Foxglove 依赖你事先录了什么。
 
 > **在整机里的位置**：这一节属于“横向基础设施：仿真与工具”；上游是模型与控制命令，下游是控制器与可视化。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
 
@@ -46,8 +44,6 @@ ros_gz 桥 ──► ROS 2 消息总线 ──┬──► 控制器：gz_ros2_c
 
 后面几节就挂在这条流上：“Gazebo”一节讲左端那个世界怎么描述（SDF、插件）以及它如何接进 ROS 2（ros_gz 桥、gz_ros2_control）；RViz 2 一节讲总线右侧的空间观察者；Foxglove 一节讲总线右侧的时间观察者与 rosbag2 回放；最后一节把这条流与 MuJoCo、Isaac 放在一起比较。
 
-> **一句话听懂**：一次仿真的数据流只有一条——Gazebo 世界出数据、ros_gz 桥把它送进 ROS 2 总线、控制器经总线把命令送回世界，RViz 2 和 Foxglove 在总线旁边各看一个维度。
-
 ## Gazebo：ROS 2 生态的物理仿真
 
 ### SDF 与插件
@@ -58,9 +54,9 @@ Gazebo 使用 SDF（Simulation Description Format，仿真描述格式）描述�
 
 ### ROS 2 集成与控制器（ros_gz 与 gz_ros2_control）
 
-Gazebo 与 ROS 2 的集成有两层。消息层由 `ros_gz`（Gazebo 与 ROS 2 之间的消息桥）桥接：Gazebo 内部的传感器数据被转成 ROS 2 Topic，ROS 2 侧的控制命令也经它送回 Gazebo。控制层由 `gz_ros2_control`（在 Gazebo 里实现 ros2_control 硬件接口的插件）承担：它在 Gazebo 里实现 [6.1 节](../06-software-tools-simulation/01-ros2-software-architecture.md) ros2_control 的 Hardware Interface，让同一套控制器配置既能跑仿真又能跑实机；资源仲裁也沿用 [6.1 节](../06-software-tools-simulation/01-ros2-software-architecture.md) ros2_control 的规则，同一时刻一个命令接口只能被一个激活的控制器占用。[5] 开头的“加载就瘫”有一类典型原因：模型里的惯量过小或为默认值，或控制器插件未加载，机器人处于无阻尼状态。
+Gazebo 与 ROS 2 的集成有两层。消息层由 `ros_gz`（Gazebo 与 ROS 2 之间的消息桥）桥接：Gazebo 内部的传感器数据被转成 ROS 2 Topic，ROS 2 侧的控制命令也经它送回 Gazebo。控制层由 `gz_ros2_control`（在 Gazebo 里实现 ros2_control 硬件接口的插件）承担：它在 Gazebo 里实现 [6.1 节](../06-software-tools-simulation/01-ros2-software-architecture.md) ros2_control 的 Hardware Interface，让同一套控制器配置既能跑仿真又能跑实机；资源仲裁也沿用 [6.1 节](../06-software-tools-simulation/01-ros2-software-architecture.md) ros2_control 的规则，同一时刻一个命令接口只能被一个激活的控制器占用。[5] 开头的“加载就瘫”还有另一类典型原因（与开头那条“只渲染不计算物理”不同，这是模型或插件本身的问题）：模型里的惯量过小或为默认值，或控制器插件未加载，机器人处于无阻尼状态。
 
-开头的“能站但行走偶尔抽一下”也要先往仿真时序上找：物理步长、接触求解和实时率决定了仿真世界推进的节奏，控制器与物理更新时间不匹配时，控制命令就作用在一个已经变了的世界状态上。
+开头的“能站但行走偶尔抽一下”也要先往仿真时序上找：物理步长、接触求解和实时率（实时率＝仿真时间与真实时间的比值）决定了仿真世界推进的节奏，控制器与物理更新时间不匹配时，控制命令就作用在一个已经变了的世界状态上。
 
 > **一句话听懂**：集成分两层——`ros_gz` 负责消息桥接（把 Gazebo 数据变成 ROS 2 Topic，也把命令送回去），`gz_ros2_control` 负责控制（在 Gazebo 里实现 ros2_control 的 Hardware Interface）；同一个硬件接口让仿真与实机共用一套控制器配置。
 
@@ -78,8 +74,6 @@ Foxglove 面向时间序列和日志回放：关节跟踪误差、`tau_est`（�
 
 开头“没录接触力只能猜”的教训对应一条纪律：记录 Topic 的清单应按故障排查需求设计，而不是按“现在想看什么”设计。4.5–[4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)与 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)每节的排查清单，落到工程上就是 Foxglove 里的一组预设面板和 rosbag2 里的一组必录 Topic。
 
-> **一句话听懂**：Foxglove 把多个信号按时间轴对齐——关节跟踪误差、`tau_est`、接触力、ZMP 裕量都能画在一起，配合 rosbag2 回放复现一次故障；但前提是你当时把该录的 Topic 录下来了。
-
 ## 什么时候用哪个工具
 
 工具选择比工具使用更容易出错，判别顺序是：先问自己要看的量是什么，再决定用哪件工具。
@@ -94,7 +88,7 @@ Gazebo 居中：TF、ros2_control、Nav2 等组件开箱即用，适合验证软
 
 判别之外，记录清单的纪律对三件工具都成立：RViz 2 里想看的、Foxglove 里要画的，必须先在 rosbag2 或仿真里录下来，否则事后只能靠猜。
 
-> **一句话听懂**：看空间用 RViz 2、看时间用 Foxglove + rosbag2、要 ROS 2 系统级仿真用 Gazebo、要接触精度和部署验证用 MuJoCo、要大吞吐训练用 Isaac；而记录清单要按排查需求设计，不是按现在想看什么设计。
+> **到这里，你应该已经能听懂**：“RViz 里明明是对的，为什么到 Gazebo 里就不行”——以及要判断一个现象归谁管，先问自己要看的量是空间、时间还是世界怎么演化；`ros_gz` 管消息、`gz_ros2_control` 管控制这条分工，你现在能自己讲一遍。
 
 ## 参考资料
 

@@ -18,8 +18,6 @@
 
 最后一节的交叉验证，就是为同时抓住这三类问题设计的。
 
-> **一句话听懂**：这三个现象的根源都不在算法，而在调用方与库对“量”的约定没对齐：顺序、维度、参考系各错一处。
-
 > **在整机里的位置**：这一节属于“横向基础设施：仿真与工具”；上游是模型与状态，下游是控制器与规划器。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
 
 ## 库与仿真器的边界
@@ -61,8 +59,6 @@
 
 后面几节就挂在这张映射上：“Pinocchio”一节对应第一格，“Drake”一节对应第二格，“MoveIt 2”一节对应第三格；交叉验证一节把前两格的结果与仿真器对齐，最后一节把这张表变成选型判别。
 
-> **一句话听懂**：先看缺哪个量——实时算 $M(q)$、$g(q)$、雅可比找 Pinocchio，做优化找 Drake，做手臂规划与碰撞检查找 MoveIt 2；后面各节分别挂在这三格上。
-
 ## Pinocchio：刚体动力学算法库
 
 *（工程细节：查到具体库时再看，不必顺序读；第一次读只要知道“什么时候该找它”。）*
@@ -91,8 +87,6 @@ Pinocchio 实现了刚体动力学的三类经典递归算法，名字对应 [4.
 - **CRBA**（Composite Rigid Body Algorithm，复合刚体算法）：计算质量矩阵 $M(q)$；
 - **ABA**（Articulated Body Algorithm，铰接体算法）：正动力学，给定力矩算加速度。
 
-> **一句话听懂**：选哪个算法只看你要什么——要力矩用 RNEA、要质量矩阵用 CRBA、要从力矩推加速度用 ABA，RNEA 令加速度为零就顺带得到重力项；实时控制里通常只跑其中一个。
-
 ### 碰撞与几何
 
 Pinocchio 可加载 URDF 的 collision 几何并计算连杆对距离和碰撞状态，供规划器（[5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)）做自碰撞检查。这些 collision 几何通常是简化形状而不是渲染网格，计算的是几何体之间的距离，因而适合放进规划内层循环。
@@ -109,9 +103,7 @@ Drake 的定位比 Pinocchio 更宽：多体动力学、接触与约束、系统
 - **MathematicalProgram**（数学规划）：把优化问题写成“决策变量 + 约束 + 代价”，由求解器在背后选方法；
 - **Direct Collocation**（直接配点法）：轨迹优化的一种常见建模方式——把轨迹在时间上离散成若干节点，让动力学在节点之间成立，代价与约束直接写在这些节点上。
 
-[5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)“任务目标 + 约束 + 代价”的轨迹优化，在 Drake 里可以直接落成代码：目标写成代价、动力学与限位写成约束、轨迹节点写成决策变量。Pinocchio 与 Drake 的分工先记在这里，完整的选型判别在最后一节。二者都以 URDF/SDF 建模，模型的核对纪律与仿真器导入相同。
-
-> **一句话听懂**：Drake 把多体动力学（MultibodyPlant）、接触与约束、系统框图（Diagram）和数学优化（MathematicalProgram、Direct Collocation）放进同一个框架——[5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)的“目标 + 约束 + 代价”能直接落成代码。
+[5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)“任务目标 + 约束 + 代价”的轨迹优化，在 Drake 里可以直接落成代码：目标写成代价、动力学与限位写成约束、轨迹节点写成决策变量。Pinocchio 与 Drake 的分工先记在这里，完整的选型判别在最后一节。（模型核对纪律见本节末尾。）
 
 ## MoveIt 2：ROS 2 里的运动规划框架
 
@@ -148,8 +140,6 @@ MoveIt 2 把 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-plannin
 
 一句话原则：**对不上时先查约定，再怀疑算法。** 开头三个现象——四元数顺序、$\tau$ 索引、雅可比参考系——全部属于约定层，而不是算法层。
 
-> **一句话听懂**：交叉验证就是拿同一份 G1、在同一组状态上比 FK 位姿、重力项 $g(q)$、雅可比和逆动力学力矩四项；对不上先按四元数顺序、坐标系与单位、`nq/nv`、雅可比参考系、关节索引顺序查约定，再怀疑算法。
-
 ## 什么时候用哪个库
 
 把前面内容压成可操作的判别。顺序是：先问缺哪个量，再问这个量要嵌进什么场景。
@@ -162,7 +152,7 @@ MoveIt 2 把 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-plannin
 
 边界再强调一次：MoveIt 2 擅长手臂自由空间规划与碰撞规避，不做动态步行与全身平衡；把它的规划输出接入 G1 时，时间参数化（把一条几何路径变成带时间戳、满足速度与加速度限制的轨迹）、速度限幅和 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)的刷新纪律仍由调用方保证。Pinocchio 与 Drake 的选择也别忘记模型的核对纪律——二者都以 URDF/SDF 建模，导入后的检查项与仿真器相同（6.3、[6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md)）。
 
-> **一句话听懂**：实时算量选 Pinocchio、写优化选 Drake、ROS 2 里做手臂规划选 MoveIt 2、只做模型核对就两库加仿真器交叉验证、动态步行与全身平衡归 [4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) WBC；规划输出的时间参数化、限幅与刷新纪律最终由调用方负责（有些框架自带时间参数化适配器，但边界条件与限幅仍要调用方把关）。
+> **到这里，你应该已经能听懂**：“四元数分量顺序不一致”“τ 的索引整体错位”“雅可比把 LOCAL 用成 WORLD”——以及这三类问题为什么先查约定、再怀疑算法；控制器缺 `M(q)`、`g(q)` 的时候该去找哪个库。
 
 ## 参考资料
 

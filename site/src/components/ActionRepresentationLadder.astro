@@ -1,0 +1,172 @@
+---
+/**
+ * 动作表示粒度阶梯：同一个“让机器人做点什么”，可以停在从技能到关节角的不同层级；
+ * “单步 / action chunk”是另一个维度（时间粒度）。纯静态 SVG，无 JS。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import ActionRepresentationLadder from '../../../components/ActionRepresentationLadder.astro';
+ *   <ActionRepresentationLadder />
+ */
+
+// 粒度阶梯：从抽象到具体。freq 是这一级常见的下达频率，who 是谁在消费它。
+const rungs = [
+  { zh: '技能 Skill', en: '“把红杯子拿过来”', note: '秒到分钟级 · 任务层或 LLM 给' },
+  { zh: '子目标 Subgoal', en: '“手到杯子上方 5 cm”', note: '秒级 · VLA 最常见的出口之一' },
+  { zh: '末端目标位姿 EE target', en: '一张 SE(3) 位姿', note: '0.1–1 s · IK 的输入' },
+  { zh: '增量位姿 Delta pose', en: '“再往右挪 2 cm”', note: '与上一级同层 · 抗绝对误差' },
+  { zh: '关节目标 Joint target', en: 'q_target（每个关节的角度）', note: '1–10 ms · 伺服或 PD 的输入' },
+];
+
+const rungX = 96;
+const rungW = 300;
+const rungH = 44;
+const rungGap = 14;
+const rungY = rungs.map((_, i) => 42 + i * (rungH + rungGap));
+const ladderTop = rungY[0] + rungH / 2;
+const ladderBottom = rungY[rungY.length - 1] + rungH / 2;
+
+// 底部时间粒度示意：6 个方格代表连续的控制步
+const cells = [0, 1, 2, 3, 4, 5];
+const cellW = 22;
+const cellGap = 10;
+const cellX = (i: number) => 150 + i * (cellW + cellGap);
+const singleY = 372;
+const chunkY = 412;
+const chunkEnd = cellX(cells.length - 1) + cellW;
+---
+
+<figure class="action-ladder">
+  <svg viewBox="0 0 700 500" role="img" aria-label="动作表示粒度阶梯：技能、子目标、末端目标位姿、增量位姿、关节目标，以及单步与 action chunk 两种时间粒度">
+    <defs>
+      <marker id="arl-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="arl-arrow-head"></path>
+      </marker>
+    </defs>
+
+    <!-- 左侧：越来越具体、越来越快 -->
+    <path d={`M 62 ${ladderTop} L 62 ${ladderBottom}`} class="arl-axis" marker-end="url(#arl-arrow)"></path>
+    <text class="arl-axis-label" transform="translate(44, {(ladderTop + ladderBottom) / 2}) rotate(-90)" text-anchor="middle">
+      越来越具体、越来越快
+    </text>
+
+    <!-- 粒度阶梯 -->
+    {rungs.map((r, i) => (
+      <g class="arl-rung">
+        <rect x={rungX} y={rungY[i]} width={rungW} height={rungH} rx="8" class="arl-rung-box"></rect>
+        <text x={rungX + 16} y={rungY[i] + 19} class="arl-rung-title">{r.zh}</text>
+        <text x={rungX + 16} y={rungY[i] + 35} class="arl-rung-eg">{r.en}</text>
+        <text x={rungX + rungW + 22} y={rungY[i] + rungH / 2} class="arl-rung-note">{r.note}</text>
+      </g>
+    ))}
+
+    <!-- 底部：时间粒度，是另一个维度 -->
+    <text x="62" y="352" class="arl-strip-title">另一个维度：一次推理输出几步？</text>
+
+    <text x="62" y={singleY + 16} class="arl-strip-label">单步</text>
+    {cells.map((i) => (
+      <g class="arl-cell-single">
+        <rect x={cellX(i)} y={singleY} width={cellW} height={cellW} rx="4"></rect>
+        <text x={cellX(i) + cellW / 2} y={singleY + 16} text-anchor="middle">{i + 1}</text>
+      </g>
+    ))}
+    <text x={chunkEnd + 18} y={singleY + 16} class="arl-strip-note">每一步都要推理一次（频率要求高）</text>
+
+    <text x="62" y={chunkY + 16} class="arl-strip-label">Action chunk</text>
+    {cells.map((i) => (
+      <rect x={cellX(i)} y={chunkY} width={cellW} height={cellW} rx="4" class="arl-cell-chunk"></rect>
+    ))}
+    <path d={`M ${cellX(0)} ${chunkY + cellW + 8} L ${cellX(0)} ${chunkY + cellW + 14} L ${chunkEnd} ${chunkY + cellW + 14} L ${chunkEnd} ${chunkY + cellW + 8}`} class="arl-bracket"></path>
+    <text x={(cellX(0) + chunkEnd) / 2} y={chunkY + cellW + 30} class="arl-bracket-label" text-anchor="middle">一次推理 → 未来 N 步（例：N = 16）</text>
+    <text x={chunkEnd + 18} y={chunkY + 16} class="arl-strip-note">低频智能模块一次给出一串，高频控制模块照着执行</text>
+  </svg>
+  <figcaption>
+    同一个“让机器人做点什么”，可以停在技能、子目标、末端位姿、增量位姿或关节目标——VLA 输出的动作表示可以有很多粒度。
+    单步还是 action chunk 是另一个维度：前者每一步都要推理，后者一次推理给出一串。
+    本教程用“较低频的智能模块 + 较高频的控制模块”这条典型分层来解释，但它不是唯一方案。
+  </figcaption>
+</figure>
+
+<style>
+  .action-ladder {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+  .action-ladder svg {
+    display: block;
+    margin: 0 auto;
+    max-width: 700px;
+    width: 100%;
+    height: auto;
+  }
+  .arl-arrow-head {
+    fill: var(--sl-color-gray-3);
+  }
+  .arl-axis {
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 1.5;
+  }
+  .arl-axis-label {
+    fill: var(--sl-color-gray-2);
+    font-size: 11.5px;
+  }
+  .arl-rung-box {
+    fill: var(--sl-color-bg);
+    stroke: var(--sl-color-accent);
+    stroke-width: 1.6;
+  }
+  .arl-rung-title {
+    fill: var(--sl-color-text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .arl-rung-eg {
+    fill: var(--sl-color-gray-2);
+    font-size: 11.5px;
+  }
+  .arl-rung-note {
+    fill: var(--sl-color-gray-2);
+    font-size: 11.5px;
+  }
+  .arl-strip-title {
+    fill: var(--sl-color-text);
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+  .arl-strip-label {
+    fill: var(--sl-color-text);
+    font-size: 12px;
+  }
+  .arl-strip-note {
+    fill: var(--sl-color-gray-2);
+    font-size: 11.5px;
+  }
+  .arl-cell-single rect {
+    fill: none;
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 1.4;
+  }
+  .arl-cell-single text {
+    fill: var(--sl-color-gray-2);
+    font-size: 11px;
+  }
+  .arl-cell-chunk {
+    fill: color-mix(in srgb, var(--sl-color-accent) 18%, transparent);
+    stroke: var(--sl-color-accent);
+    stroke-width: 1.4;
+  }
+  .arl-bracket {
+    fill: none;
+    stroke: var(--sl-color-accent);
+    stroke-width: 1.4;
+  }
+  .arl-bracket-label {
+    fill: var(--sl-color-accent-high);
+    font-size: 11.5px;
+  }
+  .action-ladder figcaption {
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-2);
+    text-align: left;
+  }
+</style>

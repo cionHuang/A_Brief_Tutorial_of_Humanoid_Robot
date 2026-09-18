@@ -1,0 +1,138 @@
+---
+/**
+ * 在线运行闭环 / 离线开发闭环：两个环分别在机器人身上和开发机上跑，
+ * 只在“部署”和“日志回流”两处相接。纯静态 SVG，无 JS。
+ *
+ * 使用方式（仅限 .mdx 小节）：
+ *   import TwoLoopsDiagram from '../../../components/TwoLoopsDiagram.astro';
+ *   <TwoLoopsDiagram />
+ */
+
+const online = ['传感器', '状态估计与感知', '规划与策略', '安全过滤', '控制', '驱动与电机'];
+const offline = ['遥操作与仿真', '数据集', '训练', '评测', '部署'];
+const bw = 88;
+const gap = 14;
+const bh = 36;
+const x0 = 46;
+const yOn = 70;
+const yOff = 214;
+const bx = (i: number) => x0 + i * (bw + gap);
+const onlineEnd = bx(online.length - 1) + bw;
+const offlineEnd = bx(offline.length - 1) + bw;
+// 回环（U 形）：从最后一个框底部回到第一个框底部
+const backPath = (lastRight: number, y: number) =>
+  `M ${lastRight} ${y + bh + 6} V ${y + bh + 30} H ${x0 + bw / 2} V ${y + bh + 10}`;
+---
+
+<figure class="two-loops">
+  <svg viewBox="0 0 700 330" role="img" aria-label="在线运行闭环与离线开发闭环示意图：左环在机器人身上跑，右环在开发机上跑，两环通过部署与日志回流相接">
+    <defs>
+      <marker id="tl-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" class="tl-arrow-head"></path>
+      </marker>
+    </defs>
+
+    <text x={x0} y={yOn - 26} class="tl-title">在线运行闭环（跑在机器人身上）</text>
+    {online.map((label, i) => (
+      <g>
+        <rect x={bx(i)} y={yOn} width={bw} height={bh} rx="7" class="tl-online-box"></rect>
+        <text x={bx(i) + bw / 2} y={yOn + bh / 2 + 4} text-anchor="middle" class="tl-box-label">{label}</text>
+        {i < online.length - 1 ? (
+          <path d={`M ${bx(i) + bw + 2} ${yOn + bh / 2} H ${bx(i + 1) - 2}`} class="tl-link" marker-end="url(#tl-arrow)"></path>
+        ) : null}
+      </g>
+    ))}
+    <path d={backPath(onlineEnd, yOn)} class="tl-back" marker-end="url(#tl-arrow)"></path>
+    <text x="272" y={yOn + bh + 48} text-anchor="middle" class="tl-note">每一层各跑一圈：0.1 Hz 到 1 kHz 以上</text>
+
+    <text x={x0} y={yOff - 26} class="tl-title">离线开发闭环（跑在开发机上）</text>
+    {offline.map((label, i) => (
+      <g>
+        <rect x={bx(i)} y={yOff} width={bw} height={bh} rx="7" class="tl-offline-box"></rect>
+        <text x={bx(i) + bw / 2} y={yOff + bh / 2 + 4} text-anchor="middle" class="tl-box-label">{label}</text>
+        {i < offline.length - 1 ? (
+          <path d={`M ${bx(i) + bw + 2} ${yOff + bh / 2} H ${bx(i + 1) - 2}`} class="tl-link" marker-end="url(#tl-arrow)"></path>
+        ) : null}
+      </g>
+    ))}
+    <path d={backPath(offlineEnd, yOff)} class="tl-back" marker-end="url(#tl-arrow)"></path>
+    <text x={(x0 + bw / 2 + offlineEnd) / 2} y={yOff + bh + 48} text-anchor="middle" class="tl-note">一轮几天到几周：采数据、训模型、验完再上线</text>
+
+    <path d={`M ${bx(4) + bw / 2} ${yOff - 4} V ${yOn + bh + 4}`} class="tl-cross" marker-end="url(#tl-arrow)"></path>
+    <text x={bx(4) + bw / 2 + 8} y={(yOn + bh + yOff) / 2 - 4} class="tl-cross-label">部署上线</text>
+    <path d={`M ${x0 + bw / 2} ${yOn + bh + 4} V ${yOff - 4}`} class="tl-cross" marker-end="url(#tl-arrow)"></path>
+    <text x={x0 + bw / 2 - 8} y={(yOn + bh + yOff) / 2 - 4} text-anchor="end" class="tl-cross-label">真机日志回流</text>
+  </svg>
+  <figcaption>
+    两个环不是一回事：在线运行闭环跑在机器人身上，每一层各跑一圈；离线开发闭环跑在开发机上，一轮几天到几周。
+    它们只在两处相接——训练好的模型<b>部署上线</b>进入在线环，真机日志<b>回流</b>变成下一轮训练的数据。
+    常规部署以推理为主，但在线学习、在线适应和真机强化学习也是存在的模式。
+  </figcaption>
+</figure>
+
+<style>
+  .two-loops {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+  .two-loops svg {
+    display: block;
+    margin: 0 auto;
+    max-width: 700px;
+    width: 100%;
+    height: auto;
+  }
+  .tl-arrow-head {
+    fill: var(--sl-color-gray-3);
+  }
+  .tl-title {
+    fill: var(--sl-color-text);
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+  .tl-online-box {
+    fill: color-mix(in srgb, var(--sl-color-accent) 12%, transparent);
+    stroke: var(--sl-color-accent);
+    stroke-width: 1.5;
+  }
+  .tl-offline-box {
+    fill: var(--sl-color-bg);
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 3;
+  }
+  .tl-box-label {
+    fill: var(--sl-color-text);
+    font-size: 11.5px;
+  }
+  .tl-link {
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 1.5;
+    fill: none;
+  }
+  .tl-back {
+    stroke: var(--sl-color-accent);
+    stroke-width: 1.5;
+    fill: none;
+  }
+  .tl-note {
+    fill: var(--sl-color-gray-2);
+    font-size: 11.5px;
+  }
+  .tl-cross {
+    stroke: var(--sl-color-gray-2);
+    stroke-width: 1.4;
+    stroke-dasharray: 5 4;
+    fill: none;
+  }
+  .tl-cross-label {
+    fill: var(--sl-color-gray-2);
+    font-size: 11.5px;
+  }
+  .two-loops figcaption {
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-2);
+    text-align: left;
+  }
+</style>

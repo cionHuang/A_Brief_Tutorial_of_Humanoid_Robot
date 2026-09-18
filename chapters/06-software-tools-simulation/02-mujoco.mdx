@@ -23,7 +23,7 @@ import MjcfFieldSnippet from '../../../components/MjcfFieldSnippet.astro';
 
 ## MuJoCo 是什么、为什么用它
 
-MuJoCo（Multi-Joint dynamics with Contact）是面向接触富集任务（contact-rich tasks）的物理仿真器，也是腿式机器人策略做 Sim2Sim 验证的常用环境。[1] 它和一般刚体仿真器最不一样的地方是接触模型：MuJoCo 用软接触（soft contact），把碰撞当成可穿透的弹簧—阻尼系统求解，而不是把接触当成不可违背的硬约束；足底、手指这类持续接触的场景因此数值上更稳。它只用 CPU 就能跑，单次仿真的确定性与可复现性好，开源并由 Google DeepMind 维护。[1][2]
+MuJoCo（Multi-Joint dynamics with Contact）是面向“接触富集”任务（contact-rich tasks：成败主要取决于接触力的一类任务，比如抓取、足底支撑）的物理仿真器，也是腿式机器人策略做 Sim2Sim 验证的常用环境。[1] 它和一般刚体仿真器最不一样的地方是接触模型：MuJoCo 用软接触（soft contact），把碰撞当成可穿透的弹簧—阻尼系统求解，而不是把接触当成不可违背的硬约束；足底、手指这类持续接触的场景因此数值上更稳。它只用 CPU 就能跑，单次仿真的确定性与可复现性好，开源并由 Google DeepMind 维护。[1][2]
 
 在工具链里它只占一个位置，别的仿真器各管一段：Isaac Sim / Isaac Lab 擅长 GPU 大规模并行训练与视觉在环（[6.3 节](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx)），Gazebo 擅长 ROS 2 集成与场景搭建（[6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md)），MuJoCo 擅长精确接触，以及把训练出来的策略做 Sim2Sim 验证。换句话说，在本教程这条链路里，它主要不是训练环境，而是“把接触算准、把策略验一遍”的地方（MuJoCo 本身也能用于训练，MJX 那条路线就支持 GPU 并行）。
 
@@ -35,8 +35,6 @@ MuJoCo（Multi-Joint dynamics with Contact）是面向接触富集任务（conta
 - 做不需要 GPU 的控制实验（本节最后一节）。
 
 **边界：高保真视觉渲染和上万环境并行训练不是它的强项。** 需要照片级画面或上千至上万个环境同时采样，应该走 [6.3 节](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx)的 GPU 仿真路线；MuJoCo 的价值在接触数值精确、单次运行确定，而不在吞吐和画面。
-
-> **一句话听懂**：MuJoCo 是 CPU 上就能跑的接触仿真器，强在精确接触、确定性与 Sim2Sim 验证；大规模并行训练和视觉在环交给 [6.3 节](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx)，ROS 2 场景交给 [6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md)。
 
 ## 先看全局：模型由哪几部分组成、最短跑通路径
 
@@ -51,7 +49,7 @@ MuJoCo（Multi-Joint dynamics with Contact）是面向接触富集任务（conta
 最短跑通路径只有四步，顺序不能反：
 
 1. **选模型、改 `include`**：当前 `scene.xml` 里写的是 `include file="g1_12dof.xml"`，而本手册只保留了 `g1_29dof` 系列三个变体，所以第一步就是把它改成目标模型文件名；
-2. **加载后核对 `nq`/`nv`/`nu`**：这三个是模型的维度（位置、速度与执行器的个数）。以 `g1_29dof.xml` 为例是位置 7+29、速度 6+29、执行器 29；换变体后按同一通式复核：位置 = 7 + 关节数、速度 = 6 + 关节数、执行器 = 关节数（锁腰变体 34/33/27，带手变体 50/49/43）；
+2. **加载后核对 `nq`/`nv`/`nu`**：这三个是模型的维度（位置、速度与执行器的个数）。以 `g1_29dof.xml` 为例是位置 7+29、速度 6+29、执行器 29；换变体后可以按同一个通式快速复核（只适用于浮动基座 + 单自由度关节的模型）：位置 = 7 + 关节数、速度 = 6 + 关节数、执行器 = 关节数（锁腰变体 34/33/27，带手变体 50/49/43）；球关节、固定基座或闭链会让 `nq` 偏离这个通式，这时以模型文件为准；
 3. **用 `mj_step` 推进**：按固定仿真步长一步步向前积分；
 4. **读 `sensordata`**：从 `mj_data` 里取传感器读数，和期望行为对照。
 
@@ -60,8 +58,6 @@ MuJoCo（Multi-Joint dynamics with Contact）是面向接触富集任务（conta
 <MjcfFieldSnippet variant="compiler" />
 
 后面几节就挂在这条链上：MJCF 的建模元素决定模型怎么被描述，Actuator 决定 `ctrl` 怎么被解释，场景与加载决定它能不能跑起来，加载检查清单决定跑得对不对，控制实验是拿它来做什么。
-
-> **一句话听懂**：一次仿真只有三件东西——机器人 MJCF、场景文件 `scene.xml` 和 `meshes/`；最短链路是选模型并改 `include`、核对 `nq/nv/nu`、`mj_step` 推进、读 `sensordata`，后面每一节都是这条链上的一段。
 
 ## MJCF 的建模元素
 
@@ -77,7 +73,7 @@ Geom 分 visual 和 collision 两类用途，碰撞几何的形状和摩擦参�
 
 ### Actuator：ctrl 的语义由执行器类型决定
 
-开头“发位置指令却抽搐”的根因在这里。`<motor>` 型执行器的 `ctrl` 直接是广义力（对转动关节即力矩）；`<position>` 型执行器内部自带一个 PD，把 `ctrl` 解释为目标位置。（`ctrl` 是控制输入，每个执行器一路。）`g1_29dof.xml` 定义了 29 个 `<motor>`，每个绑定同名关节，例如 `<motor name="left_hip_pitch_joint" joint="left_hip_pitch_joint"/>`——对 G1 官方 MJCF，`ctrl` 就是关节力矩。[2]
+开头“发位置指令却抽搐”的根因在这里。`<motor>` 型执行器的 `ctrl` 直接是广义力（作用在某个自由度方向上的力或力矩；对转动关节就是力矩）；`<position>` 型执行器内部自带一个 PD，把 `ctrl` 解释为目标位置。（`ctrl` 是控制输入，每个执行器一路。）`g1_29dof.xml` 定义了 29 个 `<motor>`，每个绑定同名关节，例如 `<motor name="left_hip_pitch_joint" joint="left_hip_pitch_joint"/>`——对 G1 官方 MJCF，`ctrl` 就是关节力矩。[2]
 
 <MjcfFieldSnippet variant="actuator" />
 
@@ -95,8 +91,6 @@ MJCF 的 `<sensor>` 挂靠在 site 上（site 是模型上不带质量、只用�
 
 <MjcfFieldSnippet variant="sensor" />
 
-> **一句话听懂**：MJCF 的传感器挂在 site 上，`noise` 和 `cutoff` 决定读数离真实传感器有多近；[5.5 节](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx)里“传感器差异”的域随机化，调的就是这组参数。
-
 ## 加载检查清单与常见错误
 
 模型能不能跑起来，先过一遍这张清单：
@@ -104,7 +98,7 @@ MJCF 的 `<sensor>` 挂靠在 site 上（site 是模型上不带质量、只用�
 - **`include` 指向的模型存在**：当前 `scene.xml` 写的是 `include file="g1_12dof.xml"`，本手册只保留 `g1_29dof`、`g1_29dof_lock_waist`、`g1_29dof_with_hand` 三个变体，使用前必须改成目标模型文件名；
 - **网格路径对得上**：`<compiler angle="radian" meshdir="meshes"/>` 里的 `meshdir` 按当前 XML 所在目录解析，移动 `scene.xml` 或模型文件时要保持 `meshes/` 的相对位置不变，否则加载报找不到 STL；
 - **关节数与命名**：与预期模型一致；
-- **`nq/nv/nu` 维度**：以 `g1_29dof.xml` 为例应为位置 7+29、速度 6+29、执行器 29（锁腰 34/33/27、带手 50/49/43，通式见前文）；
+- **`nq/nv/nu` 维度**：对照前文“最短跑通路径”里那组数字逐项打勾即可（通式与变体取值见前文）；
 - **IMU 位置**：`imu_in_pelvis` 与 `imu_in_torso` 两个 site 存在且位置合理；
 - **碰撞 geom 是否齐全**：足底、膝、肘这些会接触的地方不能只有 visual geom；
 - **足底初始是否与地面轻微穿透**：穿透会在第一步触发接触力冲击。
@@ -122,6 +116,8 @@ MJCF 的 `<sensor>` 挂靠在 site 上（site 是模型上不带质量、只用�
 - **数据记录**：每步从 `mj_data` 取 `qpos`、`qvel`、`sensordata`、接触力和 `ctrl`，带仿真时间戳存盘——格式纪律与 [6.1 节](../06-software-tools-simulation/01-ros2-software-architecture.md) rosbag2 相同，先记录再分析。[3]
 
 > **一句话听懂**：前面几章的概念都能在这条最短链上变成实验——位置/力矩控制、踝摆动、重力补偿、接触力观察和数据记录，不需要 GPU，一台笔记本就能跑。
+
+> **到这里，你应该已经能听懂**：“`ctrl` 给的是位置还是力矩，完全由执行器类型决定”——以及为什么 G1 官方 MJCF 的 29 个 `<motor>` 要你自己在循环外写 PD、加载失败先查 `meshdir`、足底穿透先查 `solref`/`solimp`，而仿真 IMU 的读数不等于真机指标。
 
 ## 参考资料
 
