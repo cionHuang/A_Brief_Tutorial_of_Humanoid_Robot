@@ -63,7 +63,7 @@
 | [3.5 MCU、实时系统与嵌入式软件](../03-electrical-embedded/05-mcu-realtime-embedded-software.mdx) | 15 分钟 | [3.4](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) |
 | [3.6 电气安全与系统保护](../03-electrical-embedded/06-electrical-safety-and-protection.mdx) | 10 分钟 | [3.1](../03-electrical-embedded/01-power-system.mdx)、[3.2](../03-electrical-embedded/02-motors-drivers-servo-control.mdx) |
 
-## 第 4 章 小脑：模型、状态估计与实时运控（约 2 小时 40 分钟，全书核心）
+## 第 4 章 小脑：模型、状态估计与实时运控（约 2 小时 40 分钟）
 
 | 小节 | 预计时间 | 建议先读 |
 | --- | --- | --- |
