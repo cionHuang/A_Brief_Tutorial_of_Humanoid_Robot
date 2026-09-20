@@ -127,7 +127,7 @@ $$
 | VLA（5.6） | 任务层到运动层 | 多模态大模型 + 动作头 | 负责任务理解，不做毫秒级闭环 |
 | WAM（5.7） | 任务层到运动层（预测分支） | 联合预测世界变化与动作（动作条件） | 预测结果不等于物理可行 |
 
-上表每一项在 G1 上都有落点：策略训练用 `unitree_rl_gym` 的 G1 速度任务，模仿学习用带手 G1 的遥操作数据，感知与规划落到 G1 的相机、IMU 与关节接口，VLA 与 WAM 的数据与部署链路见 5.6、5.7 与第 6 章的 LeRobot、Isaac Lab 两节。
+上表每一项在 G1 上都有落点：策略训练用 `unitree_rl_gym` 的 G1 速度任务，模仿学习用带手 G1 的遥操作数据，感知与规划落到 G1 的相机、IMU 与关节接口，VLA 与 WAM 的数据与部署链路见 [5.6](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx)、[5.7](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md) 与[第 6 章](../06-software-tools-simulation/01-ros2-software-architecture.md)的 LeRobot、Isaac Lab 两节。
 
 
 ## 层级与方法类型是两个维度

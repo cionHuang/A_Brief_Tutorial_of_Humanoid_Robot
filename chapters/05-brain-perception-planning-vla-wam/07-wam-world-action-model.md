@@ -103,7 +103,7 @@ DECOWAM 这类工作专门把相机自我运动、底盘运动和手臂动作拆
 
 WAM 的预测仍然是学习出来的近似，不是物理定律本身。它会遇到分布外场景、长期滚动误差、接触细节错误和训练数据偏差。预测画面看起来合理，不代表对应力矩、摩擦和接触力一定真实。
 
-因此 WAM 的定位仍在第 5 章讨论的高层（俗称“大脑”，正式分层见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)）：它可以预测、评估和生成动作意图，但不能绕过第 4 章的状态估计、全身控制、限幅和保护链路。输出怎么接进控制栈、由谁兜底，见 [5.6 节](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx)与 [5.5 节](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx)的部署纪律。
+因此 WAM 的定位仍在第 5 章讨论的高层（俗称“大脑”，正式分层见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)）：它可以预测、评估和生成动作意图，但不能绕过[第 4 章](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx)的状态估计、全身控制、限幅和保护链路。输出怎么接进控制栈、由谁兜底，见 [5.6 节](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx)与 [5.5 节](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx)的部署纪律。
 
 > **一句话听懂**：预测得像不等于物理上可行：WAM 给的是意图与可能性，力矩、摩擦和接触力仍然要由模型驱动的底层去保证。
 
@@ -121,7 +121,7 @@ WAM 的预测仍然是学习出来的近似，不是物理定律本身。它会�
 
 回到开头：如果模型能先预测“这样推下去下一帧会看到什么”，它确实有机会在箱子卡死之前换一条路——但 WAM 自己也会预测错，预测得像不等于物理可行。这一条，也正是判断一个 WAM 能不能上机时的第一项检查。
 
-第 5 章讲的是“想清楚该做什么”，但模型和策略最终都要落进工程：要在仿真里试，要在真机上跑，要能被几个人一起改，还要能复现。第 6 章要回答的问题是：**这些东西用什么工具开发、怎么验证，才不会出现“在我电脑上是好的”这种事故**？
+第 5 章讲的是“想清楚该做什么”，但模型和策略最终都要落进工程：要在仿真里试，要在真机上跑，要能被几个人一起改，还要能复现。[第 6 章](../06-software-tools-simulation/01-ros2-software-architecture.md)要回答的问题是：**这些东西用什么工具开发、怎么验证，才不会出现“在我电脑上是好的”这种事故**？
 
 > **到这里，你应该已经能听懂**：有人说“WAM 先在脑子里预演一遍再动手”，你能分清它和 VLA 的分工——一个负责理解任务，一个负责预测后果；也知道像素级、表征级、状态级三种预演各自贵在哪、能用在哪，以及人形机器人上为什么要把相机自身的运动和身体的动作分开算。
 

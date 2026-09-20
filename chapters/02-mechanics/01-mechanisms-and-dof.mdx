@@ -19,7 +19,7 @@ import G1ArmWorkspaceDemo from '../../../components/G1ArmWorkspaceDemo.astro';
 
 > 运动学计算的前提，是模型里的连杆长度、关节轴线（Joint Axis）、零位和限位（Joint Limit）与真实机构一致。任何一项对不上，同一组指令在仿真和实机上就可能变成两个动作。
 
-至于调试中更吓人的现象，比如换个零件后机器人开始抖，那是 [2.2 节](../02-mechanics/02-links-structure-and-materials.mdx)刚柔性和第 4 章控制要回答的问题，本节先把“模型与实物一致”这件事讲清楚。
+至于调试中更吓人的现象，比如换个零件后机器人开始抖，那是 [2.2 节](../02-mechanics/02-links-structure-and-materials.mdx)刚柔性和[第 4 章](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx)控制要回答的问题，本节先把“模型与实物一致”这件事讲清楚。
 
 上一章把整机按功能分了层，本章拆开最下面那层（按部位叫“机械与本体层”，按功能叫“机械执行层”）：机械与本体。顺序是：机构怎么动（2.1）→ 结构怎么受力（2.2）→ 靠什么传动（2.3）→ 与地面怎么接触（2.4）→ 最后把这些写成机械与算法共用的描述文件（2.5）。
 
@@ -78,7 +78,7 @@ import G1ArmWorkspaceDemo from '../../../components/G1ArmWorkspaceDemo.astro';
 
 把曲柄拖到与连杆接近共线的位置——演示中红色标出的构型——就是死点（Dead Center）。此时输入继续转动，输出却几乎不动；越过死点，输出方向还会反转（拖过死点就能看到摇杆掉头）。
 
-死点附近一段“输出响应很差、难以控制”的输入区间，工程上称为死区（Dead Zone）。在演示里两者各有对应画面。死点是曲柄与连杆共线的那个构型（红色瞬间）。死区是曲线上斜率接近零的那一段输入区间（淡色带）。严格说两者不要混用，这里的“死区”是机构学概念，与 [3.2 节](../03-electrical-embedded/02-motors-drivers-servo-control.mdx)电气里的“死区时间”不是一回事（见附录 A）。
+死点附近一段“输出响应很差、难以控制”的输入区间，工程上称为死区（Dead Zone）。在演示里两者各有对应画面。死点是曲柄与连杆共线的那个构型（红色瞬间）。死区是曲线上斜率接近零的那一段输入区间（淡色带）。严格说两者不要混用，这里的“死区”是机构学概念，与 [3.2 节](../03-electrical-embedded/02-motors-drivers-servo-control.mdx)电气里的“死区时间”不是一回事（见[附录 A](../07-appendix/01-terms.md)）。
 
 > **一句话听懂**：死点就是曲柄和连杆排成一条直线的那个姿势，这时输入端继续转，输出端却几乎不动。死区是它附近一段“怎么使劲都不灵”的区间，一个是瞬间，一个是一段范围。
 
@@ -111,7 +111,7 @@ G1 公开模型没有包含踝部的连杆几何，本书不展开它的内部�
 
 ### 两种驱动模式怎么下发（PR 与 AB）
 
-*（进阶／SDK 细节：第一次读可以跳过，不影响主线；要看完整字段时翻 [3.2 节](../03-electrical-embedded/02-motors-drivers-servo-control.mdx)与附录 D 的接口表就够了。判断标准见[在校学生阅读路线](../00-reading-guides/02-student.md)的“先读什么、什么可以以后再看”。）*
+*（进阶／SDK 细节：第一次读可以跳过，不影响主线；要看完整字段时翻 [3.2 节](../03-electrical-embedded/02-motors-drivers-servo-control.mdx)与[附录 D](../07-appendix/04-messages.md)的接口表就够了。判断标准见[在校学生阅读路线](../00-reading-guides/02-student.md)的“先读什么、什么可以以后再看”。）*
 
 看完演示，读者常问的是“那指令到底怎么写”。以 Unitree SDK2 的 G1 低层接口为例，踝部有两种驱动模式，切换的是**整帧命令的模式位**，不是单个关节消息里的字段：
 
@@ -121,7 +121,7 @@ G1 公开模型没有包含踝部的连杆几何，本书不展开它的内部�
 - 索引有别名：`LeftAnklePitch ≡ LeftAnkleB = 4`、`LeftAnkleRoll ≡ LeftAnkleA = 5`（右腿为 10、11）——同一个电机在两套命名下有两个名字，照抄例程前先确认当前模式用的是哪一套；
 - 官方 URDF 给出的 pitch/roll 限位与电机自身行程是两套约束（演示中的电机行程取自第三方简化模型），必须同时满足。
 
-字段定义见 [3.2 节](../03-electrical-embedded/02-motors-drivers-servo-control.mdx)，消息全貌见附录 D。
+字段定义见 [3.2 节](../03-electrical-embedded/02-motors-drivers-servo-control.mdx)，消息全貌见[附录 D](../07-appendix/04-messages.md)。
 
 
 ## 怎么数清一台机器人的自由度
