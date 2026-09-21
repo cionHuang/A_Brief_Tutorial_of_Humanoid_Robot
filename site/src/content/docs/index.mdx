@@ -14,7 +14,7 @@ hero:
       icon: external
 ---
 
-import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+import { Aside, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
 ## 这本书解决什么问题
 
@@ -60,3 +60,12 @@ import { CardGrid, LinkCard } from '@astrojs/starlight/components';
 ## 贯穿案例：Unitree G1
 
 全书用宇树 G1 人形机器人作为唯一贯穿案例。无手、锁腰、带手三个模型变体按场景切换，所有模型文件、SDK 消息字段和关节参数都来自宇树官方开源仓库，可以逐个核对来源。
+## 关于仓库与反馈
+
+<Aside type="tip" title="如果它帮到你了">
+整本书的正文、配图和交互演示都在 [GitHub 仓库](https://github.com/cionHuang/A_Brief_Tutorial_of_Humanoid_Robot) 里，可以按节核对，也可以离线自建。
+如果它帮你把术语串起来了，欢迎给仓库点一个 **Star**——这能让更多在找同类材料的人看到它。
+发现错误、想补充案例，或者觉得哪一节还是没说清，直接开 Issue 或 PR 就行。
+</Aside>
+
+仓库里还有生成用的脚本与校验工具：章节源文件在 `chapters/`，站点在 `site/`，`npm run build` 即可本地构建。
