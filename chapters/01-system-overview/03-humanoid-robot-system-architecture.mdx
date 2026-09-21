@@ -3,6 +3,7 @@
 import SystemMap from '../../../components/SystemMap.astro';
 import G1CommandJourney from '../../../components/G1CommandJourney.astro';
 import TwoLoopsDiagram from '../../../components/TwoLoopsDiagram.astro';
+import SectionQA from '../../../components/SectionQA.astro';
 
 ## 从一次演示说起
 
@@ -15,6 +16,8 @@ import TwoLoopsDiagram from '../../../components/TwoLoopsDiagram.astro';
 你可能答得出“先感知、再决策、再控制”。可再往下问就会卡住：谁负责把“拿红杯子”拆成“先走过去、再伸手”？谁决定步子往哪儿落？谁保证它不会抓空，抓空了又怎么办？
 
 上一节把它拆开看了一遍——这一节回答这些部件**怎么一起工作**。
+
+<SectionQA id="1.3" mode="ask" />
 
 ## 术语：三个词
 
@@ -138,6 +141,8 @@ import TwoLoopsDiagram from '../../../components/TwoLoopsDiagram.astro';
 > **在整机里的位置**：这一节不新增模块，它给的是整条链本身——上游是用户任务，下游是传感器反馈；后面每一节都会回到这张图。
 
 这张图说的是整机怎么运转，但每一层都还没打开看。[第 2 章](../02-mechanics/01-mechanisms-and-dof.mdx)要回答的问题是：**最底下那一层——机械执行层——在真机上到底是什么**？我们从关节和自由度开始，一路看到足端和地面之间那几平方厘米。
+
+<SectionQA id="1.3" mode="answer" />
 
 > **到这里，你应该已经能听懂**：再有人说“高频控制不会等低频推理”，你知道背后是好几种「闭环频率」在跑；也分得清「横向基础设施」不在链上、「在线运行闭环」和「离线开发闭环」不是一回事，而 `LowCmd`、`LowState` 就是上层算法和真实电机之间传的那两条消息。
 

@@ -1,6 +1,7 @@
 # 5.3 运动规划：大脑与小脑之间的桥
 
 import MpcRecedingHorizonDemo from '../../../components/MpcRecedingHorizonDemo.astro';
+import SectionQA from '../../../components/SectionQA.astro';
 
 ## 先看一个现场问题
 
@@ -13,6 +14,8 @@ import MpcRecedingHorizonDemo from '../../../components/MpcRecedingHorizonDemo.a
 这三个现象在下面各有各的位置。末端高频抖动出在逆解分支跳变（关节空间与笛卡尔空间）。肘部擦过躯干属于自碰撞没检查到（碰撞）。迈步中途急停重启则是轨迹刷新没做衔接（轨迹刷新与失败降级）。
 
 > **在整机里的位置**：这一节属于“运动与规划层”；上游是子任务与地图，下游是实时控制层的轨迹与落脚点。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
+
+<SectionQA id="5.3" mode="ask" />
 
 ## 规划什么、分几层、多久更新一次
 
@@ -147,6 +150,8 @@ $$
 规划失败（无解、超时、地图缺失）必须有明确的降级（Degradation）策略：保持当前轨迹走完、减速到停、退回上一安全姿态，或把控制权交还高层/操作员。最差的实现是“规划器挂了，控制器执行最后收到的半条轨迹到底”。降级策略与 [3.6 节](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)的保护链路是同一张安全网的上下两层。
 
 > **一句话听懂**：规划器是会被打断的（新目标、新障碍、自己超时），所以刷新要“从当前执行点接上”，失败要有明确的退路——没有退路的规划器比没有规划器更危险。
+
+<SectionQA id="5.3" mode="answer" />
 
 > **到这里，你应该已经能听懂**：再听到“每一个点都合法，为什么连起来就不能动”，你会先分清关节空间与笛卡尔空间，再查 IK 解分支与自碰撞；也知道规划是四层里节奏不同的一层，双足还多了一个离散的落脚点决策，而安全距离不是保守，是留给误差的余量。
 

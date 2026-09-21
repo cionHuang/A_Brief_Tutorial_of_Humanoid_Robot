@@ -2,6 +2,7 @@
 
 import MjcfFieldSnippet from '../../../components/MjcfFieldSnippet.astro';
 import ComplementaryFilterDemo from '../../../components/ComplementaryFilterDemo.astro';
+import SectionQA from '../../../components/SectionQA.astro';
 
 ## 传感器都在说话，但没人回答
 
@@ -19,6 +20,8 @@ IMU、编码器和足底力都在不停地发数据。可没有任何一个传�
 编码器、IMU 和足底压力各自的原理、安装标定和消息字段见 [3.3 节](../03-electrical-embedded/03-sensors-and-data-acquisition.md)；本节只处理它们进入估计器之后的问题：怎么融合、相信谁、什么时候信息不够。
 
 > **在整机里的位置**：这一节属于“实时控制层”；上游是传感器与关节状态回传，下游是平衡与全身控制。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
+
+<SectionQA id="4.4" mode="ask" />
 
 ## 先分清“测量值”和“状态”
 
@@ -176,6 +179,8 @@ $$
 这条链要串起来看：足底压力阵列只提供**局部法向**证据（哪块受力、多大），六维力传感器给的是**某个安装点**的完整力与力矩，关节电流与动力学残差给的是**关节层面**的力矩证据，要折回接触点还得经过接触雅可比（[4.3 节](../04-cerebellum-realtime-control/03-dynamics.mdx)）——三者的量程、延迟与可观测性都不同。所以接触判断不该只要“是/否”，而要给出置信度与来源：压力阵列先给候选，力/力矩或动力学残差再确认，最后才交给状态估计与控制使用。
 
 状态估计回答的是“现在是什么样”，它本身不产生任何动作。要让关节真的动起来，还得有人拿目标和当前状态的差，持续算出该给多大——以及多快给。下一节要回答的问题：**反馈到底是怎么变成输出的**？增益、前馈、补偿和阻抗，各自在解决什么问题？
+
+<SectionQA id="4.4" mode="answer" />
 
 > **到这里，你应该已经能听懂**：以后看到“Policy 输入 base velocity、gravity vector 和 joint state”，你应该知道其中很多量并不是某个传感器直接提供的——它们是估出来的，而且估得准不准取决于你信谁、什么时候信。
 

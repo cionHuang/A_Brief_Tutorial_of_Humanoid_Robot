@@ -2,6 +2,7 @@
 
 import RoboDojoLeaderboard from '../../../components/RoboDojoLeaderboard.astro';
 import ActionRepresentationLadder from '../../../components/ActionRepresentationLadder.astro';
+import SectionQA from '../../../components/SectionQA.astro';
 
 ## 先看一个现场问题
 
@@ -18,6 +19,8 @@ VLA（Vision-Language-Action）模型是一类多模态大模型：输入图像�
 > **一句话听懂**：VLA 把“看图、听指令、出动作”合进同一个模型；它给出的是意图级别的动作，不是关节级闭环。
 
 > **在整机里的位置**：这一节属于“跨任务与智能层、行为与技能层”；上游是语言指令与感知结果，下游是实时控制层。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
+
+<SectionQA id="5.6" mode="ask" />
 
 ## VLA 的输入与输出
 
@@ -150,6 +153,8 @@ VLA 的推理频率通常在 1–10 Hz 量级，远低于 [5.3 节](../05-brain-
 <RoboDojoLeaderboard />
 
 > **一句话听懂**：判断 VLA 别只看演示视频——把指令里的一个词换掉，看动作跟不跟着变；不变，说明它没在听。
+
+<SectionQA id="5.6" mode="answer" />
 
 > **到这里，你应该已经能听懂**：有人说“这个 VLA 每次输出 16 步的 action chunk，推理 5 Hz”——你应该知道这说的是动作表示和时间粒度，而不是它在直接控制机器人；关节级的稳定性仍然由下面几层负责。
 

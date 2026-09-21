@@ -1,0 +1,93 @@
+---
+/**
+ * 每节的「带着问题读 / 参考答案」。
+ * 问题视角由导读里的阅读路线决定：某一节被哪条路线收录，就给哪类读者提问
+ * （数据见 site/src/data/section-qa.json，改导读时应同步核对）。
+ *
+ * 用法（仅限 .mdx 小节）：
+ *   import SectionQA from '../../../components/SectionQA.astro';
+ *   <SectionQA id="4.4" mode="ask" />      节首：现场问题之后、第一个正文小标题之前
+ *   <SectionQA id="4.4" mode="answer" />   节尾：能力解锁之前
+ */
+import qaMap from '../data/section-qa.json';
+
+const { id, mode = 'ask' } = Astro.props;
+const items = qaMap[id] ?? [];
+const base = import.meta.env.BASE_URL;
+const mapUrl = base + '01-system-overview/03-humanoid-robot-system-architecture/';
+---
+
+{items.length === 0 ? null : mode === 'ask' ? (
+  <aside class="section-qa section-qa-ask">
+    <p class="qa-title">带着这几个问题读</p>
+    <ul>
+      {items.map((it) => (
+        <li><span class="qa-role">{it.role}</span>{it.q}</li>
+      ))}
+    </ul>
+    <p class="qa-hint">读完回到本节末尾，对照参考答案看看自己答得怎么样。</p>
+  </aside>
+) : (
+  <aside class="section-qa section-qa-answer">
+    <p class="qa-title">参考答案<span class="qa-sub">（先自己答一遍，再点开对照）</span></p>
+    {items.map((it) => (
+      <details>
+        <summary><span class="qa-role">{it.role}</span>{it.q}</summary>
+        <p>{it.a}</p>
+      </details>
+    ))}
+    <p class="qa-hint">三条都没把握？回到 <a href={mapUrl}>1.3 节</a>那张总图，看看这一节落在哪一层、上下游是谁。答案只是一种说法，你自己的表述能自洽就够了。</p>
+  </aside>
+)}
+
+<style>
+  .section-qa {
+    margin: 1.5rem 0;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-left: 3px solid var(--sl-color-accent);
+    border-radius: 6px;
+    background: var(--sl-color-bg-nav);
+  }
+  .section-qa .qa-title {
+    margin: 0 0 0.5rem;
+    font-weight: 600;
+  }
+  .section-qa .qa-sub {
+    font-weight: 400;
+    color: var(--sl-color-gray-2);
+    font-size: 0.875rem;
+  }
+  .section-qa ul {
+    margin: 0;
+    padding-left: 1.1rem;
+  }
+  .section-qa li {
+    margin: 0.3rem 0;
+  }
+  .section-qa .qa-role {
+    display: inline-block;
+    margin-right: 0.4rem;
+    padding: 0 0.35rem;
+    border-radius: 4px;
+    background: var(--sl-color-accent-low);
+    color: var(--sl-color-accent-high);
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+  .section-qa details {
+    margin: 0.4rem 0;
+  }
+  .section-qa summary {
+    cursor: pointer;
+  }
+  .section-qa details p {
+    margin: 0.4rem 0 0.6rem;
+    color: var(--sl-color-gray-2);
+  }
+  .section-qa .qa-hint {
+    margin: 0.6rem 0 0;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-2);
+  }
+</style>
