@@ -188,72 +188,77 @@ async function main() {
   console.log('命中素材 ' + picks.filter(Boolean).length + ' / ' + PICKS.filter(Boolean).length);
   if (dry) { picks.forEach((p, i) => console.log('  ' + i + ' ' + (p ? p.label.slice(0, 30) : '（留白）'))); return; }
 
-  // ===== grid 布局：严格成排成列、不重叠、不旋转；画布更大，允许复用素材 =====
+  // ===== 斜向无缝网格：格子零间距、整体旋转后中心裁切 =====
   {
-  const GW = 3600, GH = 1800;
-  const GCOLS = 8, GROWS = 5, GPAD = 44, GGAP = 26;
-  const cellW = (GW - GPAD * 2 - GGAP * (GCOLS - 1)) / GCOLS;
-  const cellH = (GH - GPAD * 2 - GGAP * (GROWS - 1)) / GROWS;
-  const inner = 16;
-  const tileW = Math.round(cellW - inner * 2), tileH = Math.round(cellH - inner * 2);
+  const CW = 3600, CH = 1800;            // 最终画布
+  const GW = 3960, GH = 2640;            // 旋转前的工作画布（足够大，保证四角不露空）
+  const GCOLS = 10, GROWS = 6;           // 60 格，格子紧贴无间距
+  const cellW = GW / GCOLS, cellH = GH / GROWS;
+  const ANGLE = -14;                     // 整体倾斜角
   const figs = picks.filter(Boolean);
-  const SIGNATURE = ['整机总图', 'G1 指令旅程图', '在线运行闭环', '动作表示粒度阶梯', '支撑多边形'];
+  const SIGNATURE = ['整机总图', 'G1 指令旅程图', '在线运行闭环', '动作表示粒度阶梯', '支撑多边形', '电源树', '互补滤波'];
   const order = [...figs];
-  for (const k of SIGNATURE) {
-    const f = figs.find((x) => x.label.includes(k));
-    if (f) order.push(f);
+  while (order.length < GCOLS * GROWS) {
+    for (const k of SIGNATURE) {
+      const f = figs.find((x) => x.label.includes(k));
+      if (f) order.push(f);
+      if (order.length >= GCOLS * GROWS) break;
+    }
   }
+  const inkRatio = async (buf) => {
+    const f = await sharp(buf).flatten({ background: '#0a0e17' }).raw().toBuffer({ resolveWithObject: true });
+    let n = 0;
+    for (let p = 0; p < f.data.length; p += f.info.channels) {
+      if (0.299 * f.data[p] + 0.587 * f.data[p + 1] + 0.114 * f.data[p + 2] > 45) n++;
+    }
+    return n / (f.info.width * f.info.height);
+  };
   const layers = [];
   for (let i = 0; i < GCOLS * GROWS; i++) {
-    const fig = order[i % order.length];
     const c = i % GCOLS, r = Math.floor(i / GCOLS);
-    const x = Math.round(GPAD + c * (cellW + GGAP) + inner);
-    const y = Math.round(GPAD + r * (cellH + GGAP) + inner);
-    const plate = await sharp({
-      create: { width: tileW + inner, height: tileH + inner, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 0.03 } },
-    }).png().toBuffer();
-    layers.push({ input: plate, left: x - inner / 2, top: y - inner / 2 });
+    const x = Math.round(c * cellW), y = Math.round(r * cellH);
+    const w = Math.round(cellW), h = Math.round(cellH);
+    // 整格底板铺满：格子之间看不出缝，图按各自比例居中放进去
+    const plate = await sharp({ create: { width: w, height: h, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 0.03 } } }).png().toBuffer();
+    layers.push({ input: plate, left: x, top: y });
     const ink = i % 6 === 0 ? '#c4b5fd' : '#c7d2e4';
-    let raw = await renderTileFitted(fig.svg, tileW, tileH, ink, '#a78bfa');
-    // 质检：内容由 JS 绘制的组件静态标记里几乎是空的，测墨迹后换成签名图
-    const inkRatio = async (buf) => {
-      const f = await sharp(buf).flatten({ background: '#0a0e17' }).raw().toBuffer({ resolveWithObject: true });
-      let n = 0;
-      for (let p = 0; p < f.data.length; p += f.info.channels) {
-        if (0.299 * f.data[p] + 0.587 * f.data[p + 1] + 0.114 * f.data[p + 2] > 45) n++;
-      }
-      return n / (f.info.width * f.info.height);
-    };
+    let raw = await renderTileFitted(order[i].svg, Math.round(w * 0.94), Math.round(h * 0.94), ink, '#a78bfa');
     if (await inkRatio(raw) < 0.012) {
       const alt = figs.find((f) => f.label.includes(SIGNATURE[i % SIGNATURE.length]));
       if (alt) {
-        const altRaw = await renderTileFitted(alt.svg, tileW, tileH, ink, '#a78bfa');
-        if (await inkRatio(altRaw) > 0.012) { console.log('  第 ' + (i + 1) + ' 格太空（' + fig.label.slice(0, 14) + '）→ 换成 ' + alt.label.slice(0, 14)); raw = altRaw; }
+        const altRaw = await renderTileFitted(alt.svg, Math.round(w * 0.94), Math.round(h * 0.94), ink, '#a78bfa');
+        if (await inkRatio(altRaw) > 0.012) { console.log('  第 ' + (i + 1) + ' 格太空（' + order[i].label.slice(0, 12) + '）→ 换成 ' + alt.label.slice(0, 12)); raw = altRaw; }
       }
     }
-    layers.push({ input: await fade(raw, 0.6), left: x, top: y });
+    layers.push({ input: await fade(raw, 0.6), left: Math.round(x + (w - w * 0.94) / 2), top: Math.round(y + (h - h * 0.94) / 2) });
   }
+  const sheet = await sharp({ create: { width: GW, height: GH, channels: 3, background: '#0a0e17' } }).composite(layers).png().toBuffer();
+  const rotated = await sharp(sheet).rotate(ANGLE, { background: '#0a0e17' }).png().toBuffer();
+  const meta = await sharp(rotated).metadata();
+  console.log('旋转后 ' + meta.width + '×' + meta.height + '，中心裁 ' + CW + '×' + CH);
+  const cropped = await sharp(rotated)
+    .extract({ left: Math.round((meta.width - CW) / 2), top: Math.round((meta.height - CH) / 2), width: CW, height: CH })
+    .png()
+    .toBuffer();
   const gvign = Buffer.from(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="' + GW + '" height="' + GH + '">'
+    '<svg xmlns="http://www.w3.org/2000/svg" width="' + CW + '" height="' + CH + '">'
     + '<defs><radialGradient id="v" cx="50%" cy="45%" r="78%">'
-    + '<stop offset="68%" stop-color="#000" stop-opacity="0"/>'
-    + '<stop offset="100%" stop-color="#000" stop-opacity="0.45"/></radialGradient></defs>'
+    + '<stop offset="66%" stop-color="#000" stop-opacity="0"/>'
+    + '<stop offset="100%" stop-color="#000" stop-opacity="0.5"/></radialGradient></defs>'
     + '<rect width="100%" height="100%" fill="url(#v)"/></svg>'
   );
-  layers.push({ input: gvign, left: 0, top: 0 });
-  const ggbuf = Buffer.alloc(GW * GH * 3);
+  const gbuf = Buffer.alloc(CW * CH * 3);
   let gs = 20240922;
-  for (let i = 0; i < ggbuf.length; i++) {
+  for (let i = 0; i < gbuf.length; i++) {
     gs = (gs * 1103515245 + 12345) & 0x7fffffff;
-    ggbuf[i] = Math.max(0, Math.min(255, Math.round(128 + (gs / 0x7fffffff - 0.5) * 2 * 16)));
+    gbuf[i] = Math.max(0, Math.min(255, Math.round(128 + (gs / 0x7fffffff - 0.5) * 2 * 11)));
   }
-  const gggrain = await sharp(ggbuf, { raw: { width: GW, height: GH, channels: 3 } }).png().toBuffer();
-  layers.push({ input: await fade(gggrain, 0.06), left: 0, top: 0, blend: 'overlay' });
-  await sharp({ create: { width: GW, height: GH, channels: 3, background: '#0a0e17' } })
-    .composite(layers)
-    .webp({ quality: 84 })
+  const grain = await sharp(gbuf, { raw: { width: CW, height: CH, channels: 3 } }).png().toBuffer();
+  await sharp(cropped)
+    .composite([{ input: gvign, left: 0, top: 0 }, { input: await fade(grain, 0.04), left: 0, top: 0, blend: 'overlay' }])
+    .webp({ quality: 80 })
     .toFile(OUT);
-  console.log('grid ' + GCOLS + '×' + GROWS + '，画布 ' + GW + '×' + GH + '，' + (fs.statSync(OUT).size / 1024).toFixed(0) + 'KB');
+  console.log('已生成 斜向无缝 ' + GCOLS + '×' + GROWS + ' 格 → ' + CW + '×' + CH + '，' + (fs.statSync(OUT).size / 1024).toFixed(0) + 'KB');
   await sharp(OUT).png({ compressionLevel: 9 }).toFile(path.join(siteRoot, 'public', 'hero-collage-preview.png'));
   return;
   }
