@@ -114,3 +114,34 @@
   height: auto;
   margin: 0.75rem auto;
 }
+
+/* ===== 首页 hero：斜向拼贴背景（构建期由 scripts/hero-collage.mjs 生成） ===== */
+.hero { position: relative; isolation: isolate; }
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background-image: url('/A_Brief_Tutorial_of_Humanoid_Robot/hero-collage.webp');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.6;
+  -webkit-mask-image: radial-gradient(130% 105% at 50% 45%, #000 42%, rgba(0, 0, 0, 0.5) 74%, transparent 100%);
+  mask-image: radial-gradient(130% 105% at 50% 45%, #000 42%, rgba(0, 0, 0, 0.5) 74%, transparent 100%);
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(95% 78% at 50% 45%, rgba(10, 14, 23, 0.52) 0%, rgba(10, 14, 23, 0.84) 68%, var(--sl-color-bg) 100%);
+}
+:root[data-theme='light'] .hero::before { opacity: 0.14; }
+:root[data-theme='light'] .hero::after {
+  background: radial-gradient(95% 78% at 50% 45%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.9) 68%, var(--sl-color-bg) 100%);
+}
+@media (max-width: 50rem) {
+  .hero::before { background-size: 210% auto; background-position: 32% 50%; opacity: 0.42; }
+}

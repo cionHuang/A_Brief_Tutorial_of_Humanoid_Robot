@@ -79,7 +79,12 @@ function collectFigures() {
       if (!vb || !/[\u4e00-\u9fff]/.test(label)) continue;
       const w = Number(vb[1]), h = Number(vb[2]);
       if (w < 200 || w > 2000 || h < 80) continue;
-      if (!items.has(label)) items.set(label, { label, w, h, svg: s });
+      if (!items.has(label)) {
+        // 分类：图形元素（曲线/几何）多的是“图纸”，文字框多的是“结构图/清单”，后者压暗
+        const shapes = (s.match(/<(path|circle|rect|line|polyline|polygon|ellipse)\b/g) || []).length;
+        const texts = (s.match(/<text\b/g) || []).length;
+        items.set(label, { label, w, h, svg: s, shapes, texts, graphic: texts <= shapes * 0.6 });
+      }
     }
   }
   return items;
@@ -197,11 +202,12 @@ async function main() {
   const ANGLE = 14;                      // 整体倾斜角（正数 = 顺时针，与上一版方向相反）
   const figs = picks.filter(Boolean);
   const SIGNATURE = ['整机总图', 'G1 指令旅程图', '在线运行闭环', '动作表示粒度阶梯', '支撑多边形', '电源树', '互补滤波'];
+  // 只把“图形类”用于复用，文字表格类每张只出现一次，避免整幅变成文档墙
+  const graphicFigs = figs.filter((f) => f.graphic);
   const order = [...figs];
   while (order.length < GCOLS * GROWS) {
-    for (const k of SIGNATURE) {
-      const f = figs.find((x) => x.label.includes(k));
-      if (f) order.push(f);
+    for (const f of graphicFigs) {
+      order.push(f);
       if (order.length >= GCOLS * GROWS) break;
     }
   }
@@ -222,6 +228,7 @@ async function main() {
     const plate = await sharp({ create: { width: w, height: h, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 0.03 } } }).png().toBuffer();
     layers.push({ input: plate, left: x, top: y });
     const ink = i % 6 === 0 ? '#c4b5fd' : '#c7d2e4';
+    const tileOpacity = order[i].graphic ? 0.68 : 0.42;   // 图纸亮、结构图/清单暗，形成主次
     let raw = await renderTileFitted(order[i].svg, Math.round(w * 0.94), Math.round(h * 0.94), ink, '#a78bfa');
     if (await inkRatio(raw) < 0.012) {
       const alt = figs.find((f) => f.label.includes(SIGNATURE[i % SIGNATURE.length]));
@@ -230,7 +237,7 @@ async function main() {
         if (await inkRatio(altRaw) > 0.012) { console.log('  第 ' + (i + 1) + ' 格太空（' + order[i].label.slice(0, 12) + '）→ 换成 ' + alt.label.slice(0, 12)); raw = altRaw; }
       }
     }
-    layers.push({ input: await fade(raw, 0.6), left: Math.round(x + (w - w * 0.94) / 2), top: Math.round(y + (h - h * 0.94) / 2) });
+    layers.push({ input: await fade(raw, tileOpacity), left: Math.round(x + (w - w * 0.94) / 2), top: Math.round(y + (h - h * 0.94) / 2) });
   }
   const sheet = await sharp({ create: { width: GW, height: GH, channels: 3, background: '#0a0e17' } }).composite(layers).png().toBuffer();
   const rotated = await sharp(sheet).rotate(ANGLE, { background: '#0a0e17' }).png().toBuffer();
@@ -260,6 +267,12 @@ async function main() {
     .toFile(OUT);
   console.log('已生成 斜向无缝 ' + GCOLS + '×' + GROWS + ' 格 → ' + CW + '×' + CH + '，' + (fs.statSync(OUT).size / 1024).toFixed(0) + 'KB');
   await sharp(OUT).png({ compressionLevel: 9 }).toFile(path.join(siteRoot, 'public', 'hero-collage-preview.png'));
+  // 构建产物里也要有一份（astro build 会清空 dist/，所以这一步必须排在它之后）
+  const distDir = path.join(siteRoot, 'dist');
+  if (fs.existsSync(distDir)) {
+    fs.copyFileSync(OUT, path.join(distDir, 'hero-collage.webp'));
+    console.log('已同步到 dist/hero-collage.webp');
+  }
   return;
   }
 
