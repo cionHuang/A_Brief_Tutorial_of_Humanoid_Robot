@@ -137,6 +137,22 @@ async function renderPhoto(file, tileW, tileH, accent) {
     .toBuffer();
 }
 
+/** grid 专用：先 trim 掉透明边距，再等比贴合，四周留 4% 余量 —— 每格都填满且不裁切内容 */
+async function renderTileFitted(svg, tileW, tileH, ink, accent) {
+  const big = await sharp(Buffer.from(blueprint(toXml(svg), ink, accent)), { density: 300 })
+    .png()
+    .toBuffer();
+  let trimmed = big;
+  try {
+    trimmed = await sharp(big).trim({ threshold: 8 }).png().toBuffer();
+  } catch {
+    trimmed = big; // 全透明或无法 trim 时退回原图
+  }
+  return sharp(trimmed)
+    .resize({ width: Math.round(tileW * 0.96), height: Math.round(tileH * 0.96), fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .png()
+    .toBuffer();
+}
 /** 把 alpha 按不透明度缩放 */
 async function fade(buf, opacity) {
   const { data, info } = await sharp(buf).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -171,6 +187,76 @@ async function main() {
   if (missing.length) console.log('未找到素材：' + missing.join('、'));
   console.log('命中素材 ' + picks.filter(Boolean).length + ' / ' + PICKS.filter(Boolean).length);
   if (dry) { picks.forEach((p, i) => console.log('  ' + i + ' ' + (p ? p.label.slice(0, 30) : '（留白）'))); return; }
+
+  // ===== grid 布局：严格成排成列、不重叠、不旋转；画布更大，允许复用素材 =====
+  {
+  const GW = 3600, GH = 1800;
+  const GCOLS = 8, GROWS = 5, GPAD = 44, GGAP = 26;
+  const cellW = (GW - GPAD * 2 - GGAP * (GCOLS - 1)) / GCOLS;
+  const cellH = (GH - GPAD * 2 - GGAP * (GROWS - 1)) / GROWS;
+  const inner = 16;
+  const tileW = Math.round(cellW - inner * 2), tileH = Math.round(cellH - inner * 2);
+  const figs = picks.filter(Boolean);
+  const SIGNATURE = ['整机总图', 'G1 指令旅程图', '在线运行闭环', '动作表示粒度阶梯', '支撑多边形'];
+  const order = [...figs];
+  for (const k of SIGNATURE) {
+    const f = figs.find((x) => x.label.includes(k));
+    if (f) order.push(f);
+  }
+  const layers = [];
+  for (let i = 0; i < GCOLS * GROWS; i++) {
+    const fig = order[i % order.length];
+    const c = i % GCOLS, r = Math.floor(i / GCOLS);
+    const x = Math.round(GPAD + c * (cellW + GGAP) + inner);
+    const y = Math.round(GPAD + r * (cellH + GGAP) + inner);
+    const plate = await sharp({
+      create: { width: tileW + inner, height: tileH + inner, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 0.03 } },
+    }).png().toBuffer();
+    layers.push({ input: plate, left: x - inner / 2, top: y - inner / 2 });
+    const ink = i % 6 === 0 ? '#c4b5fd' : '#c7d2e4';
+    let raw = await renderTileFitted(fig.svg, tileW, tileH, ink, '#a78bfa');
+    // 质检：内容由 JS 绘制的组件静态标记里几乎是空的，测墨迹后换成签名图
+    const inkRatio = async (buf) => {
+      const f = await sharp(buf).flatten({ background: '#0a0e17' }).raw().toBuffer({ resolveWithObject: true });
+      let n = 0;
+      for (let p = 0; p < f.data.length; p += f.info.channels) {
+        if (0.299 * f.data[p] + 0.587 * f.data[p + 1] + 0.114 * f.data[p + 2] > 45) n++;
+      }
+      return n / (f.info.width * f.info.height);
+    };
+    if (await inkRatio(raw) < 0.012) {
+      const alt = figs.find((f) => f.label.includes(SIGNATURE[i % SIGNATURE.length]));
+      if (alt) {
+        const altRaw = await renderTileFitted(alt.svg, tileW, tileH, ink, '#a78bfa');
+        if (await inkRatio(altRaw) > 0.012) { console.log('  第 ' + (i + 1) + ' 格太空（' + fig.label.slice(0, 14) + '）→ 换成 ' + alt.label.slice(0, 14)); raw = altRaw; }
+      }
+    }
+    layers.push({ input: await fade(raw, 0.6), left: x, top: y });
+  }
+  const gvign = Buffer.from(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="' + GW + '" height="' + GH + '">'
+    + '<defs><radialGradient id="v" cx="50%" cy="45%" r="78%">'
+    + '<stop offset="68%" stop-color="#000" stop-opacity="0"/>'
+    + '<stop offset="100%" stop-color="#000" stop-opacity="0.45"/></radialGradient></defs>'
+    + '<rect width="100%" height="100%" fill="url(#v)"/></svg>'
+  );
+  layers.push({ input: gvign, left: 0, top: 0 });
+  const ggbuf = Buffer.alloc(GW * GH * 3);
+  let gs = 20240922;
+  for (let i = 0; i < ggbuf.length; i++) {
+    gs = (gs * 1103515245 + 12345) & 0x7fffffff;
+    ggbuf[i] = Math.max(0, Math.min(255, Math.round(128 + (gs / 0x7fffffff - 0.5) * 2 * 16)));
+  }
+  const gggrain = await sharp(ggbuf, { raw: { width: GW, height: GH, channels: 3 } }).png().toBuffer();
+  layers.push({ input: await fade(gggrain, 0.06), left: 0, top: 0, blend: 'overlay' });
+  await sharp({ create: { width: GW, height: GH, channels: 3, background: '#0a0e17' } })
+    .composite(layers)
+    .webp({ quality: 84 })
+    .toFile(OUT);
+  console.log('grid ' + GCOLS + '×' + GROWS + '，画布 ' + GW + '×' + GH + '，' + (fs.statSync(OUT).size / 1024).toFixed(0) + 'KB');
+  await sharp(OUT).png({ compressionLevel: 9 }).toFile(path.join(siteRoot, 'public', 'hero-collage-preview.png'));
+  return;
+  }
 
   // 确定性伪随机（按序号哈希），保证每次构建结果一致
   const rnd = (i, salt) => {
