@@ -1,4 +1,5 @@
 node_modules/
+src/data/stats.json
 dist/
 .astro/
 public/models/g1/

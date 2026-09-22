@@ -18,6 +18,7 @@
  * 生成结果不入库（见 site/.gitignore），由 dev/build 前自动执行。
  */
 import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { substituteStats, writeStatsFile } from './stats.mjs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -51,6 +52,8 @@ export async function syncContent() {
 
   let pageCount = 0;
   const missingImages = [];
+  // 统计数字（节数、时长、路线覆盖、QA）统一从内容源推导，正文里写 {{stat:key}}
+  const { stats } = writeStatsFile();
 
   for (const chapter of chapterDirs) {
     const sourceDir = path.join(chaptersRoot, chapter);
@@ -93,6 +96,8 @@ export async function syncContent() {
           return `](${siteBase}/${route}/${anchor})`;
         },
       );
+      // 统计占位符 → 实际数字（未知 key 会直接抛错，避免占位符上线）
+      body = substituteStats(body, stats.tokens);
       const frontmatter = ['---', `title: ${JSON.stringify(title)}`, '---', ''].join('\n');
       const targetFile = path.join(targetDir, section);
       const next = frontmatter + body;

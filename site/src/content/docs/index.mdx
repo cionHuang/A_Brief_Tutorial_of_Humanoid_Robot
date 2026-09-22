@@ -15,6 +15,9 @@ hero:
 ---
 
 import { Aside, CardGrid, LinkCard } from '@astrojs/starlight/components';
+import statsJson from '../../data/stats.json';
+
+export const s = statsJson.tokens;
 
 ## 这本书解决什么问题
 
@@ -30,19 +33,19 @@ import { Aside, CardGrid, LinkCard } from '@astrojs/starlight/components';
   />
   <LinkCard
     title="在校学生"
-    description="顺序通读。六章约 8–10 小时，每节附预计时长与建议先读的顺序。"
+    description={`顺序通读。${s["chapters.total"]} 章约 ${s["minutes.totalTextRoundBare"]}，每节附预计时长与建议先读的顺序。`}
     href="/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/02-student/"
   />
   <LinkCard
     title="产品 / PR"
-    description="速通查阅。精选 22 节，读到第一条“一句话听懂”即可，约 1 小时 15 分钟听懂技术会议。"
+    description={`速通查阅。精选 ${s["routes.product.sections"]} 节，读到第一条“一句话听懂”即可，约 ${s["routes.product.minutes"]} 分钟听懂技术会议。`}
     href="/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/03-product-pr/"
   />
 </CardGrid>
 
 ## 每一节的结构
 
-33 节都从“现场问题”开始、以“参考资料”结束，中间是同一套顺序：
+{s["sections.total"]} 节都从“现场问题”开始、以“参考资料”结束，中间是同一套顺序：
 
 | 每一节里的块 | 你会看到什么 |
 | --- | --- |
