@@ -24,7 +24,9 @@ if (!process.env.XDG_CACHE_HOME) {
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = path.resolve(siteRoot, '..');
 const DIST = path.join(siteRoot, 'dist');
-const OUT = path.join(siteRoot, 'public', 'hero-collage.webp');
+// 深色主题用深底亮线，浅色主题用浅底深线（反相变体），文件各一份
+const LIGHT = process.argv.includes('--light');
+const OUT = path.join(siteRoot, 'public', LIGHT ? 'hero-collage-light.webp' : 'hero-collage.webp');
 
 const W = 2400, H = 1200;
 const COLS = 7, ROWS = 4;
@@ -225,9 +227,9 @@ async function main() {
     const x = Math.round(c * cellW), y = Math.round(r * cellH);
     const w = Math.round(cellW), h = Math.round(cellH);
     // 整格底板铺满：格子之间看不出缝，图按各自比例居中放进去
-    const plate = await sharp({ create: { width: w, height: h, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 0.03 } } }).png().toBuffer();
+    const plate = await sharp({ create: { width: w, height: h, channels: 4, background: LIGHT ? { r: 0, g: 0, b: 0, alpha: 0.028 } : { r: 255, g: 255, b: 255, alpha: 0.03 } } }).png().toBuffer();
     layers.push({ input: plate, left: x, top: y });
-    const ink = i % 6 === 0 ? '#c4b5fd' : '#c7d2e4';
+    const ink = i % 6 === 0 ? (LIGHT ? '#6d28d9' : '#c4b5fd') : (LIGHT ? '#3f4a5a' : '#c7d2e4');
     const tileOpacity = order[i].graphic ? 0.68 : 0.42;   // 图纸亮、结构图/清单暗，形成主次
     let raw = await renderTileFitted(order[i].svg, Math.round(w * 0.94), Math.round(h * 0.94), ink, '#a78bfa');
     if (await inkRatio(raw) < 0.012) {
@@ -239,19 +241,21 @@ async function main() {
     }
     layers.push({ input: await fade(raw, tileOpacity), left: Math.round(x + (w - w * 0.94) / 2), top: Math.round(y + (h - h * 0.94) / 2) });
   }
-  const sheet = await sharp({ create: { width: GW, height: GH, channels: 3, background: '#0a0e17' } }).composite(layers).png().toBuffer();
-  const rotated = await sharp(sheet).rotate(ANGLE, { background: '#0a0e17' }).png().toBuffer();
+  const base = LIGHT ? '#f4f6fa' : '#0a0e17';
+  const sheet = await sharp({ create: { width: GW, height: GH, channels: 3, background: base } }).composite(layers).png().toBuffer();
+  const rotated = await sharp(sheet).rotate(ANGLE, { background: base }).png().toBuffer();
   const meta = await sharp(rotated).metadata();
   console.log('旋转后 ' + meta.width + '×' + meta.height + '，中心裁 ' + CW + '×' + CH);
   const cropped = await sharp(rotated)
     .extract({ left: Math.round((meta.width - CW) / 2), top: Math.round((meta.height - CH) / 2), width: CW, height: CH })
     .png()
     .toBuffer();
+  const vcol = LIGHT ? '#8a94a6' : '#000';
   const gvign = Buffer.from(
     '<svg xmlns="http://www.w3.org/2000/svg" width="' + CW + '" height="' + CH + '">'
     + '<defs><radialGradient id="v" cx="50%" cy="45%" r="78%">'
-    + '<stop offset="66%" stop-color="#000" stop-opacity="0"/>'
-    + '<stop offset="100%" stop-color="#000" stop-opacity="0.5"/></radialGradient></defs>'
+    + '<stop offset="66%" stop-color="' + vcol + '" stop-opacity="0"/>'
+    + '<stop offset="100%" stop-color="' + vcol + '" stop-opacity="' + (LIGHT ? '0.28' : '0.5') + '"/></radialGradient></defs>'
     + '<rect width="100%" height="100%" fill="url(#v)"/></svg>'
   );
   const gbuf = Buffer.alloc(CW * CH * 3);
@@ -266,12 +270,13 @@ async function main() {
     .webp({ quality: 80 })
     .toFile(OUT);
   console.log('已生成 斜向无缝 ' + GCOLS + '×' + GROWS + ' 格 → ' + CW + '×' + CH + '，' + (fs.statSync(OUT).size / 1024).toFixed(0) + 'KB');
-  await sharp(OUT).png({ compressionLevel: 9 }).toFile(path.join(siteRoot, 'public', 'hero-collage-preview.png'));
+  await sharp(OUT).png({ compressionLevel: 9 }).toFile(path.join(siteRoot, 'public', LIGHT ? 'hero-collage-light.png' : 'hero-collage-preview.png'));
   // 构建产物里也要有一份（astro build 会清空 dist/，所以这一步必须排在它之后）
   const distDir = path.join(siteRoot, 'dist');
   if (fs.existsSync(distDir)) {
-    fs.copyFileSync(OUT, path.join(distDir, 'hero-collage.webp'));
-    console.log('已同步到 dist/hero-collage.webp');
+    const name = LIGHT ? 'hero-collage-light.webp' : 'hero-collage.webp';
+    fs.copyFileSync(OUT, path.join(distDir, name));
+    console.log('已同步到 dist/' + name);
   }
   return;
   }

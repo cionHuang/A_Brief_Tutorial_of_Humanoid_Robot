@@ -115,31 +115,9 @@
   margin: 0.75rem auto;
 }
 
-/* ===== 首页整页背景：斜向拼贴（构建期由 scripts/hero-collage.mjs 生成） =====
-   只在 splash 模板的首页生效（<html data-has-hero>），正文页不受影响。
-   遮罩强度按“最亮像素”反推：拼贴最亮处亮度 0.337，盖 0.62 后与正文文字的
-   对比度仍 ≥ 4.5:1；中心均值处约 15:1。 */
-html[data-has-hero] body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  pointer-events: none;
-  background-image: url('/A_Brief_Tutorial_of_Humanoid_Robot/hero-collage.webp');
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
-  opacity: 0.55;
-}
-html[data-has-hero] body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: radial-gradient(125% 95% at 50% 28%, rgba(10, 14, 23, 0.62) 0%, rgba(10, 14, 23, 0.78) 55%, rgba(10, 14, 23, 0.92) 100%);
-}
-/* 首屏标题区再压一层，让标题与按钮更稳（这层随页面滚动） */
+/* ===== 首页整页背景（拼贴图 + 遮罩 + 视差）已移到组件：
+   site/src/components/HomeBackground.astro —— 深/浅主题各一张图，脚本做 0.12 倍视差。
+   这里只保留首屏标题区的局部压暗，让标题与按钮更稳（随页面滚动）。 */
 html[data-has-hero] .hero { position: relative; isolation: isolate; }
 html[data-has-hero] .hero::after {
   content: '';
@@ -149,12 +127,7 @@ html[data-has-hero] .hero::after {
   pointer-events: none;
   background: radial-gradient(75% 130% at 50% 50%, rgba(10, 14, 23, 0.6) 0%, rgba(10, 14, 23, 0.25) 68%, transparent 100%);
 }
-/* 亮色主题：深色拼贴会脏，压到只剩纹理并换白色遮罩 */
-:root[data-theme='light'] html[data-has-hero] body::before,
-html[data-theme='light'][data-has-hero] body::before { opacity: 0.12; }
-html[data-theme='light'][data-has-hero] body::after {
-  background: radial-gradient(125% 95% at 50% 28%, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.9) 55%, rgba(255, 255, 255, 0.96) 100%);
-}
+/* 亮色主题：首屏标题区用白色局部压暗 */
 html[data-theme='light'][data-has-hero] .hero::after {
   background: radial-gradient(75% 130% at 50% 50%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.3) 68%, transparent 100%);
 }

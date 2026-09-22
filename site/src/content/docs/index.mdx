@@ -15,9 +15,12 @@ hero:
 ---
 
 import { Aside, CardGrid, LinkCard } from '@astrojs/starlight/components';
+import HomeBackground from '../../components/HomeBackground.astro';
 import statsJson from '../../data/stats.json';
 
 export const s = statsJson.tokens;
+
+<HomeBackground />
 
 ## 这本书解决什么问题
 

@@ -1,0 +1,68 @@
+---
+/**
+ * 首页整页背景：教程自绘的斜向拼贴 + 遮罩 + 轻微视差（只在首页使用）。
+ * 深色主题用深底亮线稿，浅色主题换成浅底深线稿（hero-collage-light.webp），
+ * 两张图都由 scripts/hero-collage.mjs 在构建期生成。
+ */
+---
+
+<div class="home-bg" aria-hidden="true">
+  <div class="home-bg__image"></div>
+  <div class="home-bg__scrim"></div>
+</div>
+
+<style>
+  .home-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+  }
+  .home-bg__image {
+    position: absolute;
+    inset: -14% 0; /* 上下留出余量，视差位移时不会露边 */
+    background-image: url('/A_Brief_Tutorial_of_Humanoid_Robot/hero-collage.webp');
+    background-size: cover;
+    background-position: center top;
+    background-repeat: no-repeat;
+    opacity: 0.55;
+    will-change: transform;
+  }
+  .home-bg__scrim {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(125% 95% at 50% 28%, rgba(10, 14, 23, 0.62) 0%, rgba(10, 14, 23, 0.78) 55%, rgba(10, 14, 23, 0.92) 100%);
+  }
+  :root[data-theme='light'] .home-bg__image {
+    background-image: url('/A_Brief_Tutorial_of_Humanoid_Robot/hero-collage-light.webp');
+    opacity: 0.72;
+  }
+  :root[data-theme='light'] .home-bg__scrim {
+    background: radial-gradient(125% 95% at 50% 28%, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.58) 55%, rgba(255, 255, 255, 0.8) 100%);
+  }
+  @media (max-width: 50rem) {
+    .home-bg__image {
+      background-size: 230% auto;
+      background-position: 30% 8%;
+      opacity: 0.45;
+    }
+  }
+</style>
+
+<script>
+  // 视差：背景随滚动做小幅反向位移（0.12 倍），与正文的滚动幅度错开，制造层次感。
+  // 关掉动效偏好的读者完全静止；位移量做了上限，长页面不会把背景推出视野。
+  const layer = document.querySelector('.home-bg__image');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (layer && !reduce) {
+    let raf = 0;
+    const apply = () => {
+      raf = 0;
+      const y = Math.min(window.scrollY || 0, 1600);
+      layer.style.transform = 'translate3d(0, ' + (y * 0.12).toFixed(1) + 'px, 0)';
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(apply); };
+    apply();
+    window.addEventListener('scroll', onScroll, { passive: true });
+  }
+</script>
