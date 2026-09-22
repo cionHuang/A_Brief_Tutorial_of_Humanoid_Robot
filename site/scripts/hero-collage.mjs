@@ -194,7 +194,7 @@ async function main() {
   const GW = 3960, GH = 2640;            // 旋转前的工作画布（足够大，保证四角不露空）
   const GCOLS = 10, GROWS = 6;           // 60 格，格子紧贴无间距
   const cellW = GW / GCOLS, cellH = GH / GROWS;
-  const ANGLE = -14;                     // 整体倾斜角
+  const ANGLE = 14;                      // 整体倾斜角（正数 = 顺时针，与上一版方向相反）
   const figs = picks.filter(Boolean);
   const SIGNATURE = ['整机总图', 'G1 指令旅程图', '在线运行闭环', '动作表示粒度阶梯', '支撑多边形', '电源树', '互补滤波'];
   const order = [...figs];
