@@ -7,3 +7,6 @@ public/models/ankle-g1-simplified/
 
 # 由 scripts/sync-content.mjs 从 ../../chapters 生成的内容，不重复入库
 src/content/docs/[0-9][0-9]-*/
+.cache/
+public/hero-collage.webp
+public/hero-collage-preview.png
