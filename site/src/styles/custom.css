@@ -115,33 +115,54 @@
   margin: 0.75rem auto;
 }
 
-/* ===== 首页 hero：斜向拼贴背景（构建期由 scripts/hero-collage.mjs 生成） ===== */
-.hero { position: relative; isolation: isolate; }
-.hero::before {
+/* ===== 首页整页背景：斜向拼贴（构建期由 scripts/hero-collage.mjs 生成） =====
+   只在 splash 模板的首页生效（<html data-has-hero>），正文页不受影响。
+   遮罩强度按“最亮像素”反推：拼贴最亮处亮度 0.337，盖 0.62 后与正文文字的
+   对比度仍 ≥ 4.5:1；中心均值处约 15:1。 */
+html[data-has-hero] body::before {
   content: '';
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: -2;
   pointer-events: none;
   background-image: url('/A_Brief_Tutorial_of_Humanoid_Robot/hero-collage.webp');
   background-size: cover;
-  background-position: center;
-  opacity: 0.6;
-  -webkit-mask-image: radial-gradient(130% 105% at 50% 45%, #000 42%, rgba(0, 0, 0, 0.5) 74%, transparent 100%);
-  mask-image: radial-gradient(130% 105% at 50% 45%, #000 42%, rgba(0, 0, 0, 0.5) 74%, transparent 100%);
+  background-position: center top;
+  background-repeat: no-repeat;
+  opacity: 0.55;
 }
-.hero::after {
+html[data-has-hero] body::after {
   content: '';
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(95% 78% at 50% 45%, rgba(10, 14, 23, 0.52) 0%, rgba(10, 14, 23, 0.84) 68%, var(--sl-color-bg) 100%);
+  background: radial-gradient(125% 95% at 50% 28%, rgba(10, 14, 23, 0.62) 0%, rgba(10, 14, 23, 0.78) 55%, rgba(10, 14, 23, 0.92) 100%);
 }
-:root[data-theme='light'] .hero::before { opacity: 0.14; }
-:root[data-theme='light'] .hero::after {
-  background: radial-gradient(95% 78% at 50% 45%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.9) 68%, var(--sl-color-bg) 100%);
+/* 首屏标题区再压一层，让标题与按钮更稳（这层随页面滚动） */
+html[data-has-hero] .hero { position: relative; isolation: isolate; }
+html[data-has-hero] .hero::after {
+  content: '';
+  position: absolute;
+  inset: -2rem;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(75% 130% at 50% 50%, rgba(10, 14, 23, 0.6) 0%, rgba(10, 14, 23, 0.25) 68%, transparent 100%);
 }
+/* 亮色主题：深色拼贴会脏，压到只剩纹理并换白色遮罩 */
+:root[data-theme='light'] html[data-has-hero] body::before,
+html[data-theme='light'][data-has-hero] body::before { opacity: 0.12; }
+html[data-theme='light'][data-has-hero] body::after {
+  background: radial-gradient(125% 95% at 50% 28%, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.9) 55%, rgba(255, 255, 255, 0.96) 100%);
+}
+html[data-theme='light'][data-has-hero] .hero::after {
+  background: radial-gradient(75% 130% at 50% 50%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.3) 68%, transparent 100%);
+}
+/* 窄屏：放大局部，避免 10 列被压成发丝 */
 @media (max-width: 50rem) {
-  .hero::before { background-size: 210% auto; background-position: 32% 50%; opacity: 0.42; }
+  html[data-has-hero] body::before {
+    background-size: 230% auto;
+    background-position: 30% 12%;
+    opacity: 0.4;
+  }
 }
