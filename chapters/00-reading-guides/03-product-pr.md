@@ -40,12 +40,12 @@
 | --- | --- |
 | [4.5 基础控制](../04-cerebellum-realtime-control/05-basic-control.mdx) | 反馈控制、开环与闭环——“机器人已经碰到东西了，控制器为什么还在用力顶？”；kp、kd、前馈、柔顺紧随其后 |
 | [4.6 双足平衡与全身控制](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | 支撑域、ZMP——“每个关节都控得好好的，为什么整机还是倒了？” |
-| [5.1 机器人学习与 AI 词汇](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 模仿学习、强化学习，以及训练与推理的区别——“策略、模型、训练、推理、token、注意力、扩散、流匹配……这些词在机器人项目里到底指什么？”；策略紧随其后 |
-| [5.2 感知系统](../05-brain-perception-planning-vla-wam/02-perception-system.md) | 状态估计与感知的分工、坐标系——“相机明明看到了，为什么机器人抓不准？”；点云、深度相机紧随其后 |
+| [5.1 机器人学习与 AI 词汇](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx) | 模仿学习、强化学习，以及训练与推理的区别——“策略、模型、训练、推理、token、注意力、扩散、流匹配……这些词在机器人项目里到底指什么？”；策略紧随其后 |
+| [5.2 感知系统](../05-brain-perception-planning-vla-wam/02-perception-system.mdx) | 状态估计与感知的分工、坐标系——“相机明明看到了，为什么机器人抓不准？”；点云、深度相机紧随其后 |
 | [5.4 双臂操作与灵巧手](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx) | 接触的角色：行走时用来支撑自己，操作时用来改变世界——“碰到和抓住差在哪里？双手一起动的时候，左右臂谁听谁的？” |
 | [5.5 学习控制](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx) | 模型驱动与数据驱动的分工——“仿真里满分的策略，为什么一换环境就垮？”；模仿学习、遥操作、Sim2Real 紧随其后 |
 | [5.6 VLA](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) | VLA——“模型明明听懂了，为什么做错了？”；它给的是意图级动作，不是关节级闭环 |
-| [5.7 WAM：世界动作模型](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md) | WAM——“VLA 已经在输出动作了，为什么还要一个世界模型？” |
+| [5.7 WAM：世界动作模型](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.mdx) | WAM——“VLA 已经在输出动作了，为什么还要一个世界模型？” |
 
 ## 第四步：软件、仿真与可复现（3 节，约 10 分钟）
 
@@ -53,9 +53,9 @@
 
 | 小节 | 读完开头的术语与结论，你将听懂 |
 | --- | --- |
-| [6.1 ROS 2 与机器人软件架构](../06-software-tools-simulation/01-ros2-software-architecture.md) | 模块之间的约定——“每个节点单独跑都对，为什么连起来就乱？”；ROS 2、节点、Topic 紧随其后 |
+| [6.1 ROS 2 与机器人软件架构](../06-software-tools-simulation/01-ros2-software-architecture.mdx) | 模块之间的约定——“每个节点单独跑都对，为什么连起来就乱？”；ROS 2、节点、Topic 紧随其后 |
 | [6.3 Isaac Sim 与 Isaac Lab](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx) | Isaac Sim 与 Isaac Lab 各管什么——“并行几千个环境到底图什么？”；并行环境、Sim2Sim 紧随其后 |
-| [6.6 软件工程与版本管理](../06-software-tools-simulation/06-software-engineering-and-versioning.md) | 代码、模型、参数、固件、数据——“它上周还能走”这句话，怎么才能变成可以核查的事实？ |
+| [6.6 软件工程与版本管理](../06-software-tools-simulation/06-software-engineering-and-versioning.mdx) | 代码、模型、参数、固件、数据——“它上周还能走”这句话，怎么才能变成可以核查的事实？ |
 
 ## 写文案时的三个提醒
 

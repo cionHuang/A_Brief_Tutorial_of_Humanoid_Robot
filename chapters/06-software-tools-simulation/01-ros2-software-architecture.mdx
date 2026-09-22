@@ -1,5 +1,7 @@
 # 6.1 ROS 2 与机器人软件架构
 
+import SectionQA from '../../../components/SectionQA.astro';
+
 ## 各自都能跑，合起来不行
 
 团队把状态估计、规划器和控制器分别调试好之后接上 G1：RViz 2 里的模型却趴在地上：TF 树里 `pelvis` 的父坐标系接错了。终端反复报 "extrapolation into the future"，原因是某个节点在用过期时间戳查询坐标变换。机器人偶尔抽一下，排查后发现有两个节点同时往同一个命令 Topic 发数据。每个模块单独测试都是对的，连起来全是问题。
@@ -17,6 +19,8 @@
 上层的每一个判断（俗称“大脑”的那部分），最终都要落到具体软件与工具上。本章按“怎么组织软件（6.1）→ 在哪个仿真器里跑（6.2–6.4）→ 用哪些库（6.5）→ 怎么保证可复现（6.6）”展开。
 
 顺带回答一个常见疑问：**没有 ROS 2 行不行？** 行——不少整机厂商用自己的中间件或直接点对点通信。ROS 2 提供的是一套现成的约定和生态；理解了“为什么需要这些约定”，换成别的中间件你也能对上号。
+
+<SectionQA id="6.1" mode="ask" />
 
 ## ROS 2 是什么、为什么机器人要用它
 
@@ -37,7 +41,7 @@
 | TF2 | 坐标变换的单一事实来源 | “TF” |
 | ros2_control | 硬件与控制器之间的标准接口 | “ros2_control” |
 | rosbag2 与节点日志 | 记录、回放与事后复盘 | “观测与调试” |
-| 可视化（RViz 2 / Foxglove） | 空间关系与时间序列检查 | [6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md) |
+| 可视化（RViz 2 / Foxglove） | 空间关系与时间序列检查 | [6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.mdx) |
 | RMW 与 QoS | 选择底层 DDS 实现与投递策略 | [3.4 节](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) |
 
 严格说，TF2、ros2_control 是跑在 ROS 2 通信层之上的功能包和框架，rosbag2 与可视化是工具；它们的共同底座是同一套约定：消息定义（`.msg`/`.idl`）、命名与命名空间、时间戳语义、坐标命名。把 ROS 2 理解成“一套东西”会带来一个典型误判：以为用了 Topic 就必须用 TF、用了 ros2_control 就必须录包，实际上每一件都可以单独引入。
@@ -131,7 +135,9 @@ ros2_control 把“读写硬件”和“控制算法”拆成两层，中间用�
 - **rosbag2**：按 Topic 记录原始消息，回放（Playback）时可以原速、倍速或按时间戳精确复现一次故障。它记录的是消息层，不记录实时域内部的闭环变量；要让一次抽动可复盘，就得把桥接前后的关键量都录下来——低层 `rt/lowstate` 的关节与 IMU、桥接后的 `JointState` 与 `Imu`、控制器内部误差，缺一段就只能靠猜。记录的第一原则是先记录再分析，“当时没开 bag”是机器人调试里代价最高的四个字；
 - **日志**：节点日志应带级别和时间，关键状态切换、命令仲裁结果、QoS 不匹配告警和降级触发必须可回溯（呼应 [3.6 节](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)的故障语义）。日志不要写进实时线程，桥接节点里一次磁盘阻塞就足以打乱控制周期。
 
-空间关系看 RViz 2、时间序列看 Foxglove，两者的分工与用法是 [6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md)的整节主题，本节不展开。4.4–[4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)与 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)每一节的排查清单，最终都落在这组 bag 记录里“这条曲线长什么样”。
+空间关系看 RViz 2、时间序列看 Foxglove，两者的分工与用法是 [6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.mdx)的整节主题，本节不展开。4.4–[4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)与 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)每一节的排查清单，最终都落在这组 bag 记录里“这条曲线长什么样”。
+
+<SectionQA id="6.1" mode="answer" />
 
 > **到这里，你应该已经能听懂**：别人说“`camera_node` → `perception_node` → `planner_node`，中间用 Topic 连起来”——你应该知道这是**软件模块之间的通信关系**，不是三台硬件；坐标和时间戳之所以要统一约定，也是为了让这些模块能对上话。
 

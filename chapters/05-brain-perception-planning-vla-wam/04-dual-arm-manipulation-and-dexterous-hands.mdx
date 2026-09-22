@@ -1,6 +1,7 @@
 # 5.4 双臂操作与灵巧手
 
 import ForceClosureDemo from '../../../components/ForceClosureDemo.astro';
+import SectionQA from '../../../components/SectionQA.astro';
 
 ## 先看一个现场问题
 
@@ -15,6 +16,8 @@ import ForceClosureDemo from '../../../components/ForceClosureDemo.astro';
 > **一句话听懂**：行走时接触用来支撑自己，操作时接触用来改变世界；所以操作的问题大多出在“接触建得对不对”，而不是“轨迹算得好不好”。
 
 > **在整机里的位置**：这一节属于“运动与规划层”；上游是行为与技能层给的抓取点，下游是实时控制层的力控与阻抗。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
+
+<SectionQA id="5.4" mode="ask" />
 
 ## 末端执行器与接触任务
 
@@ -63,7 +66,7 @@ import ForceClosureDemo from '../../../components/ForceClosureDemo.astro';
 
 以带手 G1（三指 7 DoF 手型）搬运一只桌面箱子为例，任务可以分解为：[3]
 
-1. **感知**（[5.2 节](../05-brain-perception-planning-vla-wam/02-perception-system.md)）：检测箱子的 6 DoF 位姿，带 `frame_id` 和时间戳交给规划器；
+1. **感知**（[5.2 节](../05-brain-perception-planning-vla-wam/02-perception-system.mdx)）：检测箱子的 6 DoF 位姿，带 `frame_id` 和时间戳交给规划器；
 2. **规划**（[5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)）：双臂末端到箱体两侧的抓取位姿，检查自碰撞与环境碰撞，固定 IK 分支；
 3. **接近与闭合**：末端轨迹加手指闭合原语，手指接触后用低刚度阻抗收拢，避免推飞；
 4. **抬起**：双臂相对位姿约束激活，负载计入重力补偿，ZMP 裕量监控开启；
@@ -101,6 +104,8 @@ import ForceClosureDemo from '../../../components/ForceClosureDemo.astro';
 所以看到“人形机器人搬箱子”的视频时，正确的理解不是“行走模块加抓取模块各干一半”，而是**一个全身问题被同时解掉**——这也是人形机器人相对“轮式底盘 + 机械臂”最重要的不同之一。
 
 > **一句话听懂**：搬箱子、开门、推车不是“先走再抓”，而是腿、腰、臂、手一起解——手能出多大力由脚底接触决定，站哪儿本身就是操作的一部分（loco-manipulation）。
+
+<SectionQA id="5.4" mode="answer" />
 
 > **到这里，你应该已经能听懂**：现场再说“抓起瞬间滑掉、抬箱子就歪、参数调硬就把杯子推飞”，你能分别指到力封闭、双臂相对位姿约束与阻抗刚度上；也知道伸手够不够得到，取决于脚站在哪、腰能转多少。
 

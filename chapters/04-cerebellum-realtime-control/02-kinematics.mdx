@@ -2,6 +2,7 @@
 
 import G1ArmForwardKinematicsDemo from '../../../components/G1ArmForwardKinematicsDemo.astro';
 import G1ArmInverseKinematicsDemo from '../../../components/G1ArmInverseKinematicsDemo.astro';
+import SectionQA from '../../../components/SectionQA.astro';
 
 ## 先看一个现场问题
 
@@ -19,6 +20,8 @@ import G1ArmInverseKinematicsDemo from '../../../components/G1ArmInverseKinemati
 
 
 > **在整机里的位置**：这一节属于“实时控制层”；上游是关节角与末端目标，下游是动力学、规划与全身控制。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
+
+<SectionQA id="4.2" mode="ask" />
 
 ## 正运动学：从关节变量得到末端位姿
 
@@ -199,6 +202,8 @@ $\lambda$ 越大，越能抑制奇异附近的速度爆炸，但末端跟踪误�
 人形机器人还经常需要多任务优先级：支撑脚接触和安全限位通常高于手端位置；躯干姿态和质心约束可能高于手腕的次要朝向。一个数学上误差更小的解，如果破坏了支撑脚接触或逼近关节限位，工程上仍然是不可执行的解。
 
 逆运动学交出来的是关节角，可关节角本身不会让机器人动——真正让关节动起来的是力矩。而且同样是抬手，慢慢伸和快速甩，需要的力完全不同。下一节要回答的问题：**给定一条要走的轨迹，每个关节到底该出多大力**？
+
+<SectionQA id="4.2" mode="answer" />
 
 > **到这里，你应该已经能听懂**：“Planner 给一个末端目标位姿，IK 把它解成 joint target，再交给关节控制器”——以及为什么同一个末端位置会有好几组关节角、为什么解出来的轨迹必须检查连续性和限位。
 

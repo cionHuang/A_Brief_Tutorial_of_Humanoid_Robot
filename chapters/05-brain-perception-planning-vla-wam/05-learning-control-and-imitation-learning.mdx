@@ -2,6 +2,7 @@
 
 import G1DeploySnippet from '../../../components/G1DeploySnippet.astro';
 import LeRobotDatasetViewer from '../../../components/LeRobotDatasetViewer.astro';
+import SectionQA from '../../../components/SectionQA.astro';
 
 ## 训练里很好，真机上摔倒
 
@@ -13,7 +14,9 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 学习控制（Learning-based Control）用从数据中训练出的策略（Policy）替代或补充手工设计的控制器。4.5–[4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)与 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)是模型驱动：先建模再求解；本节是数据驱动：先采集或生成经验，再拟合出控制行为。工程上两者几乎总是混合使用——学习策略输出的目标，最终仍由 [4.5 节](../04-cerebellum-realtime-control/05-basic-control.mdx)的关节阻抗接口执行。
 
-> **在整机里的位置**：这一节属于“跨运动层与实时控制层”（学习策略既能输出高层子目标，也能直接输出关节或力矩指令，见 [5.1 节](./01-robot-learning-and-ai-terms.md)的“层级 × 方法类型”两条轴）；上游是遥操作与仿真，下游是驱动与嵌入式层。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
+> **在整机里的位置**：这一节属于“跨运动层与实时控制层”（学习策略既能输出高层子目标，也能直接输出关节或力矩指令，见 [5.1 节](./01-robot-learning-and-ai-terms.mdx)的“层级 × 方法类型”两条轴）；上游是遥操作与仿真，下游是驱动与嵌入式层。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
+
+<SectionQA id="5.5" mode="ask" />
 
 ## 模仿学习：从示范到策略
 
@@ -54,7 +57,7 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 | 字段 | 说明 |
 | --- | --- |
-| 观测流 | RGB/深度图像、关节位置与速度；各路采样率不同，必须按时间戳对齐（[3.3 节](../03-electrical-embedded/03-sensors-and-data-acquisition.md)） |
+| 观测流 | RGB/深度图像、关节位置与速度；各路采样率不同，必须按时间戳对齐（[3.3 节](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx)） |
 | 动作 | 与 [5.4 节](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx)一致的动作空间定义；换动作空间等于换数据集 |
 | 时间戳 | 每路数据的测量时刻，而不是消息到达时刻 |
 | 任务与语言标注 | 这条示范在做什么（如“把红杯子递给我”），VLA 训练要用（[5.6 节](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx)） |
@@ -69,7 +72,7 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 规模与质量的关系值得单说：示范数据决定策略的上限。几十到几百条精心采集的示范，往往比几千条随手采的更能训出稳定策略，因为分布偏移的严重程度由**示范覆盖了多少真实会遇到的状态**决定，而不是由条数决定。跨机构的大规模数据集（如 Open X-Embodiment）解决的是另一件事——让模型见到更多机器人、更多任务；具体到一台 G1 上的任务，本地采集的覆盖度仍然决定成败。[9]
 
-注意区分两个“数据采集”：[3.3 节](../03-electrical-embedded/03-sensors-and-data-acquisition.md)的数据采集指传感器把物理量变成数据（采样率、时间戳、误差模型），本节的“数据采集”指把人的示范变成训练数据——共同点是时间同步，其余问题完全不同。
+注意区分两个“数据采集”：[3.3 节](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx)的数据采集指传感器把物理量变成数据（采样率、时间戳、误差模型），本节的“数据采集”指把人的示范变成训练数据——共同点是时间同步，其余问题完全不同。
 
 > **一句话听懂**：数据采集是把示范完整、同步、带标注地记下来；数据决定策略的上限，算法只决定能多接近这个上限。
 
@@ -109,7 +112,7 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 想自己跑一遍，顺序大致是：克隆 `unitree_rl_gym` → 用 `legged_gym/scripts/train.py` 先跑通默认任务，再改奖励与随机化 → 拿 `deploy/pre_train/g1/` 里的策略在 `deploy_mujoco.py` 里做 Sim2Sim → 步态在 MuJoCo 里站得住之后，再按 `deploy_real` 的说明上实机。这条顺序不建议跳：Sim2Sim 是最便宜的一道关。
 
-注意这条链路里学习策略的边界：**在这个例子里**，策略输出的是关节目标，力矩级的稳定性、限幅和异常保护由低层与 [3.6 节](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)的安全链路承担。学习策略的输出粒度不止这一种——它也可以输出残差甚至力矩，直接承担更低层的控制，代价是安全与限幅的责任随之变大（层级与方法类型是两个维度，见 [5.1 节](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md)）。策略输出必须做限幅和变化率限制，未经 Sim2Sim 验证的策略不上实机，实机首跑必须有吊架或人工保护。
+注意这条链路里学习策略的边界：**在这个例子里**，策略输出的是关节目标，力矩级的稳定性、限幅和异常保护由低层与 [3.6 节](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)的安全链路承担。学习策略的输出粒度不止这一种——它也可以输出残差甚至力矩，直接承担更低层的控制，代价是安全与限幅的责任随之变大（层级与方法类型是两个维度，见 [5.1 节](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx)）。策略输出必须做限幅和变化率限制，未经 Sim2Sim 验证的策略不上实机，实机首跑必须有吊架或人工保护。
 
 操作任务的链路对称：遥操作采集（LeRobot 格式）→ BC/扩散策略训练 → 输出 [5.4 节](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx)的末端增量或关节动作 → 经全身控制和关节阻抗执行。两条链路共享同一条纪律：学习模块的失效模式是“输出无法预测”，所以所有学习输出的下游都必须有模型驱动的保护层兜底。
 
@@ -139,7 +142,7 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 还有两条工程习惯值得早养成：
 
 1. **先定测试条件，再开始训练**。否则很容易变成“挑好看的演示”，最后不知道模型到底行不行；
-2. **把测试条件记下来**：模型版本、参数、场景、成功率——下次改动之后，才说得清是变好了还是变差了（见 [6.6 节](../06-software-tools-simulation/06-software-engineering-and-versioning.md)）。
+2. **把测试条件记下来**：模型版本、参数、场景、成功率——下次改动之后，才说得清是变好了还是变差了（见 [6.6 节](../06-software-tools-simulation/06-software-engineering-and-versioning.mdx)）。
 
 大模型类策略的评测有它的特殊性，见 [5.6 节](./06-vla-and-advanced-ai.mdx)。
 
@@ -149,7 +152,9 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 上线不是终点。真机跑起来以后，把日志（传感器、动作、成败标记）记下来，回放找出失败片段——哪一次抓空了、哪一次被撞了——清洗标注后进数据集，再训练、再评测，然后重新部署。这就是常说的数据闭环：**采集 → 训练 → 评测 → 部署 → 回采 → 再训练**，每一圈通常会让下一版更接近真实工况——但它不保证单调改进，标注错误或分布变化都可能让新版更差。
 
-这也解释了为什么[第 6 章](../06-software-tools-simulation/01-ros2-software-architecture.md)的日志、数据集与版本管理不是“工具而已”（见 [6.6 节](../06-software-tools-simulation/06-software-engineering-and-versioning.md)）：没有它们，闭环的每一圈都要从头再来一遍；有了它们，失败样本才会自动变成下一轮训练数据。评测怎么做、为什么“演示成功”不等于“能力达标”，见上一节与 [5.6 节](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx)。
+这也解释了为什么[第 6 章](../06-software-tools-simulation/01-ros2-software-architecture.mdx)的日志、数据集与版本管理不是“工具而已”（见 [6.6 节](../06-software-tools-simulation/06-software-engineering-and-versioning.mdx)）：没有它们，闭环的每一圈都要从头再来一遍；有了它们，失败样本才会自动变成下一轮训练数据。评测怎么做、为什么“演示成功”不等于“能力达标”，见上一节与 [5.6 节](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx)。
+
+<SectionQA id="5.5" mode="answer" />
 
 > **到这里，你应该已经能听懂**：别人说“仿真里满分、上机就摔”“杯子挪 10 厘米策略就抽动”，你能分别归到 Sim2Real 差距与分布偏移；也知道域随机化和系统辨识各在补哪一段，为什么未经 Sim2Sim 验证的策略不上实机，以及“跑通一次演示”为什么证明不了这类任务能行。
 

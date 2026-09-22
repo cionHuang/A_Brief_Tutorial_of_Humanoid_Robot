@@ -5,6 +5,7 @@ import GearRatioDemo from '../../../components/GearRatioDemo.astro';
 import HarmonicDriveDemo from '../../../components/HarmonicDriveDemo.astro';
 import PlanetaryGearDemo from '../../../components/PlanetaryGearDemo.astro';
 import CycloidalDriveDemo from '../../../components/CycloidalDriveDemo.astro';
+import SectionQA from '../../../components/SectionQA.astro';
 
 ## 先看一个现场问题
 
@@ -19,6 +20,8 @@ G1 在平地上抬腿时动作正常，一旦背上负载或开始爬小坡，�
 这不是一个只靠换 PID 参数就能回答的问题。电机、减速器、编码器、驱动器、输出轴、轴承和限位结构共同组成关节模组（Joint Module）。它们决定电机的转速和力矩如何变成关节端的运动与负载能力，也决定了热量、误差和故障会在哪里累积。
 
 > **在整机里的位置**：这一节属于“机械执行层”；上游是驱动与嵌入式层的电机力矩，下游是连杆运动与关节负载。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
+
+<SectionQA id="2.3" mode="ask" />
 
 ## 一条关节传动链
 
@@ -190,6 +193,8 @@ $$
 当温度、过流、堵转、超速或编码器异常触发保护时，系统应进入受控降级或停止状态，而不是继续提高目标力矩“硬顶”。
 
 回到开头：关节推不动可能来自减速比不足、摩擦损耗、回差空行程或驱动器限幅，而持续大电流又会带来发热与降额。它们分别落在传动链的不同环节，需要分开测量、分别归因。
+
+<SectionQA id="2.3" mode="answer" />
 
 > **到这里，你应该已经能听懂**：“电机额定力矩不等于关节端可用力矩，中间还隔着减速器效率、摩擦、回差和发热”——以及“传动比”“峰值力矩”“持续力矩”“力矩—速度包络”“扭转刚度”“热降额”分别在说什么，选型时该同时核对哪几条边界。
 

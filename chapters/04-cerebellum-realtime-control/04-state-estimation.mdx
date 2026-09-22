@@ -17,7 +17,7 @@ IMU、编码器和足底力都在不停地发数据。可没有任何一个传�
 
 真正上手时，这些量会以更难看的形态出错：G1 站在平地上，关节编码器读数几乎不变，IMU 却显示躯干在缓慢倾斜；把陀螺仪积分几秒，估计姿态开始明显漂移；抬脚时足底刚接触地面，控制器却还把它当作摆动腿，于是下一步的基座速度和落脚位置都算错。这些现象的原因，本节会逐个回收。
 
-编码器、IMU 和足底压力各自的原理、安装标定和消息字段见 [3.3 节](../03-electrical-embedded/03-sensors-and-data-acquisition.md)；本节只处理它们进入估计器之后的问题：怎么融合、相信谁、什么时候信息不够。
+编码器、IMU 和足底压力各自的原理、安装标定和消息字段见 [3.3 节](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx)；本节只处理它们进入估计器之后的问题：怎么融合、相信谁、什么时候信息不够。
 
 > **在整机里的位置**：这一节属于“实时控制层”；上游是传感器与关节状态回传，下游是平衡与全身控制。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
 
@@ -37,7 +37,7 @@ $$
 
 这是一个**分块状态**：各块的数学对象和维度并不相同——以本手册的 G1 29 DoF 模型为例，$\boldsymbol{q}_j,\dot{\boldsymbol{q}}_j\in\mathbb{R}^{29}$，$\boldsymbol{R}_{WB}\in SO(3)$，$\boldsymbol{p}_{WB},\boldsymbol{v}_{WB},\boldsymbol{b}_g,\boldsymbol{b}_a\in\mathbb{R}^{3}$，$c_{\mathrm{contact}}$ 是离散的接触状态或置信度。其中 $\boldsymbol{q}_j$、$\dot{\boldsymbol{q}}_j$ 是关节位置和速度，$\boldsymbol{R}_{WB}$、$\boldsymbol{p}_{WB}$、$\boldsymbol{v}_{WB}$ 是基座相对世界的姿态、位置和速度，$\boldsymbol{b}_g$、$\boldsymbol{b}_a$ 是陀螺仪和加速度计的零偏（Bias）。实现时通常把它们拼成一个列向量，但拼接顺序、单位和更新方式各不相同。具体系统还可能加入足端滑移速度、IMU 外参、关节偏置和传感器延迟等扩展状态。
 
-本节回答“**我自己**现在是什么状态”；环境与目标的状态由感知负责（[5.2 节](../05-brain-perception-planning-vla-wam/02-perception-system.md)）——两者的输出必须落在同一个坐标系、同一个时刻上，否则“看到杯子”和“手在哪”就对不上。
+本节回答“**我自己**现在是什么状态”；环境与目标的状态由感知负责（[5.2 节](../05-brain-perception-planning-vla-wam/02-perception-system.mdx)）——两者的输出必须落在同一个坐标系、同一个时刻上，否则“看到杯子”和“手在哪”就对不上。
 
 状态不是把所有消息字段拼在一起。`MotorState` 的角度是关节测量，IMU 的加速度是传感器坐标系中的比力，足底压力是局部接触证据；估计器必须说明每一项的坐标系、单位、时间和不确定度，才能把它们组合成可供控制器使用的 $\hat{\boldsymbol{x}}$。
 

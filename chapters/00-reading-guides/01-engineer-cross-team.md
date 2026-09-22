@@ -24,7 +24,7 @@
 | 2 | [3.4 实时通信与总线](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | CAN/EtherCAT/DDS 的带宽和延迟决定控制周期上限 | 全读 |
 | 3 | [3.5 MCU、实时系统与嵌入式软件](../03-electrical-embedded/05-mcu-realtime-embedded-software.mdx) | 为什么控制指令必须按固定周期下发，抖动意味着什么 | 全读 |
 | 4 | [3.1 电源系统](../03-electrical-embedded/01-power-system.mdx) | 峰值功率与持续功率的差距为什么会限制动作幅度 | 读开头 |
-| 5 | [3.3 传感器与数据采集](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 编码器、IMU 的精度和时间同步如何影响状态估计 | 读开头 + 末尾「采样、时间戳与同步」 |
+| 5 | [3.3 传感器与数据采集](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx) | 编码器、IMU 的精度和时间同步如何影响状态估计 | 读开头 + 末尾「采样、时间戳与同步」 |
 | 6 | [3.6 电气安全与系统保护](../03-electrical-embedded/06-electrical-safety-and-protection.mdx) | 过流、过温保护触发时，机器人为什么会“突然卸力” | 读开头 |
 
 ## 你要和算法同学协作
@@ -42,13 +42,13 @@
 
 | 顺序 | 小节 | 为什么读 | 读法 |
 | --- | --- | --- | --- |
-| 1 | [6.1 ROS 2 与机器人软件架构](../06-software-tools-simulation/01-ros2-software-architecture.md) | 节点、Topic、TF 是软件层的通用语 | 全读 |
-| 2 | [5.1 机器人学习与 AI 词汇](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 会上那些 AI 词分别指什么、在哪一层 | 全读 |
-| 3 | [5.2 感知系统](../05-brain-perception-planning-vla-wam/02-perception-system.md) | 相机、雷达数据如何进入坐标链 | 读前半 |
+| 1 | [6.1 ROS 2 与机器人软件架构](../06-software-tools-simulation/01-ros2-software-architecture.mdx) | 节点、Topic、TF 是软件层的通用语 | 全读 |
+| 2 | [5.1 机器人学习与 AI 词汇](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx) | 会上那些 AI 词分别指什么、在哪一层 | 全读 |
+| 3 | [5.2 感知系统](../05-brain-perception-planning-vla-wam/02-perception-system.mdx) | 相机、雷达数据如何进入坐标链 | 读前半 |
 | 4 | [5.6 VLA](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) | 大模型输出如何一步步变成关节动作 | 读前半 |
-| 5 | [5.7 WAM：世界动作模型](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md) | 世界动作模型与 VLA 的分工 | 读前半 |
+| 5 | [5.7 WAM：世界动作模型](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.mdx) | 世界动作模型与 VLA 的分工 | 读前半 |
 | 6 | [6.2 MuJoCo](../06-software-tools-simulation/02-mujoco.mdx) | 仿真里的表现和实机为什么不一样 | 读开头 |
-| 7 | [6.6 软件工程与版本管理](../06-software-tools-simulation/06-software-engineering-and-versioning.md) | 哪些东西需要版本化、怎么复现 | 全读 |
+| 7 | [6.6 软件工程与版本管理](../06-software-tools-simulation/06-software-engineering-and-versioning.mdx) | 哪些东西需要版本化、怎么复现 | 全读 |
 
 ## 读完之后
 

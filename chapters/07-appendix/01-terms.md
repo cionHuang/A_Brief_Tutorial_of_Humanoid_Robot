@@ -118,29 +118,29 @@
 | [EKF（扩展卡尔曼滤波，Extended Kalman Filter）](../04-cerebellum-realtime-control/04-state-estimation.mdx) | 在当前估计附近线性化非线性模型的卡尔曼滤波 | 非线性系统的卡尔曼滤波，边猜边线性化 |
 | [可观测性（Observability）](../04-cerebellum-realtime-control/04-state-estimation.mdx) | 当前传感器和动作里是否包含某个状态的信息 | 靠现有传感器到底猜不猜得出来 |
 | [零偏（Bias）](../04-cerebellum-realtime-control/04-state-estimation.mdx) | 传感器静止时输出不为零的固定偏置，积分后造成漂移 | 静止时也不归零的小偏移，一积分就飘 |
-| [编码器（Encoder）](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 测量电机或关节位置与速度的传感器，分绝对式和增量式 | 关节上的角度尺 |
-| [绝对式编码器（Absolute Encoder）](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 上电即可直接给出当前位置、无需先找零点的编码器 | 一上电就知道自己在哪儿 |
-| [惯性测量单元（Inertial Measurement Unit, IMU）](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 通常含陀螺仪和加速度计、测量角速度与比力的传感器 | 机器人的内耳，感觉身体转多快、歪没歪 |
-| [六维力/力矩传感器（Force/Torque Sensor, F/T Sensor）](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 测量三轴力和三轴力矩的传感器，常用于脚踝、腕部 | 给手腕脚踝装上的触觉 |
-| [压力中心（Center of Pressure, CoP）](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 足底压力分布等效的合力作用点 | 脚底受力的合力压在哪个点 |
-| [内参（Intrinsics）](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 传感器自身特性，如相机焦距主点畸变、IMU 零偏标度因数 | 传感器自己准不准 |
-| [外参（Extrinsics）](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 传感器相对机身的安装位姿，含位置、轴向和固定旋转 | 传感器装得对不对 |
-| [时间戳（Timestamp）](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 数据采集时刻的标记，用于跨传感器对齐和 TF 查询 | 这个数是哪个时刻测到的 |
+| [编码器（Encoder）](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx) | 测量电机或关节位置与速度的传感器，分绝对式和增量式 | 关节上的角度尺 |
+| [绝对式编码器（Absolute Encoder）](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx) | 上电即可直接给出当前位置、无需先找零点的编码器 | 一上电就知道自己在哪儿 |
+| [惯性测量单元（Inertial Measurement Unit, IMU）](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx) | 通常含陀螺仪和加速度计、测量角速度与比力的传感器 | 机器人的内耳，感觉身体转多快、歪没歪 |
+| [六维力/力矩传感器（Force/Torque Sensor, F/T Sensor）](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx) | 测量三轴力和三轴力矩的传感器，常用于脚踝、腕部 | 给手腕脚踝装上的触觉 |
+| [压力中心（Center of Pressure, CoP）](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx) | 足底压力分布等效的合力作用点 | 脚底受力的合力压在哪个点 |
+| [内参（Intrinsics）](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx) | 传感器自身特性，如相机焦距主点畸变、IMU 零偏标度因数 | 传感器自己准不准 |
+| [外参（Extrinsics）](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx) | 传感器相对机身的安装位姿，含位置、轴向和固定旋转 | 传感器装得对不对 |
+| [时间戳（Timestamp）](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx) | 数据采集时刻的标记，用于跨传感器对齐和 TF 查询 | 这个数是哪个时刻测到的 |
 
 ## 感知与视觉
 
 | 术语 | 专业解释 | 一句话听懂 |
 | --- | --- | --- |
-| [感知系统（Perception System）](../05-brain-perception-planning-vla-wam/02-perception-system.md) | 把相机、深度等原始数据转换成带坐标、时间和置信度的环境判断 | 回答周围有什么、它们在哪 |
-| [深度相机（Depth Camera）](../05-brain-perception-planning-vla-wam/02-perception-system.md) | 用结构光、ToF 或主动双目直接输出每像素距离的相机 | 直接告诉你每个像素多远 |
-| [双目相机（Stereo Camera）](../05-brain-perception-planning-vla-wam/02-perception-system.md) | 用两个相机的视差被动计算深度的相机，依赖表面纹理 | 靠两只眼睛的视差算距离 |
-| [目标检测（Object Detection）](../05-brain-perception-planning-vla-wam/02-perception-system.md) | 输出目标类别、置信度和包围框的视觉任务 | 在图上框出这里有个杯子 |
-| [实例分割（Instance Segmentation）](../05-brain-perception-planning-vla-wam/02-perception-system.md) | 进一步给出每个像素归属掩码的视觉任务 | 不只框出来，还逐像素标出哪块是它 |
-| [点云（Point Cloud）](../05-brain-perception-planning-vla-wam/02-perception-system.md) | 一组带三维坐标的点，由深度图反投影或激光雷达生成 | 一堆三维点，拼出周围形状 |
-| [SLAM（Simultaneous Localization and Mapping）](../05-brain-perception-planning-vla-wam/02-perception-system.md) | 在建图的同时定位、用回环检测拉回漂移的方法 | 一边画地图一边找自己在地图哪里 |
-| [视觉惯性里程计（Visual Inertial Odometry, VIO）](../05-brain-perception-planning-vla-wam/02-perception-system.md) | 视觉里程计与 IMU 融合、估计自身相对运动的里程计 | 眼睛加内耳一起算自己走了多远 |
-| [回环检测（Loop Closure）](../05-brain-perception-planning-vla-wam/02-perception-system.md) | 识别回到曾经到过的位置、消除累积漂移的步骤 | 认出这地方我来过，把漂移拉回来 |
-| [标定（Calibration）](../05-brain-perception-planning-vla-wam/02-perception-system.md) | 确定传感器内参和外参的过程 | 把传感器自己准不准、装得对不对量清楚 |
+| [感知系统（Perception System）](../05-brain-perception-planning-vla-wam/02-perception-system.mdx) | 把相机、深度等原始数据转换成带坐标、时间和置信度的环境判断 | 回答周围有什么、它们在哪 |
+| [深度相机（Depth Camera）](../05-brain-perception-planning-vla-wam/02-perception-system.mdx) | 用结构光、ToF 或主动双目直接输出每像素距离的相机 | 直接告诉你每个像素多远 |
+| [双目相机（Stereo Camera）](../05-brain-perception-planning-vla-wam/02-perception-system.mdx) | 用两个相机的视差被动计算深度的相机，依赖表面纹理 | 靠两只眼睛的视差算距离 |
+| [目标检测（Object Detection）](../05-brain-perception-planning-vla-wam/02-perception-system.mdx) | 输出目标类别、置信度和包围框的视觉任务 | 在图上框出这里有个杯子 |
+| [实例分割（Instance Segmentation）](../05-brain-perception-planning-vla-wam/02-perception-system.mdx) | 进一步给出每个像素归属掩码的视觉任务 | 不只框出来，还逐像素标出哪块是它 |
+| [点云（Point Cloud）](../05-brain-perception-planning-vla-wam/02-perception-system.mdx) | 一组带三维坐标的点，由深度图反投影或激光雷达生成 | 一堆三维点，拼出周围形状 |
+| [SLAM（Simultaneous Localization and Mapping）](../05-brain-perception-planning-vla-wam/02-perception-system.mdx) | 在建图的同时定位、用回环检测拉回漂移的方法 | 一边画地图一边找自己在地图哪里 |
+| [视觉惯性里程计（Visual Inertial Odometry, VIO）](../05-brain-perception-planning-vla-wam/02-perception-system.mdx) | 视觉里程计与 IMU 融合、估计自身相对运动的里程计 | 眼睛加内耳一起算自己走了多远 |
+| [回环检测（Loop Closure）](../05-brain-perception-planning-vla-wam/02-perception-system.mdx) | 识别回到曾经到过的位置、消除累积漂移的步骤 | 认出这地方我来过，把漂移拉回来 |
+| [标定（Calibration）](../05-brain-perception-planning-vla-wam/02-perception-system.mdx) | 确定传感器内参和外参的过程 | 把传感器自己准不准、装得对不对量清楚 |
 
 ## 规划步态与稳定性
 
@@ -181,13 +181,13 @@
 
 | 术语 | 专业解释 | 一句话听懂 |
 | --- | --- | --- |
-| [模仿学习（Imitation Learning）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 从人的示范轨迹学习观测到动作映射的学习范式 | 看人怎么做，跟着学 |
+| [模仿学习（Imitation Learning）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx) | 从人的示范轨迹学习观测到动作映射的学习范式 | 看人怎么做，跟着学 |
 | [行为克隆（Behavior Cloning, BC）](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx) | 把示范数据当作监督学习、直接学习状态到动作的映射 | 把示范当标准答案，一步步抄 |
 | [分布偏移（Distribution Shift）](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx) | 策略误差把它带进示范未覆盖状态、误差被进一步放大的现象 | 一离开示范就崩，还越走越偏 |
-| [强化学习（Reinforcement Learning, RL）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 智能体靠奖励试错、最大化长期累计回报的学习范式 | 试错拿分，分数高的做法留下 |
+| [强化学习（Reinforcement Learning, RL）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx) | 智能体靠奖励试错、最大化长期累计回报的学习范式 | 试错拿分，分数高的做法留下 |
 | [马尔可夫决策过程（Markov Decision Process, MDP）](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx) | 用状态、动作、奖励和转移描述序贯决策问题的框架 | 把控制问题写成试、给分、更新的循环 |
-| [策略（Policy）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 从状态到动作的映射 π(s)，学习控制输出的就是它 | 看到什么情况就做什么动作 |
-| [价值函数（Value Function）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 估计当前状态或状态-动作对预期回报的函数 | 猜现在这个局面以后能拿多少分 |
+| [策略（Policy）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx) | 从状态到动作的映射 π(s)，学习控制输出的就是它 | 看到什么情况就做什么动作 |
+| [价值函数（Value Function）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx) | 估计当前状态或状态-动作对预期回报的函数 | 猜现在这个局面以后能拿多少分 |
 | [PPO（Proximal Policy Optimization）](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx) | 限制每次策略更新幅度的 on-policy 强化学习算法 | 每次只改一点点，别把学到的弄丢 |
 | [奖励黑客（Reward Hacking）](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx) | 策略钻奖励函数字面漏洞而非完成任务的现象 | 奖励写歪了，它就找省力空子 |
 | [域随机化（Domain Randomization, DR）](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx) | 训练时随机改变仿真参数，迫使策略不依赖具体参数 | 训练时参数乱变，逼它学会抗变化 |
@@ -207,16 +207,16 @@
 | [物理 AI（Physical AI）](../01-system-overview/01-what-is-embodied-ai.mdx) | 产业界用语，指理解物理规律并驱动机器人、自动驾驶等真实设备 | 厂商对具身智能的另一种叫法 |
 | [莫拉维克悖论（Moravec's Paradox）](../01-system-overview/01-what-is-embodied-ai.mdx) | 下棋等人类觉得难的事对机器容易，行走抓握反而极难 | 机器会写诗，却学不会抓杯子 |
 | [VLA（Vision-Language-Action）](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) | 输入图像、语言和机器人状态、直接输出动作的多模态大模型 | 看图、听指令、出动作合成一个模型 |
-| [WAM（World Action Model）](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md) | 同时建模世界如何变化和机器人应采取什么动作的学习模型 | 多学一件事：这样做世界会变成什么样 |
-| [世界模型（World Model）](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md) | 泛指预测世界如何变化的模型，WAM 是其中联合建模动作的一类 | 会预测未来的模型 |
-| [token（词元）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 序列模型处理的最小单位，图像、语言、状态和动作都可切成词元 | 模型一口一口吃的那一小块 |
-| [蒸馏（Distillation）](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md) | 用大模型（教师）的输出或中间表征训练小模型（学生）的压缩方法 | 大模型教小模型，部署时只跑小的 |
+| [WAM（World Action Model）](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.mdx) | 同时建模世界如何变化和机器人应采取什么动作的学习模型 | 多学一件事：这样做世界会变成什么样 |
+| [世界模型（World Model）](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.mdx) | 泛指预测世界如何变化的模型，WAM 是其中联合建模动作的一类 | 会预测未来的模型 |
+| [token（词元）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx) | 序列模型处理的最小单位，图像、语言、状态和动作都可切成词元 | 模型一口一口吃的那一小块 |
+| [蒸馏（Distillation）](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.mdx) | 用大模型（教师）的输出或中间表征训练小模型（学生）的压缩方法 | 大模型教小模型，部署时只跑小的 |
 | [动作块（Action Chunk）](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) | 一次推理给出的未来若干步动作序列，用以掩盖推理延迟 | 一次算出一串动作，别一步一算 |
 | [视觉定位（Grounding）](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) | 把语言里的名词绑定到图像具体区域的过程 | 在画面里找到语言说的那个东西 |
-| [注意力（Attention）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 序列中每个元素按相关度加权聚合其他元素信息的机制 | 让序列里每个元素互相看一圈 |
-| [Transformer](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 以注意力为核心、可统一处理图像语言状态动作的模型架构 | 把各种输入切成序列一起处理的大模型骨架 |
-| [扩散（Diffusion）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 训练时逐步加噪、采样时从噪声迭代去噪生成动作的生成式方法 | 从噪声一步步去噪，生成一整段动作 |
-| [流匹配（Flow Matching）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 学习速度场并从噪声沿流线积分生成动作的生成式方法 | 学一张速度场，从噪声顺着流走到动作 |
+| [注意力（Attention）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx) | 序列中每个元素按相关度加权聚合其他元素信息的机制 | 让序列里每个元素互相看一圈 |
+| [Transformer](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx) | 以注意力为核心、可统一处理图像语言状态动作的模型架构 | 把各种输入切成序列一起处理的大模型骨架 |
+| [扩散（Diffusion）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx) | 训练时逐步加噪、采样时从噪声迭代去噪生成动作的生成式方法 | 从噪声一步步去噪，生成一整段动作 |
+| [流匹配（Flow Matching）](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx) | 学习速度场并从噪声沿流线积分生成动作的生成式方法 | 学一张速度场，从噪声顺着流走到动作 |
 
 ## 仿真与工具链
 
@@ -227,21 +227,21 @@
 | [MJCF（MuJoCo XML Format）](../02-mechanics/05-robot-description-files.mdx) | 嵌套 body 组织刚体，并把场景、执行器、传感器和接触写进同一份 XML | 不只管长什么样，还带上世界和驱动 |
 | [浮动基座（Floating Base）](../02-mechanics/05-robot-description-files.mdx) | 在模型中用 free joint 表示的整机平移旋转自由度 | 机器人没被钉住，能整体平移翻转 |
 | [MuJoCo（Multi-Joint dynamics with Contact）](../06-software-tools-simulation/02-mujoco.mdx) | 面向接触富集任务、用软接触模型的 CPU 物理仿真器 | 接触算得准的仿真器，用来验策略 |
-| [SDF（Simulation Description Format）](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md) | Gazebo 用来描述世界和模型、并用插件扩展功能的格式 | Gazebo 里的场景和物体描述文件 |
-| [Gazebo](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md) | 与 ROS 2 集成良好、擅长场景搭建和传感器链路的物理仿真器 | 和 ROS 2 搭得最好的仿真器 |
-| [RViz 2](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md) | 把 TF、点云、图像等消息画成三维空间关系的可视化工具 | 只看空间关系，不算物理 |
-| [Foxglove](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md) | 面向时间序列和日志回放的数据可视化工具 | 把多个信号按时间轴摆一起看 |
+| [SDF（Simulation Description Format）](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.mdx) | Gazebo 用来描述世界和模型、并用插件扩展功能的格式 | Gazebo 里的场景和物体描述文件 |
+| [Gazebo](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.mdx) | 与 ROS 2 集成良好、擅长场景搭建和传感器链路的物理仿真器 | 和 ROS 2 搭得最好的仿真器 |
+| [RViz 2](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.mdx) | 把 TF、点云、图像等消息画成三维空间关系的可视化工具 | 只看空间关系，不算物理 |
+| [Foxglove](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.mdx) | 面向时间序列和日志回放的数据可视化工具 | 把多个信号按时间轴摆一起看 |
 | [Isaac Sim](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx) | 英伟达基于 Omniverse 的 GPU 高保真仿真平台 | 英伟达的 GPU 仿真平台 |
 | [Isaac Lab](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx) | 在 Isaac Sim 上把强化学习任务 Manager 化并行训练的框架 | 在 GPU 上开几千个环境一起训 |
 | [USD（Universal Scene Description）](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx) | 支持分层、引用和组合的场景描述系统，元素称 Prim | 分层叠加的场景描述格式 |
-| [Pinocchio](../06-software-tools-simulation/05-kinematics-dynamics-libraries.md) | 轻量可嵌入实时循环的刚体动力学算法库 | 实时算质量矩阵和雅可比的库 |
-| [RNEA（Recursive Newton-Euler Algorithm）](../06-software-tools-simulation/05-kinematics-dynamics-libraries.md) | 递归牛顿—欧拉逆动力学算法，令加速度为零可得重力项 | 逆动力学的算法，也能直接出重力项 |
-| [CRBA（Composite Rigid Body Algorithm）](../06-software-tools-simulation/05-kinematics-dynamics-libraries.md) | 计算质量矩阵的刚体动力学递归算法 | 专门算质量矩阵的算法 |
-| [ABA（Articulated Body Algorithm）](../06-software-tools-simulation/05-kinematics-dynamics-libraries.md) | 计算正动力学加速度的铰接体递归算法 | 给力矩算加速度的算法 |
-| [Drake](../06-software-tools-simulation/05-kinematics-dynamics-libraries.md) | 把多体动力学、接触约束和数学优化放进同一框架的研究工具 | 动力学加优化一体的框架 |
-| [MoveIt 2](../06-software-tools-simulation/05-kinematics-dynamics-libraries.md) | ROS 2 里的手臂运动规划框架，含规划场景、IK 与碰撞检查 | ROS 2 里管手臂规划的框架 |
-| [OMPL（Open Motion Planning Library）](../06-software-tools-simulation/05-kinematics-dynamics-libraries.md) | 以采样类算法为主的运动规划库，作为 MoveIt 2 的规划器插件 | 随机采样找路径的规划库 |
-| [FCL（Flexible Collision Library）](../06-software-tools-simulation/05-kinematics-dynamics-libraries.md) | 开源碰撞检测库，MoveIt 2 用它做路径碰撞与自碰撞检查 | 专门算“这两块几何体撞没撞”的库 |
+| [Pinocchio](../06-software-tools-simulation/05-kinematics-dynamics-libraries.mdx) | 轻量可嵌入实时循环的刚体动力学算法库 | 实时算质量矩阵和雅可比的库 |
+| [RNEA（Recursive Newton-Euler Algorithm）](../06-software-tools-simulation/05-kinematics-dynamics-libraries.mdx) | 递归牛顿—欧拉逆动力学算法，令加速度为零可得重力项 | 逆动力学的算法，也能直接出重力项 |
+| [CRBA（Composite Rigid Body Algorithm）](../06-software-tools-simulation/05-kinematics-dynamics-libraries.mdx) | 计算质量矩阵的刚体动力学递归算法 | 专门算质量矩阵的算法 |
+| [ABA（Articulated Body Algorithm）](../06-software-tools-simulation/05-kinematics-dynamics-libraries.mdx) | 计算正动力学加速度的铰接体递归算法 | 给力矩算加速度的算法 |
+| [Drake](../06-software-tools-simulation/05-kinematics-dynamics-libraries.mdx) | 把多体动力学、接触约束和数学优化放进同一框架的研究工具 | 动力学加优化一体的框架 |
+| [MoveIt 2](../06-software-tools-simulation/05-kinematics-dynamics-libraries.mdx) | ROS 2 里的手臂运动规划框架，含规划场景、IK 与碰撞检查 | ROS 2 里管手臂规划的框架 |
+| [OMPL（Open Motion Planning Library）](../06-software-tools-simulation/05-kinematics-dynamics-libraries.mdx) | 以采样类算法为主的运动规划库，作为 MoveIt 2 的规划器插件 | 随机采样找路径的规划库 |
+| [FCL（Flexible Collision Library）](../06-software-tools-simulation/05-kinematics-dynamics-libraries.mdx) | 开源碰撞检测库，MoveIt 2 用它做路径碰撞与自碰撞检查 | 专门算“这两块几何体撞没撞”的库 |
 | [LeRobot](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx) | 开源机器人学习工具链：数据采集、数据集格式、训练与策略部署 | 采集与训练一条龙的现成工具链 |
 
 ## 电气与总线
@@ -270,8 +270,8 @@
 
 | 术语 | 专业解释 | 一句话听懂 |
 | --- | --- | --- |
-| [ROS 2（Robot Operating System 2）](../06-software-tools-simulation/01-ros2-software-architecture.md) | 机器人领域主流中间件，提供节点通信、TF、控制和工具生态 | 让各个模块按约定说话的一套东西 |
-| [TF2（Transform Library 2）](../06-software-tools-simulation/01-ros2-software-architecture.md) | 维护随时间变化坐标变换树、提供查询的库 | 坐标变换的唯一事实来源 |
-| [ros2_control](../06-software-tools-simulation/01-ros2-software-architecture.md) | 把硬件读写和控制算法用显式接口分开的 ROS 2 框架 | 硬件和控制算法中间那层标准接口 |
-| [rosbag2](../06-software-tools-simulation/01-ros2-software-architecture.md) | 按 Topic 记录和回放 ROS 2 消息的工具 | 把消息录下来，事后能复盘 |
-| [可复现性（Reproducibility）](../06-software-tools-simulation/06-software-engineering-and-versioning.md) | 换机器换时间仍能重跑实验并得到一致结果的性质 | 半年后还能把实验重跑出来 |
+| [ROS 2（Robot Operating System 2）](../06-software-tools-simulation/01-ros2-software-architecture.mdx) | 机器人领域主流中间件，提供节点通信、TF、控制和工具生态 | 让各个模块按约定说话的一套东西 |
+| [TF2（Transform Library 2）](../06-software-tools-simulation/01-ros2-software-architecture.mdx) | 维护随时间变化坐标变换树、提供查询的库 | 坐标变换的唯一事实来源 |
+| [ros2_control](../06-software-tools-simulation/01-ros2-software-architecture.mdx) | 把硬件读写和控制算法用显式接口分开的 ROS 2 框架 | 硬件和控制算法中间那层标准接口 |
+| [rosbag2](../06-software-tools-simulation/01-ros2-software-architecture.mdx) | 按 Topic 记录和回放 ROS 2 消息的工具 | 把消息录下来，事后能复盘 |
+| [可复现性（Reproducibility）](../06-software-tools-simulation/06-software-engineering-and-versioning.mdx) | 换机器换时间仍能重跑实验并得到一致结果的性质 | 半年后还能把实验重跑出来 |

@@ -45,8 +45,8 @@ VLA 的输出是动作（Action），常见形态有：离散化的动作 token�
 | 动作头 | 怎么做 | 优点 | 代价 |
 | --- | --- | --- | --- |
 | 离散动作 token | 每个动作维度分档，像生成词一样逐个生成 | 直接复用语言模型的自回归与预训练权重 | 分档精度有限、动作不平滑；维度一多，token 序列变得很长 |
-| 连续向量回归 | 网络一次前向直接回归动作 | 简单、推理快 | 多种可行解会被“平均”成一个不可行的中间动作（见 [5.1 节](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md)的“生成：扩散与流匹配”） |
-| 扩散 / 流匹配 | 从噪声迭代去噪或积分，生成一段动作（[5.1 节](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md)） | 能表达多峰，且一次生成整个动作块 | 要迭代多步，推理更慢 |
+| 连续向量回归 | 网络一次前向直接回归动作 | 简单、推理快 | 多种可行解会被“平均”成一个不可行的中间动作（见 [5.1 节](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx)的“生成：扩散与流匹配”） |
+| 扩散 / 流匹配 | 从噪声迭代去噪或积分，生成一段动作（[5.1 节](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx)） | 能表达多峰，且一次生成整个动作块 | 要迭代多步，推理更慢 |
 
 RT-2 走的是第一条（把动作当词生成），π0 走的是第三条（流匹配动作头）；选哪种由任务对精度、频率和多解的要求决定，不是越新越好。
 
@@ -54,7 +54,7 @@ RT-2 走的是第一条（把动作当词生成），π0 走的是第三条（�
 
 ### 训练数据
 
-VLA 训练在模仿学习的数据之上叠加语言标注：图像、语言指令、机器人状态、双臂/手部动作，以及成功标签和失败轨迹。大规模数据来自开源数据集（如 Open X-Embodiment 系）和遥操作采集（[5.5 节](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx)，LeRobot 格式）。[5] 失败轨迹同样有训练价值：它们提供“这样做不行”的信号。但注意，模仿学习并不直接学“动作会导致什么后果”——那是 [5.7 节](./07-wam-world-action-model.md) WAM 的增量，前提是标注中保留了“失败”这个事实。
+VLA 训练在模仿学习的数据之上叠加语言标注：图像、语言指令、机器人状态、双臂/手部动作，以及成功标签和失败轨迹。大规模数据来自开源数据集（如 Open X-Embodiment 系）和遥操作采集（[5.5 节](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx)，LeRobot 格式）。[5] 失败轨迹同样有训练价值：它们提供“这样做不行”的信号。但注意，模仿学习并不直接学“动作会导致什么后果”——那是 [5.7 节](./07-wam-world-action-model.mdx) WAM 的增量，前提是标注中保留了“失败”这个事实。
 
 ## 为什么抓错目标：语言与视觉的绑定
 
@@ -68,9 +68,9 @@ VLA 训练在模仿学习的数据之上叠加语言标注：图像、语言指�
 
 工程对策的核心是**不要只喂原始像素**：
 
-- 把检测/分割结果（[5.2 节](../05-brain-perception-planning-vla-wam/02-perception-system.md)）当显式输入——先把“红杯子在哪”变成带坐标的候选，再让模型在候选中选；
+- 把检测/分割结果（[5.2 节](../05-brain-perception-planning-vla-wam/02-perception-system.mdx)）当显式输入——先把“红杯子在哪”变成带坐标的候选，再让模型在候选中选；
 - 指令里给唯一可辨识的属性：颜色 + 位置 + 参照物（“桌上最左边那个红杯子”），并让写指令的人知道哪些属性模型真的看得见；
-- 用多视角互相印证（[5.2 节](../05-brain-perception-planning-vla-wam/02-perception-system.md)讲的多视角组合；G1 的具体传感器配置见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)），单一视角下的遮挡与反光很难避免；
+- 用多视角互相印证（[5.2 节](../05-brain-perception-planning-vla-wam/02-perception-system.mdx)讲的多视角组合；G1 的具体传感器配置见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)），单一视角下的遮挡与反光很难避免；
 - **抓取前做一次视觉确认**：闭合手指之前再看一眼目标区域的颜色与类别是否匹配，不匹配就换视角或放弃——这一步比事后调试便宜得多。
 
 区分两件事：**抓对**是绑定问题，**抓住**是接触与力封闭问题（[5.4 节](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx)）。现场表现为“抓空了”和“抓滑了”是两种故障，排查入口完全不同。
@@ -125,16 +125,16 @@ VLA 的推理频率通常在 1–10 Hz 量级，远低于 [5.3 节](../05-brain-
 
 工程上有两种做法，实际系统常常两者都用：
 
-- **显式记忆**：把任务进度、已探索区域、失败历史记在模型之外——任务状态机、黑板（Blackboard）或结构化日志。好处是可读、可调试、可回放（[6.6 节](../06-software-tools-simulation/06-software-engineering-and-versioning.md)的日志与版本管理）；
+- **显式记忆**：把任务进度、已探索区域、失败历史记在模型之外——任务状态机、黑板（Blackboard）或结构化日志。好处是可读、可调试、可回放（[6.6 节](../06-software-tools-simulation/06-software-engineering-and-versioning.mdx)的日志与版本管理）；
 - **隐式记忆**：把一段历史观测（多帧图像、动作序列）一起喂给模型，让它自己学“从过去推出现在该做什么”。好处是不用手工设计状态，代价是数据要求高、行为更难解释。
 
-记忆也有它自己的坑：会**过期**（五分钟前的位置早就不准了）、会**冲突**（两条记录说法不一致）。所以工程上给记忆项带上时间戳与置信度，和传感器数据的处理原则是一样的（[3.3 节](../03-electrical-embedded/03-sensors-and-data-acquisition.md)、[4.4 节](../04-cerebellum-realtime-control/04-state-estimation.mdx)）。
+记忆也有它自己的坑：会**过期**（五分钟前的位置早就不准了）、会**冲突**（两条记录说法不一致）。所以工程上给记忆项带上时间戳与置信度，和传感器数据的处理原则是一样的（[3.3 节](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx)、[4.4 节](../04-cerebellum-realtime-control/04-state-estimation.mdx)）。
 
 > **一句话听懂**：状态描述“现在”，记忆描述“怎么走到现在的”——长任务里“杯子拿过没有、哪里找过了、上次为什么失败”不在当前画面里，得靠显式记录或历史输入补上，而且要和传感器一样带时间戳。
 
 ## 从动作块到关节运动
 
-本节讲的是模型内部（理解、绑定、动作块与频率）。它的输出通常要走完一条链路才能变成关节运动（不同系统的链路可以不一样）：动作块解码 → 坐标系与时间戳检查 → 限幅、碰撞与可行性检查 → IK/轨迹规划/全身控制（4.2、[4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)）→ [4.5 节](../04-cerebellum-realtime-control/05-basic-control.mdx)的关节阻抗接口执行，安全兜底在 [3.6 节](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)。这条链路是确定性的、逐层负责的：**模型只提供意图，能不能执行由下游判断**——把它放回 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)那条“一条指令的旅程”上看，VLA 只是其中一段。VLA 与 WAM（World Action Model，世界动作模型）的分工见 [5.7 节](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md)。
+本节讲的是模型内部（理解、绑定、动作块与频率）。它的输出通常要走完一条链路才能变成关节运动（不同系统的链路可以不一样）：动作块解码 → 坐标系与时间戳检查 → 限幅、碰撞与可行性检查 → IK/轨迹规划/全身控制（4.2、[4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)）→ [4.5 节](../04-cerebellum-realtime-control/05-basic-control.mdx)的关节阻抗接口执行，安全兜底在 [3.6 节](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)。这条链路是确定性的、逐层负责的：**模型只提供意图，能不能执行由下游判断**——把它放回 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)那条“一条指令的旅程”上看，VLA 只是其中一段。VLA 与 WAM（World Action Model，世界动作模型）的分工见 [5.7 节](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.mdx)。
 
 ## 怎么判断一个 VLA 行不行
 

@@ -2,7 +2,7 @@
 
 这条路线给想系统了解人形机器人、找学习方向的同学。建议顺序通读，全书约 8 到 10 小时：先看下表中每节的预计时长与“建议先读”的顺序，再按节推进。时长按每分钟约 300 字的正文速度估算，另加看公式、配图和动手试交互演示的时间；按自己的节奏读即可。
 
-全书是一条问题链：先认清整机（[第 1 章](../01-system-overview/01-what-is-embodied-ai.mdx)），再往下拆成硬件（[第 2 章](../02-mechanics/01-mechanisms-and-dof.mdx)–[第 3 章](../03-electrical-embedded/01-power-system.mdx)），然后回答“这些量怎么算、身体怎么站住”（[第 4 章](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx)）、“目标是谁给的”（[第 5 章](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md)）、“怎么开发与验证”（[第 6 章](../06-software-tools-simulation/01-ros2-software-architecture.md)）。每章结尾都会把下一个问题交给下一章——所以卡住时，先看本节开头那句现场问题，它通常就是这一节要回答的东西。
+全书是一条问题链：先认清整机（[第 1 章](../01-system-overview/01-what-is-embodied-ai.mdx)），再往下拆成硬件（[第 2 章](../02-mechanics/01-mechanisms-and-dof.mdx)–[第 3 章](../03-electrical-embedded/01-power-system.mdx)），然后回答“这些量怎么算、身体怎么站住”（[第 4 章](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx)）、“目标是谁给的”（[第 5 章](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx)）、“怎么开发与验证”（[第 6 章](../06-software-tools-simulation/01-ros2-software-architecture.mdx)）。每章结尾都会把下一个问题交给下一章——所以卡住时，先看本节开头那句现场问题，它通常就是这一节要回答的东西。
 
 读的过程中建议同步做两件事：把每节出现的术语（行业里也叫“黑话”）记成自己的词汇表；把 G1 的[开源模型](https://github.com/unitreerobotics/unitree_rl_gym)下载下来，边读边对照。
 
@@ -58,7 +58,7 @@
 | --- | --- | --- |
 | [3.1 电源系统](../03-electrical-embedded/01-power-system.mdx) | 15 分钟 | 无（个别词会指向 [3.5](../03-electrical-embedded/05-mcu-realtime-embedded-software.mdx)/[3.6](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)，可先跳过） |
 | [3.2 电机、驱动器与伺服控制](../03-electrical-embedded/02-motors-drivers-servo-control.mdx) | 25 分钟 | [2.3](../02-mechanics/03-transmission-and-joint-modules.mdx) |
-| [3.3 传感器与数据采集](../03-electrical-embedded/03-sensors-and-data-acquisition.md) | 15 分钟 | 无（个别术语会指向 [4.1](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx)/[4.3](../04-cerebellum-realtime-control/03-dynamics.mdx)/[4.4](../04-cerebellum-realtime-control/04-state-estimation.mdx)，可先跳过） |
+| [3.3 传感器与数据采集](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx) | 15 分钟 | 无（个别术语会指向 [4.1](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx)/[4.3](../04-cerebellum-realtime-control/03-dynamics.mdx)/[4.4](../04-cerebellum-realtime-control/04-state-estimation.mdx)，可先跳过） |
 | [3.4 实时通信与总线](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | 15 分钟 | 无 |
 | [3.5 MCU、实时系统与嵌入式软件](../03-electrical-embedded/05-mcu-realtime-embedded-software.mdx) | 15 分钟 | [3.4](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) |
 | [3.6 电气安全与系统保护](../03-electrical-embedded/06-electrical-safety-and-protection.mdx) | 10 分钟 | [3.1](../03-electrical-embedded/01-power-system.mdx)、[3.2](../03-electrical-embedded/02-motors-drivers-servo-control.mdx) |
@@ -70,7 +70,7 @@
 | [4.1 机器人数学基础](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) | 50 分钟 | 线性代数基础 |
 | [4.2 运动学](../04-cerebellum-realtime-control/02-kinematics.mdx) | 25 分钟 | [4.1](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) |
 | [4.3 动力学](../04-cerebellum-realtime-control/03-dynamics.mdx) | 20 分钟 | [2.2](../02-mechanics/02-links-structure-and-materials.mdx)、[4.2](../04-cerebellum-realtime-control/02-kinematics.mdx) |
-| [4.4 状态估计](../04-cerebellum-realtime-control/04-state-estimation.mdx) | 25 分钟 | [3.3](../03-electrical-embedded/03-sensors-and-data-acquisition.md)、[4.1](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) |
+| [4.4 状态估计](../04-cerebellum-realtime-control/04-state-estimation.mdx) | 25 分钟 | [3.3](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx)、[4.1](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) |
 | [4.5 基础控制](../04-cerebellum-realtime-control/05-basic-control.mdx) | 20 分钟 | [4.2](../04-cerebellum-realtime-control/02-kinematics.mdx) |
 | [4.6 双足平衡与全身控制](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | 20 分钟 | [2.4](../02-mechanics/04-foot-contact-and-stability.mdx)、[4.3](../04-cerebellum-realtime-control/03-dynamics.mdx)、[4.5](../04-cerebellum-realtime-control/05-basic-control.mdx) |
 
@@ -78,24 +78,24 @@
 
 | 小节 | 预计时间 | 建议先读 |
 | --- | --- | --- |
-| [5.1 机器人学习与 AI 词汇](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) | 20 分钟 | 无 |
-| [5.2 感知系统](../05-brain-perception-planning-vla-wam/02-perception-system.md) | 12 分钟 | [3.3](../03-electrical-embedded/03-sensors-and-data-acquisition.md)、[4.1](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) |
+| [5.1 机器人学习与 AI 词汇](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx) | 20 分钟 | 无 |
+| [5.2 感知系统](../05-brain-perception-planning-vla-wam/02-perception-system.mdx) | 12 分钟 | [3.3](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx)、[4.1](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) |
 | [5.3 运动规划：大脑与小脑之间的桥](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx) | 20 分钟 | [4.2](../04-cerebellum-realtime-control/02-kinematics.mdx)、[4.6](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) |
 | [5.4 双臂操作与灵巧手](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx) | 12 分钟 | [4.2](../04-cerebellum-realtime-control/02-kinematics.mdx)、[5.3](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx) |
 | [5.5 学习控制](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx) | 22 分钟 | [4.5](../04-cerebellum-realtime-control/05-basic-control.mdx) |
-| [5.6 VLA](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) | 22 分钟 | [5.2](../05-brain-perception-planning-vla-wam/02-perception-system.md)、[5.5](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx) |
-| [5.7 WAM：世界动作模型](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md) | 16 分钟 | [5.6](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) |
+| [5.6 VLA](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) | 22 分钟 | [5.2](../05-brain-perception-planning-vla-wam/02-perception-system.mdx)、[5.5](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx) |
+| [5.7 WAM：世界动作模型](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.mdx) | 16 分钟 | [5.6](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) |
 
 ## 第 6 章 软件与工具链（约 1 小时 5 分钟）
 
 | 小节 | 预计时间 | 建议先读 |
 | --- | --- | --- |
-| [6.1 ROS 2 与机器人软件架构](../06-software-tools-simulation/01-ros2-software-architecture.md) | 10 分钟 | [1.2](../01-system-overview/02-humanoid-robot-anatomy.mdx)（个别词会指向 [3.4](../03-electrical-embedded/04-real-time-communication-and-buses.mdx)/[4.4](../04-cerebellum-realtime-control/04-state-estimation.mdx)/[4.5](../04-cerebellum-realtime-control/05-basic-control.mdx)/[4.6](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)/[5.3](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)/[3.6](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)，可先跳过） |
+| [6.1 ROS 2 与机器人软件架构](../06-software-tools-simulation/01-ros2-software-architecture.mdx) | 10 分钟 | [1.2](../01-system-overview/02-humanoid-robot-anatomy.mdx)（个别词会指向 [3.4](../03-electrical-embedded/04-real-time-communication-and-buses.mdx)/[4.4](../04-cerebellum-realtime-control/04-state-estimation.mdx)/[4.5](../04-cerebellum-realtime-control/05-basic-control.mdx)/[4.6](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)/[5.3](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)/[3.6](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)，可先跳过） |
 | [6.2 MuJoCo](../06-software-tools-simulation/02-mujoco.mdx) | 15 分钟 | [2.5](../02-mechanics/05-robot-description-files.mdx)、[4.3](../04-cerebellum-realtime-control/03-dynamics.mdx) |
 | [6.3 Isaac Sim 与 Isaac Lab](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx) | 15 分钟 | [6.2](../06-software-tools-simulation/02-mujoco.mdx) |
-| [6.4 Gazebo、RViz 2 与 Foxglove](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md) | 5 分钟 | [6.1](../06-software-tools-simulation/01-ros2-software-architecture.md) |
-| [6.5 运动学与动力学工具库](../06-software-tools-simulation/05-kinematics-dynamics-libraries.md) | 15 分钟 | [4.2](../04-cerebellum-realtime-control/02-kinematics.mdx)、[4.3](../04-cerebellum-realtime-control/03-dynamics.mdx)（个别词会指向 [2.1](../02-mechanics/01-mechanisms-and-dof.mdx)/[3.3](../03-electrical-embedded/03-sensors-and-data-acquisition.md)/[4.4](../04-cerebellum-realtime-control/04-state-estimation.mdx)/[4.6](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)/[5.3](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)/[6.1](../06-software-tools-simulation/01-ros2-software-architecture.md)/[6.2](../06-software-tools-simulation/02-mujoco.mdx)，可先跳过） |
-| [6.6 软件工程与版本管理](../06-software-tools-simulation/06-software-engineering-and-versioning.md) | 5 分钟 | [6.1](../06-software-tools-simulation/01-ros2-software-architecture.md)、[6.4](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md) |
+| [6.4 Gazebo、RViz 2 与 Foxglove](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.mdx) | 5 分钟 | [6.1](../06-software-tools-simulation/01-ros2-software-architecture.mdx) |
+| [6.5 运动学与动力学工具库](../06-software-tools-simulation/05-kinematics-dynamics-libraries.mdx) | 15 分钟 | [4.2](../04-cerebellum-realtime-control/02-kinematics.mdx)、[4.3](../04-cerebellum-realtime-control/03-dynamics.mdx)（个别词会指向 [2.1](../02-mechanics/01-mechanisms-and-dof.mdx)/[3.3](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx)/[4.4](../04-cerebellum-realtime-control/04-state-estimation.mdx)/[4.6](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)/[5.3](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)/[6.1](../06-software-tools-simulation/01-ros2-software-architecture.mdx)/[6.2](../06-software-tools-simulation/02-mujoco.mdx)，可先跳过） |
+| [6.6 软件工程与版本管理](../06-software-tools-simulation/06-software-engineering-and-versioning.mdx) | 5 分钟 | [6.1](../06-software-tools-simulation/01-ros2-software-architecture.mdx)、[6.4](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.mdx) |
 
 ## 读完之后往哪走
 

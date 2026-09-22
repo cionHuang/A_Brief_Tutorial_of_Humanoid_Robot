@@ -4,6 +4,7 @@ import LeftRightMultiplyDemo from '../../../components/LeftRightMultiplyDemo.ast
 import VectorProductDemo from '../../../components/VectorProductDemo.astro';
 import GimbalLockDemo from '../../../components/GimbalLockDemo.astro';
 import HomogeneousTransformDemo from '../../../components/HomogeneousTransformDemo.astro';
+import SectionQA from '../../../components/SectionQA.astro';
 
 ## 数值没错，结果不对
 
@@ -21,6 +22,8 @@ import HomogeneousTransformDemo from '../../../components/HomogeneousTransformDe
 
 
 > **在整机里的位置**：这一节属于“实时控制层”；上游是模型与标定的坐标约定，下游是运动学、动力学与控制。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
+
+<SectionQA id="4.1" mode="ask" />
 
 ## 向量：一组带语义和坐标系的数
 
@@ -313,11 +316,13 @@ $$
 > - **对应什么时间？**
 > - **坐标变换在该时间是否可用？**
 
-ROS 2 的坐标约定通常遵循 REP 103：右手系，长度使用米，角度使用弧度，常规机体坐标轴约定为 $x$ 向前、$y$ 向左、$z$ 向上；相机 optical frame 则使用 $z$ 向前、$x$ 向右、$y$ 向下。[4] 这些是 ROS 接口约定，不代表所有厂商 SDK、CAD 文件、图像库或仿真器都自动采用完全相同的轴向。带时间戳的坐标变换树如何维护、查询失败怎么排查，见 [6.1 节](../06-software-tools-simulation/01-ros2-software-architecture.md)。少写一样，机器人就可能把过去的位置当成现在的用。[5]
+ROS 2 的坐标约定通常遵循 REP 103：右手系，长度使用米，角度使用弧度，常规机体坐标轴约定为 $x$ 向前、$y$ 向左、$z$ 向上；相机 optical frame 则使用 $z$ 向前、$x$ 向右、$y$ 向下。[4] 这些是 ROS 接口约定，不代表所有厂商 SDK、CAD 文件、图像库或仿真器都自动采用完全相同的轴向。带时间戳的坐标变换树如何维护、查询失败怎么排查，见 [6.1 节](../06-software-tools-simulation/01-ros2-software-architecture.mdx)。少写一样，机器人就可能把过去的位置当成现在的用。[5]
 
 回到开头：脚往侧面走、屏幕上的躯干翻转 180°，都不是数值算错，而是坐标系与表示约定没有先声明——位置相对谁、旋转乘在哪一边、四元数按什么顺序读。写任何一行涉及姿态的代码之前，先把这三件事写进接口注释。
 
 这三个约定写清楚了，位置和姿态才算说清楚。下一节要回答的是另一个问题：**知道了手要去的那个位置，怎么反推出每个关节该转到多少度**？[4.2 节](./02-kinematics.mdx)的运动学做的事情，本质上就是把这一节的变换连乘起来，再反过来解。
+
+<SectionQA id="4.1" mode="answer" />
 
 > **到这里，你应该已经能听懂**：“`base_link` 到 `left_hand_link` 的变换先用四元数存，注意是左乘”——这句话里每个词分别指什么，以及为什么机器人代码里翻来覆去都是矩阵乘法、四元数和求逆。
 

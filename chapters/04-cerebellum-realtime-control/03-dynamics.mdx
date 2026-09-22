@@ -1,6 +1,7 @@
 # 4.3 动力学
 
 import G1ArmGravityCompensationDemo from '../../../components/G1ArmGravityCompensationDemo.astro';
+import SectionQA from '../../../components/SectionQA.astro';
 
 ## 位置算对了，腿还是不动
 
@@ -16,6 +17,8 @@ G1 的腿已经通过逆运动学算到了目标位置，但机器人抬腿时�
 
 
 > **在整机里的位置**：这一节属于“实时控制层”；上游是运动学给出的关节运动，下游是控制与执行器保护。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
+
+<SectionQA id="4.3" mode="ask" />
 
 ## 方程：关节运动如何变成力矩
 
@@ -152,6 +155,8 @@ P_{\mathrm{joint}} = \boldsymbol{\tau}^\top \dot{\boldsymbol{q}}
 $$
 
 不过上面所有推导都建立在同一个假设上：当前的关节角、关节速度和姿态，你已经知道了。可真机上这些量没有一个是干净的——编码器有噪声，IMU 会漂，脚落地时还会打滑。下一节要回答的问题：**机器人怎么知道自己现在到底是什么状态**？
+
+<SectionQA id="4.3" mode="answer" />
 
 > **到这里，你应该已经能听懂**：“这条轨迹的力矩前馈是用动力学模型算的”“这个姿势下手臂特别费劲”——以及为什么算力矩绕不开质量矩阵，为什么它比“力等于质量乘加速度”复杂得多。
 

@@ -1,6 +1,7 @@
 # 6.2 MuJoCo：接触仿真与 Sim2Sim 验证
 
 import MjcfFieldSnippet from '../../../components/MjcfFieldSnippet.astro';
+import SectionQA from '../../../components/SectionQA.astro';
 
 ## 先看一个现场问题
 
@@ -21,17 +22,19 @@ import MjcfFieldSnippet from '../../../components/MjcfFieldSnippet.astro';
 
 > **在整机里的位置**：这一节属于“横向基础设施：仿真与工具”；上游是模型与控制指令，下游是策略验证与部署。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
 
+<SectionQA id="6.2" mode="ask" />
+
 ## MuJoCo 是什么、为什么用它
 
 MuJoCo（Multi-Joint dynamics with Contact）是面向“接触富集”任务（contact-rich tasks：成败主要取决于接触力的一类任务，比如抓取、足底支撑）的物理仿真器，也是腿式机器人策略做 Sim2Sim 验证的常用环境。[1] 它和一般刚体仿真器最不一样的地方是接触模型：MuJoCo 用软接触（soft contact），把碰撞当成可穿透的弹簧—阻尼系统求解，而不是把接触当成不可违背的硬约束；足底、手指这类持续接触的场景因此数值上更稳。它只用 CPU 就能跑，单次仿真的确定性与可复现性好，开源并由 Google DeepMind 维护。[1][2]
 
-在工具链里它只占一个位置，别的仿真器各管一段：Isaac Sim / Isaac Lab 擅长 GPU 大规模并行训练与视觉在环（[6.3 节](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx)），Gazebo 擅长 ROS 2 集成与场景搭建（[6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md)），MuJoCo 擅长精确接触，以及把训练出来的策略做 Sim2Sim 验证。换句话说，在本教程这条链路里，它主要不是训练环境，而是“把接触算准、把策略验一遍”的地方（MuJoCo 本身也能用于训练，MJX 那条路线就支持 GPU 并行）。
+在工具链里它只占一个位置，别的仿真器各管一段：Isaac Sim / Isaac Lab 擅长 GPU 大规模并行训练与视觉在环（[6.3 节](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx)），Gazebo 擅长 ROS 2 集成与场景搭建（[6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.mdx)），MuJoCo 擅长精确接触，以及把训练出来的策略做 Sim2Sim 验证。换句话说，在本教程这条链路里，它主要不是训练环境，而是“把接触算准、把策略验一遍”的地方（MuJoCo 本身也能用于训练，MJX 那条路线就支持 GPU 并行）。
 
 在本书里，MuJoCo 有四个具体用途：
 
 - 跑本手册保留的 G1 模型（`g1_29dof.xml` 等三个变体）；
 - 验证训练出来的策略，就是 [5.5 节](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx)的 Sim2Sim 链路；
-- 与工具库交叉验证动力学（[6.5 节](../06-software-tools-simulation/05-kinematics-dynamics-libraries.md)）；
+- 与工具库交叉验证动力学（[6.5 节](../06-software-tools-simulation/05-kinematics-dynamics-libraries.mdx)）；
 - 做不需要 GPU 的控制实验（本节最后一节）。
 
 **边界：高保真视觉渲染和上万环境并行训练不是它的强项。** 需要照片级画面或上千至上万个环境同时采样，应该走 [6.3 节](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx)的 GPU 仿真路线；MuJoCo 的价值在接触数值精确、单次运行确定，而不在吞吐和画面。
@@ -113,9 +116,11 @@ MJCF 的 `<sensor>` 挂靠在 site 上（site 是模型上不带质量、只用�
 - **踝关节**：按 [2.1 节](../02-mechanics/01-mechanisms-and-dof.mdx) PR/AB 命名的关节索引做摆动实验，复现 [4.5 节](../04-cerebellum-realtime-control/05-basic-control.mdx)的踝摆动示例；
 - **重力补偿**：用 `mj_inverse`（逆动力学：给定目标加速度反解所需力矩）或模型重力项算 $g(q)$ 作为前馈力矩，观察机器人是否能“挂”在半空，验证 [4.3 节](../04-cerebellum-realtime-control/03-dynamics.mdx)的动力学参数；
 - **接触观察**：开启接触力可视化，双支撑到单支撑切换时观察法向力的重新分配，对应 [2.4 节](../02-mechanics/04-foot-contact-and-stability.mdx)的支撑域和 [4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)的 ZMP；
-- **数据记录**：每步从 `mj_data` 取 `qpos`、`qvel`、`sensordata`、接触力和 `ctrl`，带仿真时间戳存盘——格式纪律与 [6.1 节](../06-software-tools-simulation/01-ros2-software-architecture.md) rosbag2 相同，先记录再分析。[3]
+- **数据记录**：每步从 `mj_data` 取 `qpos`、`qvel`、`sensordata`、接触力和 `ctrl`，带仿真时间戳存盘——格式纪律与 [6.1 节](../06-software-tools-simulation/01-ros2-software-architecture.mdx) rosbag2 相同，先记录再分析。[3]
 
 > **一句话听懂**：前面几章的概念都能在这条最短链上变成实验——位置/力矩控制、踝摆动、重力补偿、接触力观察和数据记录，不需要 GPU，一台笔记本就能跑。
+
+<SectionQA id="6.2" mode="answer" />
 
 > **到这里，你应该已经能听懂**：“`ctrl` 给的是位置还是力矩，完全由执行器类型决定”——以及为什么 G1 官方 MJCF 的 29 个 `<motor>` 要你自己在循环外写 PD、加载失败先查 `meshdir`、足底穿透先查 `solref`/`solimp`，而仿真 IMU 的读数不等于真机指标。
 

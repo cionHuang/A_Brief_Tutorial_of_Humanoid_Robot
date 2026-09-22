@@ -1,6 +1,7 @@
 # 1.1 我们到底在研究什么：具身智能与人形机器人
 
 import ClosedLoopDiagram from '../../../components/ClosedLoopDiagram.astro';
+import SectionQA from '../../../components/SectionQA.astro';
 
 ## 从一段演示视频说起
 
@@ -20,6 +21,8 @@ import ClosedLoopDiagram from '../../../components/ClosedLoopDiagram.astro';
 
 *类似的争论不只发生在弹幕里——论文、政策文件、搜索页面和社交平台上，“具身智能 / Embodied AI”正在同时出现（上图中黄色高亮处）。*
 
+<SectionQA id="1.1" mode="ask" />
+
 ## 什么是具身智能
 
 具身智能（Embodied Intelligence，也称 Embodied AI）指智能体（Agent，能自己拿主意的程序）依靠物理身体与环境实时交互，在“感知—决策—行动”的闭环中完成任务并积累经验的智能形态。[1][2]
@@ -36,7 +39,7 @@ import ClosedLoopDiagram from '../../../components/ClosedLoopDiagram.astro';
 
 这里的“闭环”对应反馈控制（Feedback Control）的基本思想：用测量结果修正接下来的动作。[5] 只有执行器而没有传感器，它更接近一台按程序运行的机械装置；只有感知而不能行动，也谈不上完成任务。
 
-至于能力从哪来，是这两件事的自然结果：遥控示教、模仿学习、强化学习的数据都来自身体与世界的真实或仿真接触，能力是在反复交互里长出来的。这条学习链路是[第 5 章](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md)的主题。
+至于能力从哪来，是这两件事的自然结果：遥控示教、模仿学习、强化学习的数据都来自身体与世界的真实或仿真接触，能力是在反复交互里长出来的。这条学习链路是[第 5 章](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx)的主题。
 
 > **一句话听懂**：具身智能 = 一个身体 + 一个自己能转的“感知—行动”环；身体决定它能做什么，交互决定它会长成什么样。
 
@@ -60,6 +63,8 @@ import ClosedLoopDiagram from '../../../components/ClosedLoopDiagram.astro';
 
 - **物理 AI（Physical AI）**：产业界（尤其是 NVIDIA）对同一类东西的叫法，强调“AI 要懂重力、摩擦、碰撞这些物理规律，并驱动真实设备行动”。本书正文统一用“具身智能”，读行业新闻时看到“物理 AI”直接对应即可。[3]
 - **莫拉维克悖论（Moravec’s Paradox）**：下棋、定理证明这类“人类觉得难”的事，机器做起来相对容易；而婴儿水平的行走、抓握和感知，机器做起来极难。[4] 原因是后者来自数亿年进化沉淀出的本能。它解释了一个常见困惑：为什么“会写诗的大模型”和“会抓杯子的机器人”之间，隔着一整个技术栈——也就是本书后面六章。
+
+<SectionQA id="1.1" mode="answer" />
 
 > **到这里，你应该已经能听懂**：再看到人形机器人的演示视频，你能分得清哪些是遥控、哪些是写死的脚本、哪些是自己在「感知—决策—行动」闭环里转；也知道「具身智能」和「物理 AI」说的其实是同一件事。
 

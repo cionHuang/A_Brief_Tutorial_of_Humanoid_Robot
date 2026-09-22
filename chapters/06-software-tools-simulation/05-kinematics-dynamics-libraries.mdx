@@ -1,5 +1,7 @@
 # 6.5 运动学与动力学工具库：什么时候该调用哪个
 
+import SectionQA from '../../../components/SectionQA.astro';
+
 ## 先看一个现场问题
 
 团队手写了一个 G1 腿部正运动学，结果和仿真器里的脚端位置差了几度——后来发现是两边对四元数的**分量顺序**（wxyz 还是 xyzw）与坐标系约定不一致。改用现成的库之后，重力补偿力矩算出来了，机器人手臂却仍然下垂——调用逆动力学时忘了浮动基座在速度向量里占 **6 个速度维度**，关节力矩的索引整体错位。再换一处：算雅可比时选了“以本连杆（该 Frame）为参考”（LOCAL）的**表达坐标系**，下游代码却按“以世界为参考”（WORLD）去解释同一个矩阵，力矩映射的方向整个反掉。三个现象都不涉及算法本身，而是**调用方与库对“量”的约定没对齐**。
@@ -20,9 +22,11 @@
 
 > **在整机里的位置**：这一节属于“横向基础设施：仿真与工具”；上游是模型与状态，下游是控制器与规划器。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
 
+<SectionQA id="6.5" mode="ask" />
+
 ## 库与仿真器的边界
 
-仿真器（6.2–[6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md)）回答“给定控制输入，世界如何演化”；运动学与动力学库回答另一类问题——“给定当前状态，正逆运动学、雅可比、质量矩阵、逆动力学分别是多少”。库是嵌进你自己代码里的算法库（Library），输出的是量（位姿、矩阵、向量、力矩），不是世界，也不负责推进仿真时间。控制器、规划器、估计器里需要的矩阵和向量，就来自这类库。
+仿真器（6.2–[6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.mdx)）回答“给定控制输入，世界如何演化”；运动学与动力学库回答另一类问题——“给定当前状态，正逆运动学、雅可比、质量矩阵、逆动力学分别是多少”。库是嵌进你自己代码里的算法库（Library），输出的是量（位姿、矩阵、向量、力矩），不是世界，也不负责推进仿真时间。控制器、规划器、估计器里需要的矩阵和向量，就来自这类库。
 
 **边界一句话：仿真器负责“时间往前走”，库负责“某一时刻把几个量算清楚”。** 库不拥有状态，也不进仿真循环；它被你的控制循环、规划器或估计器当作函数调用。
 
@@ -113,7 +117,7 @@ MoveIt 2 把 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-plannin
 - **规划器插件**：真正求解路径的算法，以 OMPL（Open Motion Planning Library，一个采样类运动规划库）等采样规划器为主；
 - **运动学插件**：负责解 IK（[4.2 节](../04-cerebellum-realtime-control/02-kinematics.mdx)），给定末端目标位姿求关节角；
 - **碰撞检查**：基于 FCL（Flexible Collision Library，一个碰撞检测库）判断路径上是否碰障碍或发生自碰撞；
-- **执行端**：规划出的轨迹通过 ros2_control 的轨迹接口下发（[6.1 节](../06-software-tools-simulation/01-ros2-software-architecture.md)），而不是自己拼关节命令。
+- **执行端**：规划出的轨迹通过 ros2_control 的轨迹接口下发（[6.1 节](../06-software-tools-simulation/01-ros2-software-architecture.mdx)），而不是自己拼关节命令。
 
 对 G1 而言，典型用法是按规划组（Planning Group，一组放在一起规划的关节，例如左臂、右臂）组织：左臂、右臂各一组，双臂一组，腰部可并入躯干组；末端规划和双臂协同（[5.4 节](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx)）都有对应入口。它的边界与选型判别统一放在最后一节。
 
@@ -150,7 +154,9 @@ MoveIt 2 把 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-plannin
 4. 只想确认“模型与约定对不对”，不打算做优化或规划 → 任选一个库加仿真器做交叉验证即可，不必引入整套框架；
 5. 要动态步行、全身平衡或接触力分配 → 这三者都不是这三个库的活，属于 [4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) WBC 的领域。
 
-边界再强调一次：MoveIt 2 擅长手臂自由空间规划与碰撞规避，不做动态步行与全身平衡；把它的规划输出接入 G1 时，时间参数化（把一条几何路径变成带时间戳、满足速度与加速度限制的轨迹）、速度限幅和 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)的刷新纪律仍由调用方保证。Pinocchio 与 Drake 的选择也别忘记模型的核对纪律——二者都以 URDF/SDF 建模，导入后的检查项与仿真器相同（6.3、[6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md)）。
+边界再强调一次：MoveIt 2 擅长手臂自由空间规划与碰撞规避，不做动态步行与全身平衡；把它的规划输出接入 G1 时，时间参数化（把一条几何路径变成带时间戳、满足速度与加速度限制的轨迹）、速度限幅和 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)的刷新纪律仍由调用方保证。Pinocchio 与 Drake 的选择也别忘记模型的核对纪律——二者都以 URDF/SDF 建模，导入后的检查项与仿真器相同（6.3、[6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.mdx)）。
+
+<SectionQA id="6.5" mode="answer" />
 
 > **到这里，你应该已经能听懂**：“四元数分量顺序不一致”“τ 的索引整体错位”“雅可比把 LOCAL 用成 WORLD”——以及这三类问题为什么先查约定、再怀疑算法；控制器缺 `M(q)`、`g(q)` 的时候该去找哪个库。
 

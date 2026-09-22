@@ -2,6 +2,7 @@
 
 import LowLevelCmdSnippet from '../../../components/LowLevelCmdSnippet.astro';
 import PidTunerDemo from '../../../components/PidTunerDemo.astro';
+import SectionQA from '../../../components/SectionQA.astro';
 
 ## 先看一个现场问题
 
@@ -17,6 +18,8 @@ import PidTunerDemo from '../../../components/PidTunerDemo.astro';
 
 
 > **在整机里的位置**：这一节属于“实时控制层”；上游是规划层的轨迹与姿态，下游是驱动器与关节。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
+
+<SectionQA id="4.5" mode="ask" />
 
 ## 反馈控制的最小闭环
 
@@ -135,6 +138,8 @@ $k_p$ 是虚拟弹簧刚度，$k_d$ 是虚拟阻尼，$\tau_{\mathrm{ff}}$ 是�
 ## 从单关节控制到全身控制的边界
 
 本节所有内容都把关节当作近似独立的被控对象，这对单关节调试和简单摆动足够，但人形机器人站立和行走时，关节之间通过动力学耦合、接触约束和平衡任务强相关：踝关节控制器输出会改变全身质心，手臂摆动会影响支撑腿的受力。什么时候可以忽略耦合、什么时候必须全身一起算，是 [4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)双足平衡与全身控制的主题；如何把目标轨迹和时间序列组织成可规划的运动，则由运动规划章节讨论。
+
+<SectionQA id="4.5" mode="answer" />
 
 > **到这里，你应该已经能听懂**：“这组 `kp`/`kd` 太硬了，调软一点”“加 `tau` 前馈，再配抗积分饱和”——以及为什么同一组增益换到别的关节、别的负载上表现完全不同，为什么碰到桌面时位置控制还在往里顶，为什么调增益之前先要问清限幅和延迟。
 

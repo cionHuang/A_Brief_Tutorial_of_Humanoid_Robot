@@ -1,6 +1,7 @@
 # 6.3 Isaac Sim 与 Isaac Lab：GPU 并行训练
 
 import IsaacLabManagerSnippet from '../../../components/IsaacLabManagerSnippet.astro';
+import SectionQA from '../../../components/SectionQA.astro';
 
 ## 先看一个现场问题
 
@@ -20,6 +21,8 @@ import IsaacLabManagerSnippet from '../../../components/IsaacLabManagerSnippet.a
 > **一句话听懂**：Isaac Sim 负责“世界像不像”，Isaac Lab 负责“怎么把成千上万个机器人塞进这个世界里练”——一个是仿真器，一个是长在它上面的训练框架。
 
 > **在整机里的位置**：这一节属于“横向基础设施：仿真与工具”；上游是资产与任务定义，下游是训练出的策略。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
+
+<SectionQA id="6.3" mode="ask" />
 
 ## 两个东西、两种角色：Isaac Sim 与 Isaac Lab
 
@@ -108,12 +111,14 @@ Isaac Lab 把 [5.5 节](../05-brain-perception-planning-vla-wam/05-learning-cont
 | 单机精确接触仿真、部署前验证 | MuJoCo（[6.2 节](../06-software-tools-simulation/02-mujoco.mdx)） | 接触模型成熟，API 轻量，与部署代码同源 |
 | 大规模 RL 训练 | Isaac Lab | GPU 并行数千环境 |
 | 视觉在环训练 | Isaac Sim/Lab | RTX 渲染与分割标注 |
-| ROS 2 集成、传感器插件生态 | Gazebo/RViz 2（[6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.md)） | 与 ROS 2 消息和 TF 原生衔接 |
-| 运动学/动力学算法计算 | Pinocchio/Drake（[6.5 节](../06-software-tools-simulation/05-kinematics-dynamics-libraries.md)） | 库而非仿真器，嵌入自己的代码 |
+| ROS 2 集成、传感器插件生态 | Gazebo/RViz 2（[6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.mdx)） | 与 ROS 2 消息和 TF 原生衔接 |
+| 运动学/动力学算法计算 | Pinocchio/Drake（[6.5 节](../06-software-tools-simulation/05-kinematics-dynamics-libraries.mdx)） | 库而非仿真器，嵌入自己的代码 |
 
 门槛与成本也要算进来：Isaac 需要 NVIDIA GPU（RTX 系列，显存直接决定并行规模），装驱动、配 Omniverse/Isaac 环境与版本管理是一笔固定开销，启动比 CPU 仿真器慢得多；它不适合做部署验证——部署与验证应交给 [6.2 节](../06-software-tools-simulation/02-mujoco.mdx)的 MuJoCo 与真机。
 
 工具选择经常比算法选择更影响进度。一个常见误区是用并行训练环境做最终验证：吞吐优化的物理参数让训练环境本身成为最“宽松”的仿真器，验证通常要在与训练不同的环境里进行。
+
+<SectionQA id="6.3" mode="answer" />
 
 > **到这里，你应该已经能听懂**：“一晚上几千万步不够用”“换到 Isaac Lab 开了 4096 个环境”“一开 RTX 渲染吞吐掉一半”——以及这些差距背后是显存、接触复杂度和渲染成本在互相挤，而训练时放松过的接触参数正是策略回 MuJoCo 摔倒的地方之一。
 

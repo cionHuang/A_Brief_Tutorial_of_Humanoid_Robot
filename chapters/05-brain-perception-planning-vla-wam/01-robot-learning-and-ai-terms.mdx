@@ -1,5 +1,7 @@
 # 5.1 机器人学习与 AI 词汇
 
+import SectionQA from '../../../components/SectionQA.astro';
+
 ## 从一次评审会说起
 
 算法同学在评审会上说：“这条线用**模仿学习**采数据，训一个 **VLA**，动作走**流匹配**，推理跑在 Orin 上，时延控制在 100 ms 以内。”机械同学听懂了“臂”，电气同学听懂了“Orin”，但“模仿学习、VLA、流匹配”这三个词谁管谁、各自在哪一层，没人说得清。
@@ -10,9 +12,11 @@
 
 本节是第五章的**词汇清单兼地图**：前半把后面几节会反复出现的现代 AI 与机器人学习词汇讲成人话（不推导算法、不涉及具体机型参数）；后半补上这一章的骨架——层级与方法类型是什么关系、任务与行为层怎么组织长任务、失败了怎么办。读完这一节再读 5.2–5.7，遇到这些词时能立刻知道它在说哪一层的事。
 
-先交代两个后面反复出现的缩写：**VLA**（Vision-Language-Action，视觉-语言-动作模型，见 [5.6 节](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx)）与 **WAM**（World Action Model，世界动作模型，见 [5.7 节](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md)）。也先划清章节边界：整机的总图（纵向功能链、频率、算力与两个闭环）见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)，本节只负责把词认全；第五章俗称**大脑**（感知、规划、操作、学习、VLA/WAM），回答“去做什么”；第四章俗称**小脑**（状态估计、平衡与全身控制），回答“这一毫秒怎么动”——这两个词只是好记的比喻，正式分层就是前面那张总图。这一章从一套词汇清单开始（5.1），然后依次是感知（5.2）、规划（5.3）、操作（5.4）、学习（5.5），最后是 VLA（5.6）与 WAM（5.7）。
+先交代两个后面反复出现的缩写：**VLA**（Vision-Language-Action，视觉-语言-动作模型，见 [5.6 节](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx)）与 **WAM**（World Action Model，世界动作模型，见 [5.7 节](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.mdx)）。也先划清章节边界：整机的总图（纵向功能链、频率、算力与两个闭环）见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)，本节只负责把词认全；第五章俗称**大脑**（感知、规划、操作、学习、VLA/WAM），回答“去做什么”；第四章俗称**小脑**（状态估计、平衡与全身控制），回答“这一毫秒怎么动”——这两个词只是好记的比喻，正式分层就是前面那张总图。这一章从一套词汇清单开始（5.1），然后依次是感知（5.2）、规划（5.3）、操作（5.4）、学习（5.5），最后是 VLA（5.6）与 WAM（5.7）。
 
 > **在整机里的位置**：这一节属于“任务与智能层”与“行为与技能层”（后半还讲了这两层怎么组织任务、怎么处理失败）；上游是示范与试错数据，下游是本章各节的模型与策略。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
+
+<SectionQA id="5.1" mode="ask" />
 
 ## 模型从哪来：三条路
 
@@ -127,7 +131,7 @@ $$
 | VLA（5.6） | 任务层到运动层 | 多模态大模型 + 动作头 | 负责任务理解，不做毫秒级闭环 |
 | WAM（5.7） | 任务层到运动层（预测分支） | 联合预测世界变化与动作（动作条件） | 预测结果不等于物理可行 |
 
-上表每一项在 G1 上都有落点：策略训练用 `unitree_rl_gym` 的 G1 速度任务，模仿学习用带手 G1 的遥操作数据，感知与规划落到 G1 的相机、IMU 与关节接口，VLA 与 WAM 的数据与部署链路见 [5.6](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx)、[5.7](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.md) 与[第 6 章](../06-software-tools-simulation/01-ros2-software-architecture.md)的 LeRobot、Isaac Lab 两节。
+上表每一项在 G1 上都有落点：策略训练用 `unitree_rl_gym` 的 G1 速度任务，模仿学习用带手 G1 的遥操作数据，感知与规划落到 G1 的相机、IMU 与关节接口，VLA 与 WAM 的数据与部署链路见 [5.6](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx)、[5.7](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.mdx) 与[第 6 章](../06-software-tools-simulation/01-ros2-software-architecture.mdx)的 LeRobot、Isaac Lab 两节。
 
 
 ## 层级与方法类型是两个维度
@@ -194,7 +198,7 @@ $$
 | **任务失败** | 没抓到杯子、门打不开、目标不见了、放歪了 | 任务与行为层：重试或换策略 |
 | **硬件与安全失败** | 过流、过温、通信丢失、超限、急停 | 底层与安全链路：降级、锁存、停机（[3.6 节](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)） |
 
-“成功了吗”靠什么判断？靠**观察 + 后置条件**：力与触觉确认抓稳没有（[3.3 节](../03-electrical-embedded/03-sensors-and-data-acquisition.md)）、视觉确认目标还在不在、关节状态确认到位没有。没有判据就没有恢复——不知道自己失败了，就会一直按错的方式做下去。
+“成功了吗”靠什么判断？靠**观察 + 后置条件**：力与触觉确认抓稳没有（[3.3 节](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx)）、视觉确认目标还在不在、关节状态确认到位没有。没有判据就没有恢复——不知道自己失败了，就会一直按错的方式做下去。
 
 判定失败之后，恢复手段从便宜到昂贵有一个梯度：
 
@@ -207,6 +211,8 @@ $$
 7. **安全停**：涉及硬件与安全时立即停——这一条优先于以上所有。
 
 最后一点常被忽略：**失败恢复本身也要被测试**。[5.5 节](../05-brain-perception-planning-vla-wam/05-learning-control-and-imitation-learning.mdx)的评测清单里，“失败后能不能自己重试、换策略、求助”就是必测项——只在顺利情况下演示成功，说明不了机器人能不能用。
+
+<SectionQA id="5.1" mode="answer" />
 
 > **到这里，你应该已经能听懂**：评审会上那句“模仿学习采数据、训一个 VLA、动作走流匹配”——以及你能把训练与推理、`token` 与嵌入、层级与方法类型各归各位。
 

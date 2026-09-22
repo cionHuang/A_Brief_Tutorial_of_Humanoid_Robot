@@ -1,6 +1,7 @@
 # 3.5 MCU、实时系统与嵌入式软件：从平台选型到最坏执行时间
 
 import BareMetalLoopDemo from '../../../components/BareMetalLoopDemo.astro';
+import SectionQA from '../../../components/SectionQA.astro';
 
 ## 仿真里好好的，真机上偶尔迟到
 
@@ -13,6 +14,8 @@ import BareMetalLoopDemo from '../../../components/BareMetalLoopDemo.astro';
 嵌入式软件（Embedded Software）运行在资源受限、接口固定并且需要及时响应的计算平台上。实时系统（Real-time System）关心的不只是“算出了正确结果”，还关心结果是否在规定的截止时间（Deadline）前产生。对人形机器人来说，控制周期、执行时间、优先级、中断、缓冲和故障状态共同决定了低层闭环能否可靠工作。
 
 > **在整机里的位置**：这一节属于“驱动与嵌入式层（兼横向的算力基础设施）”；上游是上层算法，下游是驱动器与总线。总图见 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)。
+
+<SectionQA id="3.5" mode="ask" />
 
 ## 计算平台各自负责什么
 
@@ -129,6 +132,8 @@ $$
 ## 从上电到故障恢复的状态机
 
 软件侧要把模式切换实现成显式状态机，每个状态有明确的进入/退出条件、超时和动作输出。完整的状态划分、`FAULT_LATCHED` 锁存语义与恢复流程见 [3.6 节](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)。
+
+<SectionQA id="3.5" mode="answer" />
 
 > **到这里，你应该已经能听懂**：现场说“这段代码放在 MCU 上跑 2 ms 周期，最坏执行时间只能实测，看门狗只负责复位、不代替急停”时，你应该分得清哪些是硬实时要求、哪些只是尽力而为——以及为什么平均周期达标不算数，中断、缓冲和优先级都要一起看。
 

@@ -41,12 +41,12 @@ import SectionQA from '../../../components/SectionQA.astro';
 
 读这张图只要两句话：**往下是“目标怎么被翻译成动作”，往上是“状态怎么被汇报回去”**。两条线一接上，闭环才成立。另外每两格之间都有**接口**：单位、坐标系、时间戳、频率说清楚，整机才能协同——说不清，就会出现“看起来都对、连起来就错”。
 
-把六层摊开成表，就是下面这样。表里的频率是**典型量级**，用来建立“谁快谁慢”的直觉，不是要背的指标——具体数字后面每章各自给出。最后一列是它们在本书里的位置；注意这些章节是**自下往上**排的——**图是按任务流画的，书是按学习顺序写的**，所以你会逆着信息流读一遍（表的最下面一行是[第 2 章](../02-mechanics/01-mechanisms-and-dof.mdx)，最上面一行是[第 5 章](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md)，你是从下往上看）。这正是后面每一节都要回到这张图定位自己的原因。
+把六层摊开成表，就是下面这样。表里的频率是**典型量级**，用来建立“谁快谁慢”的直觉，不是要背的指标——具体数字后面每章各自给出。最后一列是它们在本书里的位置；注意这些章节是**自下往上**排的——**图是按任务流画的，书是按学习顺序写的**，所以你会逆着信息流读一遍（表的最下面一行是[第 2 章](../02-mechanics/01-mechanisms-and-dof.mdx)，最上面一行是[第 5 章](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx)，你是从下往上看）。这正是后面每一节都要回到这张图定位自己的原因。
 
 | 层 | 它决定什么 | 输入 → 输出 | 典型频率 | 俗称 | 本书 |
 | --- | --- | --- | --- | --- | --- |
-| 任务与智能层 | 到底要什么、先做哪一步 | 语言指令、世界状态、记忆 → 子任务与技能调用 | 0.1–1 Hz | 大脑 | [5.1](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md)、[5.6](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) |
-| 行为与技能层 | 这一步怎么做、做完没有、失败怎么办 | 子任务、世界状态 → 子目标（位姿、抓取点、落脚点） | 1–10 Hz | 大脑 | [5.1](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md) |
+| 任务与智能层 | 到底要什么、先做哪一步 | 语言指令、世界状态、记忆 → 子任务与技能调用 | 0.1–1 Hz | 大脑 | [5.1](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx)、[5.6](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) |
+| 行为与技能层 | 这一步怎么做、做完没有、失败怎么办 | 子任务、世界状态 → 子目标（位姿、抓取点、落脚点） | 1–10 Hz | 大脑 | [5.1](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx) |
 | 运动与规划层 | 从当前位置怎么过去、怎么够到 | 子目标、地图、机器人状态 → 轨迹、落脚点序列 | 10–100 Hz | 小脑 | [5.3](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)、[5.4](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx) |
 | 实时控制层 | 这一毫秒怎么动才能站稳、跟住 | 轨迹、姿态、接触力 → 关节目标、力矩 | 200 Hz–1 kHz | 小脑 | [4.5](../04-cerebellum-realtime-control/05-basic-control.mdx)、[4.6](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) |
 | 驱动与嵌入式层 | 控制周期能多短、延迟能多小 | 关节指令 → 电流、力矩、状态回传 | 1–20 kHz（电流环） | — | [3.2](../03-electrical-embedded/02-motors-drivers-servo-control.mdx)、[3.4](../03-electrical-embedded/04-real-time-communication-and-buses.mdx)、[3.5](../03-electrical-embedded/05-mcu-realtime-embedded-software.mdx) |
@@ -54,7 +54,7 @@ import SectionQA from '../../../components/SectionQA.astro';
 
 “大脑”“小脑”这两列不是另一套架构，而是行业里为了交流方便用的**教学比喻**：高层任务与感知常被称为“大脑”，运动规划夹在中间，状态估计与实时控制是典型的“小脑”。它们之间没有一条能画在图纸上的边界——本书正式的分层只有上表这一套功能链。
 
-表里没有单列“感知”：感知与状态估计不占层——它横在反馈链上，把传感器数据变成“世界什么样、我在哪”，再喂给上面各层（见 [4.4 节](../04-cerebellum-realtime-control/04-state-estimation.mdx)、[5.2 节](../05-brain-perception-planning-vla-wam/02-perception-system.md)）。
+表里没有单列“感知”：感知与状态估计不占层——它横在反馈链上，把传感器数据变成“世界什么样、我在哪”，再喂给上面各层（见 [4.4 节](../04-cerebellum-realtime-control/04-state-estimation.mdx)、[5.2 节](../05-brain-perception-planning-vla-wam/02-perception-system.mdx)）。
 
 还有一条不占层、但处处相关的线：**电**从电池出发，经 BMS、配电板分配到每个模组——峰值功率、压降、热耗和急停切断路径都在这一条线上，属于驱动与嵌入式层，见 [3.1 节](../03-electrical-embedded/01-power-system.mdx)。
 
@@ -74,7 +74,7 @@ import SectionQA from '../../../components/SectionQA.astro';
 
 （“全身控制”指把全身关节放在一起解同一个问题，而不是每个关节各管各的；“力控”指控制接触时的力，而不是只盯位置。两者都在[第 4 章](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx)展开。）
 
-最后一行值得单独记住：**机器人不是“任务 → 动作 → 成功”**，而是“任务 → 动作 → 观察 → 判断成功了吗 → 不成功就换个办法”。失败检测与恢复不是附加功能，而是自主运行的一部分——怎么判定、怎么恢复见 [5.1 节](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.md)，硬件侧的失败保护见 [3.6 节](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)。
+最后一行值得单独记住：**机器人不是“任务 → 动作 → 成功”**，而是“任务 → 动作 → 观察 → 判断成功了吗 → 不成功就换个办法”。失败检测与恢复不是附加功能，而是自主运行的一部分——怎么判定、怎么恢复见 [5.1 节](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx)，硬件侧的失败保护见 [3.6 节](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)。
 
 传感器是这样回来的：相机每 30 毫秒左右给一帧图像，编码器与 IMU 以千赫兹量级汇报自身状态，足底力在接触瞬间跳变。它们汇进感知与状态估计，变成“杯子在哪、我站得稳不稳”，再喂回上面那几层。**没有这一步，机器人只是把预想的动作播一遍。**
 
