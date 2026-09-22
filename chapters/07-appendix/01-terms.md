@@ -204,7 +204,7 @@
 | 术语 | 专业解释 | 一句话听懂 |
 | --- | --- | --- |
 | [具身智能（Embodied Intelligence）](../01-system-overview/01-what-is-embodied-ai.mdx) | 智能体依靠物理身体与环境实时交互、在感知决策行动闭环中积累经验 | 有身体、能闭环、能越做越会的智能 |
-| [物理 AI（Physical AI）](../01-system-overview/01-what-is-embodied-ai.mdx) | 产业界用语，指理解物理规律并驱动机器人、自动驾驶等真实设备 | 厂商对具身智能的另一种叫法 |
+| [物理 AI（Physical AI）](../01-system-overview/01-what-is-embodied-ai.mdx) | 与具身智能高度重叠，但边界更宽：还包括自动驾驶、智能空间等自主系统；不同机构用法不同 | 和具身智能很像，但范围更大 |
 | [莫拉维克悖论（Moravec's Paradox）](../01-system-overview/01-what-is-embodied-ai.mdx) | 下棋等人类觉得难的事对机器容易，行走抓握反而极难 | 机器会写诗，却学不会抓杯子 |
 | [VLA（Vision-Language-Action）](../05-brain-perception-planning-vla-wam/06-vla-and-advanced-ai.mdx) | 输入图像、语言和机器人状态、直接输出动作的多模态大模型 | 看图、听指令、出动作合成一个模型 |
 | [WAM（World Action Model）](../05-brain-perception-planning-vla-wam/07-wam-world-action-model.mdx) | 同时建模世界如何变化和机器人应采取什么动作的学习模型 | 多学一件事：这样做世界会变成什么样 |

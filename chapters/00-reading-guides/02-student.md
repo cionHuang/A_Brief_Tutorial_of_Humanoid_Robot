@@ -4,6 +4,8 @@
 
 全书是一条问题链：先认清整机（[第 1 章](../01-system-overview/01-what-is-embodied-ai.mdx)），再往下拆成硬件（[第 2 章](../02-mechanics/01-mechanisms-and-dof.mdx)–[第 3 章](../03-electrical-embedded/01-power-system.mdx)），然后回答“这些量怎么算、身体怎么站住”（[第 4 章](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx)）、“目标是谁给的”（[第 5 章](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx)）、“怎么开发与验证”（[第 6 章](../06-software-tools-simulation/01-ros2-software-architecture.mdx)）。每章结尾都会把下一个问题交给下一章——所以卡住时，先看本节开头那句现场问题，它通常就是这一节要回答的东西。
 
+第 4、5 章标题里的“小脑／大脑”只是好记的教学比喻（正文首次出现处有说明），正式分层只有 [1.3 节](../01-system-overview/03-humanoid-robot-system-architecture.mdx)那一条功能链。
+
 读的过程中建议同步做两件事：把每节出现的术语（行业里也叫“黑话”）记成自己的词汇表；把 G1 的[开源模型](https://github.com/unitreerobotics/unitree_rl_gym)下载下来，边读边对照。
 
 需要查词时用[附录 A 术语速查表](../07-appendix/01-terms.md)（中英对照 + 一句话解释）；G1 的模型文件、关节索引与消息字段分别在[附录 B](../07-appendix/02-model-index.md)、[附录 C](../07-appendix/03-joint-index.md)、[附录 D](../07-appendix/04-messages.md)。
