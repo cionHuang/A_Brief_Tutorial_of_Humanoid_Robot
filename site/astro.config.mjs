@@ -38,7 +38,8 @@ const chapterRedirects = {
   '/01-system-overview/04-from-task-to-motor': redirectTo('/01-system-overview/03-humanoid-robot-system-architecture'),
 };
 
-// 审阅模式的页面辅助：hover 段落显示源文件行号，点击复制
+// 审阅模式的页面辅助：hover 段落显示源文件行号；胶囊挂在被 hover 的块内部，
+// 这样鼠标移向它时不会离开该块、也就不会被隐藏；另有 y 键兜底复制。
 const REVIEW = !!process.env.REVIEW;
 const reviewHead = REVIEW
   ? [
@@ -47,7 +48,7 @@ const reviewHead = REVIEW
         content:
           '.srcline{display:block;height:0;overflow:hidden}' +
           '.srcline-badge{position:fixed;top:.5rem;right:.75rem;z-index:60;font-size:12px;padding:3px 8px;border-radius:999px;background:var(--sl-color-accent-low);color:var(--sl-color-accent-high);opacity:.85;pointer-events:none}' +
-          '.srcline-chip{position:fixed;bottom:1rem;right:1rem;z-index:60;font-family:var(--sl-font-mono,monospace);font-size:12px;padding:6px 10px;border-radius:6px;background:var(--sl-color-bg-nav);border:1px solid var(--sl-color-gray-5);color:var(--sl-color-text);cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}',
+          '.srcline-chip{position:absolute;top:-1.45em;right:0;z-index:45;font-family:var(--sl-font-mono,monospace);font-size:11px;line-height:1.7;padding:2px 7px;border-radius:5px;background:var(--sl-color-bg-nav);border:1px solid var(--sl-color-gray-5);color:var(--sl-color-text);cursor:pointer;opacity:.92;white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,.22)}',
       },
       {
         tag: 'script',
@@ -55,25 +56,29 @@ const reviewHead = REVIEW
           '(function(){' +
           'function ready(f){if(document.readyState!=="loading")f();else document.addEventListener("DOMContentLoaded",f)}' +
           'ready(function(){' +
-          'var chip=document.createElement("div");chip.className="srcline-chip";chip.hidden=true;document.body.appendChild(chip);' +
-          'var badge=document.createElement("div");badge.className="srcline-badge";badge.textContent="审阅模式 · hover 段落看源行号";document.body.appendChild(badge);' +
-          'var cur=null;' +
+          'var chip=document.createElement("span");chip.className="srcline-chip";chip.hidden=true;' +
+          'var badge=document.createElement("div");badge.className="srcline-badge";badge.textContent="审阅模式 · hover 段落看源行号（y 键复制）";document.body.appendChild(badge);' +
+          'var cur=null,timer=0,host=null;' +
           'function anchorFor(el){var n=el;while(n&&n!==document.body){var p=n.previousElementSibling;while(p){if(p.classList&&p.classList.contains("srcline"))return p;p=p.previousElementSibling}n=n.parentElement}return null}' +
           'var srcMap=null,srcLoading=false;' +
-                    'function norm(s){s=s||"";s=s.replace(/Section titled[^”]*”/g,"");' +
+          'function norm(s){s=s||"";s=s.replace(/Section titled[^”]*”/g,"");' +
           'var i=s.indexOf("](");while(i>=0){var j=s.lastIndexOf("[",i);var k=s.indexOf(")",i);if(j<0||k<0){break}s=s.slice(0,j)+s.slice(j+1,i)+s.slice(k+1);i=s.indexOf("](",j)}' +
           'return s.replace(/[*`]/g,"").replace(/\\s+/g,"")}' +
+          'function textOf(el){var c=el.cloneNode(true);var x=c.querySelector&&c.querySelector(".srcline-chip");if(x)x.remove();return c.textContent||""}' +
           'function lookupByText(el){' +
           'if(!srcMap){if(!srcLoading){srcLoading=true;fetch("/A_Brief_Tutorial_of_Humanoid_Robot/__review-sources.json").then(function(r){return r.json()}).then(function(j){srcMap=j}).catch(function(){srcMap={}})}return null}' +
-          'var raw=(el.textContent||"").replace(/Section titled[^”]*”/g,"");' +
+          'var raw=textOf(el).replace(/Section titled[^”]*”/g,"");' +
           'var parts=raw.split("\\n").map(norm).filter(function(x){return x.length>=6});parts.push(norm(raw));' +
           'var lens=[24,16,12,8,6];' +
           'for(var pi=0;pi<parts.length;pi++){var full=parts[pi];' +
           'for(var L=0;L<lens.length;L++){var needle=full.slice(0,lens[L]);if(needle.length<6)break;' +
           'for(var f in srcMap){var lines=srcMap[f];for(var i=0;i<lines.length;i++){if(norm(lines[i]).indexOf(needle)>=0)return f+":"+(i+1)}}}}return null}' +
           'function resolve(el){var a=anchorFor(el);if(a)return a.getAttribute("data-src");return lookupByText(el)}' +
-          'document.addEventListener("mouseover",function(e){var el=e.target.closest&&e.target.closest("p,h2,h3,h4,li,td,blockquote");if(!el){chip.hidden=true;return}var src=resolve(el);if(!src){chip.hidden=true;return}cur=src;chip.textContent=cur+"　（点击复制）";chip.hidden=false},true);' +
-          'chip.addEventListener("click",function(){if(!cur)return;navigator.clipboard.writeText(cur).then(function(){chip.textContent="已复制："+cur;setTimeout(function(){chip.hidden=true},1200)})});' +
+          'function detach(){if(host){host.style.position=host.dataset.srpos||"";delete host.dataset.srpos;host=null}if(chip.parentElement)chip.parentElement.removeChild(chip);chip.hidden=true}' +
+          'function show(el,src){if(host!==el){detach();host=el;if(getComputedStyle(el).position==="static"){el.dataset.srpos=el.style.position||"";el.style.position="relative"}el.appendChild(chip)}chip.hidden=false;chip.textContent=src+"　点击复制";cur=src;clearTimeout(timer);timer=setTimeout(detach,9000)}' +
+          'document.addEventListener("mouseover",function(e){var el=e.target.closest&&e.target.closest("p,h2,h3,h4,li,td,blockquote");if(!el)return;var src=resolve(el);if(src)show(el,src)},true);' +
+          'chip.addEventListener("click",function(e){e.stopPropagation();if(!cur)return;navigator.clipboard.writeText(cur).then(function(){chip.textContent="已复制 "+cur;clearTimeout(timer);timer=setTimeout(detach,1800)})});' +
+          'document.addEventListener("keydown",function(e){if(e.key!=="y"||!cur||e.metaKey||e.ctrlKey||e.altKey)return;navigator.clipboard.writeText(cur);chip.hidden=false;chip.textContent="已复制 "+cur;clearTimeout(timer);timer=setTimeout(detach,1500)});' +
           '});})();',
       },
     ]
