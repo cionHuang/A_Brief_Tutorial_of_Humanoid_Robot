@@ -26,6 +26,12 @@ const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const SITE_PORT = 4321;
 const ASTRO_BIN = path.join(siteRoot, 'node_modules', 'astro', 'bin', 'astro.mjs');
 
+const REVIEW = process.argv.includes('--review');
+if (REVIEW) {
+  process.env.REVIEW = '1';
+  console.log('[review] 审阅模式：hover 页面上的任意段落可看到源文件行号（点击复制）；正式构建不含这些标记。');
+}
+
 await syncRobotAssets();
 await syncContent();
 

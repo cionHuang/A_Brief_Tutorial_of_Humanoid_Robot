@@ -38,6 +38,34 @@ const chapterRedirects = {
   '/01-system-overview/04-from-task-to-motor': redirectTo('/01-system-overview/03-humanoid-robot-system-architecture'),
 };
 
+// 审阅模式的页面辅助：hover 段落显示源文件行号，点击复制
+const REVIEW = !!process.env.REVIEW;
+const reviewHead = REVIEW
+  ? [
+      {
+        tag: 'style',
+        content:
+          '.srcline{display:block;height:0;overflow:hidden}' +
+          '.srcline-badge{position:fixed;top:.5rem;right:.75rem;z-index:60;font-size:12px;padding:3px 8px;border-radius:999px;background:var(--sl-color-accent-low);color:var(--sl-color-accent-high);opacity:.85;pointer-events:none}' +
+          '.srcline-chip{position:fixed;bottom:1rem;right:1rem;z-index:60;font-family:var(--sl-font-mono,monospace);font-size:12px;padding:6px 10px;border-radius:6px;background:var(--sl-color-bg-nav);border:1px solid var(--sl-color-gray-5);color:var(--sl-color-text);cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}',
+      },
+      {
+        tag: 'script',
+        content:
+          '(function(){' +
+          'function ready(f){if(document.readyState!=="loading")f();else document.addEventListener("DOMContentLoaded",f)}' +
+          'ready(function(){' +
+          'var chip=document.createElement("div");chip.className="srcline-chip";chip.hidden=true;document.body.appendChild(chip);' +
+          'var badge=document.createElement("div");badge.className="srcline-badge";badge.textContent="审阅模式 · hover 段落看源行号";document.body.appendChild(badge);' +
+          'var cur=null;' +
+          'function anchorFor(el){var n=el;while(n&&n!==document.body){var p=n.previousElementSibling;while(p){if(p.classList&&p.classList.contains("srcline"))return p;p=p.previousElementSibling}n=n.parentElement}return null}' +
+          'document.addEventListener("mouseover",function(e){var el=e.target.closest&&e.target.closest("p,h2,h3,h4,li,td,blockquote");if(!el){chip.hidden=true;return}var a=anchorFor(el);if(!a){chip.hidden=true;return}cur=a.getAttribute("data-src");chip.textContent=cur+"　（点击复制）";chip.hidden=false},true);' +
+          'chip.addEventListener("click",function(){if(!cur)return;navigator.clipboard.writeText(cur).then(function(){chip.textContent="已复制："+cur;setTimeout(function(){chip.hidden=true},1200)})});' +
+          '});})();',
+      },
+    ]
+  : [];
+
 export default defineConfig({
   site: 'https://cionhuang.github.io',
   base: siteBase,
@@ -77,6 +105,7 @@ export default defineConfig({
       tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
       pagination: true,
       customCss: ['./src/styles/custom.css'],
+      head: reviewHead,
     }),
   ],
 });

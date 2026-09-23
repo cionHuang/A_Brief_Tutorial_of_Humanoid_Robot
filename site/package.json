@@ -10,7 +10,8 @@
     "build": "npm run sync && astro build && node scripts/hero-collage.mjs --no-photo && node scripts/hero-collage.mjs --no-photo --light",
     "preview": "npm run sync && astro preview",
     "astro": "astro",
-    "collage": "node scripts/hero-collage.mjs"
+    "collage": "node scripts/hero-collage.mjs",
+    "review": "node scripts/dev.mjs --review"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "^7.3.1",

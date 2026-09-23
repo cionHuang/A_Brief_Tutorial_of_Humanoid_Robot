@@ -90,6 +90,19 @@
 - **组件脚本只增删 class**（`classList`），禁止 `setAttribute("class", …)`：那会抹掉 Astro 作用域类，样式整体失配（曾导致力封闭演示的摩擦锥渲染成黑色）。
 - **数字要能复算**：导读里的节数、时长、条数必须与正文和首页一致；不写会随改稿过期的计数。
 
+## 边读边改：审阅模式
+
+精读改稿时用审阅模式，页面与源文件能互相对上：
+
+```bash
+cd site && npm run review     # 同步内容 + 起 dev（默认 http://localhost:4321）
+```
+
+- **读在网页、改在本地**：`chapters/**.md(x)` 一保存，dev 脚本（`scripts/dev.mjs`，fs.watch + 2 秒 mtime 兜底）增量同步并触发热更新，浏览器 1–3 秒刷新。
+- **行号定位**：审阅模式下每个标题与段落前会注入一个不可见锚点，页面上 hover 任意段落，右下角显示 `chapters/…/xx.mdx:123`，点击即复制该路径:行号，粘到编辑器里直接跳转。右上角有「审阅模式」徽标提示。
+- **不会污染正式产物**：锚点只在 `REVIEW=1` 时注入，`npm run build` 与 CI 部署都不含；正文源文件从不被修改。
+- 读到拿不准、想先记下来继续读的，用 CriticMarkup 式批注写在正文里（`{>>批注<<}`），改完再清掉；批注清单与处理记录放 `docs/review_log.md`。
+
 ## 站点技术路线
 
 Astro + Starlight、交互组件岛、URDF 渲染、部署方式等见 [docs/WEBSITE.md](./WEBSITE.md)。内容源在 `chapters/`，站点在 `site/`，构建时由 `site/scripts/sync-content.mjs` 同步生成。

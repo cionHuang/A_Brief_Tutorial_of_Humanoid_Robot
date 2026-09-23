@@ -30,6 +30,33 @@ const docsRoot = path.join(siteRoot, 'src', 'content', 'docs');
 const astroConfigSrc = await readFile(path.join(siteRoot, 'astro.config.mjs'), 'utf8');
 const siteBase = astroConfigSrc.match(/siteBase\s*=\s*'([^']+)'/)?.[1] ?? '';
 
+/**
+ * 审阅模式（REVIEW=1）：在标题与段落前插入不可见的源文件行号锚点。
+ * 页面上 hover 段落会在右下角显示 `chapters/…/xx.mdx:123`，点击即复制，
+ * 方便“网页上发现问题 → 编辑器里按行号定位”。正式构建不注入。
+ */
+function injectSourceHints(body, relPath, offset) {
+  const lines = body.split('\n');
+  const out = [];
+  let inFence = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^\s*(```|~~~)/.test(line)) inFence = !inFence;
+    const isHeading = /^#{2,6}\s/.test(line);
+    const prevBlank = i === 0 || (lines[i - 1] ?? '').trim() === '';
+    const isParaStart =
+      !inFence &&
+      prevBlank &&
+      line.trim() !== '' &&
+      !/^(\s*[-*+]\s|\s*\d+\.\s|\||>|#{1,6}\s|<|\$\$|import\s|export\s|::)/.test(line);
+    if (!inFence && (isHeading || isParaStart)) {
+      out.push('<a class="srcline" data-src="' + relPath + ':' + (offset + i + 1) + '"></a>', '');
+    }
+    out.push(line);
+  }
+  return out.join('\n');
+}
+
 export async function syncContent() {
   const chapterDirs = (await readdir(chaptersRoot, { withFileTypes: true }))
     .filter((entry) => entry.isDirectory() && /^\d{2}-/.test(entry.name))
@@ -98,6 +125,12 @@ export async function syncContent() {
       );
       // 统计占位符 → 实际数字（未知 key 会直接抛错，避免占位符上线）
       body = substituteStats(body, stats.tokens);
+      // 审阅模式：注入源文件行号锚点（正文源文件从未被改动，只影响生成结果）
+      if (process.env.REVIEW) {
+        const h1 = raw.match(/^#\s+.+?\r?\n(\r?\n)?/);
+        const offset = h1 ? h1[0].split('\n').length - 1 : 0;
+        body = injectSourceHints(body, `chapters/${chapter}/${section}`, offset);
+      }
       const frontmatter = ['---', `title: ${JSON.stringify(title)}`, '---', ''].join('\n');
       const targetFile = path.join(targetDir, section);
       const next = frontmatter + body;
