@@ -79,6 +79,25 @@ export async function syncContent() {
 
   let pageCount = 0;
   const missingImages = [];
+  // 审阅模式：手写页面（index.mdx、404.md）不走本脚本，没有行号锚点，
+  // 于是把它们的源码行导出给浏览器，hover 时按文本反查行号。正式模式删除该文件。
+  const reviewSourcesPath = path.join(siteRoot, 'public', '__review-sources.json');
+  if (process.env.REVIEW) {
+    const handwritten = ['index.mdx', '404.md'];
+    const map = {};
+    for (const name of handwritten) {
+      const p = path.join(docsRoot, name);
+      try {
+        map['site/src/content/docs/' + name] = (await readFile(p, 'utf8')).split('\n');
+      } catch {
+        // 文件不存在就跳过
+      }
+    }
+    await writeFile(reviewSourcesPath, JSON.stringify(map));
+    console.log('审阅模式：已导出 ' + Object.keys(map).length + ' 个手写页面的源码行');
+  } else {
+    await rm(reviewSourcesPath, { force: true });
+  }
   // 统计数字（节数、时长、路线覆盖、QA）统一从内容源推导，正文里写 {{stat:key}}
   const { stats } = writeStatsFile();
 

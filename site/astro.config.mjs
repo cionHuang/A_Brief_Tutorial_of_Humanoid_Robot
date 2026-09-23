@@ -59,7 +59,20 @@ const reviewHead = REVIEW
           'var badge=document.createElement("div");badge.className="srcline-badge";badge.textContent="审阅模式 · hover 段落看源行号";document.body.appendChild(badge);' +
           'var cur=null;' +
           'function anchorFor(el){var n=el;while(n&&n!==document.body){var p=n.previousElementSibling;while(p){if(p.classList&&p.classList.contains("srcline"))return p;p=p.previousElementSibling}n=n.parentElement}return null}' +
-          'document.addEventListener("mouseover",function(e){var el=e.target.closest&&e.target.closest("p,h2,h3,h4,li,td,blockquote");if(!el){chip.hidden=true;return}var a=anchorFor(el);if(!a){chip.hidden=true;return}cur=a.getAttribute("data-src");chip.textContent=cur+"　（点击复制）";chip.hidden=false},true);' +
+          'var srcMap=null,srcLoading=false;' +
+                    'function norm(s){s=s||"";s=s.replace(/Section titled[^”]*”/g,"");' +
+          'var i=s.indexOf("](");while(i>=0){var j=s.lastIndexOf("[",i);var k=s.indexOf(")",i);if(j<0||k<0){break}s=s.slice(0,j)+s.slice(j+1,i)+s.slice(k+1);i=s.indexOf("](",j)}' +
+          'return s.replace(/[*`]/g,"").replace(/\\s+/g,"")}' +
+          'function lookupByText(el){' +
+          'if(!srcMap){if(!srcLoading){srcLoading=true;fetch("/A_Brief_Tutorial_of_Humanoid_Robot/__review-sources.json").then(function(r){return r.json()}).then(function(j){srcMap=j}).catch(function(){srcMap={}})}return null}' +
+          'var raw=(el.textContent||"").replace(/Section titled[^”]*”/g,"");' +
+          'var parts=raw.split("\\n").map(norm).filter(function(x){return x.length>=6});parts.push(norm(raw));' +
+          'var lens=[24,16,12,8,6];' +
+          'for(var pi=0;pi<parts.length;pi++){var full=parts[pi];' +
+          'for(var L=0;L<lens.length;L++){var needle=full.slice(0,lens[L]);if(needle.length<6)break;' +
+          'for(var f in srcMap){var lines=srcMap[f];for(var i=0;i<lines.length;i++){if(norm(lines[i]).indexOf(needle)>=0)return f+":"+(i+1)}}}}return null}' +
+          'function resolve(el){var a=anchorFor(el);if(a)return a.getAttribute("data-src");return lookupByText(el)}' +
+          'document.addEventListener("mouseover",function(e){var el=e.target.closest&&e.target.closest("p,h2,h3,h4,li,td,blockquote");if(!el){chip.hidden=true;return}var src=resolve(el);if(!src){chip.hidden=true;return}cur=src;chip.textContent=cur+"　（点击复制）";chip.hidden=false},true);' +
           'chip.addEventListener("click",function(){if(!cur)return;navigator.clipboard.writeText(cur).then(function(){chip.textContent="已复制："+cur;setTimeout(function(){chip.hidden=true},1200)})});' +
           '});})();',
       },
