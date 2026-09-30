@@ -36,6 +36,10 @@ jobs:
         working-directory: site
         run: npm run build
 
+      - name: Check review behavior and site links
+        working-directory: site
+        run: npm test && npm run check:site
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
