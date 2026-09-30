@@ -30,33 +30,6 @@ const docsRoot = path.join(siteRoot, 'src', 'content', 'docs');
 const astroConfigSrc = await readFile(path.join(siteRoot, 'astro.config.mjs'), 'utf8');
 const siteBase = astroConfigSrc.match(/siteBase\s*=\s*'([^']+)'/)?.[1] ?? '';
 
-/**
- * 审阅模式（REVIEW=1）：在标题与段落前插入不可见的源文件行号锚点。
- * 页面上 hover 段落会在右下角显示 `chapters/…/xx.mdx:123`，点击即复制，
- * 方便“网页上发现问题 → 编辑器里按行号定位”。正式构建不注入。
- */
-function injectSourceHints(body, relPath, offset) {
-  const lines = body.split('\n');
-  const out = [];
-  let inFence = false;
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (/^\s*(```|~~~)/.test(line)) inFence = !inFence;
-    const isHeading = /^#{2,6}\s/.test(line);
-    const prevBlank = i === 0 || (lines[i - 1] ?? '').trim() === '';
-    const isParaStart =
-      !inFence &&
-      prevBlank &&
-      line.trim() !== '' &&
-      !/^(\s*[-*+]\s|\s*\d+\.\s|\||>|#{1,6}\s|<|\$\$|import\s|export\s|::)/.test(line);
-    if (!inFence && (isHeading || isParaStart)) {
-      out.push('<a class="srcline" data-src="' + relPath + ':' + (offset + i + 1) + '"></a>', '');
-    }
-    out.push(line);
-  }
-  return out.join('\n');
-}
-
 export async function syncContent() {
   const chapterDirs = (await readdir(chaptersRoot, { withFileTypes: true }))
     .filter((entry) => entry.isDirectory() && /^\d{2}-/.test(entry.name))
@@ -79,25 +52,8 @@ export async function syncContent() {
 
   let pageCount = 0;
   const missingImages = [];
-  // 审阅模式：手写页面（index.mdx、404.md）不走本脚本，没有行号锚点，
-  // 于是把它们的源码行导出给浏览器，hover 时按文本反查行号。正式模式删除该文件。
-  const reviewSourcesPath = path.join(siteRoot, 'public', '__review-sources.json');
-  if (process.env.REVIEW) {
-    const handwritten = ['index.mdx', '404.md'];
-    const map = {};
-    for (const name of handwritten) {
-      const p = path.join(docsRoot, name);
-      try {
-        map['site/src/content/docs/' + name] = (await readFile(p, 'utf8')).split('\n');
-      } catch {
-        // 文件不存在就跳过
-      }
-    }
-    await writeFile(reviewSourcesPath, JSON.stringify(map));
-    console.log('审阅模式：已导出 ' + Object.keys(map).length + ' 个手写页面的源码行');
-  } else {
-    await rm(reviewSourcesPath, { force: true });
-  }
+  // 旧版文本反查索引不再使用；源位置由 REVIEW-only remark 插件提供。
+  await rm(path.join(siteRoot, 'public', '__review-sources.json'), { force: true });
   // 统计数字（节数、时长、路线覆盖、QA）统一从内容源推导，正文里写 {{stat:key}}
   const { stats } = writeStatsFile();
 
@@ -144,12 +100,6 @@ export async function syncContent() {
       );
       // 统计占位符 → 实际数字（未知 key 会直接抛错，避免占位符上线）
       body = substituteStats(body, stats.tokens);
-      // 审阅模式：注入源文件行号锚点（正文源文件从未被改动，只影响生成结果）
-      if (process.env.REVIEW) {
-        const h1 = raw.match(/^#\s+.+?\r?\n(\r?\n)?/);
-        const offset = h1 ? h1[0].split('\n').length - 1 : 0;
-        body = injectSourceHints(body, `chapters/${chapter}/${section}`, offset);
-      }
       const frontmatter = ['---', `title: ${JSON.stringify(title)}`, '---', ''].join('\n');
       const targetFile = path.join(targetDir, section);
       const next = frontmatter + body;
