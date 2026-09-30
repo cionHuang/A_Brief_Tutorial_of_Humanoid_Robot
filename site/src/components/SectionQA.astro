@@ -13,7 +13,7 @@ import qaMap from '../data/section-qa.json';
 
 const { id, mode = 'ask' } = Astro.props;
 const items = qaMap[id] ?? [];
-const base = import.meta.env.BASE_URL;
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 const mapUrl = base + '01-system-overview/03-humanoid-robot-system-architecture/';
 ---
 

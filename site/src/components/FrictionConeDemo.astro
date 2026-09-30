@@ -24,7 +24,8 @@ const N = (tex) => ({ tex });
 ---
 
 <figure class="fc-demo" data-friction-root>
-  <svg viewBox="0 0 820 430" role="img" aria-label="摩擦锥交互演示：外力想让脚滑动，地面用摩擦平衡它；比较需要的切向力和摩擦上限，看脚是否打滑">
+  <div class="fc-diagrams">
+  <svg viewBox="0 0 420 430" role="img" aria-label="受力示意：外力想让脚滑动，地面用摩擦平衡它；比较需要的切向力和摩擦上限，看脚是否打滑">
     <defs>
       <marker id="fc-mk-n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path class="fc-mk-n" d="M0 0 L10 5 L0 10 Z"></path></marker>
       <marker id="fc-mk-p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path class="fc-mk-p" d="M0 0 L10 5 L0 10 Z"></path></marker>
@@ -34,7 +35,6 @@ const N = (tex) => ({ tex });
     </defs>
 
     <text class="fc-title" x="210" y="26" text-anchor="middle">需要的切向力 vs 地面能给的上限</text>
-    <Tex x={625} y={26} size={14} anchor="middle" parts={[{ text: '力空间：摩擦锥 ' }, { tex: '\\lVert F_t \\rVert \\le \\mu F_n' }]} />
 
     <g class="fc-scene">
       <line class="fc-ground" x1="20" y1="320" x2="400" y2="320"></line>
@@ -47,21 +47,24 @@ const N = (tex) => ({ tex });
         <circle class="fc-contact" cx="0" cy="0" r="4"></circle>
 
         <line class="fc-fn" x1="0" y1="0" x2="0" y2="-112" marker-end="url(#fc-mk-n)"></line>
-        <Tex role="fn" x={8} y={-98} size={13} anchor="start" color="light-dark(#2563eb, #60a5fa)" parts={[{ tex: 'F_n' }]} />
+        <Tex role="fn" x={8} y={-98} size={14} anchor="start" color="light-dark(#2563eb, #60a5fa)" parts={[{ tex: 'F_n' }]} />
 
         <line class="fc-push" x1="46" y1="-181" x2="46" y2="-181" marker-end="url(#fc-mk-p)"></line>
-        <Tex role="push" x={46} y={-190} size={13} anchor="middle" color="light-dark(#dc2626, #f87171)" />
+        <Tex role="push" x={46} y={-190} size={14} anchor="middle" color="light-dark(#dc2626, #f87171)" />
 
         <line class="fc-need" x1="0" y1="32" x2="0" y2="32" marker-end="url(#fc-mk-r)"></line>
-        <Tex role="need" x={0} y={21} size={13} anchor="middle" color="light-dark(#ea580c, #fb923c)" />
+        <Tex role="need" x={0} y={21} size={14} anchor="middle" color="light-dark(#c2410c, #fb923c)" />
 
         <line class="fc-actual" x1="0" y1="76" x2="0" y2="76" marker-end="url(#fc-mk-f)"></line>
-        <Tex role="actual" x={0} y={65} size={13} anchor="middle" color="light-dark(#ea580c, #fb923c)" />
+        <Tex role="actual" x={0} y={65} size={14} anchor="middle" color="light-dark(#c2410c, #fb923c)" />
       </g>
       <Tex role="slip" x={210} y={176} size={15} anchor="middle" color="light-dark(#dc2626, #f87171)" />
-      <Tex role="mu" x={20} y={420} size={13} anchor="start" color="var(--sl-color-gray-2)" parts={[{ text: '地面 ' }, { tex: '\\mu = 0.50' }]} />
+      <Tex role="mu" x={20} y={420} size={14} anchor="start" color="var(--sl-color-gray-2)" parts={[{ text: '地面 ' }, { tex: '\\mu = 0.50' }]} />
     </g>
 
+  </svg>
+  <svg viewBox="420 0 400 430" role="img" aria-label="力空间中的摩擦锥：工作点在锥内时不打滑，超出边界时打滑">
+    <Tex x={625} y={26} size={14} anchor="middle" parts={[{ text: '力空间：摩擦锥 ' }, { tex: '\\lVert F_t \\rVert \\le \\mu F_n' }]} />
     <g class="fc-plot">
       <line class="fc-axis" x1="475" y1="215" x2="800" y2="215" marker-end="url(#fc-mk-a)"></line>
       <line class="fc-axis" x1="475" y1="345" x2="475" y2="86" marker-end="url(#fc-mk-a)"></line>
@@ -75,12 +78,13 @@ const N = (tex) => ({ tex });
       <line class="fc-drop-h" x1="475" y1="215" x2="475" y2="215"></line>
       <line class="fc-drop-v" x1="475" y1="215" x2="475" y2="215"></line>
       <circle class="fc-point" cx="475" cy="215" r="6"></circle>
-      <Tex role="alpha" x={0} y={0} size={12} anchor="start" color="var(--sl-color-gray-2)" />
-      <Tex x={798} y={242} size={13} anchor="end" color="var(--sl-color-gray-2)" parts={[{ tex: 'F_n\\ (\\text{N})' }]} />
-      <Tex x={466} y={80} size={13} anchor="end" color="var(--sl-color-gray-2)" parts={[{ text: '需要的 ' }, { tex: 'F_t\\ (\\text{N})' }]} />
-      <Tex role="note" x={637} y={410} size={12.5} anchor="middle" color="var(--sl-color-text)" />
+      <Tex role="alpha" x={0} y={0} size={14} anchor="start" color="var(--sl-color-gray-2)" />
+      <Tex x={798} y={242} size={14} anchor="end" color="var(--sl-color-gray-2)" parts={[{ tex: 'F_n\\ (\\text{N})' }]} />
+      <Tex x={475} y={70} size={14} anchor="start" color="var(--sl-color-gray-2)" parts={[{ text: '需要的 ' }, { tex: 'F_t\\ (\\text{N})' }]} />
+      <Tex role="note" x={637} y={410} size={14} anchor="middle" color="var(--sl-color-text)" />
     </g>
   </svg>
+  </div>
 
   <div class="fc-controls">
     <div class="fc-surfaces" role="group" aria-label="选择地面材质">
@@ -335,12 +339,13 @@ const N = (tex) => ({ tex });
 
 <style>
   .fc-demo { margin: 1.5rem 0; }
-  .fc-demo svg { display: block; width: 100%; max-width: 820px; height: auto; margin: 0 auto; }
+  .fc-diagrams { display: grid; grid-template-columns: 420fr 400fr; max-width: 820px; margin: 0 auto; }
+  .fc-diagrams svg { display: block; width: 100%; height: auto; margin: 0 auto; min-width: 0; }
   .fc-title { fill: var(--sl-color-text); font-size: 14px; font-weight: 600; }
   .fc-ground { stroke: var(--sl-color-gray-2); stroke-width: 2.5; }
   .fc-hatch { stroke: var(--sl-color-gray-4); stroke-width: 1.5; }
   .fc-body { fill: light-dark(rgba(79, 70, 229, 0.1), rgba(139, 131, 255, 0.14)); stroke: light-dark(#4f46e5, #8b83ff); stroke-width: 2; }
-  .fc-body-lab { fill: light-dark(#4f46e5, #8b83ff); font-size: 12px; font-weight: 600; }
+  .fc-body-lab { fill: light-dark(#4f46e5, #8b83ff); font-size: 14px; font-weight: 600; }
   .fc-foot { fill: light-dark(rgba(13, 148, 136, 0.18), rgba(45, 212, 191, 0.2)); stroke: light-dark(#0d9488, #2dd4bf); stroke-width: 2.5; }
   .fc-leg { fill: light-dark(rgba(13, 148, 136, 0.1), rgba(45, 212, 191, 0.12)); stroke: light-dark(#0d9488, #2dd4bf); stroke-width: 2; }
   .fc-contact { fill: light-dark(#0f172a, #e2e8f0); }
@@ -369,11 +374,16 @@ const N = (tex) => ({ tex });
   .fc-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.1rem; max-width: 820px; margin: 0.55rem auto 0; }
   .fc-surfaces { display: flex; gap: 0.5rem; flex-wrap: wrap; }
   .fc-surf { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.75rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
-  .fc-surf[aria-pressed='true'] { border-color: var(--sl-color-accent); color: var(--sl-color-accent); background: light-dark(rgba(79, 70, 229, 0.08), rgba(139, 131, 255, 0.14)); font-weight: 600; }
+  .fc-surf[aria-pressed='true'] { border-color: var(--sl-color-accent); color: var(--sl-color-accent-high); background: light-dark(rgba(79, 70, 229, 0.08), rgba(139, 131, 255, 0.14)); font-weight: 600; }
   .fc-slider-label { display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 0.8125rem; color: var(--sl-color-gray-2); white-space: nowrap; }
   .fc-slider-label input[type='range'] { width: 9rem; accent-color: var(--sl-color-accent); }
-  .fc-fn-out, .fc-ft-out { min-width: 4rem; text-align: right; color: var(--sl-color-accent); font-size: 0.8125rem; }
+  .fc-fn-out, .fc-ft-out { min-width: 4rem; text-align: right; color: var(--sl-color-accent-high); font-size: 0.8125rem; }
   .fc-readout { max-width: 820px; margin: 0.45rem auto 0; font-size: 0.8125rem; color: var(--sl-color-text); line-height: 1.7; }
-  .fc-readout output { color: var(--sl-color-accent); font-weight: 600; }
+  .fc-readout output { color: var(--sl-color-accent-high); font-weight: 600; }
   .fc-demo figcaption { max-width: 820px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.875rem; line-height: 1.65; }
+  @media (max-width: 640px) {
+    .fc-diagrams { grid-template-columns: 1fr; gap: 0.5rem; }
+    .fc-diagrams svg { max-width: 420px; }
+    .fc-slider-label { flex-wrap: wrap; white-space: normal; }
+  }
 </style>
