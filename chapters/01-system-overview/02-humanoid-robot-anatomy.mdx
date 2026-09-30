@@ -40,6 +40,8 @@ import SectionQA from '../../../components/SectionQA.astro';
 
 > **一句话听懂**：连杆是骨头，关节是能动的连接，自由度是“描述它最少需要几个独立变量”——在关节机器人上就是能独立动的关节数，也是规格书上第一个该看的数字。
 
+<span id="product-read-end"></span>
+
 还有一个只属于人形的特点：机械臂通常固定在地面上，基座位置可以认为不变；人形机器人站在地上，身体整体会移动、倾斜、旋转，位姿没法由关节编码器单独算出来，只能靠**状态估计**——把 IMU（测姿态和加速度的芯片）、编码器（测关节角）和足底力的信息合起来，推断“我现在在哪、是什么姿态”（[4.4 节](../04-cerebellum-realtime-control/04-state-estimation.mdx)）。这种不固定在地面上的基座叫**浮动基座（Floating Base）**。[3]
 
 <FloatingBaseDemo />

@@ -5,7 +5,7 @@ import SectionQA from '../../../components/SectionQA.astro';
 
 ## 位置算对了，腿还是不动
 
-G1 的腿已经通过逆运动学算到了目标位置，但机器人抬腿时仍然明显下沉；把同一条轨迹放慢后动作反而更稳定，换一个姿态又出现电机电流突然升高。日志里关节角和脚端轨迹都没有越限，问题却出在“需要多大的力和力矩”没有被算清楚。
+调试 G1 抬腿时，可能遇到这样的问题：逆运动学已算出目标关节角，腿却仍然明显下沉；把轨迹放慢后更稳定，换一个姿态又出现电机电流升高。关节角和脚端轨迹即使没有越限，也要检查“需要多大的力和力矩”是否算清楚。
 
 现场通常会这样问：
 
@@ -22,19 +22,21 @@ G1 的腿已经通过逆运动学算到了目标位置，但机器人抬腿时�
 
 ## 方程：关节运动如何变成力矩
 
-方程里反复出现的质量矩阵和各惯性项，用的就是 [2.2 节](../02-mechanics/02-links-structure-and-materials.mdx)讲过的质量、质心和转动惯量；区别是它们必须连同表达坐标系和惯性原点一起进入方程，而且会随姿态变化。[5]
+方程里反复出现的质量矩阵和各惯性项，用的就是 [2.2 节](../02-mechanics/02-links-structure-and-materials.mdx)讲过的质量、质心和转动惯量；区别是它们必须连同表达坐标系和惯性原点一起进入方程，而且会随姿态变化。[1][2]
 
 第一遍先记住一句话就够：运动学问“应该怎么动”，动力学开始问“要用多大的力，才能真的这么动”。
 
-### 最小坐标形式
+> **跳读提示**：第一遍可以先略过下面的方程写法，跳到[各项含义](#动力学记号)认识 $\boldsymbol{M}$、$\boldsymbol{C}$、$\boldsymbol{g}$；这些记号后面几节都会用。
 
-*（进阶：第一次读可以跳过方程的推导，但下面「各项含义」那份记号表建议看完——$\boldsymbol{M}$、$\boldsymbol{C}$、$\boldsymbol{g}$ 这些记号后面几节都会直接用。判断标准见[在校学生阅读路线](../00-reading-guides/02-student.md)的“先读什么、什么可以以后再看”。）*
+### 最小坐标形式
 
 在不显式展开浮动基座细节的最小坐标中，常见的刚体动力学方程写成：
 
 $$
 \boldsymbol{M}(\boldsymbol{q})\ddot{\boldsymbol{q}} + \boldsymbol{C}(\boldsymbol{q}, \dot{\boldsymbol{q}})\dot{\boldsymbol{q}} + \boldsymbol{g}(\boldsymbol{q}) + \boldsymbol{\tau}_{\mathrm{fric}} = \boldsymbol{\tau}_{\mathrm{act}} + \boldsymbol{J}_c(\boldsymbol{q})^\top \boldsymbol{\lambda} + \boldsymbol{\tau}_{\mathrm{ext}}
 $$
+
+<span id="动力学记号"></span>
 
 各项含义如下：
 
@@ -92,15 +94,17 @@ $$
 
 ### 重力补偿（Gravity Compensation）
 
-低速保持姿态时，主要负担可能来自重力项：
+固定基座的机械臂低速保持姿态时，主要负担可能来自重力项；有地面接触的整机还要计入接触力：
 
 $$
 \boldsymbol{\tau}_{\mathrm{hold}} \approx \boldsymbol{g}(\boldsymbol{q})
 $$
 
-如果控制器完全忽略重力，电机需要靠位置误差产生额外力矩，结果可能是静态偏差、持续高电流和关节温升。重力补偿也不能盲目全量叠加：质量参数、基座姿态、接触状态和工具载荷不准确时，补偿误差会把机器人推向错误方向。实际系统通常把模型前馈与反馈控制结合，并对补偿量做限幅和状态检查。
+如果只用位置 PD 反馈且忽略重力，关节通常要先偏离目标，比例项才会产生支撑力矩，因而留下静态误差。[5] 重力补偿用模型算出当前姿态所需的重力矩，作为前馈加入指令，不等位置误差出现才补力。**支撑力矩仍由电机提供**，保持同一姿态和载荷时，不能据此认为电流会大幅降低。[2]
 
-> **一句话听懂**：重力补偿就是“先把重力这份负担替电机扛掉”：站着不动时电机本来要用位置误差硬撑，补上之后电流小很多。但补多少要算准，质量、姿态或载荷估错，反而会把机器人往错的方向推。
+补偿也不能盲目全量叠加：质量参数、基座姿态、接触状态和工具载荷不准确时，补偿误差会把机器人推向错误方向。实际系统通常把模型前馈与反馈控制结合，并对补偿量做限幅和状态检查。
+
+> **一句话听懂**：重力补偿是“算好这个姿势需要多大支撑力矩，提前加进电机指令”，不用等关节偏了才补力；力仍由电机出，质量、姿态或载荷估错也会补错。
 
 下面用真实的 G1 左臂模型演示（无灵巧手，末端为 29 DoF 模型自带的橡胶手）：拖肩 3 个、肘 1 个、腕 3 个共 7 个滑块设定目标姿态，看各关节需要多大的重力力矩；再关掉重力补偿，看手臂怎么下垂：
 
@@ -170,5 +174,6 @@ $$
 
 [4] MuJoCo Documentation. *XML Reference*. MuJoCo 官方文档，`body`、`inertial`、`free joint`、`actuator`、`geom` 和接触参数说明。<https://mujoco.readthedocs.io/en/stable/XMLreference.html>
 
+[5] Lynch, K. M., & Park, F. C. *Modern Robotics, 11.4: Motion Control with Torque or Force Inputs*. 官方教材视频：Part 2 说明重力下纯 PD 控制的稳态误差与支撑力矩，Part 3 说明模型前馈与重力补偿。<https://modernrobotics.northwestern.edu/nu-gm-book-resource/11-4-motion-control-with-torque-or-force-inputs-part-2-of-3/>；<https://modernrobotics.northwestern.edu/nu-gm-book-resource/11-4-motion-control-with-torque-or-force-inputs-part-3-of-3/>
 
 [6] Unitree Robotics. *unitree_rl_gym: G1 robot description*. 官方 G1 URDF/MJCF 模型；本文使用提交 `276801e46c5d433564f24658bac64f254b7d2d4b`，用于核对 `g1_29dof`、`g1_29dof_lock_waist`、`inertial`、浮动基座和执行器配置。<https://github.com/unitreerobotics/unitree_rl_gym/tree/276801e46c5d433564f24658bac64f254b7d2d4b/resources/robots/g1_description>

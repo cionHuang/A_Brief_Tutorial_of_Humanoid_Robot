@@ -74,7 +74,9 @@ MJCF（MuJoCo XML Format）以嵌套的 `body` 组织刚体层级，在 body 内
 
 <MjcfFieldSnippet variant="body" />
 
-同名的 `joint` 在 URDF 和 MJCF 中不表示字段完全一一对应（下面的字段名属于核对清单，第一次读可以跳过）。URDF 的 `effort` 是关节限制字段，MJCF 的 `actuatorfrcrange` 是执行器力/力矩范围；二者都需要结合加载器和单位约定解释。例如 free joint 上的 `actuatorfrclimited` 控制 `actuatorfrcrange` 这个范围是否生效。
+> **跳读提示**：下面的字段对照与执行器片段属于核对清单，第一遍可跳到[「浮动基座和广义坐标」](#浮动基座和广义坐标)接着读。
+
+同名的 `joint` 在 URDF 和 MJCF 中不表示字段完全一一对应。URDF 的 `effort` 是关节限制字段，MJCF 的 `actuatorfrcrange` 是执行器力/力矩范围；二者都需要结合加载器和单位约定解释。例如 free joint 上的 `actuatorfrclimited` 控制 `actuatorfrcrange` 这个范围是否生效。
 
 执行器和传感器也直接写在同一个 MJCF 里：
 

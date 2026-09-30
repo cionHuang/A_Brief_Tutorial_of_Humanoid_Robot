@@ -41,7 +41,7 @@ export const s = statsJson.tokens;
   />
   <LinkCard
     title="产品 / PR"
-    description={`速通查阅。精选 ${s["routes.product.sections"]} 节，读到第一条“一句话听懂”即可，约 ${s["routes.product.minutes"]} 分钟听懂技术会议。`}
+    description={`速通查阅。精选 ${s["routes.product.sections"]} 节，按产品导读指定的终点摘读，预计约 ${s["routes.product.minutes"]} 分钟，不含交互与查资料。`}
     href="/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/03-product-pr/"
   />
 </CardGrid>
@@ -52,7 +52,7 @@ export const s = statsJson.tokens;
 
 | 每一节里的块 | 你会看到什么 |
 | --- | --- |
-| 现场问题 | 一段真实场景，末尾是一句被引用的提问。每节开头的固定标题 |
+| 现场问题 | 基于工程问题的教学设例，末尾是一句提问；真实参数与记录另附来源。每节开头的固定标题 |
 | 术语名称（中英对照） | 本节的核心词，第一次出现就给英文原词 |
 | 一句话听懂 | 紧跟术语的加粗结论句，用大白话说清它是什么 |
 | 上下游影响 | 这一层怎么影响别的层，又被谁约束 |
@@ -61,7 +61,7 @@ export const s = statsJson.tokens;
 
 其中只有“现场问题”和“参考资料”是标题，其余几块写在正文里——所以查词请搜术语名，核对数字请翻到节末。
 
-用法：赶时间就只读现场问题、术语定义和紧跟其后的第一条“一句话听懂”；要查某个词就直接搜它；要核对数字就顺着 G1 参数和参考资料往下挖。
+用法：赶时间按[产品 / PR 导读](/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/03-product-pr/)指定的必读内容和终点摘读；要查某个词就直接搜它；要核对数字就顺着 G1 参数和参考资料往下挖。
 
 <Aside type="note" title="关于简化与出处">
   为了降低阅读门槛，本教程对部分内容做了简化：公式推导、参数取值与实现细节未必适用于所有机型，术语解释也尽量用直觉说法而非论文级定义。

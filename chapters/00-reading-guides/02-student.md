@@ -1,6 +1,8 @@
 # 在校学生阅读路线
 
-这条路线给想系统了解人形机器人、找学习方向的同学。建议顺序通读，全书{{stat:minutes.totalTextRound}}：先看下表中每节的预计时长与“建议先读”的顺序，再按节推进。时长按每分钟约 {{stat:reading.baseline}} 字的正文速度估算，另加看公式、配图和动手试交互演示的时间；按自己的节奏读即可。
+这条路线给想系统了解人形机器人、找学习方向的同学。建议顺序通读，全书{{stat:minutes.totalTextRound}}：先看下表中每节的预计时长与“概念前置与推荐阅读”，再按节推进。时长按每分钟约 {{stat:reading.baseline}} 字的正文速度估算，另加看公式、配图和动手试交互演示的时间；按自己的节奏读即可。
+
+开头的场景用于提出工程问题；没有注明实测来源的叙述按教学设例阅读，不当作某次 G1 测试的记录。
 
 全书是一条问题链：先认清整机（[第 1 章](../01-system-overview/01-what-is-embodied-ai.mdx)），再往下拆成硬件（[第 2 章](../02-mechanics/01-mechanisms-and-dof.mdx)–[第 3 章](../03-electrical-embedded/01-power-system.mdx)），然后回答“这些量怎么算、身体怎么站住”（[第 4 章](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx)）、“目标是谁给的”（[第 5 章](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx)）、“怎么开发与验证”（[第 6 章](../06-software-tools-simulation/01-ros2-software-architecture.mdx)）。每章结尾都会把下一个问题交给下一章——所以卡住时，先看本节开头那句现场问题，它通常就是这一节要回答的东西。
 
@@ -16,11 +18,11 @@
 
 | 档位 | 内容 | 怎么用 |
 | --- | --- | --- |
-| **基础必备** | 1.1–1.3、2.1、3.1–3.3、4.1–4.6、5.1–5.3、6.1、6.6（{{stat:tier.base.sections}} 节） | 顺序读完，这是理解一台整机的最小集合——它已经按依赖关系闭合：读 4.4 之前先有 4.1 的坐标系与 3.3 的传感器 |
+| **基础必备** | 1.1–1.3、2.1、3.1–3.3、4.1–4.6、5.1–5.3、6.1、6.6（{{stat:tier.base.sections}} 节） | 优先顺序读完；遇到跨档前置概念，按下表的定点链接补读，不必先读完整一节 |
 | **现代常用** | 2.2–2.5、3.4–3.6、5.4–5.6、6.2–6.5（{{stat:tier.common.sections}} 节） | 用到再读，或跟着下面各章的表格读 |
 | **研究前沿** | 5.7（WAM） | 知道它在系统里扮演什么角色即可，不必现在读透 |
 
-这张表说的是“哪些内容重要”，不是“按什么顺序读”——每节的前置依赖看后面各章表格里的“建议先读”一列。三档加起来覆盖全部 {{stat:sections.total}} 节；之所以把 3.3（传感器）和 4.1–4.3（坐标系、运动学、动力学）也放进基础必备，是因为状态估计与全身控制离不开它们：4.4 要先读 4.1，4.5／4.6 要先读 4.2／4.3，而 4.4 的输入来自 3.3。
+这张表分的是整节阅读的优先级，三档覆盖全部 {{stat:sections.total}} 节；“基础必备”并不是脱离另外两档就能独立读完的闭合路线。后面表格中，**必要概念**表示进入该节前应补的定点段落，**推荐整节**表示更完整的背景阅读。比如读 3.2 要先知道 2.3 的关节模组与传动比，读 4.3 要补 2.2 的质量、质心与惯量，读 4.6 要补 2.4 的接触与摩擦，读 6.6 要补 6.4 的回放用途；这些概念需要现在补，所属整节仍可留到用时再读。表中只写节号的项目，是推荐整节阅读。
 
 节内同样有“可以晚点看”的部分——它们不是不重要，而是**不影响你理解主线**：
 
@@ -30,15 +32,11 @@
 
 判断标准只有一句：**如果跳过这一段，你还能说清“这一层在整机里干什么、输入输出是什么”，那它就可以晚点看。** 正文里标着“进阶”“可跳过”“工程细节”的小节，都按这条标准处理即可。
 
-正文里还有一种提示框，样子是：
-
-> **第一次阅读如果只是建立系统概念，到这里即可。** 你已经拿到……下面的……属于深入内容。
-
-这句话标的是本节的**安全退出点**：看到它，说明这一节的第一层已经讲完，后面的推导、参数和接口细节可以留到第二遍。全书每一节都按三层组织——**第一层**是系统认知（现场问题 → 术语 → 一句话听懂 → 能力解锁），**第二层**是工程细节（型号、参数、现场经验），**第三层**是公式与实现（推导、标准型、API）。安全退出点只出现在公式最密、细节最碎的节里，它不是“别读了”，而是“现在停下，主线是完整的”。
+正文有两种阅读提示：**退出提示**写明已经讲完的概念与可以留待以后看的内容，读到它可按注明的目标结束本节；**跳读提示**放在待略过的内容前，并给出接着读的位置。跳过中段后仍要读目标段，不能直接进入下一节。概念、工程细节与公式有时穿插出现，不要只凭“第一条一句话听懂”判断主线已经讲完。
 
 ## 第 1 章 系统总览（{{stat:minutes.chapterText.1}}）
 
-| 小节 | 预计时间 | 建议先读 |
+| 小节 | 预计时间 | 概念前置与推荐阅读 |
 | --- | --- | --- |
 | [1.1 我们到底在研究什么：具身智能与人形机器人](../01-system-overview/01-what-is-embodied-ai.mdx) | {{stat:minutes.section.1.1}} 分钟 | 无 |
 | [1.2 一台人形机器人里面有什么：以 G1 为例](../01-system-overview/02-humanoid-robot-anatomy.mdx) | {{stat:minutes.section.1.2}} 分钟 | [1.1](../01-system-overview/01-what-is-embodied-ai.mdx) |
@@ -46,7 +44,7 @@
 
 ## 第 2 章 机械与本体（{{stat:minutes.chapterText.2}}）
 
-| 小节 | 预计时间 | 建议先读 |
+| 小节 | 预计时间 | 概念前置与推荐阅读 |
 | --- | --- | --- |
 | [2.1 机构、关节与自由度](../02-mechanics/01-mechanisms-and-dof.mdx) | {{stat:minutes.section.2.1}} 分钟 | [1.2](../01-system-overview/02-humanoid-robot-anatomy.mdx) |
 | [2.2 结构设计、材料与刚柔性](../02-mechanics/02-links-structure-and-materials.mdx) | {{stat:minutes.section.2.2}} 分钟 | [2.1](../02-mechanics/01-mechanisms-and-dof.mdx) |
@@ -56,10 +54,10 @@
 
 ## 第 3 章 电气与嵌入式（{{stat:minutes.chapterText.3}}）
 
-| 小节 | 预计时间 | 建议先读 |
+| 小节 | 预计时间 | 概念前置与推荐阅读 |
 | --- | --- | --- |
 | [3.1 电源系统](../03-electrical-embedded/01-power-system.mdx) | {{stat:minutes.section.3.1}} 分钟 | 无（个别词会指向 [3.5](../03-electrical-embedded/05-mcu-realtime-embedded-software.mdx)/[3.6](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)，可先跳过） |
-| [3.2 电机、驱动器与伺服控制](../03-electrical-embedded/02-motors-drivers-servo-control.mdx) | {{stat:minutes.section.3.2}} 分钟 | [2.3](../02-mechanics/03-transmission-and-joint-modules.mdx) |
+| [3.2 电机、驱动器与伺服控制](../03-electrical-embedded/02-motors-drivers-servo-control.mdx) | {{stat:minutes.section.3.2}} 分钟 | 必要概念：[2.3「一条关节传动链」](../02-mechanics/03-transmission-and-joint-modules.mdx#一条关节传动链)中的关节模组、电机侧／输出侧与传动比；推荐整节：2.3 |
 | [3.3 传感器与数据采集](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx) | {{stat:minutes.section.3.3}} 分钟 | 无（个别术语会指向 [4.1](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx)/[4.3](../04-cerebellum-realtime-control/03-dynamics.mdx)/[4.4](../04-cerebellum-realtime-control/04-state-estimation.mdx)，可先跳过） |
 | [3.4 实时通信与总线](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | {{stat:minutes.section.3.4}} 分钟 | 无 |
 | [3.5 MCU、实时系统与嵌入式软件](../03-electrical-embedded/05-mcu-realtime-embedded-software.mdx) | {{stat:minutes.section.3.5}} 分钟 | [3.4](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) |
@@ -67,18 +65,18 @@
 
 ## 第 4 章 小脑：模型、状态估计与实时运控（{{stat:minutes.chapterText.4}}）
 
-| 小节 | 预计时间 | 建议先读 |
+| 小节 | 预计时间 | 概念前置与推荐阅读 |
 | --- | --- | --- |
 | [4.1 机器人数学基础](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) | {{stat:minutes.section.4.1}} 分钟 | 线性代数基础 |
 | [4.2 运动学](../04-cerebellum-realtime-control/02-kinematics.mdx) | {{stat:minutes.section.4.2}} 分钟 | [4.1](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) |
-| [4.3 动力学](../04-cerebellum-realtime-control/03-dynamics.mdx) | {{stat:minutes.section.4.3}} 分钟 | [2.2](../02-mechanics/02-links-structure-and-materials.mdx)、[4.2](../04-cerebellum-realtime-control/02-kinematics.mdx) |
+| [4.3 动力学](../04-cerebellum-realtime-control/03-dynamics.mdx) | {{stat:minutes.section.4.3}} 分钟 | 必要概念：[2.2「质量、质心与转动惯量」](../02-mechanics/02-links-structure-and-materials.mdx#质量质心与转动惯量)；推荐整节：[4.2](../04-cerebellum-realtime-control/02-kinematics.mdx)，需研究结构时再补 2.2 |
 | [4.4 状态估计](../04-cerebellum-realtime-control/04-state-estimation.mdx) | {{stat:minutes.section.4.4}} 分钟 | [3.3](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx)、[4.1](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) |
 | [4.5 基础控制](../04-cerebellum-realtime-control/05-basic-control.mdx) | {{stat:minutes.section.4.5}} 分钟 | [4.2](../04-cerebellum-realtime-control/02-kinematics.mdx) |
-| [4.6 双足平衡与全身控制](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | {{stat:minutes.section.4.6}} 分钟 | [2.4](../02-mechanics/04-foot-contact-and-stability.mdx)、[4.3](../04-cerebellum-realtime-control/03-dynamics.mdx)、[4.5](../04-cerebellum-realtime-control/05-basic-control.mdx) |
+| [4.6 双足平衡与全身控制](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx) | {{stat:minutes.section.4.6}} 分钟 | 必要概念：[2.4「足部与地面接触」](../02-mechanics/04-foot-contact-and-stability.mdx#足部与地面接触)及[「支撑多边形与稳定性」](../02-mechanics/04-foot-contact-and-stability.mdx#支撑多边形与稳定性)；推荐整节：[4.3](../04-cerebellum-realtime-control/03-dynamics.mdx)、[4.5](../04-cerebellum-realtime-control/05-basic-control.mdx)，需研究足部时再补 2.4 |
 
 ## 第 5 章 大脑：感知、规划、VLA 与 WAM（{{stat:minutes.chapterText.5}}）
 
-| 小节 | 预计时间 | 建议先读 |
+| 小节 | 预计时间 | 概念前置与推荐阅读 |
 | --- | --- | --- |
 | [5.1 机器人学习与 AI 词汇](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx) | {{stat:minutes.section.5.1}} 分钟 | 无 |
 | [5.2 感知系统](../05-brain-perception-planning-vla-wam/02-perception-system.mdx) | {{stat:minutes.section.5.2}} 分钟 | [3.3](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx)、[4.1](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx) |
@@ -90,14 +88,14 @@
 
 ## 第 6 章 软件与工具链（{{stat:minutes.chapterText.6}}）
 
-| 小节 | 预计时间 | 建议先读 |
+| 小节 | 预计时间 | 概念前置与推荐阅读 |
 | --- | --- | --- |
 | [6.1 ROS 2 与机器人软件架构](../06-software-tools-simulation/01-ros2-software-architecture.mdx) | {{stat:minutes.section.6.1}} 分钟 | [1.2](../01-system-overview/02-humanoid-robot-anatomy.mdx)（个别词会指向 [3.4](../03-electrical-embedded/04-real-time-communication-and-buses.mdx)/[4.4](../04-cerebellum-realtime-control/04-state-estimation.mdx)/[4.5](../04-cerebellum-realtime-control/05-basic-control.mdx)/[4.6](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)/[5.3](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)/[3.6](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)，可先跳过） |
 | [6.2 MuJoCo](../06-software-tools-simulation/02-mujoco.mdx) | {{stat:minutes.section.6.2}} 分钟 | [2.5](../02-mechanics/05-robot-description-files.mdx)、[4.3](../04-cerebellum-realtime-control/03-dynamics.mdx) |
 | [6.3 Isaac Sim 与 Isaac Lab](../06-software-tools-simulation/03-isaac-sim-isaac-lab.mdx) | {{stat:minutes.section.6.3}} 分钟 | [6.2](../06-software-tools-simulation/02-mujoco.mdx) |
 | [6.4 Gazebo、RViz 2 与 Foxglove](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.mdx) | {{stat:minutes.section.6.4}} 分钟 | [6.1](../06-software-tools-simulation/01-ros2-software-architecture.mdx) |
 | [6.5 运动学与动力学工具库](../06-software-tools-simulation/05-kinematics-dynamics-libraries.mdx) | {{stat:minutes.section.6.5}} 分钟 | [4.2](../04-cerebellum-realtime-control/02-kinematics.mdx)、[4.3](../04-cerebellum-realtime-control/03-dynamics.mdx)（个别词会指向 [2.1](../02-mechanics/01-mechanisms-and-dof.mdx)/[3.3](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx)/[4.4](../04-cerebellum-realtime-control/04-state-estimation.mdx)/[4.6](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)/[5.3](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)/[6.1](../06-software-tools-simulation/01-ros2-software-architecture.mdx)/[6.2](../06-software-tools-simulation/02-mujoco.mdx)，可先跳过） |
-| [6.6 软件工程与版本管理](../06-software-tools-simulation/06-software-engineering-and-versioning.mdx) | {{stat:minutes.section.6.6}} 分钟 | [6.1](../06-software-tools-simulation/01-ros2-software-architecture.mdx)、[6.4](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.mdx) |
+| [6.6 软件工程与版本管理](../06-software-tools-simulation/06-software-engineering-and-versioning.mdx) | {{stat:minutes.section.6.6}} 分钟 | 必要概念：[6.4「Foxglove：看时间，做回放」](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.mdx#foxglove看时间做回放)；推荐整节：[6.1](../06-software-tools-simulation/01-ros2-software-architecture.mdx)，需选工具时再补 6.4 |
 
 ## 读完之后往哪走
 

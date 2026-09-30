@@ -28,6 +28,8 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 > **一句话听懂**：行为克隆学的只是“示范里出现过的状态该怎么做”；一旦误差把机器人带出示范分布，策略就只能猜，而错误会进一步放大成“越走越偏”。
 
+<span id="product-read-end"></span>
+
 ## 遥操作与数据采集
 
 ### 遥操作：人怎么把动作教给机器人
@@ -102,15 +104,19 @@ G1 的行走策略在训练仿真器里跑了几千轮，奖励曲线漂亮，�
 
 弥合手段按性价比排序：域随机化是最通用的保险；系统辨识（System Identification；即 [4.3 节](../04-cerebellum-realtime-control/03-dynamics.mdx)的参数辨识）把真实质量、摩擦和执行器特性测回来，直接缩小动力学差距；执行器模型（Actuator Model）把电机的非线性响应显式建进仿真；延迟建模把固定延迟和随机抖动注入训练。[5]
 
-> **第一次阅读如果只是建立系统概念，到这里即可。** 你已经知道学习控制的失效模式与评测纪律。下面这条 `unitree_rl_gym` 的仓库链路属于 SDK 实操——记住“训练 → Sim2Sim → 部署 → 低层 PD”四步就够，路径与代码以后再看。
+> **接着读**：下面先用 G1 说明训练到部署的四步与保护责任，再讲“演示成功”为什么不等于能力达标。仓库代码可以跳读，部署与评测的判断不能略过。
 
 ## G1：从训练到部署的一条链路
 
 以 [`unitree_rl_gym`](https://github.com/unitreerobotics/unitree_rl_gym) 的 G1 行走为例，训练到部署分四步：**并行训练 → Sim2Sim → 部署（50 Hz 输出关节目标）→ 低层 PD 执行**。四步分别落在仓库的 `legged_gym/`、`deploy/deploy_mujoco/`、`deploy/deploy_real/` 里（同族的 `unitree_mujoco`、`unitree_sdk2` 也都是 BSD-3-Clause）。下面把三段关键代码逐字摘出来：[7]
 
+> **跳读提示**：下面的代码摘录与运行路径属于 SDK 实操，第一遍可跳到[学习策略的部署边界](#learning-deployment-boundary)接着读，再读完评测与泛化。
+
 <G1DeploySnippet />
 
 想自己跑一遍，顺序大致是：克隆 `unitree_rl_gym` → 用 `legged_gym/scripts/train.py` 先跑通默认任务，再改奖励与随机化 → 拿 `deploy/pre_train/g1/` 里的策略在 `deploy_mujoco.py` 里做 Sim2Sim → 步态在 MuJoCo 里站得住之后，再按 `deploy_real` 的说明上实机。这条顺序不建议跳：Sim2Sim 是最便宜的一道关。
+
+<span id="learning-deployment-boundary"></span>
 
 注意这条链路里学习策略的边界：**在这个例子里**，策略输出的是关节目标，力矩级的稳定性、限幅和异常保护由低层与 [3.6 节](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)的安全链路承担。学习策略的输出粒度不止这一种——它也可以输出残差甚至力矩，直接承担更低层的控制，代价是安全与限幅的责任随之变大（层级与方法类型是两个维度，见 [5.1 节](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx)）。策略输出必须做限幅和变化率限制，未经 Sim2Sim 验证的策略不上实机，实机首跑必须有吊架或人工保护。
 

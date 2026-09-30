@@ -83,7 +83,7 @@ $$
 
 <VectorProductDemo />
 
-> **第一次阅读如果只是建立系统概念，到这里即可。** 你已经拿到本节最要紧的一件事：位置、方向、速度、力都必须和“坐标系＋单位＋乘法方向＋分量顺序”绑在一起，算错方向多半是约定没声明。下面的姿态四种表示与齐次变换才是本节的核心，也是 4.2 能把变换连乘起来的前提（建议至少读到「数值之外还要写清什么」那三条约定）；只有标着“进阶”的推导——万向节锁的矩阵推导、指数映射——第一次读可以跳过。
+> **接着读**：向量只是起点。下面的矩阵、四种姿态表示与齐次变换，是 4.2 能把变换连乘起来的前提；请继续读完[「数值之外还要写清什么」](#数值之外还要写清什么)。万向节锁等推导可按各处跳读提示略过。
 
 ## 矩阵：把多条线性关系放在一起
 
@@ -138,7 +138,7 @@ $$
 
 ### 万向节锁为什么会发生
 
-*（进阶：第一次读可以跳过，不影响主线——判断标准见[在校学生阅读路线](../00-reading-guides/02-student.md)的“先读什么、什么可以以后再看”。）*
+*（推导细节：第一遍可跳到[「旋转矩阵」](#旋转矩阵rotation-matrix)接着读；欧拉角在特定姿态会失去稳定的局部表示，不代表机械关节被锁住。）*
 
 以最常见的 ZYX 顺序为例，先绕 $z$ 轴旋转 yaw ($\psi$)，再绕中间轴 $y$ 旋转 pitch ($\theta$)，最后绕随动的 $x$ 轴旋转 roll ($\phi$)：
 
@@ -205,7 +205,7 @@ $$
 
 ### 轴角（Axis-Angle）与旋转向量
 
-轴角用单位轴 $\boldsymbol{u}$ 和旋转角 $\theta$ 表示姿态。把二者合成 $\boldsymbol{\phi} = \theta \boldsymbol{u}$ 后得到旋转向量（Rotation Vector）。它与旋转矩阵之间可以通过指数映射和 Rodrigues 公式互相转换（进阶内容，第一次读可跳过——记住“它和旋转矩阵只是同一个旋转的不同写法”就够），适合表示小姿态误差和优化变量。[1] 用已有记号写出来就是：对任意向量 $\boldsymbol{v}$，$\boldsymbol{R}\boldsymbol{v} = \boldsymbol{v}\cos\theta + (\boldsymbol{u}\times\boldsymbol{v})\sin\theta + \boldsymbol{u}(\boldsymbol{u}\cdot\boldsymbol{v})(1-\cos\theta)$——绕轴 $\boldsymbol{u}$ 转 $\theta$ 对向量的作用，不需要迭代求解。
+轴角用单位轴 $\boldsymbol{u}$ 和旋转角 $\theta$ 表示姿态。把二者合成 $\boldsymbol{\phi} = \theta \boldsymbol{u}$ 后得到旋转向量（Rotation Vector）。它与旋转矩阵之间可以通过指数映射和 Rodrigues 公式互相转换（公式细节可略，记住“它和旋转矩阵只是同一个旋转的不同写法”；读完这句可跳到[「四元数」](#四元数quaternion)），适合表示小姿态误差和优化变量。[1] 用已有记号写出来就是：对任意向量 $\boldsymbol{v}$，$\boldsymbol{R}\boldsymbol{v} = \boldsymbol{v}\cos\theta + (\boldsymbol{u}\times\boldsymbol{v})\sin\theta + \boldsymbol{u}(\boldsymbol{u}\cdot\boldsymbol{v})(1-\cos\theta)$——绕轴 $\boldsymbol{u}$ 转 $\theta$ 对向量的作用，不需要迭代求解。
 
 当 $\theta$ 很小时，旋转向量近似等于三个轴上的微小角度；但较大旋转不能简单按三个独立角度相加。角度接近 $\pi$ 时，轴角也存在符号和表示不唯一的问题。
 
@@ -224,8 +224,6 @@ $$
 四元数没有消除三维旋转本身的复杂性。它只是另一种参数化；读取、归一化、组合和转换时仍然必须说明坐标系、分量顺序和旋转方向。
 
 > **一句话听懂**：四元数用 4 个数表示朝向，是姿态计算最顺手的工具：没有万向节锁，积分和插值都自然。坑不在数学而在接口：有的库写 [w,x,y,z]，有的写 [x,y,z,w]，而且 q 和 -q 是同一个朝向。
-
-> **进阶：左乘／右乘的 4×4 矩阵展开第一次读可以跳过**，只记八个字——左乘绕世界、右乘绕自己；真去组合变换时再回来看推导。
 
 ## 齐次变换：同时描述旋转和平移
 
@@ -277,6 +275,8 @@ $$
 
 “矩阵乘法不满足交换律”这句话，在机器人里不是数学上的小脾气，而是**两种不同的动作**。把齐次变换代进去，区别就一目了然了。
 
+> **跳读提示**：下面的 4×4 矩阵展开与逐项解释可留到动手时再看；第一遍可跳到[左乘／右乘的口诀与例子](#left-right-intuition)接着读。
+
 设机器人当前的位姿是 $\boldsymbol{T} = \begin{bmatrix} \boldsymbol{R} & \boldsymbol{p} \\ \boldsymbol{0} & 1 \end{bmatrix}$，要对它施加一个变换 $\Delta = \begin{bmatrix} \boldsymbol{R}_\Delta & \boldsymbol{p}_\Delta \\ \boldsymbol{0} & 1 \end{bmatrix}$，两种写法分别是：
 
 $$
@@ -297,6 +297,8 @@ $$
 
 - **左乘** $\Delta \boldsymbol{T}$：新的平移是 $\boldsymbol{R}_\Delta \boldsymbol{p} + \boldsymbol{p}_\Delta$——机器人**原有的位置也被 $\Delta$ 的旋转转了一道**，再叠上 $\Delta$ 自己的平移。整台机器是在世界坐标系里被搬了一下。
 - **右乘** $\boldsymbol{T} \Delta$：新的平移是 $\boldsymbol{R} \boldsymbol{p}_\Delta + \boldsymbol{p}$——$\Delta$ 的平移先被机器人**当前的姿态**转进它自己的坐标系，再加回原位。这就是“沿自身轴移动”。
+
+<span id="left-right-intuition"></span>
 
 口诀：**左乘绕世界，右乘绕自己**。一个日常对照是“向前走 0.3 米”：右乘 $\boldsymbol{p}_\Delta = (0.3, 0, 0)$ 是沿机器人自己的正前方走；左乘同一个 $\boldsymbol{p}_\Delta$，走的却是世界坐标系的 $x$ 方向——机器人一旦转过身，这两条路就不是同一条路。反过来，想让机器人原地转身，就该右乘一个只含旋转的 $\Delta$。
 

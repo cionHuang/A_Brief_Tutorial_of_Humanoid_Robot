@@ -49,8 +49,12 @@ function parseGuide(rel) {
   let m;
   while ((m = re.exec(text))) sections.add(Number(m[1]) + '.' + Number(m[2]));
   const steps = [];
+  const readEnds = {};
   let cur = null;
   for (const line of text.split('\n')) {
+    const end = line.match(/<!-- product-read-end:\s*([\w-]+)\s*-->/);
+    const section = line.match(/\]\(\.\.\/(0[1-6])-[^/]+\/(\d\d)-[^)]*\)/);
+    if (end && section) readEnds[Number(section[1]) + '.' + Number(section[2])] = end[1];
     const h = line.match(/^##\s+(.+?)\s*$/);
     if (h) { cur = { title: h[1], sections: new Set() }; steps.push(cur); continue; }
     if (!cur) continue;
@@ -58,7 +62,7 @@ function parseGuide(rel) {
     let m2;
     while ((m2 = re2.exec(line))) cur.sections.add(Number(m2[1]) + '.' + Number(m2[2]));
   }
-  return { sections, steps: steps.filter((s) => s.sections.size > 0) };
+  return { sections, readEnds, steps: steps.filter((s) => s.sections.size > 0) };
 }
 
 /** 从学生导读的三档表里数出每档多少节（支持 1.1–1.3、4.1 这种写法） */
@@ -89,18 +93,26 @@ export function computeStats() {
   const rt = JSON.parse(fs.readFileSync(path.join(siteRoot, 'src/data/reading-time.json'), 'utf8'));
   const baseline = rt.baseline || 300;
   const qa = JSON.parse(fs.readFileSync(path.join(siteRoot, 'src/data/section-qa.json'), 'utf8'));
+  const routes = {
+    engineer: parseGuide('00-reading-guides/01-engineer-cross-team.md'),
+    student: parseGuide('00-reading-guides/02-student.md'),
+    product: parseGuide('00-reading-guides/03-product-pr.md'),
+  };
 
-  const minutes = {}, words = {}, productMinutes = {};
+  const minutes = {}, words = {}, productMinutes = {}, productWords = {};
   for (const s of files) {
     const text = fs.readFileSync(s.path, 'utf8');
     words[s.id] = han(text);
     const factor = rt.factors[s.id] ?? 1;
     minutes[s.id] = Math.round((words[s.id] / baseline) * factor);
-    // 产品 / PR 路线只读「现场问题 + 第一个术语定义 + 一条一句话听懂」，
-    // 所以按读到第一条“一句话听懂”为止的真实字数计时，而不是整节时长
-    const i = text.indexOf('> **一句话听懂**');
-    const upto = i < 0 ? text : text.slice(0, text.indexOf('\n', i));
-    productMinutes[s.id] = Math.max(1, Math.round(han(upto) / baseline));
+    // 产品 / PR 按导读指定的真实阅读终点估算；不扣跳读段，不计交互和查资料。
+    if (routes.product.sections.has(s.id)) {
+      const end = routes.product.readEnds[s.id];
+      const i = end ? text.indexOf(`<span id="${end}"></span>`) : -1;
+      if (i < 0) throw new Error(`产品路线 ${s.id} 缺少有效阅读终点`);
+      productWords[s.id] = han(text.slice(0, i));
+      productMinutes[s.id] = Math.max(1, Math.round(productWords[s.id] / baseline));
+    }
   }
   const chapterMinutes = {}, chapterSections = {};
   for (const s of files) {
@@ -109,11 +121,6 @@ export function computeStats() {
   }
   const totalMinutes = Object.values(minutes).reduce((a, b) => a + b, 0);
 
-  const routes = {
-    engineer: parseGuide('00-reading-guides/01-engineer-cross-team.md'),
-    student: parseGuide('00-reading-guides/02-student.md'),
-    product: parseGuide('00-reading-guides/03-product-pr.md'),
-  };
   const tiers = parseTiers();
   const sumMinutes = (set) => [...set].reduce((a, id) => a + (minutes[id] || 0), 0);
 
@@ -143,15 +150,10 @@ export function computeStats() {
     tokens['sections.chapter.' + c] = chapterSections[c];
   }
   const sumProduct = (set) => [...set].reduce((a, id) => a + (productMinutes[id] || 0), 0);
-  // 产品 / PR 路线要读的最长一段：用来生成“这三样都在每节开头约 N 汉字以内”这句话
+  // 产品 / PR 路线最长阅读前缀，按汉字数选取，避免取整分钟并列时选错。
   const prodIds = [...routes.product.sections];
-  const maxId = prodIds.reduce((a, b) => (productMinutes[a] >= productMinutes[b] ? a : b), prodIds[0]);
-  const readHan = (id) => {
-    const text = fs.readFileSync(files.find((f) => f.id === id).path, 'utf8');
-    const i = text.indexOf('> **一句话听懂**');
-    return han(i < 0 ? text : text.slice(0, text.indexOf('\n', i)));
-  };
-  tokens['routes.product.maxReadHan'] = readHan(maxId);
+  const maxId = prodIds.reduce((a, b) => (productWords[a] >= productWords[b] ? a : b), prodIds[0]);
+  tokens['routes.product.maxReadHan'] = productWords[maxId];
   tokens['routes.product.maxReadSection'] = maxId;
   tokens['routes.product.maxReadMinutes'] = productMinutes[maxId];
   for (const [key, r] of Object.entries(routes)) {
