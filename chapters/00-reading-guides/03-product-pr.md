@@ -17,7 +17,7 @@
 | 小节 | 必读终点（读完这一段） | 你将听懂 |
 | --- | --- | --- |
 | [1.1 我们到底在研究什么：具身智能与人形机器人](../01-system-overview/01-what-is-embodied-ai.mdx) | [「什么是具身智能」的一句话听懂](../01-system-overview/01-what-is-embodied-ai.mdx#product-read-end) <!-- product-read-end: product-read-end --> | 遥控、脚本与自主的差别；具身智能要求身体与自主运行的闭环。 |
-| [1.2 一台人形机器人里面有什么：以 G1 为例](../01-system-overview/02-humanoid-robot-anatomy.mdx) | [「本体与关节」的第一条一句话听懂](../01-system-overview/02-humanoid-robot-anatomy.mdx#product-read-end) <!-- product-read-end: product-read-end --> | 连杆、关节与自由度；按身体部位分区与按功能分层是两种视角。 |
+| [1.2 一台人形机器人里面有什么：以 G1 为例](../01-system-overview/02-humanoid-robot-anatomy.mdx) | [「本体与关节」的第一条一句话听懂](../01-system-overview/02-humanoid-robot-anatomy.mdx#product-read-end) <!-- product-read-end: product-read-end --> | 连杆、关节与自由度；人形机器人身体的四个区域。 |
 | [1.3 从任务到电机：一台现代人形机器人如何运行](../01-system-overview/03-humanoid-robot-system-architecture.mdx) | [「算法跑在哪里」末段](../01-system-overview/03-humanoid-robot-system-architecture.mdx#product-read-end) <!-- product-read-end: product-read-end --> | 六层功能链、各层频率与典型部署位置；高频控制不会等低频推理。 |
 
 ## 第二步：机械与电气（{{stat:routes.product.step2.sections}} 节，{{stat:routes.product.step2.timeText}}）
