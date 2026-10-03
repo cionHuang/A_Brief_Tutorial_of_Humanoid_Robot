@@ -95,10 +95,6 @@ const feedbackRotate = 'rotate(-90 ' + feedbackLabelX + ' ' + MID_Y + ')';
     <text x={INFRA_X + 18} y={TOP + 410} class="sysmap-infra-note">把 ROS 当成「大脑下面的一层」，就会问出</text>
     <text x={INFRA_X + 18} y={TOP + 428} class="sysmap-infra-note">「它在控制之上还是之下」——没有答案。</text>
   </svg>
-  <figcaption>
-    整机总图：目标自上而下被逐层翻译（任务 → 行为 → 运动 → 控制 → 驱动 → 机械），状态自下而上汇报（传感器 → 感知与状态估计 → 各层决策）；
-    横向基础设施不属于任何一层，却被每一层使用。频率是典型量级，随实现与硬件变化。
-  </figcaption>
 </figure>
 
 <style>
@@ -198,10 +194,4 @@ const feedbackRotate = 'rotate(-90 ' + feedbackLabelX + ' ' + MID_Y + ')';
     font-weight: 600;
   }
 
-  .system-map figcaption {
-    margin-top: 0.85rem;
-    font-size: 0.875rem;
-    color: var(--sl-color-gray-2);
-    text-align: left;
-  }
 </style>
