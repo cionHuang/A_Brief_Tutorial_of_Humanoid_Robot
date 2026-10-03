@@ -23,7 +23,7 @@
 | --- | --- | --- |
 | **跨部门工程师** | [按部门查词](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/01-engineer-cross-team/)：这周和谁开会、和谁联调，就补谁的语言 | 每次 15–30 分钟 |
 | **在校学生** | [顺序通读](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/02-student/)：每节附预计时长与建议先读的顺序 | 8–10 小时 |
-| **产品 / PR** | [速通 21 节](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/03-product-pr/)：按导读指定的必读内容与终点摘读 | 约 1 小时 34 分钟，不含交互与查资料 |
+| **产品 / PR** | [速通 21 节](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/03-product-pr/)：按导读指定的必读内容与终点摘读 | 约 1 小时 32 分钟，不含交互与查资料 |
 
 ## 目录
 
