@@ -1,8 +1,6 @@
 # 1.3 从任务到电机：一台现代人形机器人如何运行
 
 import SystemMap from '../../../components/SystemMap.astro';
-import G1CommandJourney from '../../../components/G1CommandJourney.astro';
-import TwoLoopsDiagram from '../../../components/TwoLoopsDiagram.astro';
 import SectionQA from '../../../components/SectionQA.astro';
 
 ## 从一次演示说起
@@ -15,18 +13,16 @@ import SectionQA from '../../../components/SectionQA.astro';
 
 这一节我们回答这些部件**怎么一起工作**。
 
-> **在整机里的位置**：本节给出整机的分工图，连接用户任务、软件处理与机械执行。后续各章会分别展开图中的模块。
-
 <SectionQA id="1.3" mode="ask" />
 
 ## 从任务到动作
 
 机器人会把一个高层目标逐步翻译成更具体的指令：从“用户想完成什么”，到“机器人采取什么行为”，再到“身体如何运动”，最后落实为电机和执行器的力矩。信息沿着这条链自上而下传递：上层决定**做什么**，下层决定**怎么做**。[1][2]
 
-这条目标逐步具体化的路径称为**纵向功能链**（Vertical Functional Chain）。下面把“拿红杯子”放进本教程的六层分工中。实际系统可以合并或拆分模块，这里的划分用于说明职责和接口。[1][2]
+这条目标逐步具体化、指令逐级下发的路径称为**纵向功能链**（Vertical Functional Chain）。它由六个按职责分工、上下衔接的功能层组成。下面把“拿红杯子”放进这条纵向功能链中。实际系统可以合并或拆分模块，这里的划分用于说明职责和接口。[1][2]
 
-| 层 | 在拿杯子时负责什么 | 输出 | 典型频率 |
-| --- | --- | --- | --- |
+| 功能层 | 在拿杯子时负责什么 | 向下一层输出 | 典型频率 |
+| - | - | - | - |
 | 任务与智能层 | 理解用户想拿哪个杯子、送到哪里 | 任务目标与子任务 | 0.1–1 Hz |
 | 行为与技能层 | 组织走近、抓取、送回的步骤，检查每步是否完成 | 当前技能及其目标 | 1–10 Hz |
 | 运动与规划层 | 规划绕障路线、落脚点和手靠近杯子的路径 | 运动轨迹与落脚点序列 | 10–100 Hz |
@@ -34,21 +30,21 @@ import SectionQA from '../../../components/SectionQA.astro';
 | 驱动与嵌入式层 | 将关节命令转换成电机电流 | 电流与力矩 | 1–20 kHz（电流环） |
 | 机械执行层 | 让身体运动，脚与地面、手与杯子发生接触 | 身体运动与接触力 | 物理过程连续发生 |
 
-表中的频率是一个估计值，用于比较各层的运行节奏；具体数值会随任务、硬件和实现方式变化。
+表中的频率是一个估计值，用于比较各功能层的运行节奏；具体数值会随任务、硬件和实现方式变化。纵向功能链强调的正是：目标从上层逐步具体化为下层可执行的命令，同时状态和反馈沿相反方向返回上层。
 
 <span id="整机总图"></span>
 
 <SystemMap />
 
-> **一句话听懂**：层与层之间交接的是具体的目标和数据；排查问题时，就从这些接口查起。
+> **一句话听懂**：纵向功能链就是这六个功能层之间的上下衔接；层与层之间交接的是具体的目标、命令和反馈数据，排查问题时，就从这些接口查起。
 
 ## 用反馈修正动作
 
-机器人在执行动作时，还要持续了解环境和自身状态：杯子是否仍在原处，手是否抓到了它，身体是否保持平衡。相机、编码器和 IMU 的测量经过感知与状态估计处理，再交给需要这些信息的规划、控制和任务模块。
+机器人执行动作时，需要持续了解环境和自身状态：杯子的位置、手是否抓住了它、身体是否保持平衡。相机、编码器和 IMU 的测量经过感知与状态估计后，供规划、控制和任务模块使用。
 
-如果手已经走完预定轨迹，杯子却仍在桌上，这次抓取就没有完成。行为与技能层需要识别抓取失败，决定是否重试；必要时，任务层要调整安排或请求帮助。动作之后的观察会改变下一步决策，这就形成了**闭环**（Closed Loop）。
+如果手已走完预定轨迹，但未能完成预期操作，行为与技能层就会识别执行失败并决定是否重试；必要时，任务层还要调整安排或请求帮助。动作后的观察会影响下一步决策，这就形成了**闭环**（Closed Loop）。
 
-各层按不同的节奏更新反馈，完成反馈与修正的频率称为**闭环频率**（Loop Rate）。规划还在计算新轨迹时，控制层需要按自己的周期跟踪当前目标、维持平衡。[3] **高频控制不会等低频推理**，说的是这种独立运行的设计要求；实现它还需要计算调度和通信满足实时要求。
+各层按不同的节奏更新反馈，完成反馈与修正的频率称为**闭环频率**（Loop Rate）。规划还在计算新轨迹时，控制层需要按自己的周期跟踪当前目标、维持平衡[3]，这也是机器人这种实时系统的一个特性——**高频控制不会等低频推理**。
 
 感知与状态估计分别在 [5.2 节](../05-brain-perception-planning-vla-wam/02-perception-system.mdx)和 [4.4 节](../04-cerebellum-realtime-control/04-state-estimation.mdx)展开；任务中的失败检测与恢复见 [5.1 节](../05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms.mdx)。
 
@@ -58,7 +54,7 @@ import SectionQA from '../../../components/SectionQA.astro';
 
 | 基础设施 | 作用 |
 | --- | --- |
-| 中间件与软件架构 | 在模块之间传递消息。ROS 2 是一种常用的软件基础设施。[6] |
+| 中间件与软件架构 | 在模块之间传递消息。ROS 2 是一种常用的软件基础设施。[4] |
 | 计算平台 | 安排视觉推理、规划、实时控制分别使用哪些计算资源。 |
 | 安全 | 提供急停、过流、过温、通信超时等保护，并在命令执行前检查限位、碰撞风险和指令是否过期。 |
 | 数据与日志 | 保存运行过程，支持回放、故障分析和后续训练。 |
@@ -67,44 +63,13 @@ import SectionQA from '../../../components/SectionQA.astro';
 
 计算资源可以这样分工：视觉推理使用 GPU，任务与规划在工控机 CPU 上运行，实时控制使用满足周期要求的 CPU，关节侧的微控制器（MCU）执行伺服。带有 GPU 的片上系统（SoC）也可以承担视觉推理。不同功能可以共用硬件，功能层与芯片并非一一对应。
 
-以 ROS 2 为例，它帮助模块交换消息，而消息里的单位、坐标系、时间戳和更新频率仍需要双方约定。[6] 因此，ROS 2 可以同时服务于规划、控制和感知，它在图中横向连接各层。安全也要看具体位置：急停等硬件保护横跨系统，运行时安全检查则是命令执行路径中的检查环节。
+以 ROS 2 为例，它帮助模块交换消息，而消息里的单位、坐标系、时间戳和更新频率仍需要双方约定。[4] 因此，ROS 2 可以同时服务于规划、控制和感知，它在图中横向连接各层。安全也要看具体位置：急停等硬件保护横跨系统，运行时安全检查则是命令执行路径中的检查环节。
 
 <span id="product-read-end"></span>
 
-> **到这里，你应该已经能听懂**：“规划轨迹没问题，再查控制反馈和消息时间戳。”
+> 到这里，你应该已经掌握了基本的排查思路：如果规划轨迹没有问题，接下来就需要重点检查控制反馈以及消息时间戳。
 
 接下来，[第 2 章](../02-mechanics/01-mechanisms-and-dof.mdx)从机械执行层开始，介绍关节、连杆和身体结构。
-
-## 查阅 开发流程与 G1 接口
-
-<details>
-<summary>展开查阅</summary>
-
-以下内容用于把系统分工与开发过程、真实接口对起来，第一次阅读可跳过。
-
-### 在线运行与离线开发
-
-前文讲的是机器人运行时如何依据反馈调整动作。开发时，还有另一套流程：收集数据、训练、评测、部署，再用运行日志改进模型。两者通过模型部署和日志回流衔接，开发循环并不等同于控制闭环。
-
-<TwoLoopsDiagram />
-
-常规部署通常以推理为主，训练多在离线完成；在线学习和真机训练也是存在的模式，需要相应的安全约束。
-
-<span id="g1-落地"></span>
-
-### G1 低层接口
-
-本教程的关节接口以 G1 的 29 自由度、无灵巧手、腰部未锁定模型为例。[5] 开头的拿杯子是用于说明分工的教学设例。
-
-在官方 G1 低层示例中，`LowCmd` 下发关节命令，`LowState` 回传电机与 IMU 状态。[4] 它们对应功能链末端的命令与反馈接口，上层任务逻辑还需要另行实现。
-
-示例的控制线程每 2 ms 运行一次，即 500 Hz。这是该例程的设置，不能作为 G1 所有工作模式的统一频率。[4]
-
-<G1CommandJourney />
-
-目标位置、速度、前馈力矩和增益等字段见[附录 D](../07-appendix/04-messages.md)，它们与伺服环的关系见 [3.2 节](../03-electrical-embedded/02-motors-drivers-servo-control.mdx)；模型约定见[附录 B](../07-appendix/02-model-index.md)。换一台机器人，消息格式、计算硬件和模块边界可能改变，仍可以沿着目标、指令和反馈查看各部分如何连接。
-
-</details>
 
 <SectionQA id="1.3" mode="answer" />
 
@@ -116,8 +81,4 @@ import SectionQA from '../../../components/SectionQA.astro';
 
 [3] Åström, K. J., & Murray, R. M. *Feedback Systems: An Introduction for Scientists and Engineers*. Princeton University Press, 2008. 控制周期、延迟与多速率闭环。[https://www.cds.caltech.edu/~murray/books/AM08/pdf/am08-complete_28Sep12.pdf](https://www.cds.caltech.edu/~murray/books/AM08/pdf/am08-complete_28Sep12.pdf)
 
-[4] Unitree Robotics. *unitree_sdk2: Unitree robot SDK version 2*. 固定提交 `9754cd153af3da471b0fe5f3aa535e426fb11db3`，低层消息定义与官方示例。[https://github.com/unitreerobotics/unitree_sdk2](https://github.com/unitreerobotics/unitree_sdk2)
-
-[5] Unitree Robotics. *unitree_rl_gym: G1 robot description*. 固定提交 `276801e46c5d433564f24658bac64f254b7d2d4b`，G1 模型与仿真资源。[https://github.com/unitreerobotics/unitree_rl_gym](https://github.com/unitreerobotics/unitree_rl_gym)
-
-[6] Open Robotics. *ROS 2 Documentation*. 节点与 Topic 通信。[官方文档](https://docs.ros.org/en/humble/)、[Nodes 文档源码](https://github.com/ros2/ros2_documentation/blob/humble/source/Concepts/Basic/About-Nodes.rst)、[Topics 文档源码](https://github.com/ros2/ros2_documentation/blob/humble/source/Concepts/Basic/About-Topics.rst)。
+[4] Open Robotics. *ROS 2 Documentation*. 节点与 Topic 通信。[官方文档](https://docs.ros.org/en/humble/)、[Nodes 文档源码](https://github.com/ros2/ros2_documentation/blob/humble/source/Concepts/Basic/About-Nodes.rst)、[Topics 文档源码](https://github.com/ros2/ros2_documentation/blob/humble/source/Concepts/Basic/About-Topics.rst)。
