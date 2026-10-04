@@ -45,10 +45,10 @@
 | --- | --- | --- |
 | [机构（Mechanism）](../02-mechanics/01-mechanisms-and-dof.mdx) | 由连杆和关节组成、用来传递运动和力的结构 | 一堆硬零件用关节连起来传运动和力 |
 | [刚体（Rigid Body）](../02-mechanics/01-mechanisms-and-dof.mdx) | 内部任意两点距离不变的理想模型，连杆建模的基础假设 | 怎么受力都不变形的理想零件 |
-| [连杆（Link）](../02-mechanics/01-mechanisms-and-dof.mdx) | 近似刚体的结构件，如骨盆、大腿、小腿和足部 | 像大腿小腿那样实打实的硬零件 |
+| [连杆（Link）](../02-mechanics/01-mechanisms-and-dof.mdx) | 机器人模型中的结构单元，可由多个固定连接的零件组成 | 像大腿、小腿这样的结构单元 |
 | [关节（Joint）](../02-mechanics/01-mechanisms-and-dof.mdx) | 描述两个连杆之间允许的相对运动，如转动或移动 | 两块零件之间能怎么动的关系 |
-| [运动链（Kinematic Chain）](../02-mechanics/01-mechanisms-and-dof.mdx) | 从基座到末端按关节连接的一串连杆，可以包含闭环 | 零件和关节一根根串起来的一条链 |
-| [运动树（Kinematic Tree）](../02-mechanics/01-mechanisms-and-dof.mdx) | 无闭环、每个节点只有一个父节点的运动链，URDF 的基本结构 | 不打圈、每个零件只接一个上家的链 |
+| [运动链（Kinematic Chain）](../02-mechanics/01-mechanisms-and-dof.mdx) | 多个连杆通过关节连接形成的结构，可分为开链和闭链 | 零件和关节依次连接，可以首尾成环 |
+| [运动树（Kinematic Tree）](../02-mechanics/01-mechanisms-and-dof.mdx) | 无闭环的分支结构，除根连杆外，每个连杆只有一个父连杆 | 从根向手脚分支、不打圈的连接结构 |
 | [转动关节（Revolute Joint）](../02-mechanics/01-mechanisms-and-dof.mdx) | 绕固定轴线旋转的单自由度关节，如膝关节 | 只能绕一根轴转的关节 |
 | [自由度（Degree of Freedom, DoF）](../02-mechanics/01-mechanisms-and-dof.mdx) | 描述构型所需的最少独立变量数，转动关节各贡献一个 | 要几个数字才能把机器人的姿势说清楚 |
 | [四连杆机构（Four-bar Linkage）](../02-mechanics/01-mechanisms-and-dof.mdx) | 四根杆首尾铰接的闭合平面机构，理想平面模型下只剩一个自由度 | 四根杆连成一圈，实际只有一个独立自由度 |
