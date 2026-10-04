@@ -18,7 +18,8 @@ for (const file of files) {
   ids.set(file, new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((match) => decode(match[1]))));
   if (!process.env.REVIEW) assert.ok(!/class="srcline-|data-src="chapters\//.test(html), `${file}: review data in production`);
   if (html.includes('id="product-read-end"')) endpoints++;
-  const qa = html.match(/<p class="qa-hint[^\"]*"[^>]*>\s*三条[\s\S]*?<\/p>/)?.[0];
+  const answer = html.match(/<aside class="[^"]*\bsection-qa-answer\b[^"]*"[\s\S]*?<\/aside>/)?.[0];
+  const qa = answer?.match(/<p class="qa-hint[^"]*"[^>]*>[\s\S]*?<\/p>/)?.[0];
   if (qa) {
     assert.ok(qa.includes(`href="${base}/01-system-overview/03-humanoid-robot-system-architecture/"`), `${file}: malformed SectionQA return link`);
     qaLinks++;
