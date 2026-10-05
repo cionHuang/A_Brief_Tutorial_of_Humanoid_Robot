@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | 1 | [2.1 机构、关节与自由度](../02-mechanics/01-mechanisms-and-dof.mdx) | 机械说“到限位了”“接近死点了”时，知道在说什么 | 全读 |
 | 2 | [2.3 传动与关节模组](../02-mechanics/03-transmission-and-joint-modules.mdx) | 减速比、回差、峰值力矩决定你能向电机要什么性能 | 全读 |
-| 3 | [2.4 足部、接触与稳定性](../02-mechanics/04-foot-contact-and-stability.mdx) | 理解支撑多边形、摩擦锥对控制策略的约束 | 全读 |
+| 3 | [2.4 接触与稳定性](../02-mechanics/04-foot-contact-and-stability.mdx) | 理解支撑多边形、摩擦锥对控制策略的约束 | 全读 |
 | 4 | [2.2 结构设计、材料与刚柔性](../02-mechanics/02-links-structure-and-materials.mdx) | 结构改动会怎样影响质量、惯量和动力学参数 | 读完[「质量、质心与转动惯量」](../02-mechanics/02-links-structure-and-materials.mdx#质量质心与转动惯量)，包括 G1 参数例子；结构设计段按正文提示跳读 |
 | 5 | [2.5 机器人描述文件](../02-mechanics/05-robot-description-files.mdx) | URDF/MJCF 是机械和软件交接的界面；格式差异与模型版本管理 | 读完[「两种格式怎么分工」](../02-mechanics/05-robot-description-files.mdx#两种格式怎么分工) |
 

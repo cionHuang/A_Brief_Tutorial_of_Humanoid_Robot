@@ -23,7 +23,7 @@
 | --- | --- | --- |
 | **跨部门工程师** | [按部门查词](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/01-engineer-cross-team/)：这周和谁开会、和谁联调，就补谁的语言 | 每次 15–30 分钟 |
 | **在校学生** | [顺序通读](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/02-student/)：每节附预计时长与建议先读的顺序 | 8–10 小时 |
-| **产品 / PR** | [速通 21 节](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/03-product-pr/)：按导读指定的必读内容与终点摘读 | 约 1 小时 27 分钟，不含交互与查资料 |
+| **产品 / PR** | [速通 21 节](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/00-reading-guides/03-product-pr/)：按导读指定的必读内容与终点摘读 | 约 1 小时 26 分钟，不含交互与查资料 |
 
 ## 目录
 
@@ -36,7 +36,7 @@
 - [2.1 机构、关节与自由度](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/02-mechanics/01-mechanisms-and-dof/)
 - [2.2 结构设计、材料与刚柔性：从承力路径到质量分布](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/02-mechanics/02-links-structure-and-materials/)
 - [2.3 传动与关节模组](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/02-mechanics/03-transmission-and-joint-modules/)
-- [2.4 足部、接触与稳定性](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/02-mechanics/04-foot-contact-and-stability/)
+- [2.4 接触与稳定性](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/02-mechanics/04-foot-contact-and-stability/)
 - [2.5 机器人描述文件：机械与软件之间的契约](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/02-mechanics/05-robot-description-files/)
 
 **三、电气与嵌入式**（6 节）

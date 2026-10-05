@@ -49,7 +49,7 @@
 | [2.1 机构、关节与自由度](../02-mechanics/01-mechanisms-and-dof.mdx) | {{stat:minutes.section.2.1}} 分钟 | [1.2](../01-system-overview/02-humanoid-robot-anatomy.mdx) |
 | [2.2 结构设计、材料与刚柔性](../02-mechanics/02-links-structure-and-materials.mdx) | {{stat:minutes.section.2.2}} 分钟 | [2.1](../02-mechanics/01-mechanisms-and-dof.mdx) |
 | [2.3 传动与关节模组](../02-mechanics/03-transmission-and-joint-modules.mdx) | {{stat:minutes.section.2.3}} 分钟 | [2.1](../02-mechanics/01-mechanisms-and-dof.mdx) |
-| [2.4 足部、接触与稳定性](../02-mechanics/04-foot-contact-and-stability.mdx) | {{stat:minutes.section.2.4}} 分钟 | [2.1](../02-mechanics/01-mechanisms-and-dof.mdx) |
+| [2.4 接触与稳定性](../02-mechanics/04-foot-contact-and-stability.mdx) | {{stat:minutes.section.2.4}} 分钟 | [2.1](../02-mechanics/01-mechanisms-and-dof.mdx) |
 | [2.5 机器人描述文件](../02-mechanics/05-robot-description-files.mdx) | {{stat:minutes.section.2.5}} 分钟 | [2.1](../02-mechanics/01-mechanisms-and-dof.mdx) |
 
 ## 第 3 章 电气与嵌入式（{{stat:minutes.chapterText.3}}）
