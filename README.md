@@ -37,7 +37,7 @@
 - [2.2 结构设计、材料与刚柔性：从承力路径到质量分布](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/02-mechanics/02-links-structure-and-materials/)
 - [2.3 传动与关节模组](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/02-mechanics/03-transmission-and-joint-modules/)
 - [2.4 接触与稳定性](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/02-mechanics/04-foot-contact-and-stability/)
-- [2.5 机器人描述文件：机械与软件之间的契约](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/02-mechanics/05-robot-description-files/)
+- [2.5 机器人描述文件：物理世界的数字孪生](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/02-mechanics/05-robot-description-files/)
 
 **三、电气与嵌入式**（6 节）
 - [3.1 电源系统](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/03-electrical-embedded/01-power-system/)
