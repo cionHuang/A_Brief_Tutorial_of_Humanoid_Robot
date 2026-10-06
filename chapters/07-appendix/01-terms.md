@@ -68,7 +68,7 @@
 | [扭转刚度（Torsional Stiffness）](../02-mechanics/03-transmission-and-joint-modules.mdx) | 输出轴受力矩后抵抗角变形的能力，由传动链各环节串联决定 | 使劲拧一下，关节会扭过去多少 |
 | [力矩—速度包络（Torque-speed Envelope）](../02-mechanics/03-transmission-and-joint-modules.mdx) | 描述可用输出随速度、电压和温度变化的边界 | 电机的出力边界，越快越使不上劲 |
 | [热降额（Thermal Derating）](../02-mechanics/03-transmission-and-joint-modules.mdx) | 温度或供电触限时主动降低允许输出以保护部件的行为 | 太热了自己收着点劲，免得烧坏 |
-| [死区（Dead Zone，机构）](../02-mechanics/01-mechanisms-and-dof.mdx) | 机构学里指输入变化而输出不动的区间；与电气里的“死区时间”（上下桥臂之间为避免直通而留的开关间隔，见 3.2）不是一回事 | 输入动了一点、输出没动的那么一段 |
+| [死区（Dead Zone，机构）](../02-mechanics/01-mechanisms-and-dof.mdx) | 机构学里指输入变化而输出不动的区间；与电气里的“死区时间”（上下桥臂之间为避免直通而留的开关间隔，见 [3.5 节](../03-electrical-embedded/05-mcu-realtime-embedded-software.mdx)）不是一回事 | 输入动了一点、输出没动的那么一段 |
 
 ## 运动学与动力学
 
@@ -106,7 +106,7 @@
 | [轨迹（Trajectory）](../04-cerebellum-realtime-control/05-basic-control.mdx) | 带时间的位置、速度、加速度序列，要求彼此连续自洽 | 不光说经过哪，还说几点到哪 |
 | [电流环（Current Loop）](../03-electrical-embedded/02-motors-drivers-servo-control.mdx) | 最内层控制环，让实测相电流或 id、iq 跟随给定值 | 管给电机通多大电流，三个环里最快 |
 | [场定向控制（Field-oriented Control, FOC）](../03-electrical-embedded/02-motors-drivers-servo-control.mdx) | 把三相电流变换到随转子旋转的 dq 坐标系后分别控制的方法 | 把交流量变成两个直流量，像拧两个旋钮 |
-| [伺服电机（Servo Motor）](../03-electrical-embedded/02-motors-drivers-servo-control.mdx) | 电机加位置速度反馈、驱动器和闭环控制构成的执行器 | 会自己盯着自己转的电机 |
+| [伺服电机（Servo Motor）](../03-electrical-embedded/02-motors-drivers-servo-control.mdx) | 用于伺服系统的电机，需与驱动器、反馈器件和控制器配合工作 | 配合反馈和控制，按目标出力的电机 |
 
 ## 状态估计与传感
 
