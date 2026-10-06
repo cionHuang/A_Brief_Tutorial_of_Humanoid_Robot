@@ -1,446 +1,349 @@
 ---
-/**
- * 伺服三层级联（位置环 → 速度环 → 电流环）交互演示。
- *
- * 左：三层级联框图。位置环把角度误差变成速度指令，速度环把速度误差变成电流指令，
- *     电流环把电流指令变成实际电流，电机/负载再输出转矩、带动关节。
- *     运行时高亮"当前正在起作用"的环节：内环先动、外环后跟。
- * 右：阶跃响应时间图（滚动约 4 s，纵轴归一化）。
- *     目标（虚线）、位置 θ（主题色）、速度 ω（青绿）、电流 i（橙）。
- *
- * 教学要点：
- *   - 内环（电流）最快、外环（位置）最慢，带宽必须逐级拉开；
- *   - 电流环带宽不足、或外环增益过高，会出现超调、振荡甚至失稳；
- *   - 加负载扰动时，内环（电流）先顶上去，把扰动力矩"吃掉"。
- *
- * 仿真为归一化教学模型（J = 1, Kt = 1, b = 0.1, i_max = 2），不是 G1 的真实参数。
- * 纯 SVG + 原生 JS；样式跟随 Starlight 明暗主题，遵循 prefers-reduced-motion。
- *
- * 使用方式（仅限 .mdx 小节）：
- *   import ServoLoopCascadeDemo from '../../../components/ServoLoopCascadeDemo.astro';
- *   <ServoLoopCascadeDemo />
- */
-import { katexHtml } from '../lib/tex.js';
-
-// ---- 左侧三层级联框图几何（默认文字须与下方滑块默认值一致）----
-const BOX_X = 28;
-const BOX_W = 324;
-const BOX_H = 78;
-const STAGES = [
-  { key: 'pos', y: 44, name: '位置环（外环）', signal: 'ω_cmd', gain: '增益 Kp = 6 1/s', io: 'θ_ref 20.0° → ω_cmd 2.09 rad/s' },
-  { key: 'vel', y: 140, name: '速度环（中环）', signal: 'i_cmd', gain: '增益 Kv = 6 1/s', io: 'ω_cmd 2.09 → i_cmd 2.00 A' },
-  { key: 'cur', y: 236, name: '电流环（内环）', signal: 'τ', gain: '带宽 ωc = 200 rad/s（5.0 ms）', io: 'i_cmd 2.00 A → i 0.00 A' },
-  { key: 'motor', y: 332, name: '电机 + 负载', signal: '', gain: 'J = 1, Kt = 1, b = 0.1', io: 'τ 0.00 N·m → θ 0.0°，ω 0.00' },
-];
-
-// ---- 右侧时间图几何（须与脚本中的常量一致）----
-const LX0 = 424;
-const LX1 = 874;
-const LY0 = 58;
-const LY1 = 362;
-const VMIN = -1.2;
-const VMAX = 2.2;
-const Y = (v) => (LY1 - ((v - VMIN) / (VMAX - VMIN)) * (LY1 - LY0)).toFixed(1);
-const TX = (k) => (LX0 + (k / 4) * (LX1 - LX0)).toFixed(1);
+/** One joint, three continuously operating feedback loops. Teaching geometry and
+ * joint-referred model; no claim about G1 firmware or hardware parameters. */
 ---
-
-<figure class="sc-demo">
-  <svg viewBox="0 0 900 470" role="img" aria-label="伺服三层级联交互演示：位置环驱动速度环、速度环驱动电流环，右侧是位置、速度、电流的阶跃响应曲线">
-    <defs>
-      <marker id="sc-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-        <path class="sc-arrow-head" d="M 0 1 L 9 5 L 0 9 Z"></path>
-      </marker>
-    </defs>
-
-    <text class="sc-title" x="24" y="26">伺服三层级联：位置→速度→电流</text>
-    <text class="sc-title" x="424" y="26">阶跃响应（纵轴归一化，最近 4 s）</text>
-
-    <!-- 左：三层级联框图，运行时高亮当前起作用的环节 -->
-    {STAGES.map((s, i) => (
-      <g class="sc-stage" data-box={s.key}>
-        <rect class="sc-box" x={BOX_X} y={s.y} width={BOX_W} height={BOX_H} rx="10"></rect>
-        <text class="sc-box-name" x={BOX_X + 16} y={s.y + 27}>{s.name}</text>
-        <text class="sc-box-gain" x={BOX_X + 16} y={s.y + 50} data-role={s.key + '-gain'}>{s.gain}</text>
-        <text class="sc-box-io" x={BOX_X + 16} y={s.y + 70} data-role={s.key + '-io'}>{s.io}</text>
-        {i < STAGES.length - 1 && (
-          <>
-            <line class="sc-link" x1={BOX_X + BOX_W / 2} y1={s.y + BOX_H} x2={BOX_X + BOX_W / 2} y2={s.y + BOX_H + 12} marker-end="url(#sc-arrow)"></line>
-            <text class="sc-link-label" x={BOX_X + BOX_W / 2 + 12} y={s.y + BOX_H + 15}>{s.signal}</text>
-          </>
-        )}
-      </g>
-    ))}
-
-    <!-- 右：时间序列图 -->
-    <g class="sc-plot">
-      <line class="sc-axis" x1={LX0} y1={LY0 - 4} x2={LX0} y2={LY1}></line>
-      <line class="sc-axis" x1={LX0} y1={LY1} x2={LX1} y2={LY1}></line>
-
-      {[0, 1, 2, 3, 4].map((k) => (
-        <line class="sc-vgrid" x1={TX(k)} y1={LY0} x2={TX(k)} y2={LY1}></line>
-      ))}
-      {[-1, 0, 1, 2].map((v) => (
-        <>
-          <line class={v === 0 ? 'sc-grid sc-zero' : 'sc-grid'} x1={LX0} y1={Y(v)} x2={LX1} y2={Y(v)}></line>
-          <text class="sc-ytick" x={LX0 - 8} y={Number(Y(v)) + 6} text-anchor="end">{v}</text>
-        </>
-      ))}
-      {[0, 1, 2, 3, 4].map((k) => (
-        <text class="sc-xtick" x={TX(k)} y="380" text-anchor="middle">{k === 4 ? '现在' : (k - 4) + ' s'}</text>
-      ))}
-
-      <line class="sc-ref" data-role="ref" x1={LX0} y1={Y(1)} x2={LX1} y2={Y(1)}></line>
-
-      <path class="sc-path sc-path-cur" data-role="path-cur" d=""></path>
-      <path class="sc-path sc-path-vel" data-role="path-vel" d=""></path>
-      <path class="sc-path sc-path-pos" data-role="path-pos" d=""></path>
-      <circle class="sc-head sc-head-cur" data-role="head-cur" cx={LX0} cy={Y(0)} r="4.5"></circle>
-      <circle class="sc-head sc-head-vel" data-role="head-vel" cx={LX0} cy={Y(0)} r="4.5"></circle>
-      <circle class="sc-head sc-head-pos" data-role="head-pos" cx={LX0} cy={Y(0)} r="4.5"></circle>
-
-      <g class="sc-legend">
-        <line class="sc-ref" x1="424" y1="402" x2="450" y2="402"></line>
-        <text class="sc-legend-text" x="456" y="408">目标</text>
-        <line class="sc-path sc-path-pos" x1="530" y1="402" x2="556" y2="402"></line>
-        <text class="sc-legend-text" x="562" y="408">位置 θ</text>
-        <line class="sc-path sc-path-vel" x1="648" y1="402" x2="674" y2="402"></line>
-        <text class="sc-legend-text" x="680" y="408">速度 ω</text>
-        <line class="sc-path sc-path-cur" x1="762" y1="402" x2="788" y2="402"></line>
-        <text class="sc-legend-text" x="794" y="408">电流 i</text>
-      </g>
-
-      <text class="sc-note" x="424" y="438">归一化：位置 ÷ 目标角，速度 ÷ 1.2 rad/s，电流 ÷ 2 A（±1 即限幅）</text>
-    </g>
-
-    <text class="sc-note" x="28" y="430">内环最快，外环最慢。</text>
-    <text class="sc-note" x="28" y="452">教学示意，非 G1 真实参数。</text>
-  </svg>
-
-  <div class="sc-controls">
-    <label class="sc-slider-label">目标角度
-      <input class="sc-deg-input" type="range" min="5" max="30" step="1" value="20" />
-    </label>
-    <output class="sc-deg-out">20°</output>
-    <button type="button" class="sc-btn" data-step>给阶跃目标</button>
-    <button type="button" class="sc-btn" data-dist>加负载扰动</button>
-    <button type="button" class="sc-btn" data-reset>复位</button>
+<figure class="sc-demo" data-state="loading">
+  <div class="sc-heading">
+    <div><strong>三个环怎样一起抬起前臂？</strong><p>先抬起，再放上重物，观察前臂怎样回到目标位置。</p></div>
+    <span class="sc-model-label">单关节教学模型</span>
   </div>
-
-  <div class="sc-controls">
-    <label class="sc-slider-label">位置环增益 <span set:html={katexHtml('K_p')}></span>
-      <input class="sc-kp-input" type="range" min="2" max="40" step="1" value="6" />
-    </label>
-    <output class="sc-kp-out">6 1/s</output>
-    <label class="sc-slider-label">速度环增益 <span set:html={katexHtml('K_v')}></span>
-      <input class="sc-kv-input" type="range" min="2" max="30" step="1" value="6" />
-    </label>
-    <output class="sc-kv-out">6 1/s</output>
-    <label class="sc-slider-label">电流环带宽 <span set:html={katexHtml('\\omega_c')}></span>
-      <input class="sc-wc-input" type="range" min="50" max="400" step="10" value="200" />
-    </label>
-    <output class="sc-wc-out">200 rad/s</output>
+  <div class="sc-scene-meta">
+    <div class="sc-angle-badge"><span>目标 <b data-target>0°</b></span><span>实际 <b data-angle>0.0°</b></span></div>
+    <div class="sc-scene-note">上臂固定 · 只观察肘关节</div>
   </div>
-
-  <div class="sc-readout">
-    <output class="sc-out sc-out-metrics" aria-live="polite"></output>
-    <output class="sc-out sc-out-state" aria-live="polite"></output>
+  <div class="sc-viewport" role="img" aria-label="斜侧视角的机械臂，上臂固定，前臂绕肘关节转动；浅青色轮廓表示目标位置。">
+    <div class="sc-loading" data-loading>正在准备机械臂…</div>
   </div>
-
-  <figcaption>
-    玩法：点“给阶跃目标”，看三个环依次接管——电流环最快、速度环居中、位置环最后收尾，右边三条曲线分别是位置 <span set:html={katexHtml('\\theta')}></span>、速度 <span set:html={katexHtml('\\omega')}></span>、电流 <span set:html={katexHtml('i')}></span>；拖三个增益滑块（<span set:html={katexHtml('K_p')}></span>、<span set:html={katexHtml('K_v')}></span>、<span set:html={katexHtml('\\omega_c')}></span>）能现场把曲线调出超调、或调回干净；点“加负载扰动”看内环怎么把扰动顶回去。数值为教学示意，不是 G1 的真实参数。
-  </figcaption>
+  <div class="sc-legend"><i></i> 实际前臂 <i class="sc-ghost-key"></i> 目标轮廓 <i class="sc-weight-key"></i> 重物</div>
+  <div class="sc-controls" aria-label="机械臂演示操作">
+    <button type="button" data-raise class="sc-button sc-primary" disabled>抬起前臂</button>
+    <button type="button" data-weight class="sc-button" aria-pressed="false" disabled>放上重物</button>
+    <button type="button" data-push class="sc-button" disabled>轻推一下</button>
+    <span class="sc-controls-spacer"></span>
+    <button type="button" data-pause class="sc-button" disabled>暂停</button>
+    <button type="button" data-reset class="sc-button" disabled>复位</button>
+  </div>
+  <p class="sc-status" role="status" aria-live="polite" data-status>点击“抬起前臂”，把前臂从下垂抬到水平。</p>
+  <div class="sc-cards" aria-label="三个控制环的分工">
+    <section class="sc-card">
+      <h4><span>1</span> 位置环</h4>
+      <p>比较目标与实际角度，算出该转多快。</p>
+      <div class="sc-card-values"><span>目标速度 <b data-speed-target>0.0°/s</b></span><small>实际 <span data-speed>0.0°/s</span></small></div>
+    </section>
+    <section class="sc-card">
+      <h4><span>2</span> 速度环</h4>
+      <p>比较目标与实际速度，算出需要多大电流。</p>
+      <div class="sc-card-values"><span>目标电流 <b data-current-target>0.00 A</b></span><small>电流越大，电机出力越大</small></div>
+    </section>
+    <section class="sc-card">
+      <h4><span>3</span> 电流环</h4>
+      <p>比较目标与实际电流，调整绕组电压。</p>
+      <div class="sc-card-values"><span>绕组电压 <b data-voltage>0.00 V</b></span><small>实际电流 <span data-current>0.00 A</span></small></div>
+    </section>
+  </div>
+  <p class="sc-together">三个环持续共同工作。前臂停住后，电机仍要提供电流，才能抵抗重力。</p>
+  <details class="sc-details">
+    <summary>查看角度变化与模型说明</summary>
+    <div class="sc-chart-heading"><strong>前臂是否回到目标？</strong><span>最近 6 秒 · 角度（°）</span></div>
+    <svg class="sc-chart" viewBox="0 0 640 160" role="img" aria-label="最近六秒的目标角度与实际角度曲线">
+      <line x1="42" y1="22" x2="620" y2="22" class="sc-grid"/><line x1="42" y1="78" x2="620" y2="78" class="sc-grid"/><line x1="42" y1="134" x2="620" y2="134" class="sc-grid"/>
+      <text x="32" y="26" text-anchor="end">100</text><text x="32" y="82" text-anchor="end">50</text><text x="32" y="138" text-anchor="end">0</text>
+      <path data-chart-target class="sc-chart-target" d=""/><path data-chart-actual class="sc-chart-actual" d=""/>
+      <text x="42" y="157">6 秒前</text><text x="620" y="157" text-anchor="end">现在</text>
+    </svg>
+    <p class="sc-chart-key"><span>实线：实际角度</span><span>虚线：目标角度</span></p>
+    <p>这里模拟的是有重力的单关节机械臂。位置环给出速度目标，速度环采用 PI 控制，电流环通过平均绕组电压调节电流；绕组电阻、电感和反电动势共同影响电流变化。速度环的积分作用让前臂在静止托物时仍能保持出力。</p>
+    <p>角度从前臂竖直下垂时的 0° 起算。电流、电压和力矩常数均按包含传动的等效模型计算，不能用来推断真实电机或 G1 的参数。此处展示三环级联，不代表所有驱动器都采用相同结构。</p>
+  </details>
+  <figcaption>观察重点：放上重物时，前臂略微下沉，控制器增加出力，随后回到目标附近。</figcaption>
 </figure>
 
 <script>
-  import { setParts } from '../lib/tex.js';
   import { createVisibleRaf } from '../lib/visible-raf.js';
+  import { SERVO_ARM, createServoArmState, setServoPayload, pushServoArm, stepServoArm } from '../lib/servo-arm-model.js';
 
-  document.querySelectorAll('.sc-demo').forEach((demo) => {
-    // ---- 模型与显示常量 ----
-    const J = 1, KT = 1, B = 0.1, I_MAX = 2;   // 归一化教学模型
-    const D2R = Math.PI / 180;
-    const WS = 4;                              // 时间窗（秒）
-    const LX0 = 424, LX1 = 874, LY0 = 58, LY1 = 362;
-    const VMIN = -1.2, VMAX = 2.2;
-    const W_SCALE = 1.2;                       // 速度显示归一化：1.0 = 1.2 rad/s
-    const TAU_LOAD = 1.5;                      // 负载扰动幅值（0.3 s 脉冲）
-    const DIST_DUR = 0.3;
-    const SAMPLE_DT = 1 / 70;                  // 抽点间隔（4 s 约 240 点）
-    const MAX_POINTS = 400;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.querySelectorAll('.sc-demo').forEach((root) => {
+    const demo = root as HTMLElement;
+    if (demo.dataset.initialized) return;
+    demo.dataset.initialized = 'true';
+    const el = (name: string) => demo.querySelector('[data-' + name + ']') as HTMLElement;
+    const button = (name: string) => el(name) as HTMLButtonElement;
+    const viewport = demo.querySelector('.sc-viewport') as HTMLElement;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const deg = 180 / Math.PI;
+    let state = createServoArmState();
+    let history = [{ t: 0, angle: 0, target: 0 }];
+    let running = false, paused = false, ready = false, disposed = false, loading = false;
+    let last = 0, lastReadout = -1, lastSample = -1, actionAt = 0, action = 'initial';
+    let renderer: any, scene: any, camera: any, arm: any, ghost: any, weight: any, pushArrow: any;
+    let materials: any, resizeObserver: ResizeObserver, themeObserver: MutationObserver;
+    let webglFailed = false;
+    const details = demo.querySelector('details') as HTMLDetailsElement;
 
-    // ---- DOM ----
-    const boxes = Array.from(demo.querySelectorAll('.sc-stage'));
-    const gainEl = {}, ioEl = {};
-    ['pos', 'vel', 'cur', 'motor'].forEach((k) => {
-      gainEl[k] = demo.querySelector('[data-role="' + k + '-gain"]');
-      ioEl[k] = demo.querySelector('[data-role="' + k + '-io"]');
-    });
-    const refLine = demo.querySelector('[data-role="ref"]');
-    const curves = [
-      { el: demo.querySelector('[data-role="path-pos"]'), head: demo.querySelector('[data-role="head-pos"]'), f: (p) => p.th / st.normRef },
-      { el: demo.querySelector('[data-role="path-vel"]'), head: demo.querySelector('[data-role="head-vel"]'), f: (p) => p.om / W_SCALE },
-      { el: demo.querySelector('[data-role="path-cur"]'), head: demo.querySelector('[data-role="head-cur"]'), f: (p) => p.i / I_MAX },
-    ];
-    const outMetrics = demo.querySelector('.sc-out-metrics');
-    const outState = demo.querySelector('.sc-out-state');
-    const degIn = demo.querySelector('.sc-deg-input');
-    const kpIn = demo.querySelector('.sc-kp-input');
-    const kvIn = demo.querySelector('.sc-kv-input');
-    const wcIn = demo.querySelector('.sc-wc-input');
-    const degOut = demo.querySelector('.sc-deg-out');
-    const kpOut = demo.querySelector('.sc-kp-out');
-    const kvOut = demo.querySelector('.sc-kv-out');
-    const wcOut = demo.querySelector('.sc-wc-out');
-
-    // ---- 状态 ----
-    const st = {
-      th: 0, om: 0, i: 0, t: 0,
-      ref: 0, normRef: 1,
-      distAt: Infinity, distUntil: -1,
-      peak: 0, t10: -1, t90: -1,
-      hist: [], recent: [], lastSample: -1e9,
-      running: false,
-    };
-    let last = 0;
-    const loop = createVisibleRaf(demo);
-
-    const num = (el) => Number(el.value);
-    const clampI = (v) => (v > I_MAX ? I_MAX : (v < -I_MAX ? -I_MAX : v));
-    const yOf = (v) => LY1 - ((v - VMIN) / (VMAX - VMIN)) * (LY1 - LY0);
-
-    // ---- 物理积分：每帧再分 10 个子步，避免高频环数值发散 ----
-    const step = (dt) => {
-      const kp = num(kpIn), kv = num(kvIn), wc = num(wcIn);
-      const sub = 10, h = dt / sub;
-      for (let s = 0; s < sub; s++) {
-        const omCmd = kp * (st.ref - st.th);          // 位置环
-        const iCmd = clampI(kv * (omCmd - st.om));    // 速度环 + 电流限幅
-        st.i += wc * (iCmd - st.i) * h;               // 电流环（一阶带宽 wc）
-        const load = st.t >= st.distAt && st.t < st.distUntil ? TAU_LOAD : 0;
-        st.om += (KT * st.i - B * st.om - load) / J * h;  // 电机 + 负载
-        st.th += st.om * h;
-        st.t += h;
+    const fixed = (n: number, digits = 1) => (Math.abs(n) < .5 * 10 ** -digits ? 0 : n).toFixed(digits);
+    function updateChart() {
+      if (!details.open) return;
+      const start = state.time - 6;
+      const points = history.filter(p => p.t >= start);
+      const path = (field: string) => points.map((p, i) => `${i ? 'L' : 'M'}${(42 + (p.t - start) / 6 * 578).toFixed(1)},${(134 - p[field] * deg / 100 * 112).toFixed(1)}`).join(' ');
+      el('chart-actual').setAttribute('d', path('angle'));
+      el('chart-target').setAttribute('d', path('target'));
+    }
+    function controls() {
+      button('raise').disabled = !ready || state.target > 0;
+      button('weight').disabled = !ready || state.target === 0;
+      button('push').disabled = !ready || state.target === 0;
+      button('reset').disabled = !ready;
+      button('pause').disabled = !ready || reduced.matches || (!running && !paused);
+      button('pause').textContent = paused ? '继续' : '暂停';
+      button('weight').textContent = state.payload ? '移除重物' : '放上重物';
+      button('weight').setAttribute('aria-pressed', String(state.payload));
+    }
+    function readout() {
+      el('target').textContent = fixed(state.target * deg, 0) + '°';
+      el('angle').textContent = fixed(state.angle * deg) + '°';
+      el('speed-target').textContent = fixed(state.targetSpeed * deg) + '°/s';
+      el('speed').textContent = fixed(state.speed * deg) + '°/s';
+      el('current-target').textContent = fixed(state.targetCurrent, 2) + ' A';
+      el('current').textContent = fixed(state.current, 2) + ' A';
+      el('voltage').textContent = fixed(state.voltage, 2) + ' V';
+      // Readable state in the accessible name; live announcements are reserved for actions.
+      viewport.setAttribute('aria-label', `机械臂教学演示：目标 ${fixed(state.target * deg, 0)} 度，实际 ${fixed(state.angle * deg)} 度，${state.payload ? '托着重物' : '空载'}。三个控制环持续共同工作。`);
+      updateChart();
+    }
+    function draw() {
+      if (!renderer) return;
+      arm.rotation.z = state.angle;
+      ghost.rotation.z = state.target;
+      ghost.visible = state.target > 0;
+      weight.visible = state.payload;
+      pushArrow.visible = state.time < state.pushUntil;
+      if (pushArrow.visible) {
+        const x = .65 * Math.sin(state.angle), y = 1.05 - .65 * Math.cos(state.angle);
+        pushArrow.position.set(x, y + .52, .1);
       }
-      if (st.t - st.lastSample >= SAMPLE_DT) {
-        st.lastSample = st.t;
-        st.hist.push({ t: st.t, th: st.th, om: st.om, i: st.i });
-        while (st.hist.length > MAX_POINTS) st.hist.shift();
-      }
-      if (st.normRef > 1e-9) {
-        if (st.th > st.peak) st.peak = st.th;
-        if (st.t10 < 0 && st.th >= 0.1 * st.normRef) st.t10 = st.t;
-        if (st.t90 < 0 && st.th >= 0.9 * st.normRef) st.t90 = st.t;
-        st.recent.push({ t: st.t, e: st.normRef - st.th });
-        while (st.recent.length && st.t - st.recent[0].t > 0.4) st.recent.shift();
-      }
-    };
-
-    const simulate = (seconds) => {
-      const n = Math.round(seconds * 60);
-      for (let k = 0; k < n; k++) step(1 / 60);
-    };
-
-    const render = () => {
-      const kp = num(kpIn), kv = num(kvIn), wc = num(wcIn);
-      const now = st.t;
-      const winStart = Math.max(0, now - WS);
-      const xOf = (t) => LX0 + ((t - winStart) / WS) * (LX1 - LX0);
-
-      // 框图：增益/带宽 + 当前输入输出
-      const err = st.ref - st.th;
-      const omCmd = kp * err;
-      const iCmdRaw = kv * (omCmd - st.om);
-      const iCmd = clampI(iCmdRaw);
-      gainEl.pos.textContent = '增益 Kp = ' + kp.toFixed(0) + ' 1/s';
-      gainEl.vel.textContent = '增益 Kv = ' + kv.toFixed(0) + ' 1/s';
-      gainEl.cur.textContent = '带宽 ωc = ' + wc.toFixed(0) + ' rad/s（' + (1000 / wc).toFixed(1) + ' ms）';
-      ioEl.pos.textContent = 'θ_ref ' + (st.ref / D2R).toFixed(1) + '° → ω_cmd ' + omCmd.toFixed(2) + ' rad/s';
-      ioEl.vel.textContent = 'ω_cmd ' + omCmd.toFixed(2) + ' → i_cmd ' + iCmd.toFixed(2) + ' A';
-      ioEl.cur.textContent = 'i_cmd ' + iCmd.toFixed(2) + ' A → i ' + st.i.toFixed(2) + ' A';
-      ioEl.motor.textContent = 'τ ' + (KT * st.i).toFixed(2) + ' N·m → θ ' + (st.th / D2R).toFixed(1) + '°，ω ' + st.om.toFixed(2);
-
-      // 高亮当前起作用的环节：内环先动、外环后跟
-      const ePos = st.normRef > 1e-9 ? Math.abs(err) / st.normRef : 0;
-      const eVel = Math.abs(omCmd - st.om) / W_SCALE;
-      const eCur = Math.abs(iCmd - st.i) / I_MAX;
-      const loadFighting = now < st.distUntil && Math.abs(st.i) > 0.1 * I_MAX;
-      let active = '';
-      if (st.running) {
-        if (eCur > 0.05 || loadFighting) active = 'cur';
-        else if (eVel > 0.08) active = 'vel';
-        else if (ePos > 0.02) active = 'pos';
-      }
-      boxes.forEach((b) => b.classList.toggle('sc-active', b.dataset.box === active));
-
-      // 时间曲线
-      const yRef = yOf(st.normRef > 1e-9 ? st.ref / st.normRef : 0);
-      refLine.setAttribute('y1', yRef.toFixed(1));
-      refLine.setAttribute('y2', yRef.toFixed(1));
-      curves.forEach((c) => {
-        let d = '';
-        let hx = LX0, hy = yOf(0), has = false;
-        for (let k = 0; k < st.hist.length; k++) {
-          const p = st.hist[k];
-          if (p.t < winStart) continue;
-          const x = xOf(p.t);
-          const y = yOf(c.f(p));
-          d += (d ? ' L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
-          hx = x; hy = y; has = true;
+      renderer.render(scene, camera);
+    }
+    function simulate(seconds: number) {
+      const count = Math.ceil(seconds / .01), dt = seconds / count;
+      for (let i = 0; i < count; i++) {
+        stepServoArm(state, dt);
+        if (state.time - lastSample >= 1 / 45) {
+          history.push({ t: state.time, angle: state.angle, target: state.target });
+          lastSample = state.time;
         }
-        c.el.setAttribute('d', d);
-        c.head.setAttribute('cx', hx.toFixed(1));
-        c.head.setAttribute('cy', hy.toFixed(1));
-        c.head.classList.toggle('sc-head-off', !has);
-      });
-
-      // 读数（KaTeX）
-      const riseParts = st.t10 >= 0 && st.t90 >= 0
-        ? [{ text: '上升时间（10–90%）' }, { tex: 't_r = ' + (st.t90 - st.t10).toFixed(2) + '\\ \\text{s}' }]
-        : [{ text: '上升时间（10–90%）' }, { text: '—' }];
-      const overPct = st.normRef > 1e-9 ? Math.max(0, (st.peak / st.normRef - 1) * 100) : 0;
-      const sseOk = st.normRef > 1e-9 && st.t > 1.2 && st.recent.length > 3;
-      const sseMean = st.recent.length ? st.recent.reduce((a, r) => a + r.e, 0) / st.recent.length : 0;
-      setParts(outMetrics, riseParts.concat([
-        { text: '　超调 ' }, { tex: '\\sigma = ' + overPct.toFixed(0) + '\\%' },
-        { text: '　稳态误差 ' },
-        sseOk ? { tex: 'e_{ss} = ' + (sseMean / st.normRef * 100).toFixed(1) + '\\%' } : { text: '—（未稳定）' },
-      ]));
-      setParts(outState, [
-        { text: '当前 ' }, { tex: '\\theta = ' + (st.th / D2R).toFixed(1) + '^\\circ' },
-        { text: '，' }, { tex: '\\omega = ' + st.om.toFixed(2) + '\\ \\text{rad/s}' },
-        { text: '，' }, { tex: 'i = ' + st.i.toFixed(2) + '\\ \\text{A}' },
-      ]);
-    };
-
-    const syncControls = () => {
-      degOut.textContent = num(degIn).toFixed(0) + '°';
-      kpOut.textContent = num(kpIn).toFixed(0) + ' 1/s';
-      kvOut.textContent = num(kvIn).toFixed(0) + ' 1/s';
-      wcOut.textContent = num(wcIn).toFixed(0) + ' rad/s';
-    };
-
-    const stop = () => { loop.stop(); last = 0; };
-
-    const startRun = (opts) => {
-      stop();
-      st.th = 0; st.om = 0; st.i = 0; st.t = 0;
-      st.ref = num(degIn) * D2R;
-      st.normRef = st.ref > 1e-9 ? st.ref : 1;
-      st.peak = 0; st.t10 = -1; st.t90 = -1;
-      st.hist = []; st.recent = []; st.lastSample = -1e9;
-      st.distAt = Infinity; st.distUntil = -1;
-      if (opts && opts.distAt != null) { st.distAt = opts.distAt; st.distUntil = opts.distAt + DIST_DUR; }
-      st.running = true;
-      if (reduced) {
-        // 减弱动态效果：不自动播放，直接给出完整 4 s 阶跃响应
-        simulate(WS);
-        render();
-      } else {
-        last = 0;
-        loop.start();
       }
-    };
-
-    loop.onFrame((ts) => {
-      if (!last) last = ts;
-      let dt = (ts - last) / 1000;
-      last = ts;
-      if (dt < 0) dt = 0;
-      dt = Math.min(dt, 0.05);          // 帧间隔上限
-      if (dt > 0) step(dt);
-      render();
-      const pulseOn = st.t < st.distUntil;
-      const settled = Math.abs(st.ref - st.th) < 1e-3 && Math.abs(st.om) < 1e-3 && Math.abs(st.i) < 1e-3;
-      if (st.running && (st.t < WS + 0.6 || pulseOn || !settled)) return true; // 继续跑
-      st.running = false;
-      render();
-      return false; // 收敛：交回连续模式
-    });
-
-    demo.querySelector('[data-step]').addEventListener('click', () => { syncControls(); startRun(); });
-
-    demo.querySelector('[data-dist]').addEventListener('click', () => {
-      if (reduced) {
-        startRun({ distAt: 1.5 });       // 静态模式：扰动安排在 1.5 s，重算整段
-      } else if (st.running) {
-        st.distAt = st.t;
-        st.distUntil = st.t + DIST_DUR;
+      while (history.length > 320) history.shift();
+    }
+    function settledText() {
+      if (action === 'push') return '轻推后，前臂回到目标附近。反馈让控制器持续修正偏差。';
+      return state.payload
+        ? '前臂已经重新托稳重物。速度接近零，保持电流仍然大于零。'
+        : '前臂停在目标附近。即使没有额外重物，也需要出力托住自身重量。';
+    }
+    function begin(kind: string, message: string) {
+      action = kind; actionAt = state.time; last = 0; paused = false;
+      el('status').textContent = message;
+      if (reduced.matches) {
+        simulate(5); running = false;
+        el('status').textContent = '已按减少动态效果设置显示稳定结果。' + settledText();
+        draw(); readout(); controls();
       } else {
-        startRun({ distAt: 1.5 });
+        running = true; controls(); readout(); draw(); loop.start();
       }
-      render();
+    }
+    const loop = createVisibleRaf(demo, { rootMargin: '80px', onEnter: () => { last = 0; void init(); } });
+    loop.onFrame((now: number) => {
+      if (!running) { draw(); return false; }
+      // On return from another tab/offscreen, skip elapsed wall time instead of fast-forwarding.
+      const dt = last && now - last < 200 ? Math.min((now - last) / 1000, .04) : 0;
+      last = now;
+      if (dt > 0) simulate(dt);
+      draw();
+      if (state.time - lastReadout > .09) { readout(); lastReadout = state.time; }
+      if (state.time - actionAt > 4.5 && Math.abs(state.target - state.angle) < .0001 && Math.abs(state.speed) < .0002) {
+        running = false; el('status').textContent = settledText(); controls(); readout(); return false;
+      }
+      return true;
     });
 
-    demo.querySelector('[data-reset]').addEventListener('click', () => {
-      stop();
-      st.th = 0; st.om = 0; st.i = 0; st.t = 0;
-      st.ref = 0; st.normRef = 1;
-      st.distAt = Infinity; st.distUntil = -1;
-      st.peak = 0; st.t10 = -1; st.t90 = -1;
-      st.hist = []; st.recent = [];
-      st.running = false;
-      render();
+    button('raise').addEventListener('click', () => {
+      state.target = SERVO_ARM.raisedAngle;
+      begin('raise', '目标轮廓停在水平位置。三个环共同调整，让实际前臂跟上它。');
     });
+    button('weight').addEventListener('click', () => {
+      setServoPayload(state, !state.payload);
+      begin('weight', state.payload ? '重物已经放上。留意前臂的轻微下沉，以及保持电流的增加。' : '重物已经移除。控制器会减小出力，让前臂继续保持水平。');
+    });
+    button('push').addEventListener('click', () => {
+      pushServoArm(state); begin('push', '短暂向下轻推前臂。外力消失后，看看它怎样回到目标。');
+    });
+    button('pause').addEventListener('click', () => {
+      if (running) { running = false; paused = true; loop.stop(); el('status').textContent = '演示已暂停，可以查看三个环当前的目标与反馈。'; }
+      else { running = true; paused = false; last = 0; el('status').textContent = '继续观察前臂怎样回到目标。'; loop.start(); }
+      readout(); controls();
+    });
+    button('reset').addEventListener('click', () => {
+      loop.stop(); state = createServoArmState(); history = [{ t: 0, angle: 0, target: 0 }];
+      lastSample = lastReadout = -1; last = 0; running = paused = false; action = 'initial';
+      el('status').textContent = '点击“抬起前臂”，把前臂从下垂抬到水平。';
+      controls(); readout(); draw();
+    });
+    details.addEventListener('toggle', updateChart);
+    const motionChange = () => {
+      if (reduced.matches && (running || paused)) { loop.stop(); begin(action, el('status').textContent || ''); }
+      controls();
+    };
+    reduced.addEventListener('change', motionChange);
 
-    // 目标角在点“给阶跃目标”时才施加
-    degIn.addEventListener('input', syncControls);
-
-    [kpIn, kvIn, wcIn].forEach((el) => el.addEventListener('input', () => {
-      syncControls();
-      if (reduced || !st.running) startRun();   // 静态或已停下：重算一次新的阶跃响应
-      else render();                            // 动画中：实时改变控制器参数
-    }));
-
-    syncControls();
-    startRun();
+    function applyTheme() {
+      if (!materials) return;
+      const dark = document.documentElement.dataset.theme === 'dark';
+      materials.body.color.set(dark ? '#93a4b9' : '#52647a');
+      materials.trim.color.set(dark ? '#dce8f5' : '#d6e0eb');
+      materials.joint.color.set(dark ? '#27364b' : '#24354e');
+      materials.floor.color.set(dark ? '#233043' : '#e3e9f1');
+      draw();
+    }
+    async function init() {
+      if (loading || disposed || ready || webglFailed) return;
+      loading = true;
+      try {
+        const THREE = await import('three');
+        if (disposed) return;
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(34, 1, .1, 30);
+        camera.position.set(1.6, 1.55, 3.3); camera.lookAt(.22, 1.05, 0);
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
+        renderer.domElement.setAttribute('aria-hidden', 'true'); viewport.prepend(renderer.domElement);
+        materials = {
+          body: new THREE.MeshStandardMaterial({ color: '#52647a', roughness: .45, metalness: .5 }),
+          trim: new THREE.MeshStandardMaterial({ color: '#d6e0eb', roughness: .4, metalness: .35 }),
+          joint: new THREE.MeshStandardMaterial({ color: '#24354e', roughness: .55, metalness: .3 }),
+          floor: new THREE.MeshStandardMaterial({ color: '#e3e9f1', roughness: .85 }),
+          accent: new THREE.MeshStandardMaterial({ color: '#0e949c', roughness: .4 }),
+          weight: new THREE.MeshStandardMaterial({ color: '#efac46', roughness: .5, metalness: .2 }),
+          ghost: new THREE.MeshBasicMaterial({ color: '#15b7bd', transparent: true, opacity: .15, depthWrite: false }),
+          outline: new THREE.LineBasicMaterial({ color: '#17a8b4', transparent: true, opacity: .68 }),
+        };
+        const mesh = (geometry: any, material: any, parent: any, x = 0, y = 0, z = 0) => {
+          const m = new THREE.Mesh(geometry, material); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; parent.add(m); return m;
+        };
+        const box = (w: number, h: number, d: number, material: any, parent: any, x = 0, y = 0, z = 0) => mesh(new THREE.BoxGeometry(w, h, d), material, parent, x, y, z);
+        scene.add(new THREE.HemisphereLight(0xe8f5ff, 0x8899a6, 2.4));
+        const light = new THREE.DirectionalLight(0xffffff, 3.3); light.position.set(2, 5, 4); light.castShadow = true;
+        light.shadow.mapSize.set(1024, 1024); light.shadow.camera.left = light.shadow.camera.bottom = -2.5; light.shadow.camera.right = light.shadow.camera.top = 2.5; light.shadow.normalBias = .025; scene.add(light);
+        const fill = new THREE.DirectionalLight(0x8fc5ed, 1.1); fill.position.set(-3, 2, -2); scene.add(fill);
+        const floor = mesh(new THREE.CircleGeometry(1.85, 64), materials.floor, scene, .15, .025, 0); floor.rotation.x = -Math.PI / 2; floor.castShadow = false;
+        box(.68, .11, .62, materials.joint, scene, -.15, .085, -.06);
+        box(.11, 1.69, .15, materials.body, scene, -.34, .98, -.1);
+        box(.5, .12, .16, materials.body, scene, -.12, 1.82, -.1);
+        // Fixed upper arm and cylindrical shoulder/elbow housings.
+        box(.22, .66, .24, materials.trim, scene, 0, 1.45, 0);
+        box(.075, .46, .26, materials.body, scene, 0, 1.46, .01);
+        const jointAt = (y: number, radius: number) => {
+          const joint = mesh(new THREE.CylinderGeometry(radius, radius, .31, 40), materials.joint, scene, 0, y, .02); joint.rotation.x = Math.PI / 2;
+          const cap = mesh(new THREE.CylinderGeometry(radius * .69, radius * .69, .025, 40), materials.accent, scene, 0, y, .189); cap.rotation.x = Math.PI / 2;
+        };
+        jointAt(1.83, .17); jointAt(1.05, .18);
+        const makeForearm = (target = false) => {
+          const group = new THREE.Group(); group.position.set(0, 1.05, 0); scene.add(group);
+          const geo = new THREE.BoxGeometry(.2, .53, .2);
+          const body = mesh(geo, target ? materials.ghost : materials.body, group, 0, -.34, 0);
+          if (target) { const edge = new THREE.LineSegments(new THREE.EdgesGeometry(geo), materials.outline); edge.position.copy(body.position); group.add(edge); }
+          else { box(.055, .37, .212, materials.trim, group, 0, -.34, .006); }
+          const handGeo = new THREE.BoxGeometry(.1, .26, .3);
+          const hand = mesh(handGeo, target ? materials.ghost : materials.trim, group, 0, -.67, 0);
+          if (target) { const edge = new THREE.LineSegments(new THREE.EdgesGeometry(handGeo), materials.outline); edge.position.copy(hand.position); group.add(edge); }
+          return group;
+        };
+        ghost = makeForearm(true); ghost.visible = false;
+        arm = makeForearm();
+        weight = new THREE.Group(); weight.position.set(.17, -.65, 0); arm.add(weight);
+        box(.23, .22, .3, materials.weight, weight);
+        box(.07, .235, .32, materials.joint, weight);
+        weight.visible = false;
+        pushArrow = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(), .35, 0xe28b30, .1, .075); pushArrow.visible = false; scene.add(pushArrow);
+        const resize = () => {
+          if (!renderer || disposed) return;
+          const w = viewport.clientWidth, h = viewport.clientHeight;
+          if (!w || !h) return;
+          renderer.setSize(w, h); camera.aspect = w / h;
+          camera.position.set(w < 500 ? 1.85 : 1.6, w < 500 ? 1.7 : 1.55, w < 500 ? 3.8 : 3.3);
+          camera.lookAt(.22, 1.05, 0); camera.updateProjectionMatrix(); draw();
+        };
+        resizeObserver = new ResizeObserver(resize); resizeObserver.observe(viewport);
+        themeObserver = new MutationObserver(applyTheme); themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        ready = true; demo.dataset.state = 'ready'; el('loading').hidden = true;
+        resize(); applyTheme(); controls(); readout(); draw();
+      } catch (error) {
+        webglFailed = true; demo.dataset.state = 'error';
+        el('loading').textContent = '当前浏览器无法显示三维模型。下方仍可阅读三个环的分工。';
+        renderer?.dispose(); renderer?.domElement.remove(); renderer = null;
+        console.warn('Servo arm demo unavailable', error);
+      }
+    }
+    const dispose = () => {
+      disposed = true; loop.dispose(); resizeObserver?.disconnect(); themeObserver?.disconnect(); reduced.removeEventListener('change', motionChange);
+      scene?.traverse((object: any) => { object.geometry?.dispose(); });
+      if (materials) Object.values(materials).forEach((m: any) => m.dispose());
+      renderer?.dispose(); renderer?.domElement.remove();
+    };
+    document.addEventListener('astro:before-swap', dispose, { once: true });
   });
 </script>
 
 <style>
-  .sc-demo { margin: 1.5rem 0; }
-  .sc-demo svg { display: block; width: 100%; max-width: 900px; height: auto; margin: 0 auto; }
-  .sc-title { fill: var(--sl-color-text); font-size: 24px; font-weight: 600; }
-
-  .sc-box { fill: light-dark(rgba(79, 70, 229, 0.07), rgba(139, 131, 255, 0.11)); stroke: var(--sl-color-gray-4); stroke-width: 1.8; transition: stroke 0.15s, fill 0.15s; }
-  .sc-stage.sc-active .sc-box { stroke: var(--sl-color-accent); stroke-width: 3; fill: light-dark(rgba(79, 70, 229, 0.15), rgba(139, 131, 255, 0.21)); }
-  .sc-box-name { fill: var(--sl-color-text); font-size: 22px; font-weight: 600; }
-  .sc-stage.sc-active .sc-box-name { fill: var(--sl-color-accent); }
-  .sc-box-gain { fill: var(--sl-color-gray-2); font-size: 19px; font-variant-numeric: tabular-nums; }
-  .sc-box-io { fill: var(--sl-color-gray-2); font-size: 18px; font-variant-numeric: tabular-nums; }
-  .sc-link { stroke: var(--sl-color-gray-3); stroke-width: 2.5; }
-  .sc-stage.sc-active .sc-link { stroke: var(--sl-color-accent); }
-  .sc-arrow-head { fill: var(--sl-color-gray-3); }
-  .sc-link-label { fill: var(--sl-color-gray-2); font-size: 17px; }
-
-  .sc-grid { stroke: var(--sl-color-gray-4); stroke-width: 1; }
-  .sc-grid.sc-zero { stroke: var(--sl-color-gray-3); stroke-width: 1.8; }
-  .sc-vgrid { stroke: var(--sl-color-gray-4); stroke-width: 1; stroke-dasharray: 3 5; }
-  .sc-axis { stroke: var(--sl-color-gray-3); stroke-width: 1.8; }
-  .sc-ytick, .sc-xtick { fill: var(--sl-color-gray-2); font-size: 17px; font-variant-numeric: tabular-nums; }
-  .sc-ref { stroke: var(--sl-color-gray-3); stroke-width: 2; stroke-dasharray: 8 6; }
-  .sc-path { fill: none; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
-  .sc-path-pos { stroke: var(--sl-color-accent); }
-  .sc-path-vel { stroke: light-dark(#0d9488, #2dd4bf); }
-  .sc-path-cur { stroke: light-dark(#ea580c, #fb923c); }
-  .sc-head { stroke: var(--sl-color-bg); stroke-width: 2; }
-  .sc-head-pos { fill: var(--sl-color-accent); }
-  .sc-head-vel { fill: light-dark(#0d9488, #2dd4bf); }
-  .sc-head-cur { fill: light-dark(#ea580c, #fb923c); }
-  .sc-head-off { opacity: 0; }
-  .sc-legend-text { fill: var(--sl-color-gray-2); font-size: 18px; }
-  .sc-note { fill: var(--sl-color-gray-2); font-size: 17px; }
-
-  .sc-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; max-width: 900px; margin: 0.55rem auto 0; }
-  .sc-controls > * { margin: 0; }
-  .sc-btn { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.85rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
-  .sc-btn:hover { border-color: var(--sl-color-accent); color: var(--sl-color-accent); }
-  .sc-btn[data-step] { border-color: var(--sl-color-accent); color: var(--sl-color-accent); font-weight: 600; }
-  .sc-slider-label { display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 0.8125rem; color: var(--sl-color-gray-2); white-space: nowrap; }
-  .sc-slider-label input[type='range'] { width: 8.5rem; accent-color: var(--sl-color-accent); }
-  .sc-deg-out, .sc-kp-out, .sc-kv-out, .sc-wc-out { min-width: 4.2rem; text-align: right; color: var(--sl-color-accent); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
-  .sc-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; color: var(--sl-color-text); line-height: 1.7; }
-  .sc-out { display: block; white-space: nowrap; overflow-x: auto; }
-  .sc-readout output { color: var(--sl-color-accent); font-weight: 600; }
-  .sc-demo figcaption { max-width: 900px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.9rem; line-height: 1.65; }
+  .sc-demo { --sc-accent: #158d99; margin: 1.7rem 0; padding: 1rem; border: 1px solid var(--sl-color-gray-5); border-radius: 14px; background: var(--sl-color-bg); }
+  .sc-heading { display: flex; gap: .75rem; justify-content: space-between; align-items: start; margin-bottom: .8rem; }
+  .sc-heading strong { font-size: 1.05rem; color: var(--sl-color-text); }
+  .sc-heading p { margin: .3rem 0 0; font-size: .85rem; color: var(--sl-color-gray-2); line-height: 1.65; }
+  .sc-model-label { padding: .2rem .5rem; border: 1px solid var(--sl-color-gray-5); border-radius: 100px; font-size: .7rem; color: var(--sl-color-gray-2); white-space: nowrap; }
+  .sc-viewport { position: relative; overflow: hidden; height: 365px; border-radius: 10px; background: radial-gradient(ellipse at 45% 35%, color-mix(in srgb, var(--sl-color-gray-6) 55%, var(--sl-color-bg)), var(--sl-color-gray-6)); }
+  .sc-viewport :global(canvas) { display: block; position: absolute; inset: 0; width: 100%; height: 100%; }
+  .sc-loading { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 1.5rem; color: var(--sl-color-gray-2); background: var(--sl-color-gray-6); z-index: 3; font-size: .9rem; }
+  .sc-loading[hidden] { display: none; }
+  .sc-scene-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; margin-bottom: .6rem; }
+  .sc-angle-badge { display: flex; gap: 1.1rem; padding: .45rem .75rem; border: 1px solid var(--sl-color-gray-5); border-radius: 8px; background: color-mix(in srgb, var(--sl-color-bg) 90%, transparent); color: var(--sl-color-gray-2); font-size: .8rem; }
+  .sc-angle-badge b { margin-left: .25rem; color: var(--sl-color-text); font-variant-numeric: tabular-nums; }
+  .sc-legend { margin: .6rem 0; display: flex; align-items: center; gap: .35rem; font-size: .7rem; color: var(--sl-color-gray-2); }
+  .sc-legend i { display: inline-block; width: .65rem; height: .65rem; border-radius: 2px; background: #64768c; }
+  .sc-legend i:not(:first-child) { margin-left: .55rem; }
+  .sc-legend .sc-ghost-key { background: transparent; border: 1px solid #17a8b4; }
+  .sc-legend .sc-weight-key { background: #efac46; }
+  .sc-scene-note { color: var(--sl-color-gray-2); font-size: .7rem; }
+  .sc-controls > *, .sc-angle-badge > *, .sc-legend > *, .sc-card-values > * { margin-top: 0; }
+  .sc-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; margin-top: .75rem; }
+  .sc-controls-spacer { flex: 1; }
+  .sc-button { appearance: none; display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: .4rem .75rem; margin: 0; border: 1px solid var(--sl-color-gray-4); border-radius: 7px; font: inherit; font-size: .87rem; line-height: 1.4; background: var(--sl-color-bg); color: var(--sl-color-text); cursor: pointer; }
+  .sc-button:hover:enabled { border-color: var(--sc-accent); }
+  .sc-button:focus-visible { outline: 3px solid var(--sl-color-accent); outline-offset: 3px; }
+  .sc-button:disabled { opacity: .45; cursor: default; }
+  .sc-primary, .sc-button[aria-pressed="true"] { background: color-mix(in srgb, var(--sc-accent) 12%, var(--sl-color-bg)); border-color: var(--sc-accent); }
+  .sc-status { margin: .7rem 0; min-height: 2.9em; font-size: .84rem; line-height: 1.6; color: var(--sl-color-gray-2); }
+  .sc-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; }
+  .sc-card { margin: 0; padding: .75rem; border: 1px solid var(--sl-color-gray-5); border-radius: 9px; }
+  .sc-card h4 { margin: 0; display: flex; align-items: center; gap: .4rem; font-size: .9rem; }
+  .sc-card h4 > span { display: grid; place-items: center; width: 1.2rem; height: 1.2rem; border-radius: 50%; background: color-mix(in srgb, var(--sc-accent) 12%, var(--sl-color-bg)); color: var(--sl-color-text-accent); font-size: .7rem; }
+  .sc-card p { margin: .55rem 0 .65rem; font-size: .88rem; line-height: 1.7; color: var(--sl-color-gray-2); }
+  .sc-card-values { display: grid; gap: .3rem; font-size: .8rem; color: var(--sl-color-gray-2); }
+  .sc-card-values b { display: inline-block; color: var(--sl-color-text); font-size: .9rem; font-variant-numeric: tabular-nums; }
+  .sc-card-values small { font-size: .8rem; }
+  .sc-together { margin: .75rem 0 0; font-size: .8rem; line-height: 1.7; color: var(--sl-color-gray-2); }
+  .sc-details { margin-top: 1rem; border-top: 1px solid var(--sl-color-gray-5); padding-top: .7rem; }
+  .sc-details summary { cursor: pointer; color: var(--sl-color-text); font-size: .83rem; }
+  .sc-details p { font-size: .78rem; line-height: 1.8; color: var(--sl-color-gray-2); }
+  .sc-chart-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; font-size: .75rem; margin-top: .85rem; }
+  .sc-chart-heading span { color: var(--sl-color-gray-2); }
+  .sc-chart { display: block; width: 100%; margin-top: .5rem; }
+  .sc-chart text { fill: var(--sl-color-gray-2); font-size: 11px; }
+  .sc-grid { stroke: var(--sl-color-gray-5); stroke-width: 1; }
+  .sc-chart-target { fill: none; stroke: #159aa5; stroke-width: 1.5; stroke-dasharray: 6 4; }
+  .sc-chart-actual { fill: none; stroke: var(--sl-color-text); stroke-width: 2; }
+  .sc-chart-key { display: flex; gap: 1rem; margin: 0; }
+  .sc-demo figcaption { margin: .85rem 0 0; font-size: .77rem; line-height: 1.7; color: var(--sl-color-gray-2); }
+  @media (max-width: 600px) { .sc-demo { padding: .7rem; } .sc-model-label { display: none; } .sc-viewport { height: 330px; } .sc-cards { grid-template-columns: 1fr; } .sc-card { display: grid; grid-template-columns: 6rem 1fr; gap: .2rem .6rem; } .sc-card h4 { grid-column: 1; grid-row: 1 / 3; align-self: center; } .sc-card p { margin: 0; } .sc-card-values { grid-column: 2; } .sc-controls-spacer { display: none; } .sc-button { min-height: 40px; } .sc-status { min-height: 0; } }
 </style>

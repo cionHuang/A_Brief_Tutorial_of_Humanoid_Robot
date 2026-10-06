@@ -1,547 +1,325 @@
 ---
-/**
- * FOC 坐标变换交互演示：三相逆变器 → 三相电流 → Clarke(αβ) → Park(dq)。
- *
- * 教学要点：三根线上的交流电流，经过 Clarke 到静止 αβ、再经 Park 旋转到随转子
- * 转动的 dq 后，变成两个近似直流量：i_d ≈ 0、i_q = 给定值 i_q*。这就是
- * “交流电流调节变成两个直流量控制”。
- *
- * 左面板：上半是一个电周期（θe 0..360°）的三相电流波形 i_a/i_b/i_c（标幺值，
- *   幅值随 i_q* 变化），竖直游标表示当前 θe；下半是静止 αβ 平面（α/β 轴、单位圆、
- *   电流矢量），叠加随 θe 旋转的 d/q 轴与矢量在 d/q 上的投影；右侧小图是 dq 平面里
- *   的工作点，它不随 θe 走动——这就是“直流量”。
- * 右面板：三相逆变器 PWM 示意——a/b/c 三条占空比条（0.5 + 0.5·归一化调制波）、
- *   三角载波与三相参考波、载波游标和“参考 > 载波 → 开通”比较。
- *
- * 模型（教学示意，归一化，固定 i_d* = 0，i_q* 由滑块给定 0..1）：
- *   α = -i_q*·sin θe，β = i_q*·cos θe；
- *   反 Clarke：i_a = α，i_b = -α/2 + (√3/2)β，i_c = -α/2 - (√3/2)β；
- *   Clarke：  α = (2/3)(i_a - i_b/2 - i_c/2)，β = (1/√3)(i_b - i_c)；
- *   Park：    i_d = α cos θe + β sin θe，i_q = -α sin θe + β cos θe。
- *   代入可得 i_d ≈ 0、i_q = i_q*。
- *
- * 纯 SVG + 原生 JS；所有图形元素都写在 markup 里，JS 只改属性/文本/class；
- * 样式跟随 Starlight 明暗主题，并遵循 prefers-reduced-motion。
- *
- * 使用方式（仅限 .mdx 小节）：
- *   import FocTransformDemo from '../../../components/FocTransformDemo.astro';
- *   <FocTransformDemo />
- */
 import { katexHtml } from '../lib/tex.js';
-
-const PHASES = [
-  { key: 'a', name: 'a 相' },
-  { key: 'b', name: 'b 相' },
-  { key: 'c', name: 'c 相' },
-];
-
-const GEOM = {
-  wave: { x0: 78, x1: 452, y0: 145, amp: 46 },
-  ab: { cx: 165, cy: 352, r: 72 },
-  dq: { cx: 345, cy: 406, scale: 84 },
-  pwm: { x0: 546, x1: 832, y0: 64, rowGap: 60, barH: 26, barW: 286 },
-  carrier: { x0: 546, x1: 862, cy: 330, amp: 34, cycles: 3 },
-};
-
-const { wave, ab, dq, pwm, carrier } = GEOM;
-
-// 三角载波路径是静态的，直接在 frontmatter 里算好写进 markup。
-const CARRIER_PATH = (() => {
-  const step = (carrier.x1 - carrier.x0) / carrier.cycles;
-  let d = 'M ' + carrier.x0 + ' ' + (carrier.cy + carrier.amp);
-  for (let i = 0; i < carrier.cycles; i++) {
-    d += ' L ' + (carrier.x0 + (i + 0.5) * step).toFixed(1) + ' ' + (carrier.cy - carrier.amp);
-    d += ' L ' + (carrier.x0 + (i + 1) * step).toFixed(1) + ' ' + (carrier.cy + carrier.amp);
-  }
-  return d;
-})();
-
-const CFG = { phases: PHASES.map((p) => p.key), geom: GEOM };
+const phases = [{ key: 'a', angle: 0 }, { key: 'b', angle: 120 }, { key: 'c', angle: 240 }];
+const coils = phases.flatMap((phase) => [0, 180].map((offset) => ({ ...phase, angle: phase.angle + offset })));
+const steps = ['看电机', '看出力', '跟随转子看'];
 ---
 
-<figure class="foc-demo" data-foc={JSON.stringify(CFG)}>
-  <svg viewBox="0 0 900 470" role="img" aria-label="FOC 坐标变换交互演示：三相正弦电流经 Clarke 变换到静止 αβ 坐标，再经 Park 变换到随转子旋转的 dq 坐标，得到近似直流的 i_d 与 i_q">
-    <defs>
-      <marker id="foc-mk-vec" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="foc-mk-vec" d="M0 0 L10 5 L0 10 Z"></path></marker>
-      <marker id="foc-mk-d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="foc-mk-d" d="M0 0 L10 5 L0 10 Z"></path></marker>
-      <marker id="foc-mk-q" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="foc-mk-q" d="M0 0 L10 5 L0 10 Z"></path></marker>
-      <marker id="foc-mk-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="foc-mk-a" d="M0 0 L10 5 L0 10 Z"></path></marker>
-    </defs>
-
-    <!-- 标题 -->
-    <text class="foc-title" x="24" y="26">FOC 坐标变换：三相电流 → αβ → dq</text>
-    <text class="foc-title" x="500" y="26">三相逆变器 PWM（示意）</text>
-
-    <!-- 左上：三相电流波形 -->
-    <text class="foc-subtitle" x="24" y="54">三相电流（标幺值，一个电周期）</text>
-    <text class="foc-legend foc-pha" x="92" y="78">i<tspan class="foc-sub" dy="4">a</tspan></text>
-    <text class="foc-legend foc-phb" x="142" y="78">i<tspan class="foc-sub" dy="4">b</tspan></text>
-    <text class="foc-legend foc-phc" x="192" y="78">i<tspan class="foc-sub" dy="4">c</tspan></text>
-
-    <line class="foc-axis" x1="78" y1="198" x2="78" y2="98" marker-end="url(#foc-mk-a)"></line>
-    <line class="foc-axis" x1="78" y1="145" x2="452" y2="145" marker-end="url(#foc-mk-a)"></line>
-    <text class="foc-small" x="72" y="105" text-anchor="end">+1</text>
-    <text class="foc-small" x="72" y="151" text-anchor="end">0</text>
-    <text class="foc-small" x="72" y="197" text-anchor="end">−1</text>
-    <text class="foc-small" x="78" y="216" text-anchor="middle">0°</text>
-    <text class="foc-small" x="203" y="216" text-anchor="middle">120°</text>
-    <text class="foc-small" x="327" y="216" text-anchor="middle">240°</text>
-    <text class="foc-small" x="452" y="216" text-anchor="middle">360°</text>
-
-    {PHASES.map((p) => (
-      <path class={'foc-wave foc-wave-' + p.key + ' foc-ph' + p.key} data-wave={p.key} d=""></path>
-    ))}
-    {PHASES.map((p) => (
-      <circle class={'foc-dot foc-ph' + p.key} data-dot={p.key} cx="78" cy="145" r="4.5"></circle>
-    ))}
-    <line class="foc-cursor" data-role="wave-cursor" x1="78" y1="96" x2="78" y2="198"></line>
-
-    <!-- 左下：静止 αβ 平面 + 旋转 dq 轴 -->
-    <text class="foc-subtitle" x="24" y="240">αβ 平面：电流矢量与旋转 dq 轴</text>
-    <line class="foc-axis" x1="79" y1="352" x2="251" y2="352" marker-end="url(#foc-mk-a)"></line>
-    <line class="foc-axis" x1="165" y1="438" x2="165" y2="266" marker-end="url(#foc-mk-a)"></line>
-    <text class="foc-axis-lab" x="100" y="344">α</text>
-    <text class="foc-axis-lab" x="172" y="290">β</text>
-    <circle class="foc-circle" cx="165" cy="352" r="72"></circle>
-
-    <path class="foc-arc" data-role="theta-arc" d=""></path>
-    <text class="foc-arc-lab" data-role="theta-arc-lab" x="165" y="322" text-anchor="middle">θe</text>
-
-    <g class="foc-dq" data-role="dq-group" transform="rotate(0 165 352)">
-      <line class="foc-d-axis" x1="81" y1="352" x2="249" y2="352" marker-end="url(#foc-mk-d)"></line>
-      <line class="foc-q-axis" x1="165" y1="436" x2="165" y2="268" marker-end="url(#foc-mk-q)"></line>
-    </g>
-    <text class="foc-dq-lab" data-role="d-lab" x="249" y="357" text-anchor="middle">d</text>
-    <text class="foc-dq-lab" data-role="q-lab" x="165" y="273" text-anchor="middle">q</text>
-
-    <line class="foc-proj" data-role="proj-d" x1="165" y1="352" x2="165" y2="352"></line>
-    <line class="foc-proj" data-role="proj-q" x1="165" y1="352" x2="165" y2="352"></line>
-    <line class="foc-comp-d" data-role="comp-d" x1="165" y1="352" x2="165" y2="352" marker-end="url(#foc-mk-d)"></line>
-    <line class="foc-comp-q" data-role="comp-q" x1="165" y1="352" x2="165" y2="352" marker-end="url(#foc-mk-q)"></line>
-    <line class="foc-ivec" data-role="ivec" x1="165" y1="352" x2="165" y2="352" marker-end="url(#foc-mk-vec)"></line>
-    <circle class="foc-foot" data-role="foot-d" cx="165" cy="352" r="4.5"></circle>
-    <circle class="foc-foot" data-role="foot-q" cx="165" cy="352" r="4.5"></circle>
-
-    <!-- 左下右：dq 平面工作点 -->
-    <text class="foc-mini-title" x="293" y="292">dq 平面</text>
-    <line class="foc-axis" x1="293" y1="406" x2="429" y2="406" marker-end="url(#foc-mk-a)"></line>
-    <line class="foc-axis" x1="345" y1="406" x2="345" y2="322" marker-end="url(#foc-mk-a)"></line>
-    <text class="foc-axis-lab" x="434" y="412">d</text>
-    <text class="foc-axis-lab" x="352" y="330">q</text>
-    <line class="foc-guide" data-role="dq-guide-v" x1="345" y1="406" x2="345" y2="406"></line>
-    <line class="foc-guide" data-role="dq-guide-h" x1="345" y1="406" x2="345" y2="406"></line>
-    <circle class="foc-dq-point" data-role="dq-point" cx="345" cy="406" r="6"></circle>
-    <text class="foc-small" x="293" y="430">i_d ≈ 0</text>
-
-    <!-- 右：PWM 占空比条 -->
-    <line class="foc-center-line" x1="689" y1="52" x2="689" y2="216"></line>
-    <text class="foc-small" x="689" y="46" text-anchor="middle">50%</text>
-    <text class="foc-small" x="546" y="232" text-anchor="middle">0</text>
-    <text class="foc-small" x="832" y="232" text-anchor="middle">1</text>
-    {PHASES.map((p, i) => (
-      <g class="foc-row" data-row={p.key}>
-        <text class={'foc-row-lab foc-ph' + p.key} x="520" y={pwm.y0 + i * pwm.rowGap + 19} text-anchor="middle">{p.key}</text>
-        <rect class="foc-bar-bg" x={pwm.x0} y={pwm.y0 + i * pwm.rowGap} width={pwm.barW} height={pwm.barH} rx="4"></rect>
-        <rect class={'foc-bar-fill foc-ph' + p.key} data-duty={p.key} x={pwm.x0} y={pwm.y0 + i * pwm.rowGap} width="143" height={pwm.barH} rx="4"></rect>
-        <text class="foc-bar-pct" data-duty-pct={p.key} x="880" y={pwm.y0 + i * pwm.rowGap + 19} text-anchor="end">50%</text>
-      </g>
-    ))}
-
-    <!-- 右：三角载波与三相参考波 -->
-    <text class="foc-subtitle" x="500" y="262">三角载波 vs 三相参考波</text>
-    <text class="foc-small" x="538" y="336" text-anchor="end">载波</text>
-    <path class="foc-carrier" data-role="carrier" d={CARRIER_PATH}></path>
-    {PHASES.map((p) => (
-      <line class={'foc-ref foc-ph' + p.key} data-ref={p.key} x1={carrier.x0} y1={carrier.cy} x2={carrier.x1} y2={carrier.cy}></line>
-    ))}
-    <line class="foc-carrier-cursor" data-role="carrier-cursor" x1={carrier.x0} y1="288" x2={carrier.x0} y2="372"></line>
-    {PHASES.map((p) => (
-      <circle class={'foc-refdot foc-ph' + p.key} data-refdot={p.key} cx={carrier.x0} cy={carrier.cy} r="4.5"></circle>
-    ))}
-    <circle class="foc-carrier-dot" data-role="carrier-dot" cx={carrier.x0} cy={carrier.cy} r="5"></circle>
-
-    <text class="foc-note" x="500" y="410">开关 = 参考波 &gt; 载波（PWM）</text>
-    <text class="foc-note" x="500" y="438">载波频率 ≫ 基波频率；为看清比较只画 3 个载波周期。</text>
-  </svg>
-
+<figure class="foc-demo" data-foc-motor>
+  <header class="foc-header">
+    <span class="foc-eyebrow">放大肘关节里的电机</span>
+    <h4>转子换了位置，三相电流怎样跟着变？</h4>
+    <p>先认出线圈和转子，再换一个观察角度。</p>
+  </header>
+  <div class="foc-steps" role="group" aria-label="电机演示的三个观察步骤">
+    {steps.map((name, i) => <button type="button" data-step={i + 1} aria-pressed={i === 0 ? 'true' : 'false'}><span>{i + 1}</span>{name}</button>)}
+  </div>
+  <div class="foc-scene">
+    <div class="foc-motor-pane">
+      <div class="foc-view-label" data-view-label>从外壳看 · 线圈固定，转子转动</div>
+      <svg class="foc-motor" viewBox="0 0 400 400" role="img" aria-label="电机剖面：外圈是固定的三组线圈，中间是带 N、S 磁极的转子">
+        <defs>
+          <marker id="foc-rotor-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10Z" class="foc-rotor-fill" /></marker>
+          <marker id="foc-stator-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10Z" class="foc-stator-fill" /></marker>
+        </defs>
+        <circle cx="200" cy="200" r="188" class="foc-shell-outline" />
+        <g data-world>
+          <circle cx="200" cy="200" r="176" class="foc-shell" />
+          <circle cx="200" cy="200" r="146" class="foc-stator-core" />
+          {Array.from({ length: 24 }, (_, i) => <path d="M200 30V44" transform={`rotate(${i * 15} 200 200)`} class="foc-lamination" />)}
+          {coils.map((coil) => {
+            const r = coil.angle * Math.PI / 180;
+            return <g class={'foc-coil foc-phase-' + coil.key} data-coil={coil.key} transform={`translate(${200 + 132 * Math.cos(r)} ${200 - 132 * Math.sin(r)})`}>
+              <g transform={`rotate(${-coil.angle})`}>
+                <rect x="-26" y="-22" width="52" height="44" rx="7" class="foc-coil-core" />
+                <rect x="-22" y="-20" width="44" height="40" rx="5" class="foc-coil-copper" data-coil-fill />
+                {[-15, -5, 5, 15].map((x) => <path d={`M${x} -20V20`} class="foc-coil-wire" />)}
+              </g>
+              <g data-coil-label><rect x="-17" y="-14" width="34" height="28" rx="8" class="foc-coil-tag" /><text x="0" y="6" text-anchor="middle">{coil.key}</text></g>
+            </g>;
+          })}
+          <circle cx="200" cy="200" r="95" class="foc-air-gap" />
+          <g data-rotor>
+            <circle cx="200" cy="200" r="78" class="foc-rotor-disk" />
+            <path d="M200 130A70 70 0 0 1 200 270Z" class="foc-magnet-n" />
+            <path d="M200 270A70 70 0 0 1 200 130Z" class="foc-magnet-s" />
+            <text x="242" y="207" class="foc-pole-label" text-anchor="middle">N</text>
+            <text x="158" y="207" class="foc-pole-label" text-anchor="middle">S</text>
+          </g>
+          <g class="foc-dq-axes" data-dq-axes opacity="0">
+            <line x1="88" y1="200" x2="312" y2="200" /><line x1="200" y1="312" x2="200" y2="88" />
+            <text x="315" y="192">d</text><text x="210" y="90">q</text>
+          </g>
+          <g data-fields opacity="0">
+            <line x1="200" y1="200" x2="292" y2="200" class="foc-field-rotor" data-rotor-field marker-end="url(#foc-rotor-arrow)" />
+            <line x1="200" y1="200" x2="200" y2="106" class="foc-field-stator" data-stator-field marker-end="url(#foc-stator-arrow)" />
+          </g>
+          <circle cx="200" cy="200" r="13" class="foc-shaft" /><circle cx="200" cy="200" r="4" class="foc-shaft-center" />
+        </g>
+      </svg>
+      <div class="foc-field-legend" data-field-legend hidden><span><i class="foc-rotor-key"></i>转子磁场</span><span><i class="foc-stator-key"></i>绕组合成磁场</span></div>
+      <p class="foc-scene-note" data-scene-note>三种颜色对应三组线圈；线圈越亮，电流越大。</p>
+    </div>
+    <div class="foc-observation">
+      <span class="foc-eyebrow">这一刻，看这里</span>
+      <h5 data-observe-title>线圈不动，电流在变</h5>
+      <p data-observe-text>外圈的三组线圈固定在外壳上。改变转子位置，观察各相电流怎样改变大小和方向。</p>
+      <div class="foc-phase-readings" aria-label="三相电流，相对值" aria-live="off">
+        {phases.map((phase) => <div class={'foc-phase-reading foc-phase-' + phase.key}>
+          <span>{phase.key} 相</span><div class="foc-phase-track"><span class="foc-phase-zero"></span><span class="foc-phase-bar" data-phase-bar={phase.key}></span></div><output data-phase-value={phase.key} aria-live="off">0.00</output>
+        </div>)}
+        <small>左负右正；正负号表示电流方向。</small>
+      </div>
+      <div class="foc-torque-card" data-torque-card hidden aria-live="off"><span>此刻的转矩（相对值）</span><strong data-torque-value>+0.75</strong><p data-torque-text>电流随转子调整，转矩保持不变。</p></div>
+      <div class="foc-dq-readings" data-dq-readings hidden aria-live="off">
+        <div><span set:html={katexHtml('i_d')}></span><output data-id aria-live="off">0.00</output></div><div><span set:html={katexHtml('i_q')}></span><output data-iq aria-live="off">+0.75</output></div>
+        <p>还是同一组三相电流，换个坐标，读数就稳定了。</p>
+      </div>
+    </div>
+  </div>
   <div class="foc-controls">
-    <button type="button" class="foc-btn foc-play" data-play aria-pressed="true">暂停</button>
-    <label class="foc-slider-label">电角度 <span set:html={katexHtml('\\theta_e')}></span>（0–360°）
-      <input class="foc-theta" type="range" min="0" max="360" step="1" value="30" />
-    </label>
-    <label class="foc-slider-label">q 轴电流给定 <span set:html={katexHtml('i_q^{*}')}></span>（0–1）
-      <input class="foc-iq" type="range" min="0" max="1" step="0.01" value="0.8" />
-    </label>
+    <div class="foc-actions"><button class="foc-button foc-primary" type="button" data-play aria-pressed="false">播放观察</button><button class="foc-button" type="button" data-reset>复位</button></div>
+    <label class="foc-slider-label"><span>转子位置 <output data-angle-output aria-live="off">30°</output></span><input type="range" min="0" max="360" step="1" value="30" data-angle aria-label="转子位置，角度" /></label>
+    <label class="foc-slider-label"><span>出力大小 <output data-effort-output aria-live="off">75%</output></span><input type="range" min="0" max="100" step="1" value="75" data-effort aria-label="出力大小，相对值" /></label>
   </div>
-
-  <div class="foc-readout">
-    <output class="foc-out foc-out-values" aria-live="polite"></output>
-    <output class="foc-out foc-out-result" aria-live="polite"></output>
-  </div>
-
-  <figcaption>
-    玩法：拖 <span set:html={katexHtml('\\theta_e')}></span> 让电流矢量转，拖 <span set:html={katexHtml('i_q^{*}')}></span> 改转矩大小。左边是“三根交流 → 两个直流”，右边是 PWM 开关。数值为教学示意。
-  </figcaption>
+  <p class="foc-play-note" data-play-note>播放只把转子依次放到不同位置，让你观察所需电流；不是电机加速过程。</p>
+  <span class="foc-sr-only" data-announcement role="status" aria-live="polite"></span>
+  <details class="foc-experiment" data-experiment>
+    <summary>试一试：如果三相电流不再跟着转子调整呢？</summary>
+    <div class="foc-details-body"><p>固定此刻的三相电流，再手动拖动“转子位置”。合成磁场不再跟随，你会看到转矩减小、归零，甚至反向。</p><button class="foc-button" type="button" data-freeze aria-pressed="false">固定现在的三相电流</button><p data-fixed-result>这是外力转动转子的对照实验，固定电流时不能播放。</p></div>
+  </details>
+  <details class="foc-formulas">
+    <summary>对应到 Clarke / Park 变换</summary>
+    <div class="foc-details-body">
+      <p>三相电流之和为零时，Clarke 变换用静止坐标系的两个分量表示它们；Park 变换再把坐标转到转子磁场方向。</p>
+      <div class="foc-formula" set:html={katexHtml('i_\\alpha=i_a,\\quad i_\\beta=\\frac{i_b-i_c}{\\sqrt{3}}')}></div>
+      <div class="foc-formula" set:html={katexHtml('i_d=i_\\alpha\\cos\\theta+i_\\beta\\sin\\theta')}></div>
+      <div class="foc-formula" set:html={katexHtml('i_q=-i_\\alpha\\sin\\theta+i_\\beta\\cos\\theta')}></div>
+      <p>本演示正常运行时取 <span set:html={katexHtml('i_d=0')}></span>；出力大小对应 <span set:html={katexHtml('i_q')}></span>。绕组合成磁场与转子磁场垂直，在这一理想模型中，转矩与 <span set:html={katexHtml('i_q')}></span> 成正比。固定电流的对照实验会改变它们的相对方向。</p>
+    </div>
+  </details>
+  <figcaption>一对磁极的理想表贴永磁电机，电流与转矩均为相对值。这里是电机转子角，非关节角；剖面是教学示意，不代表 G1 电机的真实内部结构。跟随视角只改变观察方向，线圈仍固定在电机外壳上。</figcaption>
 </figure>
 
 <script>
-  import { setParts } from '../lib/tex.js';
+  import { motorSample } from '../lib/foc-model.js';
   import { createVisibleRaf } from '../lib/visible-raf.js';
-
-  document.querySelectorAll('.foc-demo').forEach((demo) => {
-    const cfg = JSON.parse(demo.dataset.foc);
-    const geom = cfg.geom;
-    const keys = cfg.phases;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    const waveEl = {};
-    const dotEl = {};
-    const dutyEl = {};
-    const dutyPctEl = {};
-    const rowEl = {};
-    const refEl = {};
-    const refDotEl = {};
-    keys.forEach((k) => {
-      waveEl[k] = demo.querySelector('[data-wave="' + k + '"]');
-      dotEl[k] = demo.querySelector('[data-dot="' + k + '"]');
-      dutyEl[k] = demo.querySelector('[data-duty="' + k + '"]');
-      dutyPctEl[k] = demo.querySelector('[data-duty-pct="' + k + '"]');
-      rowEl[k] = demo.querySelector('[data-row="' + k + '"]');
-      refEl[k] = demo.querySelector('[data-ref="' + k + '"]');
-      refDotEl[k] = demo.querySelector('[data-refdot="' + k + '"]');
-    });
-
-    const waveCursor = demo.querySelector('[data-role="wave-cursor"]');
-    const dqGroup = demo.querySelector('[data-role="dq-group"]');
-    const dLab = demo.querySelector('[data-role="d-lab"]');
-    const qLab = demo.querySelector('[data-role="q-lab"]');
-    const ivec = demo.querySelector('[data-role="ivec"]');
-    const projD = demo.querySelector('[data-role="proj-d"]');
-    const projQ = demo.querySelector('[data-role="proj-q"]');
-    const compD = demo.querySelector('[data-role="comp-d"]');
-    const compQ = demo.querySelector('[data-role="comp-q"]');
-    const footD = demo.querySelector('[data-role="foot-d"]');
-    const footQ = demo.querySelector('[data-role="foot-q"]');
-    const thetaArc = demo.querySelector('[data-role="theta-arc"]');
-    const thetaArcLab = demo.querySelector('[data-role="theta-arc-lab"]');
-    const dqPoint = demo.querySelector('[data-role="dq-point"]');
-    const dqGuideV = demo.querySelector('[data-role="dq-guide-v"]');
-    const dqGuideH = demo.querySelector('[data-role="dq-guide-h"]');
-    const carrierCursor = demo.querySelector('[data-role="carrier-cursor"]');
-    const carrierDot = demo.querySelector('[data-role="carrier-dot"]');
-    const outValues = demo.querySelector('.foc-out-values');
-    const outResult = demo.querySelector('.foc-out-result');
-    const playBtn = demo.querySelector('.foc-play');
-    const thetaSlider = demo.querySelector('.foc-theta');
-    const iqSlider = demo.querySelector('.foc-iq');
-
-    const R3 = Math.sqrt(3) / 2;
-    const SQ3 = Math.sqrt(3);
-    const RAD = Math.PI / 180;
-
-    let theta = Number(thetaSlider.value);
-    let iq = Number(iqSlider.value);
-    let playing = !reduced;
+  document.querySelectorAll('[data-foc-motor]').forEach((demo) => {
+    if (demo.hasAttribute('data-ready')) return;
+    demo.setAttribute('data-ready', 'true');
+    const $ = (selector) => demo.querySelector(selector);
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const loop = createVisibleRaf(demo);
-    let last = 0;
-    let lastText = 0;
-
-    // 三相电流 + αβ 分量（教学示意模型，幅值随 i_q* 变化）
-    const phasors = (rad) => {
-      const sin = Math.sin(rad);
-      const cos = Math.cos(rad);
-      const alpha = -iq * sin;
-      const beta = iq * cos;
-      return {
-        sin,
-        cos,
-        alpha,
-        beta,
-        ia: alpha,
-        ib: -0.5 * alpha + R3 * beta,
-        ic: -0.5 * alpha - R3 * beta,
-      };
+    const angleInput = $('[data-angle]'), effortInput = $('[data-effort]');
+    const play = $('[data-play]'), freeze = $('[data-freeze]');
+    const phaseBars = {}, phaseValues = {};
+    ['a', 'b', 'c'].forEach((k) => { phaseBars[k] = $(`[data-phase-bar="${k}"]`); phaseValues[k] = $(`[data-phase-value="${k}"]`); });
+    const coils = Array.from(demo.querySelectorAll('[data-coil]'));
+    const labels = Array.from(demo.querySelectorAll('[data-coil-label]'));
+    const steps = Array.from(demo.querySelectorAll('[data-step]'));
+    const DEG = Math.PI / 180;
+    let angle = 30, effort = 0.75, step = 1, playing = false;
+    let camera = 0, cameraRemaining = 0, last = 0, fixed = null, fixedAt = 0;
+    const signed = (n) => Math.abs(n) < 0.005 ? '0.00' : (n > 0 ? '+' : '−') + Math.abs(n).toFixed(2);
+    const difference = (to, from) => ((to - from + 540) % 360) - 180;
+    const announce = (text) => { $('[data-announcement]').textContent = text; };
+    const explanations = {
+      1: ['线圈不动，电流在变', '外圈的三组线圈固定在外壳上。改变转子位置，观察各相电流怎样改变大小和方向。'],
+      2: ['保持合适的方向，持续出力', '转子换了位置，三相电流随之调整，让绕组合成磁场始终与转子磁场垂直。拖动出力大小，看看转矩怎样变化。'],
+      3: ['跟着转子看，读数稳定下来', '现在视角随转子转动：d 轴沿转子磁场，q 轴与它垂直。三相电流还在变，同一组电流的 d、q 分量却保持不变。'],
     };
-
-    // Clarke + Park：验证 i_d ≈ 0、i_q = i_q*
-    const solve = (deg) => {
-      const p = phasors(deg * RAD);
-      const alphaC = (2 / 3) * (p.ia - 0.5 * p.ib - 0.5 * p.ic);
-      const betaC = (1 / SQ3) * (p.ib - p.ic);
-      let id = alphaC * p.cos + betaC * p.sin;
-      const iqOut = -alphaC * p.sin + betaC * p.cos;
-      if (Math.abs(id) < 5e-3) id = 0;
-      return Object.assign({}, p, { alphaC: alphaC, betaC: betaC, id: id, iqOut: iqOut });
-    };
-
-    // 一个电周期的三相波形；只在 i_q* 改变时重算
-    const drawWaves = () => {
-      const w = geom.wave;
-      keys.forEach((k) => {
-        let d = '';
-        for (let deg = 0; deg <= 360; deg += 3) {
-          const p = phasors(deg * RAD);
-          const v = k === 'a' ? p.ia : (k === 'b' ? p.ib : p.ic);
-          const x = w.x0 + (deg / 360) * (w.x1 - w.x0);
-          const y = w.y0 - v * w.amp;
-          d += (d ? ' L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
-        }
-        waveEl[k].setAttribute('d', d);
+    function render() {
+      const s = motorSample(angle * DEG, effort, fixed);
+      const fields = step > 1 || fixed !== null;
+      $('[data-world]').setAttribute('transform', `rotate(${camera} 200 200)`);
+      $('[data-rotor]').setAttribute('transform', `rotate(${-angle} 200 200)`);
+      labels.forEach((label) => label.setAttribute('transform', `rotate(${-camera})`));
+      $('[data-dq-axes]').setAttribute('transform', `rotate(${-angle} 200 200)`);
+      $('[data-dq-axes]').setAttribute('opacity', step === 3 ? '1' : '0');
+      $('[data-fields]').setAttribute('opacity', fields ? '1' : '0');
+      $('[data-rotor-field]').setAttribute('x2', String(200 + 103 * Math.cos(angle * DEG)));
+      $('[data-rotor-field]').setAttribute('y2', String(200 - 103 * Math.sin(angle * DEG)));
+      $('[data-stator-field]').setAttribute('x2', String(200 + 119 * s.vector.alpha));
+      $('[data-stator-field]').setAttribute('y2', String(200 - 119 * s.vector.beta));
+      $('[data-stator-field]').setAttribute('opacity', s.fieldSize < 0.001 ? '0' : '1');
+      coils.forEach((coil) => { coil.querySelector('[data-coil-fill]').style.opacity = String(0.13 + 0.87 * Math.abs(s.phases[coil.getAttribute('data-coil')])); });
+      ['a', 'b', 'c'].forEach((k) => {
+        const n = s.phases[k];
+        phaseValues[k].textContent = signed(n);
+        phaseBars[k].style.left = (n < 0 ? 50 + n * 50 : 50) + '%';
+        phaseBars[k].style.width = Math.abs(n) * 50 + '%';
       });
-    };
-
-    const carrierValue = (deg) => {
-      const u = (deg / 360) * geom.carrier.cycles;
-      const local = u - Math.floor(u);
-      return local < 0.5 ? -1 + 4 * local : 3 - 4 * local;
-    };
-
-    const draw = () => {
-      const w = geom.wave;
-      const a = geom.ab;
-      const q = geom.dq;
-      const c = geom.carrier;
-      const sol = solve(theta);
-
-      // 波形游标 + 三相取样点
-      const wx = w.x0 + (theta / 360) * (w.x1 - w.x0);
-      waveCursor.setAttribute('x1', wx.toFixed(1));
-      waveCursor.setAttribute('x2', wx.toFixed(1));
-      keys.forEach((k) => {
-        const v = k === 'a' ? sol.ia : (k === 'b' ? sol.ib : sol.ic);
-        dotEl[k].setAttribute('cx', wx.toFixed(1));
-        dotEl[k].setAttribute('cy', (w.y0 - v * w.amp).toFixed(1));
-      });
-
-      // 随转子旋转的 d/q 轴（负号：SVG 的 y 轴朝下）
-      dqGroup.setAttribute('transform', 'rotate(' + (-theta).toFixed(1) + ' ' + a.cx + ' ' + a.cy + ')');
-      const lr = a.r + 12;
-      dLab.setAttribute('x', (a.cx + lr * sol.cos).toFixed(1));
-      dLab.setAttribute('y', (a.cy - lr * sol.sin + 6).toFixed(1));
-      qLab.setAttribute('x', (a.cx - lr * sol.sin).toFixed(1));
-      qLab.setAttribute('y', (a.cy - lr * sol.cos + 6).toFixed(1));
-
-      // 电流矢量
-      const tx = a.cx + a.r * sol.alpha;
-      const ty = a.cy - a.r * sol.beta;
-      ivec.setAttribute('x2', tx.toFixed(1));
-      ivec.setAttribute('y2', ty.toFixed(1));
-
-      // 矢量在 d/q 轴上的投影与应用
-      const fdx = a.cx + a.r * sol.id * sol.cos;
-      const fdy = a.cy - a.r * sol.id * sol.sin;
-      const fqx = a.cx - a.r * sol.iqOut * sol.sin;
-      const fqy = a.cy - a.r * sol.iqOut * sol.cos;
-      projD.setAttribute('x1', tx.toFixed(1));
-      projD.setAttribute('y1', ty.toFixed(1));
-      projD.setAttribute('x2', fdx.toFixed(1));
-      projD.setAttribute('y2', fdy.toFixed(1));
-      projQ.setAttribute('x1', tx.toFixed(1));
-      projQ.setAttribute('y1', ty.toFixed(1));
-      projQ.setAttribute('x2', fqx.toFixed(1));
-      projQ.setAttribute('y2', fqy.toFixed(1));
-      compD.setAttribute('x2', fdx.toFixed(1));
-      compD.setAttribute('y2', fdy.toFixed(1));
-      compQ.setAttribute('x2', fqx.toFixed(1));
-      compQ.setAttribute('y2', fqy.toFixed(1));
-      footD.setAttribute('cx', fdx.toFixed(1));
-      footD.setAttribute('cy', fdy.toFixed(1));
-      footQ.setAttribute('cx', fqx.toFixed(1));
-      footQ.setAttribute('cy', fqy.toFixed(1));
-      compD.classList.toggle('foc-hidden', Math.abs(sol.id) * a.r < 1.5);
-      compQ.classList.toggle('foc-hidden', Math.abs(sol.iqOut) * a.r < 1.5);
-
-      // θe 角弧
-      const ar = 30;
-      if (theta > 2 && theta < 358) {
-        thetaArc.classList.remove('foc-hidden');
-        thetaArcLab.classList.remove('foc-hidden');
-        const ex = a.cx + ar * sol.cos;
-        const ey = a.cy - ar * sol.sin;
-        thetaArc.setAttribute('d', 'M ' + (a.cx + ar) + ' ' + a.cy + ' A ' + ar + ' ' + ar + ' 0 ' + (theta > 180 ? 1 : 0) + ' 0 ' + ex.toFixed(1) + ' ' + ey.toFixed(1));
-        const mid = (theta / 2) * RAD;
-        thetaArcLab.setAttribute('x', (a.cx + (ar + 16) * Math.cos(mid)).toFixed(1));
-        thetaArcLab.setAttribute('y', (a.cy - (ar + 16) * Math.sin(mid) + 5).toFixed(1));
-      } else {
-        thetaArc.classList.add('foc-hidden');
-        thetaArcLab.classList.add('foc-hidden');
+      $('[data-angle-output]').textContent = Math.round(angle) + '°';
+      angleInput.setAttribute('aria-valuetext', Math.round(angle) + ' 度');
+      $('[data-effort-output]').textContent = Math.round(effort * 100) + '%';
+      $('[data-torque-value]').textContent = signed(s.torque);
+      $('[data-id]').textContent = signed(s.dq.d); $('[data-iq]').textContent = signed(s.dq.q);
+      $('[data-field-legend]').hidden = !fields; $('[data-torque-card]').hidden = !fields;
+      $('[data-dq-readings]').hidden = step !== 3;
+      $('[data-observe-title]').textContent = fixed ? '电流固定后，转矩不再固定' : explanations[step][0];
+      $('[data-observe-text]').textContent = fixed ? '此时由你手动改变转子位置。绕组合成磁场固定在外壳方向，转子换了位置，出力的大小和方向也会改变。' : explanations[step][1];
+      $('[data-view-label]').textContent = step === 3 ? '跟随转子看 · 外壳在画面里转动' : '从外壳看 · 线圈固定，转子转动';
+      $('[data-scene-note]').textContent = step === 3 ? '视角在转，线圈没有相对外壳移动。' : '三种颜色对应三组线圈；线圈越亮，电流越大。';
+      $('[data-torque-text]').textContent = fixed ? (Math.abs(s.torque) < 0.015 ? '此刻转矩接近零。' : s.torque > 0 ? '仍沿原来的方向出力。' : '转矩已经反向。') : effort < 0.005 ? '电流为零，此模型中的电磁转矩也为零。' : '电流随转子调整，转矩保持不变。';
+      $('[data-dq-readings] p').textContent = fixed ? '电流不再随转子调整，d、q 分量也随角度变化。' : '还是同一组三相电流，换个坐标，读数就稳定了。';
+      $('[data-fixed-result]').textContent = fixed
+        ? s.fieldSize < 0.001 ? '当前三相电流为零，任何转子位置的转矩都为零；恢复跟随后增大出力，再做比较。'
+          : `三相电流已固定在 ${Math.round(fixedAt)}° 时的取值。现在转矩为 ${signed(s.torque)}；拖动位置，看看何时归零或反向。关闭本实验也会恢复电流跟随。`
+        : '这是外力转动转子的对照实验，固定电流时不能播放。';
+      play.disabled = fixed !== null; effortInput.disabled = fixed !== null;
+      play.textContent = fixed ? '手动观察中' : motion.matches ? '前进 15°' : playing ? '暂停' : '播放观察';
+      play.setAttribute('aria-pressed', String(playing));
+      freeze.textContent = fixed ? '恢复电流跟随' : '固定现在的三相电流';
+      freeze.setAttribute('aria-pressed', String(fixed !== null));
+      $('[data-play-note]').textContent = fixed ? '电流已经固定：用位置滑块手动转动转子，播放与出力调节暂时停用。' : motion.matches ? '已按减少动态效果的设置暂停动画；可逐步前进，或用滑块改变位置。' : '播放只把转子依次放到不同位置，让你观察所需电流；不是电机加速过程。';
+      steps.forEach((button) => button.setAttribute('aria-pressed', String(Number(button.dataset.step) === step)));
+    }
+    function update() {
+      const target = step === 3 ? angle : 0;
+      if (motion.matches) { camera = target; cameraRemaining = 0; }
+      else if (Math.abs(difference(target, camera)) > 0.05) cameraRemaining = 0.4;
+      render(); last = 0;
+      if (playing || Math.abs(difference(target, camera)) > 0.05) loop.start(); else loop.stop();
+    }
+    loop.onFrame((now) => {
+      const dt = last ? Math.min((now - last) / 1000, 0.05) : 1 / 60;
+      last = now;
+      if (playing && !fixed && !motion.matches) {
+        angle = (angle + 25 * dt) % 360; angleInput.value = String(angle);
       }
-
-      // dq 平面工作点（不随 θe 走动 = 直流量）
-      const px = q.cx + q.scale * sol.id;
-      const py = q.cy - q.scale * sol.iqOut;
-      dqPoint.setAttribute('cx', px.toFixed(1));
-      dqPoint.setAttribute('cy', py.toFixed(1));
-      dqGuideV.setAttribute('x1', px.toFixed(1));
-      dqGuideV.setAttribute('y1', py.toFixed(1));
-      dqGuideV.setAttribute('x2', px.toFixed(1));
-      dqGuideV.setAttribute('y2', q.cy.toFixed(1));
-      dqGuideH.setAttribute('x1', px.toFixed(1));
-      dqGuideH.setAttribute('y1', py.toFixed(1));
-      dqGuideH.setAttribute('x2', q.cx.toFixed(1));
-      dqGuideH.setAttribute('y2', py.toFixed(1));
-
-      // PWM：占空比条 + 载波游标 + 参考波比较
-      const car = carrierValue(theta);
-      const cx2 = c.x0 + (theta / 360) * (c.x1 - c.x0);
-      const barW = geom.pwm.x1 - geom.pwm.x0;
-      carrierCursor.setAttribute('x1', cx2.toFixed(1));
-      carrierCursor.setAttribute('x2', cx2.toFixed(1));
-      carrierDot.setAttribute('cx', cx2.toFixed(1));
-      carrierDot.setAttribute('cy', (c.cy - c.amp * car).toFixed(1));
-      keys.forEach((k) => {
-        const m = k === 'a' ? sol.ia : (k === 'b' ? sol.ib : sol.ic);
-        const duty = Math.max(0, Math.min(1, 0.5 + 0.5 * m));
-        dutyEl[k].setAttribute('width', (duty * barW).toFixed(1));
-        dutyPctEl[k].textContent = Math.round(duty * 100) + '%';
-        const ry = c.cy - c.amp * m;
-        refEl[k].setAttribute('y1', ry.toFixed(1));
-        refEl[k].setAttribute('y2', ry.toFixed(1));
-        refDotEl[k].setAttribute('cx', cx2.toFixed(1));
-        refDotEl[k].setAttribute('cy', ry.toFixed(1));
-        rowEl[k].classList.toggle('foc-on', m > car);
-      });
-    };
-
-    const f2 = (v) => (Math.abs(v) < 0.005 ? '0.00' : v.toFixed(2));
-
-    const updateReadout = () => {
-      const sol = solve(theta);
-      setParts(outValues, [
-        { tex: '\\theta_e = ' + theta.toFixed(0) + '^\\circ' },
-        { text: '　三相电流（标幺值）' },
-        { tex: 'i_a = ' + f2(sol.ia) + ',\\ i_b = ' + f2(sol.ib) + ',\\ i_c = ' + f2(sol.ic) },
-      ]);
-      setParts(outResult, [
-        { text: '经 Clarke/Park 得 ' },
-        { tex: 'i_d = ' + f2(sol.id) + '\\ (\\approx 0)' },
-        { text: '、' },
-        { tex: 'i_q = ' + f2(sol.iqOut) + ' = i_q^{*}' },
-        { text: '：三相交流电流在 dq 里变成了两个直流量。' },
-      ]);
-    };
-
-    const render = () => {
-      draw();
-      updateReadout();
-    };
-
-    const setPlayLabel = () => {
-      playBtn.textContent = playing ? '暂停' : '播放';
-      playBtn.setAttribute('aria-pressed', String(playing));
-    };
-
-    const stop = () => {
-      loop.stop();
-      last = 0;
-    };
-
-    loop.onFrame((ts) => {
-      if (!last) { last = ts; lastText = ts; }
-      const dt = Math.min((ts - last) / 1000, 0.05);
-      last = ts;
-      theta = (theta + 90 * dt) % 360;
-      thetaSlider.value = theta.toFixed(1);
-      draw();
-      if (ts - lastText >= 90) {
-        lastText = ts;
-        updateReadout();
-      }
-    });
-
-    const start = () => {
-      last = 0;
-      loop.start();
-    };
-
-    playBtn.addEventListener('click', () => {
-      playing = !playing;
-      if (playing) start(); else stop();
-      setPlayLabel();
+      const target = step === 3 ? angle : 0, delta = difference(target, camera);
+      // A finite transition catches a moving target, then follows the rotor exactly.
+      // Exponential pursuit alone would leave a permanent angle lag during playback.
+      if (cameraRemaining > dt) { camera = (camera + delta * dt / cameraRemaining + 360) % 360; cameraRemaining -= dt; }
+      else { camera = target; cameraRemaining = 0; }
       render();
+      if (!playing && Math.abs(difference(target, camera)) < 0.05) { last = 0; return false; }
+      return true;
     });
-
-    thetaSlider.addEventListener('input', () => {
-      theta = Number(thetaSlider.value);
+    steps.forEach((button) => button.addEventListener('click', () => { step = Number(button.dataset.step); announce(`第 ${step} 步，${button.textContent.slice(1)}。`); update(); }));
+    play.addEventListener('click', () => {
+      if (fixed) return;
+      if (motion.matches) { angle = (angle + 15) % 360; angleInput.value = String(angle); } else playing = !playing;
+      announce(motion.matches ? `转子位置 ${Math.round(angle)} 度。` : playing ? '开始观察电流随转子位置变化。' : '观察已暂停。'); update();
+    });
+    angleInput.addEventListener('input', () => { playing = false; angle = Number(angleInput.value); update(); });
+    angleInput.addEventListener('change', () => { announce(`转子位置 ${Math.round(angle)} 度，转矩 ${signed(motorSample(angle * DEG, effort, fixed).torque)}。`); });
+    effortInput.addEventListener('input', () => { effort = Number(effortInput.value) / 100; render(); });
+    freeze.addEventListener('click', () => {
       playing = false;
-      stop();
-      setPlayLabel();
-      render();
+      if (fixed) fixed = null;
+      else { fixed = { ...motorSample(angle * DEG, effort).vector }; fixedAt = angle; if (step === 1) step = 2; }
+      announce(fixed ? '三相电流已固定，请手动改变转子位置。' : '已恢复电流随转子位置调整。'); update();
     });
-
-    iqSlider.addEventListener('input', () => {
-      iq = Number(iqSlider.value);
-      drawWaves();
-      render();
+    $('[data-experiment]').addEventListener('toggle', () => { if (!$('[data-experiment]').open && fixed) { fixed = null; update(); } });
+    $('[data-reset]').addEventListener('click', () => {
+      playing = false; fixed = null; angle = 30; effort = 0.75; step = 1;
+      angleInput.value = '30'; effortInput.value = '75'; $('[data-experiment]').open = false;
+      announce('已复位，回到第 1 步。'); update();
     });
-
-    drawWaves();
-    setPlayLabel();
+    motion.addEventListener('change', () => { playing = false; update(); });
     render();
-    if (playing) start();
   });
 </script>
 
 <style>
-  .foc-demo { margin: 1.5rem 0; }
-  .foc-demo svg { display: block; width: 100%; max-width: 900px; height: auto; margin: 0 auto; }
-  .foc-title { fill: var(--sl-color-text); font-size: 22px; font-weight: 600; }
-  .foc-subtitle { fill: var(--sl-color-text); font-size: 20px; font-weight: 600; }
-  .foc-mini-title { fill: var(--sl-color-text); font-size: 20px; font-weight: 600; }
-  .foc-small { fill: var(--sl-color-gray-2); font-size: 17px; }
-  .foc-note { fill: var(--sl-color-gray-2); font-size: 17px; }
-  .foc-axis-lab { fill: var(--sl-color-gray-2); font-size: 20px; font-weight: 600; }
-  .foc-dq-lab { fill: var(--sl-color-text); font-size: 21px; font-weight: 700; }
-  .foc-arc-lab { fill: var(--sl-color-gray-2); font-size: 18px; }
-  .foc-sub { font-size: 0.7em; }
-
-  .foc-pha { --foc-pc: light-dark(#dc2626, #f87171); }
-  .foc-phb { --foc-pc: light-dark(#2563eb, #60a5fa); }
-  .foc-phc { --foc-pc: light-dark(#0d9488, #2dd4bf); }
-
-  .foc-legend { fill: var(--foc-pc); font-size: 20px; font-weight: 600; }
-  .foc-wave { fill: none; stroke: var(--foc-pc); stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round; }
-  .foc-dot { fill: var(--foc-pc); }
-  .foc-row-lab { fill: var(--foc-pc); font-size: 20px; font-weight: 700; }
-  .foc-bar-fill { fill: var(--foc-pc); opacity: 0.85; }
-  .foc-ref { fill: none; stroke: var(--foc-pc); stroke-width: 2; stroke-dasharray: 7 5; opacity: 0.9; }
-  .foc-refdot { fill: var(--foc-pc); }
-
-  .foc-axis { stroke: var(--sl-color-gray-3); stroke-width: 1.6; }
-  .foc-mk-a { fill: var(--sl-color-gray-3); }
-  .foc-circle { fill: none; stroke: var(--sl-color-gray-4); stroke-width: 1.4; stroke-dasharray: 5 5; }
-  .foc-d-axis { stroke: light-dark(#0d9488, #2dd4bf); stroke-width: 2.4; }
-  .foc-q-axis { stroke: light-dark(#ea580c, #fb923c); stroke-width: 2.4; }
-  .foc-mk-d { fill: light-dark(#0d9488, #2dd4bf); }
-  .foc-mk-q { fill: light-dark(#ea580c, #fb923c); }
-  .foc-mk-vec { fill: var(--sl-color-accent); }
-  .foc-ivec { stroke: var(--sl-color-accent); stroke-width: 3.4; stroke-linecap: round; }
-  .foc-proj { stroke: var(--sl-color-gray-2); stroke-width: 1.5; stroke-dasharray: 5 4; }
-  .foc-comp-d { stroke: light-dark(#0d9488, #2dd4bf); stroke-width: 3.2; stroke-linecap: round; }
-  .foc-comp-q { stroke: light-dark(#ea580c, #fb923c); stroke-width: 3.4; stroke-linecap: round; opacity: 0.8; }
-  .foc-foot { fill: var(--sl-color-bg); stroke: var(--sl-color-gray-2); stroke-width: 1.6; }
-  .foc-arc { fill: none; stroke: var(--sl-color-gray-2); stroke-width: 1.6; }
-  .foc-cursor { stroke: var(--sl-color-accent); stroke-width: 2; stroke-dasharray: 4 3; }
-  .foc-guide { stroke: var(--sl-color-gray-4); stroke-width: 1.4; stroke-dasharray: 4 4; }
-  .foc-dq-point { fill: var(--sl-color-accent); stroke: var(--sl-color-bg); stroke-width: 2; }
-
-  .foc-center-line { stroke: var(--sl-color-gray-4); stroke-width: 1.2; stroke-dasharray: 4 4; }
-  .foc-bar-bg { fill: light-dark(rgba(148, 163, 184, 0.18), rgba(148, 163, 184, 0.14)); stroke: var(--sl-color-gray-4); stroke-width: 1.2; }
-  .foc-row.foc-on .foc-bar-bg { stroke: var(--sl-color-accent); stroke-width: 2.4; }
-  .foc-bar-pct { fill: var(--sl-color-gray-2); font-size: 18px; font-variant-numeric: tabular-nums; }
-  .foc-row.foc-on .foc-bar-pct { fill: var(--sl-color-accent); font-weight: 600; }
-  .foc-carrier { fill: none; stroke: var(--sl-color-gray-2); stroke-width: 2; }
-  .foc-carrier-cursor { stroke: var(--sl-color-accent); stroke-width: 2; stroke-dasharray: 4 3; }
-  .foc-carrier-dot { fill: var(--sl-color-accent); stroke: var(--sl-color-bg); stroke-width: 1.5; }
-  .foc-hidden { opacity: 0; }
-
-  .foc-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.1rem; max-width: 900px; margin: 0.55rem auto 0; }
-  .foc-btn { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.85rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
-  .foc-btn[aria-pressed='true'] { border-color: var(--sl-color-accent); color: var(--sl-color-accent); background: light-dark(rgba(79, 70, 229, 0.08), rgba(139, 131, 255, 0.14)); font-weight: 600; }
-  .foc-slider-label { display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 0.8125rem; color: var(--sl-color-gray-2); white-space: nowrap; }
-  .foc-slider-label input[type='range'] { width: 9rem; margin: 0; accent-color: var(--sl-color-accent); }
-  .foc-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; color: var(--sl-color-text); line-height: 1.7; }
-  .foc-out { display: block; white-space: nowrap; overflow-x: auto; }
-  .foc-readout output { color: var(--sl-color-accent); font-weight: 600; }
-  .foc-demo figcaption { max-width: 900px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.9rem; line-height: 1.65; }
+  .foc-demo { --foc-rotor: #c4513d; --foc-field: #087f82; margin: 1.6rem 0; border: 1px solid var(--sl-color-gray-5); border-radius: 16px; overflow: hidden; background: var(--sl-color-bg); color: var(--sl-color-text); }
+  :global([data-theme='dark']) .foc-demo { --foc-rotor: #ff9b86; --foc-field: #5bd7c9; }
+  .foc-demo :where(p, h4, h5) { margin: 0; }
+  .foc-header { padding: 1.2rem 1.35rem 1rem; }
+  .foc-eyebrow { display: block; color: var(--sl-color-text-accent); font-size: .78rem; font-weight: 650; letter-spacing: .025em; }
+  .foc-header h4 { font-size: 1.2rem; line-height: 1.45; margin: .35rem 0; }
+  .foc-header p { color: var(--sl-color-gray-2); font-size: .88rem; line-height: 1.6; }
+  .foc-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem; padding: 0 1.25rem 1rem; }
+  .foc-steps button { display: flex; gap: .45rem; justify-content: center; align-items: center; padding: .7rem .35rem; margin: 0; border: 1px solid var(--sl-color-gray-5); border-radius: 9px; background: var(--sl-color-bg); color: var(--sl-color-gray-2); font: inherit; font-size: .85rem; font-weight: 600; cursor: pointer; }
+  .foc-steps button span { display: inline-grid; place-items: center; width: 1.4rem; height: 1.4rem; border-radius: 50%; background: var(--sl-color-gray-6); font-size: .74rem; }
+  .foc-steps button[aria-pressed='true'] { color: var(--sl-color-text-accent); border-color: var(--sl-color-accent); background: var(--sl-color-accent-low); }
+  .foc-steps button[aria-pressed='true'] span { color: var(--sl-color-bg); background: var(--sl-color-text-accent); }
+  .foc-scene { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 1rem; border-block: 1px solid var(--sl-color-gray-5); padding: 1rem 1.25rem 1.2rem; background: color-mix(in srgb, var(--sl-color-gray-6) 38%, var(--sl-color-bg)); }
+  .foc-motor-pane { min-width: 0; }
+  .foc-view-label { text-align: center; color: var(--sl-color-gray-2); font-size: .76rem; line-height: 1.6; }
+  .foc-motor { display: block; width: 100%; max-width: 430px; margin: .3rem auto 0; overflow: visible; }
+  .foc-shell-outline { fill: none; stroke: var(--sl-color-gray-5); stroke-width: 1; }
+  .foc-shell { fill: var(--sl-color-gray-6); stroke: var(--sl-color-gray-4); stroke-width: 5; }
+  .foc-stator-core { fill: var(--sl-color-bg); stroke: var(--sl-color-gray-5); stroke-width: 17; }
+  .foc-lamination { stroke: var(--sl-color-gray-4); stroke-width: 3; }
+  .foc-coil-core { fill: var(--sl-color-bg); stroke: var(--sl-color-gray-4); stroke-width: 1; }
+  .foc-phase-a { --phase: #c55740; } .foc-phase-b { --phase: #3b75bc; } .foc-phase-c { --phase: #168577; }
+  :global([data-theme='dark']) .foc-phase-a { --phase: #ff967d; } :global([data-theme='dark']) .foc-phase-b { --phase: #86b8ff; } :global([data-theme='dark']) .foc-phase-c { --phase: #5bdbc2; }
+  .foc-coil-copper { fill: var(--phase); }
+  .foc-coil-wire { fill: none; stroke: var(--phase); stroke-width: 2; opacity: .65; }
+  .foc-coil-tag { fill: var(--sl-color-bg); opacity: .9; }
+  .foc-coil text { fill: var(--phase); font-family: var(--sl-font); font-size: 19px; font-weight: 750; }
+  .foc-air-gap { fill: none; stroke: var(--sl-color-gray-4); stroke-width: 1; stroke-dasharray: 3 5; }
+  .foc-rotor-disk { fill: var(--sl-color-gray-5); stroke: var(--sl-color-gray-3); stroke-width: 2; }
+  .foc-magnet-n { fill: #bd5f4d; } .foc-magnet-s { fill: #537eab; }
+  :global([data-theme='dark']) .foc-magnet-n { fill: #9e574b; } :global([data-theme='dark']) .foc-magnet-s { fill: #476c92; }
+  .foc-pole-label { fill: #fff; font-size: 23px; font-weight: 750; }
+  .foc-shaft { fill: var(--sl-color-bg); stroke: var(--sl-color-gray-3); stroke-width: 3; }
+  .foc-shaft-center { fill: var(--sl-color-gray-3); }
+  .foc-field-rotor { stroke: var(--foc-rotor); stroke-width: 5; stroke-linecap: round; }
+  .foc-field-stator { stroke: var(--foc-field); stroke-width: 6; stroke-linecap: round; }
+  .foc-rotor-fill { fill: var(--foc-rotor); } .foc-stator-fill { fill: var(--foc-field); }
+  .foc-dq-axes line { stroke: var(--sl-color-gray-2); stroke-width: 1.5; stroke-dasharray: 5 4; }
+  .foc-dq-axes text { fill: var(--sl-color-text); font-size: 23px; font-weight: 700; paint-order: stroke; stroke: var(--sl-color-bg); stroke-width: 5; stroke-linejoin: round; }
+  .foc-field-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: .3rem .9rem; font-size: .75rem; line-height: 1.7; }
+  .foc-field-legend span { display: inline-flex; align-items: center; gap: .35rem; }
+  .foc-field-legend i { width: 17px; height: 3px; border-radius: 4px; }
+  .foc-rotor-key { background: var(--foc-rotor); } .foc-stator-key { background: var(--foc-field); }
+  .foc-scene-note { color: var(--sl-color-gray-2); font-size: .74rem; line-height: 1.6; text-align: center; margin-top: .45rem !important; }
+  .foc-observation { display: flex; flex-direction: column; align-self: center; min-width: 0; padding: .3rem 0; }
+  .foc-observation h5 { font-size: 1.05rem; line-height: 1.45; margin: .35rem 0 .55rem; }
+  .foc-observation > p { font-size: .84rem; line-height: 1.8; color: var(--sl-color-gray-2); }
+  .foc-phase-readings { margin-top: .9rem; }
+  .foc-phase-reading { display: grid; grid-template-columns: 2rem minmax(50px, 1fr) 3.2rem; align-items: center; gap: .55rem; margin-block: .55rem; color: var(--phase); font-size: .83rem; font-weight: 650; }
+  .foc-phase-track { position: relative; height: 10px; background: var(--sl-color-gray-5); border-radius: 5px; }
+  .foc-phase-zero { position: absolute; height: 16px; width: 1px; left: 50%; top: -3px; background: var(--sl-color-gray-3); }
+  .foc-phase-bar { position: absolute; left: 50%; height: 10px; border-radius: 4px; background: var(--phase); }
+  .foc-phase-reading output { text-align: right; font-variant-numeric: tabular-nums; }
+  .foc-phase-readings small { color: var(--sl-color-gray-2); font-size: .73rem; }
+  .foc-torque-card { border-top: 1px solid var(--sl-color-gray-5); margin-top: .8rem; padding-top: .75rem; }
+  .foc-torque-card > span { color: var(--sl-color-gray-2); font-size: .76rem; }
+  .foc-torque-card strong { display: block; font-size: 1.7rem; font-weight: 650; color: var(--foc-field); font-variant-numeric: tabular-nums; line-height: 1.5; }
+  .foc-torque-card p, .foc-dq-readings p { color: var(--sl-color-gray-2); font-size: .77rem; line-height: 1.65; }
+  .foc-dq-readings { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; margin-top: .75rem; padding: .7rem; border: 1px solid var(--sl-color-gray-5); border-radius: 9px; background: var(--sl-color-bg); }
+  .foc-dq-readings > div { display: flex; justify-content: space-between; align-items: center; gap: .3rem; font-size: .85rem; }
+  .foc-dq-readings > div + div { border-left: 1px solid var(--sl-color-gray-5); padding-left: .45rem; }
+  .foc-dq-readings output { font-weight: 650; font-variant-numeric: tabular-nums; }
+  .foc-dq-readings p { grid-column: 1 / -1; }
+  .foc-demo [hidden] { display: none !important; }
+  .foc-controls { display: grid; grid-template-columns: auto 1fr 1fr; gap: 1rem; align-items: center; padding: 1rem 1.25rem .55rem; }
+  .foc-actions { display: flex; gap: .4rem; }
+  .foc-button { min-height: 38px; padding: .5rem .7rem; border: 1px solid var(--sl-color-gray-4); border-radius: 7px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: .81rem; font-weight: 550; line-height: 1.3; cursor: pointer; white-space: nowrap; }
+  .foc-primary { background: var(--sl-color-accent-low); color: var(--sl-color-text-accent); border-color: var(--sl-color-accent); }
+  .foc-button:disabled, .foc-slider-label:has(input:disabled) { opacity: .55; cursor: default; }
+  .foc-demo button:focus-visible, .foc-demo input:focus-visible, .foc-demo summary:focus-visible { outline: 2px solid var(--sl-color-text-accent); outline-offset: 3px; }
+  .foc-slider-label { min-width: 0; font-size: .78rem; color: var(--sl-color-gray-2); }
+  .foc-slider-label > span { display: flex; justify-content: space-between; gap: .5rem; }
+  .foc-slider-label output { color: var(--sl-color-text); font-variant-numeric: tabular-nums; }
+  .foc-slider-label input { width: 100%; margin: .4rem 0 0; accent-color: var(--sl-color-text-accent); }
+  .foc-play-note { font-size: .73rem; line-height: 1.7; padding: 0 1.25rem .9rem; color: var(--sl-color-gray-2); }
+  .foc-experiment, .foc-formulas { margin: 0 1.25rem; border-top: 1px solid var(--sl-color-gray-5); font-size: .82rem; line-height: 1.8; }
+  .foc-demo summary { padding: .7rem 0; cursor: pointer; font-weight: 600; color: var(--sl-color-text); }
+  .foc-details-body { padding: .1rem 0 .8rem; }
+  .foc-details-body p { color: var(--sl-color-gray-2); }
+  .foc-details-body .foc-button { margin: .75rem 0; }
+  .foc-formula { margin: .65rem 0; overflow-x: auto; padding: .2rem 0; }
+  .foc-demo figcaption { border-top: 1px solid var(--sl-color-gray-5); background: color-mix(in srgb, var(--sl-color-gray-6) 50%, var(--sl-color-bg)); padding: .9rem 1.25rem; font-size: .72rem; line-height: 1.8; color: var(--sl-color-gray-2); }
+  .foc-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  @media (max-width: 700px) {
+    .foc-scene { grid-template-columns: 1fr; gap: .8rem; }
+    .foc-motor { max-width: 330px; }
+    .foc-observation { border-top: 1px solid var(--sl-color-gray-5); padding-top: 1rem; }
+    .foc-controls { grid-template-columns: 1fr 1fr; }
+    .foc-actions { grid-column: 1 / -1; }
+  }
+  @media (max-width: 420px) {
+    .foc-header, .foc-scene { padding-inline: .85rem; }
+    .foc-steps { padding-inline: .75rem; gap: .25rem; }
+    .foc-steps button { font-size: .73rem; gap: .3rem; }
+    .foc-steps button span { width: 1.15rem; height: 1.15rem; }
+    .foc-controls { padding-inline: .85rem; gap: .8rem; }
+    .foc-play-note, .foc-demo figcaption { padding-inline: .85rem; }
+    .foc-experiment, .foc-formulas { margin-inline: .85rem; }
+  }
 </style>
