@@ -24,7 +24,7 @@
 | 2 | [3.4 实时通信与总线](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | CAN/EtherCAT/DDS 的带宽和延迟决定控制周期上限 | 全读 |
 | 3 | [3.5 MCU、实时系统与嵌入式软件](../03-electrical-embedded/05-mcu-realtime-embedded-software.mdx) | 为什么控制指令必须按固定周期下发，抖动意味着什么 | 全读 |
 | 4 | [3.1 电源系统](../03-electrical-embedded/01-power-system.mdx) | 峰值功率与持续功率的差距为什么会限制动作幅度 | 读到[「峰值功率与持续功率」末尾](../03-electrical-embedded/01-power-system.mdx#product-read-end) |
-| 5 | [3.3 传感器与数据采集](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx) | 编码器、IMU 的精度和时间同步如何影响状态估计 | 读完传感器类别，再按跳读提示读完[「标定」及后续同步、误差段](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx#标定内参与外参) |
+| 5 | [3.3 传感器与数据采集](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx) | 编码器、IMU 的精度和时间同步如何影响状态估计 | 读完传感器类别，再读[「标定」及后续时间同步](../03-electrical-embedded/03-sensors-and-data-acquisition.mdx#标定内参与外参) |
 | 6 | [3.6 电气安全与系统保护](../03-electrical-embedded/06-electrical-safety-and-protection.mdx) | 过流、过温保护触发时，机器人为什么会“突然卸力” | 读完[「异常检测的共同规则」](../03-electrical-embedded/06-electrical-safety-and-protection.mdx#异常检测的共同规则)；状态机细节可以后再看 |
 
 ## 你要和算法同学协作
