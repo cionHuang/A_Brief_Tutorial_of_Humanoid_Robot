@@ -25,6 +25,7 @@ for (const file of files) {
       '03-electrical-embedded/03-sensors-and-data-acquisition/index.html',
       '03-electrical-embedded/04-real-time-communication-and-buses/index.html',
       '03-electrical-embedded/05-mcu-realtime-embedded-software/index.html',
+      '03-electrical-embedded/06-electrical-safety-and-protection/index.html',
     ].includes(file);
     assert.equal(Boolean(qa), expectsHint, `${file}: unexpected SectionQA return hint visibility`);
   }
@@ -54,6 +55,6 @@ for (const file of files) {
   }
 }
 assert.equal(endpoints, 21, 'product route must have 21 real reading endpoints');
-assert.equal(qaLinks, 30, 'all 30 enabled SectionQA return links must use the normalized base');
+assert.equal(qaLinks, 29, 'all 29 enabled SectionQA return links must use the normalized base');
 if (issues.length) { console.error(issues.join('\n')); process.exitCode = 1; }
 else console.log(`PASS: ${files.length} HTML pages, ${links} internal links/anchors, 21 product endpoints, SectionQA base links, production/review isolation.`);

@@ -1,284 +1,245 @@
 ---
-/**
- * 模式切换与故障状态机（Mode Switch & Fault Latch）交互演示。
- *
- * 教学要点（配合 3.6 节“模式切换与故障状态机”）：
- *   ① 正常运行是一条有顺序的上工流程，不能跳步：
- *      OFF → INIT → SELF_TEST → SAFE_IDLE → ENABLED → RUNNING；
- *   ② 出现异常先降级（RUNNING / ENABLED → DEGRADED），严重故障要“锁存”到
- *      FAULT_LATCHED，必须人工“清除故障并恢复”后重新自检，才能回到待命；
- *   ③ 锁存状态下再点“推进正常流程”会被拒绝，不会自动偷偷恢复。
- *
- * 数据模型（教学示意）：
- *   9 个状态按 3×3 网格摆放（卡片 w=260 / h=88 / rx=10，列 x=30/320/610，
- *   行 y=70/178/286）。事件共 5 个：推进正常流程、轻微异常（降级）、
- *   急停 / 严重故障、清除故障并恢复、复位。
- *
- * 交互：纯点击驱动，不需要 requestAnimationFrame。所有 SVG 图形都写在 markup 里，
- * JS 只改 textContent 与 classList（不使用 setAttribute('class', ...)）；样式跟随
- * Starlight 明暗主题（只用 --sl-color-* 与 light-dark()）。
- *
- * 使用方式（放在 3.6 节“## 模式切换与故障状态机”的一句话听懂下方）：
- *   import FaultStateMachineDemo from '../../../components/FaultStateMachineDemo.astro';
- *   <FaultStateMachineDemo />
- */
-const COL_X = [30, 320, 610];
-const ROW_Y = [70, 178, 286];
-const CARD = { w: 260, h: 88, rx: 10 };
-
-const STATES = [
-  { id: 'OFF',           col: 0, row: 0, desc: '能量关闭，只有安全监控与唤醒路径工作' },
-  { id: 'INIT',          col: 1, row: 0, desc: '初始化时钟、通信、传感器与默认输出' },
-  { id: 'SELF_TEST',     col: 2, row: 0, desc: '检查急停回路、驱动器、编码器与时间基准' },
-  { id: 'SAFE_IDLE',     col: 0, row: 1, desc: '通信已建立但禁止运动，等待使能请求' },
-  { id: 'ENABLED',       col: 1, row: 1, desc: '驱动器已使能，只接受通过各项检查的命令' },
-  { id: 'RUNNING',       col: 2, row: 1, desc: '周期控制、状态回传与保护监测均正常' },
-  { id: 'DEGRADED',      col: 0, row: 2, desc: '已限制速度、力矩或工作空间，持续评估是否升级' },
-  { id: 'FAULT_LATCHED', col: 1, row: 2, desc: '故障已锁存，等待人工确认与重新自检' },
-  { id: 'RECOVERY',      col: 2, row: 2, desc: '清理旧命令并重建安全状态，需重新自检' },
-];
-
-const NORMAL_FLOW = ['OFF', 'INIT', 'SELF_TEST', 'SAFE_IDLE', 'ENABLED', 'RUNNING'];
-
-const CFG = {
-  states: STATES,
-  normalFlow: NORMAL_FLOW,
-  layout: { colX: COL_X, rowY: ROW_Y, card: CARD },
-};
+const urdfUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/') + 'models/g1/g1_29dof.urdf';
 ---
 
-<figure class="fsm-demo" data-fsm={JSON.stringify(CFG)}>
-  <svg viewBox="0 0 900 470" role="img" aria-label="模式切换与故障锁存教学示意：9 个状态按 3×3 网格摆放，正常上工流程为 OFF、INIT、SELF_TEST、SAFE_IDLE、ENABLED、RUNNING，异常先降级到 DEGRADED，严重故障锁存到 FAULT_LATCHED，须清除故障并重新自检才能回到待命">
-    <text class="fsm-title" x="24" y="28">模式切换与故障锁存（教学示意）</text>
-
-    <!-- 9 个状态卡片：列 x=30/320/610，行 y=70/178/286 -->
-    {STATES.map((s) => (
-      <g class="fsm-card" data-state={s.id}>
-        <rect class="fsm-card-bg" x={COL_X[s.col]} y={ROW_Y[s.row]} width={CARD.w} height={CARD.h} rx={CARD.rx}></rect>
-        <text class="fsm-card-name" x={COL_X[s.col] + CARD.w / 2} y={ROW_Y[s.row] + 51} text-anchor="middle">{s.id}</text>
-      </g>
-    ))}
-
-    <!-- 正常流程的相邻箭头：第一行 OFF → INIT → SELF_TEST -->
-    <text class="fsm-arrow" x="305" y="121" text-anchor="middle">→</text>
-    <text class="fsm-arrow" x="595" y="121" text-anchor="middle">→</text>
-    <!-- 第二行 SAFE_IDLE → ENABLED → RUNNING -->
-    <text class="fsm-arrow" x="305" y="229" text-anchor="middle">→</text>
-    <text class="fsm-arrow" x="595" y="229" text-anchor="middle">→</text>
-    <!-- 换行：SELF_TEST 之后回到第二行行首 SAFE_IDLE -->
-    <polyline class="fsm-wrap-line" points="740,158 740,168 160,168"></polyline>
-    <polygon class="fsm-wrap-head" points="154,168 166,168 160,177"></polygon>
-
-    <!-- 底部流程箭头带：正常上工顺序 -->
-    <text class="fsm-flow" x="24" y="398">正常上工顺序：{NORMAL_FLOW.join(' → ')}（必须按顺序，不能跳步）</text>
-    <text class="fsm-note" x="24" y="424">故障一旦锁存，系统不会自动恢复；必须先清除故障、重新自检，才能回到待命。</text>
-  </svg>
-
-  <div class="fsm-controls">
-    <button type="button" class="fsm-btn" data-advance>推进正常流程</button>
-    <button type="button" class="fsm-btn" data-degrade>轻微异常（降级）</button>
-    <button type="button" class="fsm-btn fsm-btn-estop" data-estop>急停 / 严重故障</button>
-    <button type="button" class="fsm-btn" data-clear>清除故障并恢复</button>
-    <button type="button" class="fsm-btn" data-reset>复位</button>
+<figure class="recovery-demo" id="g1-fault-recovery-demo" data-fault-recovery data-urdf={urdfUrl}>
+  <header class="fr-heading">
+    <div><h4>故障消失了，G1 为什么还不动？</h4><p>让左臂抬起来，再试一次保护与恢复。</p></div>
+    <button type="button" class="fr-text-button" data-action="reset">重置演示</button>
+  </header>
+  <ol class="fr-steps" aria-label="保护与恢复的四个阶段">
+    <li data-step="0"><span>1</span>抬臂运行</li>
+    <li data-step="1"><span>2</span>保护锁存</li>
+    <li data-step="2"><span>3</span>确认检查</li>
+    <li data-step="3"><span>4</span>单独启动</li>
+  </ol>
+  <div class="fr-scene">
+    <div class="fr-model-pane">
+      <div class="fr-model" data-arm-view role="group" aria-label="G1 左臂教学模型：前臂由电机保持姿态。">
+        <div class="fr-loading" data-loading role="status"><span data-loading-text>正在加载 G1 左臂…</span><button type="button" class="fr-text-button" data-retry hidden>重新加载模型</button></div>
+        <div class="fr-view-caption"><span>G1 左臂</span><span data-target-note>浅色轮廓：目标位置</span></div>
+        <button type="button" class="fr-camera fr-text-button" data-camera disabled>还原视角</button>
+        <div class="fr-power"><i aria-hidden="true"></i><span data-power>动力保留 · 电机保持姿态</span></div>
+      </div>
+      <div class="fr-view-tools">
+        <span>拖动可旋转视角</span>
+        <button type="button" class="fr-text-button" data-pause disabled>暂停演示</button>
+        <button type="button" class="fr-text-button" data-step-time hidden>单步观察</button>
+      </div>
+    </div>
+    <div class="fr-panel">
+      <div class="fr-status"><span data-state-label>待命</span><span class="fr-angle" data-angle aria-live="off">20°</span></div>
+      <dl class="fr-signals">
+        <div><dt>故障信号</dt><dd data-fault>无</dd></div>
+        <div><dt>运动许可</dt><dd data-permit>等待启动</dd></div>
+      </dl>
+      <p class="fr-story" data-story role="status" aria-live="polite">点击“开始抬臂”，在运动途中触发保护。</p>
+      <div class="fr-actions" role="group" aria-label="体验保护与恢复">
+        <button type="button" class="fr-start" data-action="start">开始抬臂</button>
+        <button type="button" class="fr-trip" data-action="trip" disabled>触发保护</button>
+        <button type="button" data-action="clear" disabled>排除故障</button>
+        <button type="button" data-action="check" disabled>确认并检查</button>
+      </div>
+      <div class="fr-compare"><span>可选对照</span><button type="button" class="fr-text-button" data-limit disabled>限制速度</button><span data-limit-note>限制后仍可运动</span></div>
+    </div>
   </div>
-
-  <div class="fsm-readout">
-    <output class="fsm-out fsm-out-state" aria-live="polite"></output>
-    <output class="fsm-out fsm-out-log" aria-live="polite"></output>
-  </div>
-
-  <figcaption>
-    点五个按钮走一遍上工流程；试试在故障锁存时点“推进正常流程”，看它怎么被拒绝。状态与阈值均为教学示意。
-  </figcaption>
+  <details class="fr-details">
+    <summary>查看状态细节</summary>
+    <p>本例从已完成上电和自检的待命状态开始：待命（SAFE_IDLE）→ 启动与运行（ENABLED / RUNNING）→ 故障锁存（FAULT_LATCHED）→ 恢复检查（RECOVERY）→ 待命。初次上电的 OFF、INIT、SELF_TEST 省略在动效之外；限速对照对应降级运行（DEGRADED）。</p>
+    <p>恢复检查会读取当前关节状态、清理旧的运动目标。检查通过只解除运动禁令；再次点击启动后，才从当前位置生成新的抬臂动作。“重置演示”仅用于重放这个例子。</p>
+  </details>
+  <figcaption>用 G1 的 URDF 模型演示运动许可：保护后仍由电机保持姿态。流程与时间为教学示例，不代表 G1 固件的保护或急停策略。</figcaption>
+  <noscript><p class="fr-no-script">交互需要启用 JavaScript。故障信号消失后，保护仍保持锁存；检查通过先回到待命，另行启动才恢复运动。</p></noscript>
 </figure>
 
 <script>
-  document.querySelectorAll('.fsm-demo').forEach((demo) => {
-    const cfg = JSON.parse(demo.dataset.fsm);
-    const states = cfg.states;
-    const flow = cfg.normalFlow;
+  import { createVisibleRaf } from '../lib/visible-raf.js';
+  import { createFaultRecoveryState, actFaultRecovery, stepFaultRecovery, faultRecoverySnapshot } from '../lib/fault-recovery-model.js';
 
-    const idxOf = {};
-    flow.forEach((id, i) => { idxOf[id] = i; });
+  document.querySelectorAll<HTMLElement>('[data-fault-recovery]').forEach((demo) => {
+    if (demo.dataset.initialized) return;
+    demo.dataset.initialized = 'true';
+    const el = (selector: string) => demo.querySelector<HTMLElement>(selector)!;
+    const button = (selector: string) => demo.querySelector<HTMLButtonElement>(selector)!;
+    const text = (selector: string, value: string) => { const node = el(selector); if (node.textContent !== value) node.textContent = value; };
+    const viewport = el('[data-arm-view]');
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const events = new AbortController();
+    const on = (target: EventTarget, name: string, handler: EventListener) => target.addEventListener(name, handler, { signal: events.signal });
+    let state = createFaultRecoveryState();
+    let view: any, loading = false, failed = false, disposed = false, last = 0, paused = reduced.matches;
+    const active = () => ['running', 'degraded', 'stopping', 'checking'].includes(state.phase);
+    const loop = createVisibleRaf(demo, { onEnter: () => { last = 0; void loadArm(); } });
 
-    const cardEls = {};
-    states.forEach((s) => { cardEls[s.id] = demo.querySelector('[data-state="' + s.id + '"]'); });
+    async function loadArm(retry = false) {
+      if (disposed || view || loading || (failed && !retry)) return;
+      loading = true; failed = false;
+      el('[data-loading]').hidden = false; el('[data-retry]').hidden = true;
+      text('[data-loading-text]', '正在加载 G1 左臂…');
+      try {
+        const { createG1ArmView } = await import('../lib/g1-arm-view.js');
+        if (disposed) return;
+        const next = await createG1ArmView(viewport, { urdfUrl: demo.dataset.urdf, profile: 'safety', onInvalidate: () => { if (!disposed) loop.schedule(); } });
+        if (disposed) { next.dispose(); return; }
+        view = next;
+        el('[data-loading]').hidden = true;
+        button('[data-camera]').disabled = false;
+        render(); loop.schedule();
+      } catch (error) {
+        if (disposed) return;
+        failed = true;
+        text('[data-loading-text]', '模型暂时无法显示，仍可用右侧按钮观察保护流程。');
+        el('[data-retry]').hidden = false;
+        console.error('G1 故障恢复演示加载失败：', error);
+      } finally { loading = false; }
+    }
 
-    const stateOut = demo.querySelector('.fsm-out-state');
-    const logOut = demo.querySelector('.fsm-out-log');
-    const advanceBtn = demo.querySelector('[data-advance]');
-    const degradeBtn = demo.querySelector('[data-degrade]');
-    const estopBtn = demo.querySelector('[data-estop]');
-    const clearBtn = demo.querySelector('[data-clear]');
-    const resetBtn = demo.querySelector('[data-reset]');
+    function render() {
+      const snap = faultRecoverySnapshot(state);
+      const phase = state.phase;
+      const locked = ['stopping', 'latched', 'checking'].includes(phase);
+      const moving = ['running', 'degraded'].includes(phase);
+      const status = locked ? 'fault' : state.limited ? 'limited' : moving ? 'normal' : 'ready';
+      const stage = locked ? phase === 'checking' ? 2 : 1 : state.checked ? 3 : moving || phase === 'complete' ? 0 : -1;
+      demo.dataset.phase = phase; demo.dataset.fault = String(state.faultPresent); demo.dataset.limited = String(state.limited);
+      demo.dataset.angle = String(state.angle); demo.dataset.paused = String(paused); demo.dataset.checked = String(state.checked);
+      demo.dataset.status = status;
+      for (const node of demo.querySelectorAll<HTMLElement>('[data-step]')) {
+        const current = Number(node.dataset.step) === stage;
+        node.dataset.active = String(current);
+        if (current) node.setAttribute('aria-current', 'step'); else node.removeAttribute('aria-current');
+      }
+      text('[data-state-label]', snap.stateLabel);
+      text('[data-angle]', `${Math.round(snap.angleDegrees)}°`);
+      text('[data-fault]', state.faultPresent ? '存在' : locked ? '已消失' : '无');
+      text('[data-permit]', locked ? '禁止运动' : moving ? state.limited ? '允许 · 已限速' : '允许' : phase === 'complete' ? '动作完成' : '等待启动');
+      text('[data-story]', snap.story);
+      text('[data-power]', moving || phase === 'stopping' ? '动力保留 · 电机出力' : '动力保留 · 电机保持姿态');
+      text('[data-target-note]', state.checked && phase === 'ready' ? '旧目标已清理 · 等待新指令' : state.checked ? '浅色轮廓：重新下发的目标' : '浅色轮廓：目标位置');
+      text('[data-action="start"]', locked ? '尝试继续抬臂' : state.checked ? '启动抬臂' : '开始抬臂');
+      button('[data-action="start"]').disabled = !snap.canStart;
+      button('[data-action="trip"]').disabled = !snap.canTrip;
+      button('[data-action="clear"]').disabled = !snap.canClear;
+      button('[data-action="check"]').disabled = !snap.canCheck;
+      button('[data-limit]').disabled = state.limited ? !snap.canUnlimit : !snap.canLimit;
+      button('[data-limit]').setAttribute('aria-pressed', String(state.limited));
+      text('[data-limit]', state.limited ? '恢复速度' : '限制速度');
+      text('[data-limit-note]', state.limited ? '降级运行 · 仍允许运动' : '限制后仍可运动');
+      button('[data-pause]').disabled = !active();
+      button('[data-pause]').hidden = reduced.matches;
+      text('[data-pause]', paused ? '继续演示' : '暂停演示');
+      button('[data-pause]').setAttribute('aria-pressed', String(paused));
+      button('[data-step-time]').hidden = !reduced.matches;
+      button('[data-step-time]').disabled = !active();
+      viewport.setAttribute('aria-label', `G1 左臂：${snap.stateLabel}，前臂抬起约 ${Math.round(snap.angleDegrees)} 度。动力保留。`);
+      view?.update({ angle: state.angle, target: state.target, payload: false, pushing: false, status, showTarget: !(state.checked && phase === 'ready') });
+      view?.render();
+    }
 
-    const descOf = (id) => {
-      const s = states.find((x) => x.id === id);
-      return s ? s.desc : '';
+    function schedule() {
+      last = 0;
+      if (active() && !paused) loop.start(); else { loop.stop(); loop.schedule(); }
+    }
+    function dispatch(action: string) {
+      const before = state.phase;
+      state = actFaultRecovery(state, action);
+      if (action === 'reset') paused = reduced.matches;
+      else if (state.phase !== before && active()) paused = reduced.matches;
+      render(); schedule();
+    }
+    loop.onFrame((now: number) => {
+      const dt = last ? Math.min(Math.max(0, (now - last) / 1000), .05) : 0;
+      last = now;
+      if (!paused && active()) state = stepFaultRecovery(state, dt);
+      render();
+      return active() && !paused;
+    });
+    for (const node of demo.querySelectorAll<HTMLElement>('[data-action]')) on(node, 'click', () => dispatch(node.dataset.action!));
+    on(button('[data-limit]'), 'click', () => dispatch(state.limited ? 'unlimit' : 'limit'));
+    on(button('[data-pause]'), 'click', () => { paused = !paused; render(); schedule(); });
+    on(button('[data-step-time]'), 'click', () => { state = stepFaultRecovery(state, .75); render(); loop.schedule(); });
+    on(button('[data-camera]'), 'click', () => view?.resetCamera());
+    on(button('[data-retry]'), 'click', () => { void loadArm(true); });
+    on(reduced, 'change', () => { paused = true; render(); schedule(); });
+    on(document, 'visibilitychange', () => { last = 0; });
+    const dispose = () => {
+      if (disposed) return;
+      disposed = true; events.abort(); loop.dispose(); view?.dispose(); view = null;
     };
-
-    let state = 'OFF';                 // 当前状态
-    let visited = { OFF: true };        // 只记录“正常流程”里走过的状态（浅色底）
-    let log = '就绪：点“推进正常流程”，从 OFF 开始上工。';
-
-    const markVisited = (id) => {
-      if (idxOf[id] != null) visited[id] = true;
-    };
-
-    const commit = (next, msg) => {
-      state = next;
-      markVisited(next);
-      log = msg;
-    };
-
-    const reject = (reason) => {
-      log = '操作被拒绝：' + reason;
-    };
-
-    // ① 推进正常流程：OFF → INIT → SELF_TEST → SAFE_IDLE → ENABLED → RUNNING
-    const onAdvance = () => {
-      if (state === 'FAULT_LATCHED') {
-        reject('故障已锁存，请先清除故障并重新自检');
-        return;
-      }
-      if (state === 'RUNNING') {
-        log = '已在运行：RUNNING，无需继续推进';
-        return;
-      }
-      if (state === 'DEGRADED') {
-        commit('RUNNING', '尝试恢复运行：DEGRADED → RUNNING（限制解除，继续监测）');
-        return;
-      }
-      if (state === 'RECOVERY') {
-        commit('SELF_TEST', 'RECOVERY → SELF_TEST：重新执行自检，通过后才能回到待命');
-        return;
-      }
-      const i = idxOf[state];
-      if (i == null) {
-        reject('当前状态 ' + state + ' 不在正常上工流程中');
-        return;
-      }
-      if (i >= flow.length - 1) {
-        log = '已在运行：RUNNING，无需继续推进';
-        return;
-      }
-      const next = flow[i + 1];
-      commit(next, state + ' → ' + next + '：按顺序前进一格');
-    };
-
-    // ② 轻微异常（降级）：RUNNING / ENABLED → DEGRADED
-    const onDegrade = () => {
-      if (state === 'RUNNING') {
-        commit('DEGRADED', '触发过温 → 已降级到 DEGRADED');
-        return;
-      }
-      if (state === 'ENABLED') {
-        commit('DEGRADED', '使能后检测到异常 → 已降级到 DEGRADED');
-        return;
-      }
-      if (state === 'FAULT_LATCHED') {
-        reject('故障已锁存，需先清除故障并重新自检');
-        return;
-      }
-      if (state === 'OFF') {
-        reject('尚未上电，没有可降级的运行状态');
-        return;
-      }
-      if (state === 'DEGRADED') {
-        log = '已在 DEGRADED，正在持续评估是否需要升级为锁存故障';
-        return;
-      }
-      reject('当前状态为 ' + state + '，尚未运行，无需降级');
-    };
-
-    // ③ 急停 / 严重故障：任何非 FAULT_LATCHED 状态 → FAULT_LATCHED（OFF 除外）
-    const onEstop = () => {
-      if (state === 'FAULT_LATCHED') {
-        reject('故障已锁存，无需重复触发');
-        return;
-      }
-      if (state === 'OFF') {
-        reject('尚未上电，无能量需要切断');
-        return;
-      }
-      commit('FAULT_LATCHED', '急停 / 严重故障 → 已锁存到 FAULT_LATCHED（需人工确认后重新自检）');
-    };
-
-    // ④ 清除故障并恢复：FAULT_LATCHED → RECOVERY
-    const onClear = () => {
-      if (state !== 'FAULT_LATCHED') {
-        reject('当前没有锁存故障');
-        return;
-      }
-      commit('RECOVERY', '已清除故障 → RECOVERY：需重新自检');
-    };
-
-    // ⑤ 复位：任何状态 → OFF，并清空历史
-    const onReset = () => {
-      state = 'OFF';
-      visited = { OFF: true };
-      log = '已复位 → OFF：状态与历史已清空';
-    };
-
-    const render = () => {
-      states.forEach((s) => {
-        const el = cardEls[s.id];
-        if (!el) return;
-        el.classList.toggle('fsm-card-active', s.id === state);
-        el.classList.toggle('fsm-card-fault', s.id === 'FAULT_LATCHED' && state === 'FAULT_LATCHED');
-        el.classList.toggle('fsm-card-visited', !!visited[s.id] && s.id !== state);
-      });
-      stateOut.textContent = '当前状态：' + state + '（' + descOf(state) + '）';
-      logOut.textContent = log;
-    };
-
-    advanceBtn.addEventListener('click', () => { onAdvance(); render(); });
-    degradeBtn.addEventListener('click', () => { onDegrade(); render(); });
-    estopBtn.addEventListener('click', () => { onEstop(); render(); });
-    clearBtn.addEventListener('click', () => { onClear(); render(); });
-    resetBtn.addEventListener('click', () => { onReset(); render(); });
-
-    render();
+    on(document, 'astro:before-swap', dispose);
+    on(window, 'pagehide', ((event: PageTransitionEvent) => { if (!event.persisted) dispose(); }) as EventListener);
+    render(); loop.schedule();
   });
 </script>
 
 <style>
-  .fsm-demo {
-    --fsm-warn: light-dark(#dc2626, #f87171);
-    margin: 1.5rem 0;
+  .recovery-demo { --fr-green: #237546; --fr-yellow: #8e650e; --fr-red: #b53846; margin: 1.5rem 0; border: 1px solid var(--sl-color-gray-5); border-radius: 14px; background: var(--sl-color-bg); overflow: hidden; scroll-margin-top: 8rem; }
+  :global([data-theme='dark']) .recovery-demo { --fr-green: #8bd5a8; --fr-yellow: #ebc871; --fr-red: #ff98a2; }
+  .recovery-demo :global(*) { box-sizing: border-box; }
+  .recovery-demo :where(p, h4, ol, li, dl, dt, dd, button, div, span) { margin: 0; }
+  .fr-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; padding: .9rem 1rem .7rem; }
+  .fr-heading h4 { font-size: 1.07rem; line-height: 1.45; }
+  .fr-heading p { margin-top: .25rem; font-size: .76rem; color: var(--sl-color-gray-2); }
+  .fr-text-button { border: 0; padding: .2rem .15rem; background: transparent; color: var(--sl-color-text-accent); font: inherit; font-size: .7rem; cursor: pointer; }
+  .fr-heading > button { flex-shrink: 0; }
+  .fr-steps { list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .3rem; padding: 0 1rem .7rem; }
+  .fr-steps li { display: flex; align-items: center; justify-content: center; gap: .3rem; padding: .38rem .1rem; border-radius: 6px; background: var(--sl-color-gray-6); color: var(--sl-color-gray-2); font-size: .69rem; line-height: 1.4; }
+  .fr-steps span { font-variant-numeric: tabular-nums; opacity: .65; }
+  .fr-steps [data-active='true'] { color: var(--sl-color-text-accent); background: var(--sl-color-accent-low); font-weight: 600; }
+  .fr-scene { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: .85rem; padding: 0 1rem .7rem; }
+  .fr-model-pane { min-width: 0; }
+  .fr-model { position: relative; height: 295px; overflow: hidden; border: 1px solid var(--sl-color-gray-5); border-radius: 10px; background: radial-gradient(ellipse at 50% 45%, var(--sl-color-bg), var(--sl-color-gray-6)); }
+  .fr-model :global(canvas) { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+  .fr-view-caption { position: absolute; left: .5rem; top: .5rem; z-index: 2; pointer-events: none; font-size: .62rem; line-height: 1.7; color: var(--sl-color-gray-2); }
+  .fr-view-caption > span { display: block; }
+  .fr-view-caption > span:first-child { font-size: .71rem; font-weight: 600; color: var(--sl-color-text); }
+  .fr-camera { position: absolute; top: .45rem; right: .4rem; z-index: 2; padding: .15rem .25rem; background: color-mix(in srgb, var(--sl-color-bg) 90%, transparent); font-size: .61rem; border-radius: 4px; }
+  .fr-power { display: flex; align-items: center; justify-content: center; gap: .35rem; position: absolute; bottom: .5rem; left: .45rem; right: .45rem; z-index: 2; padding: .3rem; border-radius: 5px; background: color-mix(in srgb, var(--sl-color-bg) 92%, transparent); color: var(--sl-color-gray-2); font-size: .63rem; line-height: 1.4; pointer-events: none; }
+  .fr-power i { width: 6px; height: 6px; border-radius: 50%; background: var(--fr-green); }
+  .fr-view-tools { display: flex; align-items: center; justify-content: space-between; gap: .3rem; margin-top: .3rem; font-size: .61rem; color: var(--sl-color-gray-3); }
+  .fr-view-tools button { font-size: .63rem; }
+  .fr-loading { position: absolute; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: .5rem; padding: 1rem; text-align: center; background: var(--sl-color-bg); font-size: .76rem; color: var(--sl-color-gray-2); }
+  .fr-panel { display: flex; flex-direction: column; min-width: 0; }
+  .fr-status { display: flex; justify-content: space-between; align-items: baseline; gap: .35rem; font-size: .91rem; font-weight: 650; padding: .2rem 0 .45rem; }
+  .fr-angle { font-size: .8rem; font-weight: 400; font-variant-numeric: tabular-nums; color: var(--sl-color-gray-2); }
+  .fr-signals { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+  .fr-signals div { border: 1px solid var(--sl-color-gray-5); border-radius: 6px; padding: .35rem .5rem; }
+  .fr-signals dt { font-size: .61rem; color: var(--sl-color-gray-2); }
+  .fr-signals dd { font-size: .75rem; margin-top: .2rem; line-height: 1.4; }
+  .fr-story { margin-top: .55rem; min-height: 5.1em; padding: .5rem .6rem; border-left: 3px solid var(--sl-color-accent); background: var(--sl-color-accent-low); font-size: .76rem; line-height: 1.65; }
+  [data-status='fault'] .fr-status { color: var(--fr-red); }
+  [data-status='fault'] .fr-story { border-color: var(--fr-red); background: color-mix(in srgb, var(--fr-red) 7%, var(--sl-color-bg)); }
+  [data-status='limited'] .fr-status { color: var(--fr-yellow); }
+  [data-fault='true'] [data-fault] { color: var(--fr-red); }
+  .fr-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; margin-top: .65rem; }
+  .fr-actions button { border: 1px solid var(--sl-color-gray-4); border-radius: 6px; padding: .45rem .25rem; min-height: 36px; color: var(--sl-color-text); background: var(--sl-color-bg); font: inherit; font-size: .7rem; line-height: 1.35; cursor: pointer; }
+  .fr-actions .fr-start { border-color: var(--sl-color-accent); color: var(--sl-color-text-accent); background: var(--sl-color-accent-low); }
+  .fr-actions .fr-trip:not(:disabled) { border-color: var(--fr-red); color: var(--fr-red); }
+  .recovery-demo button:disabled { opacity: .4; cursor: default; }
+  .recovery-demo button:focus-visible, .recovery-demo summary:focus-visible { outline: 2px solid var(--sl-color-text-accent); outline-offset: 3px; }
+  .fr-compare { display: flex; align-items: center; flex-wrap: wrap; gap: .2rem .45rem; margin-top: .5rem; color: var(--sl-color-gray-2); font-size: .6rem; }
+  .fr-compare button { font-size: .65rem; }
+  .fr-details { border-top: 1px solid var(--sl-color-gray-5); padding: .55rem 1rem; margin: 0; font-size: .7rem; color: var(--sl-color-gray-2); }
+  .fr-details summary { cursor: pointer; font-size: .71rem; }
+  .fr-details p { margin-top: .45rem; line-height: 1.65; }
+  .recovery-demo figcaption { padding: .5rem 1rem .7rem; font-size: .63rem; line-height: 1.65; color: var(--sl-color-gray-2); }
+  .fr-no-script { padding: .7rem 1rem; }
+  .recovery-demo [hidden] { display: none !important; }
+  @media (max-width: 580px) {
+    .fr-heading { padding: .8rem .75rem .65rem; }
+    .fr-heading h4 { font-size: .98rem; }
+    .fr-steps { padding-inline: .75rem; gap: .2rem; }
+    .fr-steps li { font-size: .63rem; gap: .15rem; }
+    .fr-scene { grid-template-columns: 1fr; padding-inline: .75rem; gap: .4rem; }
+    .fr-model { height: 225px; }
+    .fr-model-pane { position: relative; }
+    .fr-view-tools { font-size: .6rem; }
+    .fr-status { padding-top: 0; }
+    .fr-signals div { display: flex; gap: .35rem; align-items: baseline; padding: .3rem .45rem; }
+    .fr-signals dd { margin-top: 0; }
+    .fr-story { min-height: 3.4em; margin-top: .45rem; }
+    .fr-actions { margin-top: .5rem; }
+    .fr-actions button { min-height: 40px; font-size: .75rem; }
+    .fr-details, .recovery-demo figcaption { padding-inline: .75rem; }
   }
-  .fsm-demo svg { display: block; width: 100%; max-width: 900px; height: auto; margin: 0 auto; }
-
-  .fsm-title { fill: var(--sl-color-text); font-size: 24px; font-weight: 600; }
-  .fsm-note { fill: var(--sl-color-gray-2); font-size: 17px; }
-  .fsm-flow { fill: var(--sl-color-gray-2); font-size: 16px; }
-  .fsm-arrow { fill: var(--sl-color-gray-4); font-size: 20px; font-weight: 600; }
-
-  .fsm-card-bg { fill: var(--sl-color-gray-5); fill-opacity: 0.16; stroke: var(--sl-color-gray-4); stroke-width: 1.6; }
-  .fsm-card-name { fill: var(--sl-color-text); font-size: 21px; font-weight: 600; }
-
-  /* 走过的正常路径：浅色底（可选） */
-  .fsm-card.fsm-card-visited .fsm-card-bg { fill: var(--sl-color-accent); fill-opacity: 0.06; }
-
-  /* 当前状态：accent 描边加粗 + 半透明 accent 填充 + 状态名变色 */
-  .fsm-card.fsm-card-active .fsm-card-bg { fill: var(--sl-color-accent); fill-opacity: 0.16; stroke: var(--sl-color-accent); stroke-width: 2.6; }
-  .fsm-card.fsm-card-active .fsm-card-name { fill: var(--sl-color-accent); }
-
-  /* 锁存故障：警示色（写在 active 之后以覆盖），直到复位或清除故障 */
-  .fsm-card.fsm-card-fault .fsm-card-bg { fill: var(--fsm-warn); fill-opacity: 0.16; stroke: var(--fsm-warn); stroke-width: 2.8; }
-  .fsm-card.fsm-card-fault .fsm-card-name { fill: var(--fsm-warn); }
-
-  .fsm-wrap-line { fill: none; stroke: var(--sl-color-gray-4); stroke-width: 1.6; stroke-dasharray: 5 4; }
-  .fsm-wrap-head { fill: var(--sl-color-gray-4); }
-
-  .fsm-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 0.9rem; max-width: 900px; margin: 0.55rem auto 0; }
-  .fsm-btn { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.85rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
-  .fsm-btn:hover { border-color: var(--sl-color-accent); color: var(--sl-color-accent); }
-  .fsm-btn-estop { border-color: var(--fsm-warn); color: var(--fsm-warn); }
-
-  .fsm-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; color: var(--sl-color-text); line-height: 1.7; }
-  .fsm-out { display: block; white-space: nowrap; overflow-x: auto; height: 1.7em; line-height: 1.7; }
-  .fsm-readout output { color: var(--sl-color-accent); font-weight: 600; }
-  .fsm-readout output.fsm-out-log { color: var(--sl-color-text); font-weight: 500; }
-  .fsm-demo figcaption { max-width: 900px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.9rem; line-height: 1.65; }
 </style>
