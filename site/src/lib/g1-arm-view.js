@@ -1,4 +1,4 @@
-/** G1 geometry for the servo lesson; motor and controller parameters stay
+/** G1 geometry for the servo/deadline lessons; motor and controller parameters stay
  * in the lesson models. Angles here mean forearm travel from hanging downward.
  * The official URDF elbow coordinate is therefore π/2 - lessonAngle. */
 export const g1ElbowAngle = (angle) => Math.PI / 2 - angle;
@@ -16,10 +16,13 @@ export const G1_PAYLOAD_MOUNT = Object.freeze({
   blockSize: Object.freeze([.092, .094, .085]),
 });
 
-const visibleLink = (name) => ['torso_link', 'logo_link', 'head_link', 'waist_support_link'].includes(name)
-  || /^left_(shoulder_|elbow_|wrist_|rubber_hand)/.test(name);
+const armLink = (name) => /^left_(shoulder_|elbow_|wrist_|rubber_hand)/.test(name);
+const visibleLink = (name, deadline) => armLink(name)
+  || (!deadline && ['torso_link', 'logo_link', 'head_link', 'waist_support_link'].includes(name));
 
-export async function createG1ArmView(viewport, { urdfUrl, onInvalidate = () => {}, onError } = {}) {
+export async function createG1ArmView(viewport, { urdfUrl, profile = 'servo', onInvalidate = () => {}, onError } = {}) {
+  const deadline = profile === 'deadline';
+  const initialAngle = deadline ? Math.PI / 3 : 0;
   let renderer, scene, camera, controls, robot, ghost, resizeObserver, themeObserver;
   let payload, pushArrow, ambient;
   let disposed = false;
@@ -51,7 +54,7 @@ export async function createG1ArmView(viewport, { urdfUrl, onInvalidate = () => 
     renderer?.dispose();
     renderer?.domElement.remove();
     elements.forEach((element) => element.remove());
-    for (const key of ['model', 'meshCount', 'rendered', 'renderedTriangles', 'elbowAngle', 'payload']) {
+    for (const key of ['model', 'meshCount', 'rendered', 'renderedTriangles', 'elbowAngle', 'payload', 'viewProfile']) {
       delete viewport.dataset[key];
     }
   }
@@ -67,7 +70,7 @@ export async function createG1ArmView(viewport, { urdfUrl, onInvalidate = () => 
     // Preserve the kinematic tree, but remove unused visual descriptions before
     // parsing so the lesson never downloads hidden leg/right-arm meshes.
     for (const link of documentSource.querySelectorAll('robot > link')) {
-      if (!visibleLink(link.getAttribute('name') || '')) {
+      if (!visibleLink(link.getAttribute('name') || '', deadline)) {
         for (const visual of link.querySelectorAll(':scope > visual')) visual.remove();
       }
     }
@@ -124,39 +127,45 @@ export async function createG1ArmView(viewport, { urdfUrl, onInvalidate = () => 
     if (failures.size) throw new Error(`G1 mesh loading failed: ${[...failures].join(', ')}`);
     if (!robot.joints.left_elbow_joint || !robot.links.left_rubber_hand) throw new Error('G1 left arm is missing');
     robot.rotation.x = -Math.PI / 2;
-    for (const [name, value] of Object.entries(g1ArmPose(0))) robot.setJointValue(name, value);
+    for (const [name, value] of Object.entries(g1ArmPose(initialAngle))) robot.setJointValue(name, value);
 
-    const ghostMaterial = new THREE.MeshBasicMaterial({ color: 0x22b4b8, transparent: true, opacity: .22, depthWrite: false });
-    materials.add(ghostMaterial);
-    ghost = robot.clone(true);
-    let meshCount = 0, ghostMeshCount = 0;
-    ghost.traverse((object) => {
-      if (!object.isMesh) return;
-      meshCount += 1;
-      let link = object.parent;
-      while (link && !link.isURDFLink) link = link.parent;
-      object.visible = /^left_(elbow_|wrist_|rubber_hand)/.test(link?.urdfName || link?.name || '');
-      if (object.visible) ghostMeshCount += 1;
-      object.material = ghostMaterial;
-    });
-    if (!meshCount || !ghostMeshCount) throw new Error('G1 visual meshes are missing');
-    ghost.setJointValue('left_elbow_joint', 0);
-    assembly.add(ghost);
+    let meshCount = 0;
+    robot.traverse((object) => { if (object.isMesh) meshCount += 1; });
+    if (!meshCount) throw new Error('G1 visual meshes are missing');
+    if (!deadline) {
+      const ghostMaterial = new THREE.MeshBasicMaterial({ color: 0x22b4b8, transparent: true, opacity: .22, depthWrite: false });
+      materials.add(ghostMaterial);
+      ghost = robot.clone(true);
+      let ghostMeshCount = 0;
+      ghost.traverse((object) => {
+        if (!object.isMesh) return;
+        let link = object.parent;
+        while (link && !link.isURDFLink) link = link.parent;
+        object.visible = /^left_(elbow_|wrist_|rubber_hand)/.test(link?.urdfName || link?.name || '');
+        if (object.visible) ghostMeshCount += 1;
+        object.material = ghostMaterial;
+      });
+      if (!ghostMeshCount) throw new Error('G1 visual meshes are missing');
+      ghost.setJointValue('left_elbow_joint', 0);
+      assembly.add(ghost);
+    }
 
     const makeMesh = (geometry, material, parent, x = 0, y = 0, z = 0) => {
       const mesh = new THREE.Mesh(geometry, material);
       mesh.position.set(x, y, z); parent.add(mesh); return mesh;
     };
-    const trayMaterial = new THREE.MeshStandardMaterial({ color: 0x42566b, roughness: .6, metalness: .25 });
-    const payloadMaterial = new THREE.MeshStandardMaterial({ color: 0xeab04b, roughness: .6 });
-    payload = new THREE.Group();
-    robot.links[G1_PAYLOAD_MOUNT.link].add(payload);
-    makeMesh(new THREE.BoxGeometry(...G1_PAYLOAD_MOUNT.traySize), trayMaterial, payload, ...G1_PAYLOAD_MOUNT.trayCenter);
-    makeMesh(new THREE.BoxGeometry(...G1_PAYLOAD_MOUNT.blockSize), payloadMaterial, payload, ...G1_PAYLOAD_MOUNT.blockCenter);
-    makeMesh(new THREE.BoxGeometry(.02, .096, .087), trayMaterial, payload, ...G1_PAYLOAD_MOUNT.blockCenter);
-    payload.visible = false;
-    pushArrow = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(), .14, 0xe4932e, .042, .03);
-    pushArrow.visible = false; scene.add(pushArrow);
+    if (!deadline) {
+      const trayMaterial = new THREE.MeshStandardMaterial({ color: 0x42566b, roughness: .6, metalness: .25 });
+      const payloadMaterial = new THREE.MeshStandardMaterial({ color: 0xeab04b, roughness: .6 });
+      payload = new THREE.Group();
+      robot.links[G1_PAYLOAD_MOUNT.link].add(payload);
+      makeMesh(new THREE.BoxGeometry(...G1_PAYLOAD_MOUNT.traySize), trayMaterial, payload, ...G1_PAYLOAD_MOUNT.trayCenter);
+      makeMesh(new THREE.BoxGeometry(...G1_PAYLOAD_MOUNT.blockSize), payloadMaterial, payload, ...G1_PAYLOAD_MOUNT.blockCenter);
+      makeMesh(new THREE.BoxGeometry(.02, .096, .087), trayMaterial, payload, ...G1_PAYLOAD_MOUNT.blockCenter);
+      payload.visible = false;
+      pushArrow = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(), .14, 0xe4932e, .042, .03);
+      pushArrow.visible = false; scene.add(pushArrow);
+    }
 
     const jointLabel = document.createElement('span');
     jointLabel.textContent = '左肘';
@@ -166,13 +175,13 @@ export async function createG1ArmView(viewport, { urdfUrl, onInvalidate = () => 
       padding: '3px 7px', borderRadius: '5px', fontSize: '12px', lineHeight: '1.4', whiteSpace: 'nowrap', zIndex: '1' });
     viewport.append(jointLabel); elements.push(jointLabel);
 
-    // Fit the hanging arm and horizontal target once. Actions do not move the
-    // camera, making small disturbances easy to compare.
+    // Servo fits the hanging arm and horizontal target; deadline fits only its
+    // fixed arm pose. Timeline changes must never move the deadline scene.
     assembly.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(assembly);
     const center = bounds.getCenter(new THREE.Vector3());
     const size = bounds.getSize(new THREE.Vector3());
-    center.z -= .04;
+    if (!deadline) center.z -= .04;
     let distance = 1.7;
     const handPosition = new THREE.Vector3(), elbowPosition = new THREE.Vector3(), projected = new THREE.Vector3();
     const resetCamera = () => {
@@ -201,6 +210,11 @@ export async function createG1ArmView(viewport, { urdfUrl, onInvalidate = () => 
     };
     const update = ({ angle = 0, target = 0, payload: loaded = false, pushing = false } = {}) => {
       if (disposed) return;
+      if (deadline) {
+        viewport.dataset.elbowAngle = String(g1ElbowAngle(initialAngle));
+        viewport.dataset.payload = 'false';
+        return;
+      }
       robot.setJointValue('left_elbow_joint', g1ElbowAngle(angle));
       ghost.setJointValue('left_elbow_joint', g1ElbowAngle(target));
       ghost.visible = target > 0 && Math.abs(target - angle) > .006;
@@ -221,13 +235,24 @@ export async function createG1ArmView(viewport, { urdfUrl, onInvalidate = () => 
       robot.joints.left_elbow_joint.getWorldPosition(elbowPosition);
       projected.copy(elbowPosition).project(camera);
       jointLabel.style.visibility = Math.abs(projected.x) < .92 && Math.abs(projected.y) < .92 && Math.abs(projected.z) < 1 ? 'visible' : 'hidden';
-      jointLabel.style.left = `${(projected.x + 1) * 50}%`;
-      jointLabel.style.top = `calc(${(1 - projected.y) * 50}% - 24px)`;
+      if (deadline) {
+        // Keep the small label beside the joint, leaving the cropped arm clear.
+        const width = Math.max(viewport.clientWidth, 1), height = Math.max(viewport.clientHeight, 1);
+        const x = Math.min(width - 26, Math.max(26, (projected.x + 1) * width / 2 - 38));
+        const y = Math.min(height - 14, Math.max(14, (1 - projected.y) * height / 2));
+        jointLabel.style.left = `${x}px`;
+        jointLabel.style.top = `${y}px`;
+        jointLabel.style.transform = 'translate(-50%, -50%)';
+      } else {
+        jointLabel.style.left = `${(projected.x + 1) * 50}%`;
+        jointLabel.style.top = `calc(${(1 - projected.y) * 50}% - 24px)`;
+      }
       viewport.dataset.rendered = 'true';
       viewport.dataset.renderedTriangles = String(renderer.info.render.triangles);
     };
     viewport.dataset.model = 'g1_29dof_left_arm';
     viewport.dataset.meshCount = String(meshCount);
+    viewport.dataset.viewProfile = profile;
     resizeObserver = new ResizeObserver(resize); resizeObserver.observe(viewport);
     themeObserver = new MutationObserver(updateTheme);
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });

@@ -1,0 +1,270 @@
+---
+const urdfUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/') + 'models/g1/g1_29dof.urdf';
+---
+
+<figure class="deadline-demo" id="control-deadline-demo" data-control-deadline data-urdf={urdfUrl}>
+  <header class="dd-heading">
+    <h4>计算只用了 1.2 ms，为什么目标还是迟到了？</h4>
+    <p>把 G1 抬臂过程中的一次左肘目标更新放慢看。</p>
+  </header>
+  <div class="dd-controls">
+    <div class="dd-modes" role="group" aria-label="比较两种执行情况">
+      <button type="button" data-mode="normal" aria-pressed="true">正常执行</button>
+      <button type="button" data-mode="waiting" aria-pressed="false">增加一次等待</button>
+    </div>
+    <button type="button" class="dd-play" data-play aria-pressed="false">播放</button>
+  </div>
+  <div class="dd-machine">
+    <div class="dd-board-pane">
+      <div class="dd-board" data-board-state="idle">
+        <span class="dd-board-name">控制板</span>
+        <div class="dd-chip" aria-hidden="true"><span>控制<br/>计算</span></div>
+        <strong data-board-title>等待任务触发</strong>
+        <p data-board-note>准备生成本次左肘目标</p>
+      </div>
+      <div class="dd-command-line" data-command-line aria-hidden="true"><span>目标指令</span><b>→</b></div>
+    </div>
+    <div class="dd-arm-pane">
+      <div class="dd-arm-view" data-arm-view role="group" aria-label="G1 左臂定格在抬起过程；只观察目标指令是否及时准备好，机械姿态不随毫秒时间轴跳变。">
+        <div class="dd-loading" data-loading role="status" aria-live="polite"><span data-loading-text>正在加载 G1 左臂…</span><button type="button" class="dd-text-button" data-retry hidden>重新加载</button></div>
+        <div class="dd-target" data-deadline-target data-target-state="previous"><span>左肘目标指令</span><strong data-target-label>上一条目标</strong></div>
+      </div>
+      <button type="button" class="dd-view-reset dd-text-button" data-view-reset disabled>还原视角</button>
+    </div>
+  </div>
+  <p class="dd-story" data-story role="status" aria-live="polite">点击播放，看看新目标能否在 2 ms 内准备好。</p>
+  <div class="dd-timeline" aria-label="任务时间轴，从触发到完成">
+    <div class="dd-time-heading"><span>从任务触发开始计时</span><output data-time aria-live="off">0.0 ms</output></div>
+    <div class="dd-track-wrap">
+      <div class="dd-deadline"><span>2 ms 时限</span></div>
+      <div class="dd-track">
+        <div class="dd-segment dd-wait" data-wait-segment hidden><i data-wait-fill></i><span>等待 0.9 ms</span></div>
+        <div class="dd-segment dd-compute" data-compute-segment><i data-compute-fill></i><span>计算 1.2 ms</span></div>
+        <div class="dd-now" data-now></div>
+      </div>
+      <div class="dd-axis"><span>0 ms</span><span>2.3 ms</span></div>
+    </div>
+    <div class="dd-readings">
+      <div><span>计算用时</span><strong data-compute-time>尚未开始</strong></div>
+      <div><span>触发到完成</span><strong data-total-time>尚未完成</strong></div>
+    </div>
+  </div>
+  <figcaption>时间已慢放，机械姿态定格。数值为教学示例，不代表 G1 实际延迟；只展示目标生成，不计传输时间。</figcaption>
+</figure>
+
+<script>
+  import { createVisibleRaf } from '../lib/visible-raf.js';
+  import { DEADLINE_DEMO, deadlineSnapshot, advanceDeadlinePlayback } from '../lib/control-deadline-model.js';
+
+  document.querySelectorAll('[data-control-deadline]').forEach((element) => {
+    const demo = element as HTMLElement;
+    if (demo.dataset.initialized) return;
+    demo.dataset.initialized = 'true';
+    const $ = (selector: string) => demo.querySelector(selector) as HTMLElement;
+    const play = $('[data-play]') as HTMLButtonElement;
+    const modeButtons = [...demo.querySelectorAll<HTMLButtonElement>('[data-mode]')];
+    const viewport = $('[data-arm-view]');
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const events = new AbortController();
+    const on = (target: EventTarget, type: string, fn: EventListener) => target.addEventListener(type, fn, { signal: events.signal });
+    let playback = { mode: 'normal', timeMs: 0, checkpointSeen: false, paused: true, finished: false };
+    let started = false, disposed = false, loading = false, failed = false, last = 0;
+    let armView: any;
+    const loop = createVisibleRaf(demo, { onEnter: () => { last = 0; void loadArm(); } });
+    const text = (selector: string, value: string) => { const node = $(selector); if (node.textContent !== value) node.textContent = value; };
+    const percent = (milliseconds: number) => `${milliseconds / 2.3 * 100}%`;
+    const shownTime = (milliseconds: number, complete = false) =>
+      (complete ? milliseconds : Math.floor((milliseconds + 1e-9) * 10) / 10).toFixed(1);
+
+    async function loadArm(retry = false) {
+      if (disposed || armView || loading || (failed && !retry)) return;
+      loading = true; failed = false;
+      $('[data-loading]').hidden = false; $('[data-retry]').hidden = true;
+      text('[data-loading-text]', '正在加载 G1 左臂…');
+      try {
+        const { createG1ArmView } = await import('../lib/g1-arm-view.js');
+        if (disposed) return;
+        const view = await createG1ArmView(viewport, {
+          urdfUrl: demo.dataset.urdf, profile: 'deadline', onInvalidate: () => { if (!disposed) loop.schedule(); },
+        });
+        if (disposed) { view.dispose(); return; }
+        armView = view;
+        armView.update({ angle: Math.PI / 3, target: Math.PI / 3, payload: false, pushing: false });
+        $('[data-loading]').hidden = true;
+        ($('[data-view-reset]') as HTMLButtonElement).disabled = false;
+        loop.schedule();
+      } catch (error) {
+        if (disposed) return;
+        failed = true;
+        text('[data-loading-text]', 'G1 模型暂时无法显示，仍可观察时间轴。');
+        $('[data-retry]').hidden = false;
+        console.error('G1 控制时限演示加载失败：', error);
+      } finally { loading = false; }
+    }
+
+    function render() {
+      if (disposed) return;
+      const state = deadlineSnapshot(playback.mode, playback.timeMs);
+      const waiting = playback.mode === 'waiting';
+      const waitMs = state.waitMs;
+      const computeElapsed = state.computeElapsedMs;
+      const atDeadline = playback.paused && playback.checkpointSeen && !playback.finished;
+      const phase = !started ? 'idle' : state.ready ? state.missedDeadline ? 'late' : 'ready' : state.missedDeadline ? 'missed' : state.phase;
+      $('[data-board-state]').dataset.boardState = phase;
+      demo.dataset.phase = phase;
+      demo.dataset.mode = playback.mode;
+      text('[data-board-title]', !started ? '等待任务触发' : state.ready ? '新目标已生成' : state.missedDeadline ? '仍在计算' : state.phase === 'waiting' ? '等待共享数据' : '计算中');
+      text('[data-board-note]', !started ? '准备生成本次左肘目标' : state.ready ? state.missedDeadline ? '已晚于本次时限' : '可以按时下发' : state.phase === 'waiting' ? '日志任务正在占用' : '正在计算本次目标');
+      $('[data-deadline-target]').dataset.targetState = state.ready ? state.missedDeadline ? 'late' : 'ready' : 'previous';
+      $('[data-command-line]').dataset.ready = String(state.ready);
+      text('[data-target-label]', state.ready ? '本次新目标' : '上一条目标');
+      text('[data-story]', !started ? '点击播放，看看新目标能否在 2 ms 内准备好。' : atDeadline
+        ? '时限到了，新目标还没准备好。此时左肘仍只有上一条目标。'
+        : state.ready ? state.missedDeadline ? '等了 0.9 ms，再算 1.2 ms：新目标在 2.1 ms 才准备好。' : '计算 1.2 ms，新目标已准备好，赶上了 2 ms 的时限。'
+        : state.missedDeadline ? '已过时限，继续完成剩余计算。'
+        : state.phase === 'waiting' ? '任务已触发，但共享数据正被日志任务占用，只能先等。'
+          : waiting ? '等待结束，开始计算。等待的时间也算在本次时限内。' : '任务一触发，就开始计算新目标。');
+      text('[data-time]', `${shownTime(playback.timeMs, state.ready)} ms`);
+      $('[data-wait-segment]').hidden = !waiting;
+      $('[data-wait-segment]').style.width = percent(waitMs);
+      $('[data-wait-fill]').style.width = `${waitMs ? state.waitElapsedMs / waitMs * 100 : 0}%`;
+      $('[data-compute-segment]').style.left = percent(waitMs);
+      $('[data-compute-segment]').style.width = percent(DEADLINE_DEMO.computeMs);
+      $('[data-compute-fill]').style.width = `${computeElapsed / DEADLINE_DEMO.computeMs * 100}%`;
+      $('[data-now]').style.left = percent(playback.timeMs);
+      text('[data-compute-time]', !started ? '尚未开始' : `${shownTime(computeElapsed, state.ready)} ms${state.ready ? '' : ' / 1.2 ms'}`);
+      text('[data-total-time]', state.ready ? `${playback.timeMs.toFixed(1)} ms${state.missedDeadline ? ' · 逾期' : ' · 按时'}` : '尚未完成');
+      modeButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.mode === playback.mode)));
+      play.setAttribute('aria-pressed', String(!playback.paused));
+      play.textContent = atDeadline ? '继续到完成' : playback.finished ? '重播' : reduced.matches ? '下一步' : !playback.paused ? '暂停' : started ? '继续' : '播放';
+      armView?.render();
+    }
+
+    function step() {
+      const checkpoints = playback.mode === 'waiting' ? [.45, .9, 1.5, 2, 2.1] : [.4, .8, 1.2];
+      const next = checkpoints.find((point) => point > playback.timeMs + 1e-8) ?? 2.3;
+      playback = advanceDeadlinePlayback({ ...playback, paused: false }, next - playback.timeMs);
+      playback.paused = true; last = 0; render(); loop.stop();
+    }
+    function begin(mode: string) {
+      playback = { mode, timeMs: 0, checkpointSeen: false, paused: false, finished: false };
+      started = true; last = 0;
+      if (reduced.matches) step(); else { render(); loop.start(); }
+    }
+    loop.onFrame((now: number) => {
+      const seconds = last ? Math.min((now - last) / 1000, .05) : 0;
+      last = now;
+      if (!playback.paused) playback = advanceDeadlinePlayback(playback, seconds * .4);
+      render();
+      if (playback.paused) { last = 0; return false; }
+      return true;
+    });
+    modeButtons.forEach((button) => on(button, 'click', () => begin(button.dataset.mode || 'normal')));
+    on(play, 'click', () => {
+      if (playback.finished || !started) { begin(playback.mode); return; }
+      if (reduced.matches) { step(); return; }
+      playback.paused = !playback.paused; last = 0; render();
+      if (playback.paused) loop.stop(); else loop.start();
+    });
+    on($('[data-retry]'), 'click', () => { void loadArm(true); });
+    on($('[data-view-reset]'), 'click', () => { armView?.resetCamera(); });
+    on(document, 'visibilitychange', () => { last = 0; });
+    on(reduced, 'change', () => { playback.paused = true; last = 0; loop.stop(); render(); });
+    const cleanup = () => {
+      if (disposed) return;
+      disposed = true; events.abort(); loop.dispose(); armView?.dispose();
+    };
+    on(document, 'astro:before-swap', cleanup);
+    on(window, 'pagehide', (event) => { if (!(event as PageTransitionEvent).persisted) cleanup(); });
+    render();
+  });
+</script>
+
+<style>
+  .deadline-demo { --dd-blue: #286bba; --dd-wait: #986510; --dd-green: #21794c; --dd-red: #b0393c; margin: 1.5rem 0; border: 1px solid var(--sl-color-gray-5); border-radius: 14px; overflow: hidden; color: var(--sl-color-text); background: var(--sl-color-bg); }
+  :global([data-theme='dark']) .deadline-demo { --dd-blue: #91beff; --dd-wait: #eec773; --dd-green: #82d5a1; --dd-red: #ff9296; }
+  .deadline-demo :global(*) { margin: 0; }
+  .deadline-demo :where(h4, p) { margin: 0; }
+  .dd-heading { padding: 1rem 1.1rem .7rem; }
+  .dd-heading h4 { font-size: 1.08rem; line-height: 1.45; }
+  .dd-heading p { margin-top: .35rem; color: var(--sl-color-gray-2); font-size: .8rem; line-height: 1.6; }
+  .dd-controls { display: flex; gap: .65rem; align-items: center; padding: 0 1.1rem .65rem; }
+  .dd-modes { display: flex; gap: .35rem; flex: 1; min-width: 0; }
+  .dd-controls button { min-height: 35px; padding: .4rem .65rem; margin: 0; border: 1px solid var(--sl-color-gray-5); border-radius: 7px; font: inherit; font-size: .75rem; line-height: 1.35; color: var(--sl-color-gray-2); background: var(--sl-color-bg); cursor: pointer; }
+  .dd-modes button[aria-pressed='true'], .dd-controls .dd-play { border-color: var(--sl-color-accent); background: var(--sl-color-accent-low); color: var(--sl-color-text-accent); }
+  .dd-controls .dd-play { min-width: 4.3rem; font-weight: 600; }
+  .dd-machine { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 1.4rem; padding: .2rem 1.1rem; }
+  .dd-board-pane { position: relative; display: flex; align-items: center; min-width: 0; }
+  .dd-board { width: 100%; min-height: 190px; padding: .8rem .65rem; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, var(--dd-green) 40%, var(--sl-color-gray-5)); border-radius: 12px; background: color-mix(in srgb, var(--dd-green) 6%, var(--sl-color-bg)); text-align: center; }
+  .dd-board-name { font-size: .72rem; color: var(--sl-color-gray-2); }
+  .dd-chip { margin: .65rem 0; padding: 5px; border: 5px dotted var(--sl-color-gray-4); border-radius: 5px; color: var(--sl-color-gray-2); }
+  .dd-chip span { display: block; padding: .4rem .7rem; border-radius: 3px; background: var(--sl-color-gray-6); font-size: .73rem; line-height: 1.4; }
+  .dd-board strong { font-size: .84rem; line-height: 1.5; }
+  .dd-board p { margin-top: .3rem; font-size: .68rem; line-height: 1.55; color: var(--sl-color-gray-2); }
+  .dd-board[data-board-state='waiting'] strong { color: var(--dd-wait); }
+  .dd-board[data-board-state='computing'] strong { color: var(--dd-blue); }
+  .dd-board[data-board-state='ready'] strong { color: var(--dd-green); }
+  .dd-board[data-board-state='late'] strong, .dd-board[data-board-state='missed'] strong { color: var(--dd-red); }
+  .dd-command-line { position: absolute; z-index: 2; right: -2.8rem; top: 42%; display: flex; flex-direction: column; align-items: center; color: var(--sl-color-gray-3); pointer-events: none; }
+  .dd-command-line span { padding: .1rem .2rem; border-radius: 3px; background: var(--sl-color-bg); font-size: .57rem; line-height: 1.2; }
+  .dd-command-line b { font-size: 2rem; font-weight: 400; line-height: .8; }
+  .dd-command-line[data-ready='true'] { color: var(--dd-green); }
+  .dd-arm-pane { position: relative; min-width: 0; }
+  .dd-arm-view { position: relative; height: 245px; width: 100%; overflow: hidden; border: 1px solid var(--sl-color-gray-5); border-radius: 12px; background: radial-gradient(ellipse at 50% 45%, var(--sl-color-bg), var(--sl-color-gray-6)); }
+  .dd-arm-view :global(canvas) { display: block; width: 100%; height: 100%; }
+  .dd-target { position: absolute; left: .5rem; bottom: .55rem; z-index: 2; width: 108px; max-width: calc(100% - 1rem); padding: .35rem .45rem; border: 1px solid var(--sl-color-gray-4); border-radius: 7px; background: color-mix(in srgb, var(--sl-color-bg) 94%, transparent); pointer-events: none; }
+  .dd-target span { display: block; font-size: .6rem; line-height: 1.4; color: var(--sl-color-gray-2); }
+  .dd-target strong { display: block; margin-top: .1rem; font-size: .75rem; line-height: 1.4; }
+  .dd-target[data-target-state='ready'] { color: var(--dd-green); border-color: var(--dd-green); }
+  .dd-target[data-target-state='late'] { color: var(--dd-red); border-color: var(--dd-red); }
+  .dd-loading { position: absolute; inset: 0 0 4rem; z-index: 3; display: flex; flex-direction: column; gap: .5rem; align-items: center; justify-content: center; padding: .8rem; text-align: center; font-size: .73rem; line-height: 1.6; color: var(--sl-color-gray-2); background: var(--sl-color-bg); }
+  .dd-text-button { padding: .2rem; margin: 0; border: 0; color: var(--sl-color-text-accent); background: transparent; font: inherit; font-size: .64rem; cursor: pointer; }
+  .dd-text-button:disabled { opacity: .45; cursor: default; }
+  .dd-view-reset { position: absolute; z-index: 2; top: .35rem; right: .4rem; background: color-mix(in srgb, var(--sl-color-bg) 90%, transparent); border-radius: 3px; }
+  .dd-story { min-height: 2.9em; margin: .65rem 1.1rem !important; padding: .5rem .65rem; border-left: 3px solid var(--sl-color-accent); background: var(--sl-color-accent-low); font-size: .77rem; line-height: 1.65; }
+  .deadline-demo[data-phase='missed'] .dd-story, .deadline-demo[data-phase='late'] .dd-story { border-color: var(--dd-red); background: color-mix(in srgb, var(--dd-red) 8%, var(--sl-color-bg)); }
+  .dd-timeline { padding: 0 1.1rem .8rem; }
+  .dd-time-heading { display: flex; justify-content: space-between; gap: .6rem; color: var(--sl-color-gray-2); font-size: .72rem; line-height: 1.4; }
+  .dd-time-heading output { color: var(--sl-color-text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .dd-track-wrap { position: relative; padding-top: 1.35rem; }
+  .dd-track { position: relative; height: 30px; border-radius: 5px; background: var(--sl-color-gray-6); overflow: hidden; }
+  .dd-segment { position: absolute; top: 0; height: 100%; overflow: hidden; border: 1px solid currentColor; border-radius: 4px; background: color-mix(in srgb, currentColor 8%, var(--sl-color-bg)); }
+  .dd-segment i { position: absolute; inset: 0 auto 0 0; width: 0; background: color-mix(in srgb, currentColor 24%, transparent); }
+  .dd-segment span { position: relative; z-index: 1; display: grid; height: 100%; place-items: center; font-size: .67rem; line-height: 1.3; font-weight: 600; white-space: nowrap; }
+  .dd-wait { left: 0; color: var(--dd-wait); }
+  .dd-compute { left: 0; width: 52.174%; color: var(--dd-blue); }
+  .dd-deadline { position: absolute; left: 86.9565%; top: 0; bottom: 1.15rem; z-index: 2; border-left: 2px dashed var(--dd-red); pointer-events: none; }
+  .dd-deadline span { position: absolute; right: .2rem; top: 0; white-space: nowrap; font-size: .65rem; color: var(--dd-red); }
+  .dd-now { position: absolute; top: 0; bottom: 0; left: 0; z-index: 3; border-left: 2px solid var(--sl-color-text); }
+  .dd-axis { display: flex; justify-content: space-between; padding-top: .15rem; font-size: .61rem; color: var(--sl-color-gray-2); }
+  .dd-readings { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; margin-top: .5rem; }
+  .dd-readings > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .5rem; padding: .45rem .55rem; border: 1px solid var(--sl-color-gray-5); border-radius: 7px; }
+  .dd-readings span { font-size: .65rem; color: var(--sl-color-gray-2); }
+  .dd-readings strong { font-size: .78rem; line-height: 1.4; font-variant-numeric: tabular-nums; }
+  .deadline-demo[data-phase='ready'] [data-total-time] { color: var(--dd-green); }
+  .deadline-demo[data-phase='late'] [data-total-time] { color: var(--dd-red); }
+  .deadline-demo figcaption { padding: .65rem 1.1rem; border-top: 1px solid var(--sl-color-gray-5); color: var(--sl-color-gray-2); font-size: .65rem; line-height: 1.65; }
+  .deadline-demo button:focus-visible { outline: 2px solid var(--sl-color-text-accent); outline-offset: 3px; }
+  .deadline-demo [hidden] { display: none !important; }
+  @media (max-width: 450px) {
+    .dd-heading { padding: .8rem .75rem .65rem; }
+    .dd-heading h4 { font-size: .97rem; }
+    .dd-controls { padding-inline: .75rem; gap: .35rem; }
+    .dd-controls button { padding-inline: .45rem; font-size: .69rem; }
+    .dd-controls .dd-play { min-width: 3.2rem; }
+    .dd-machine { padding-inline: .75rem; gap: .8rem; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); }
+    .dd-board { min-height: 174px; padding-inline: .3rem; }
+    .dd-board strong { font-size: .73rem; }
+    .dd-board p { font-size: .63rem; }
+    .dd-arm-view { height: 225px; }
+    .dd-command-line { right: -2.15rem; }
+    .dd-command-line span { font-size: .5rem; }
+    .dd-command-line b { font-size: 1.6rem; }
+    .dd-story { margin-inline: .75rem !important; font-size: .72rem; }
+    .dd-timeline { padding-inline: .75rem; }
+    .dd-readings { gap: .4rem; }
+    .dd-readings > div { padding-inline: .4rem; }
+    .dd-readings strong { font-size: .72rem; }
+    .deadline-demo figcaption { padding-inline: .75rem; }
+  }
+</style>
