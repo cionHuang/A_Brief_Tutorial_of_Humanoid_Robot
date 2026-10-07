@@ -89,7 +89,7 @@ import SectionQA from '../../../components/SectionQA.astro';
 | Action | 长任务：目标 + 持续反馈 + 可取消 | 导航到某点、执行一段轨迹 |
 | Parameter | 节点自有的可配置值 | 增益、阈值、坐标系名称 |
 
-把持续流数据塞进 Service 会压垮请求方；把需要确认完成的长任务塞进 Topic 会让调用方无法知道成败。Topic 背后的 QoS（Quality of Service，可靠性、历史深度、延迟预算）属于 DDS 概念，[3.4 节](../03-electrical-embedded/04-real-time-communication-and-buses.mdx)已经详细讲过，本节不重讲；这里只补一条 ROS 2 侧的失败模式：QoS 不匹配时，两个节点通常“都能发现彼此、也都在发布”，但数据就是收不到，而且不一定报错。[1]
+把持续流数据塞进 Service 会压垮请求方；把需要确认完成的长任务塞进 Topic 会让调用方无法知道成败。Topic 背后的 QoS（Quality of Service，可靠性、历史深度、有效期）属于 DDS 概念，[3.4 节](../03-electrical-embedded/04-real-time-communication-and-buses.mdx)已经介绍过，本节不重讲；这里只补一条 ROS 2 侧的失败模式：QoS 不匹配时，两个节点通常“都能发现彼此、也都在发布”，但数据就是收不到，而且不一定报错。[1]
 
 > **一句话听懂**：选通信方式看数据形态：连续流用 Topic、短问答用 Service、长任务用 Action、配置用 Parameter；用错不是性能问题，是语义问题。
 

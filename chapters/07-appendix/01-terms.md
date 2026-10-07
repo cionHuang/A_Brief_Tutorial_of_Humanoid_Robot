@@ -255,8 +255,8 @@
 | [预充（Pre-charge）](../03-electrical-embedded/01-power-system.mdx) | 先经限流电阻给母线电容充电、再闭合主接触器的上电时序 | 先串个电阻慢慢充电，再合总闸 |
 | [CAN（Controller Area Network）](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | 带优先级仲裁的多主广播总线，适合分布式电机和传感器节点 | 谁急谁先说的共享广播线 |
 | [CAN-FD（CAN with Flexible Data-rate）](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | 扩展数据段长度与速率的 CAN，单帧最多 64 字节 | 加强版 CAN，一次能带更多数据 |
-| [EtherCAT（Ethernet for Control Automation Technology）](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | 用主从帧处理组织多伺服节点、周期确定的多轴实时以太网 | 传阅接力册，一圈跑完所有关节同步 |
-| [分布式时钟（Distributed Clocks）](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | EtherCAT 让所有从站共用同一时间基准的机制 | 让所有从站对表，多轴才能同时动作 |
+| [EtherCAT（Ethernet for Control Automation Technology）](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | 用主从帧处理组织多伺服节点、周期确定的多轴实时以太网 | 一帧沿途交换多个关节的数据 |
+| [分布式时钟（Distributed Clocks）](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | 对齐 EtherCAT 从站的本地时间，为同步采样与执行提供时间基准 | 让设备先对表，再按约定时刻采样或执行 |
 | [DDS（Data Distribution Service）](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | 按 Topic 发布订阅、支持 QoS 的软件消息中间件 | 机器人内部的广播电台，按主题收发 |
 | [踝关节 PR/AB 模式（Ankle PR/AB Mode）](../02-mechanics/01-mechanisms-and-dof.mdx) | G1 低层接口区分踝部驱动方式的模式位（`LowCmd_.mode_pr`）：PR 按 pitch/roll 两个串联关节下发，AB 直接下发 A/B 两个并联电机；它与每个关节自己的使能位 `MotorCmd_.mode` 不是同一个字段 | 脚踝有两种说法：当两个关节，还是当两个电机 |
 | [QoS（Quality of Service）](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | 可靠性、持久性、历史深度、截止时间等消息投递策略 | 给每类消息定投递规矩 |

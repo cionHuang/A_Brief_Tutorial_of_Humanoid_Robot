@@ -31,7 +31,7 @@
 | [2.4 接触与稳定性](../02-mechanics/04-foot-contact-and-stability.mdx) | [「支撑多边形」的一句话听懂](../02-mechanics/04-foot-contact-and-stability.mdx#product-read-end) <!-- product-read-end: product-read-end --> | 接触力、摩擦锥与支撑多边形；脚碰到地面不等于不会滑，重心在圈内也不保证动态稳定。 |
 | [3.1 电源系统](../03-electrical-embedded/01-power-system.mdx) | [「峰值功率与持续功率」的一句话听懂](../03-electrical-embedded/01-power-system.mdx#product-read-end) <!-- product-read-end: product-read-end --> | 电压、电流、容量、能量与功率的区别；剩余电量不等于动作瞬间供得上电。 |
 | [3.2 电机、驱动器与伺服控制](../03-electrical-embedded/02-motors-drivers-servo-control.mdx) | [「电机把电流变成力矩」末尾](../03-electrical-embedded/02-motors-drivers-servo-control.mdx#product-read-end) <!-- product-read-end: product-read-end --> | 电机、驱动器与伺服系统各做什么；电流怎样产生轴转矩，伺服与舵机各指什么。 |
-| [3.4 实时通信与总线](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | [「Topic、Publisher 与 Subscriber」的一句话听懂](../03-electrical-embedded/04-real-time-communication-and-buses.mdx#product-read-end) <!-- product-read-end: product-read-end --> | CAN、EtherCAT 与 DDS 各管哪一层；带宽、延迟、抖动与消息约定为什么要分开看。 |
+| [3.4 实时通信与总线](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) | [「带宽够，为什么还会迟到？」的一句话听懂](../03-electrical-embedded/04-real-time-communication-and-buses.mdx#product-read-end) <!-- product-read-end: product-read-end --> | CAN、EtherCAT 与 DDS 各管哪一层；带宽、延迟、抖动与消息约定为什么要分开看。 |
 | [3.6 电气安全与系统保护](../03-electrical-embedded/06-electrical-safety-and-protection.mdx) | [「急停」的一句话听懂](../03-electrical-embedded/06-electrical-safety-and-protection.mdx#product-read-end) <!-- product-read-end: product-read-end --> | 保护为什么要分层；急停要求进入预先定义的安全状态，具体动作不能只靠“急停”这个名称推断。 |
 
 ## 第三步：小脑与大脑（{{stat:routes.product.step3.sections}} 节，{{stat:routes.product.step3.timeText}}）

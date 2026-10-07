@@ -21,7 +21,10 @@ for (const file of files) {
   const answer = html.match(/<aside class="[^"]*\bsection-qa-answer\b[^"]*"[\s\S]*?<\/aside>/)?.[0];
   const qa = answer?.match(/<p class="qa-hint[^"]*"[^>]*>[\s\S]*?<\/p>/)?.[0];
   if (answer) {
-    const expectsHint = file !== '03-electrical-embedded/03-sensors-and-data-acquisition/index.html';
+    const expectsHint = ![
+      '03-electrical-embedded/03-sensors-and-data-acquisition/index.html',
+      '03-electrical-embedded/04-real-time-communication-and-buses/index.html',
+    ].includes(file);
     assert.equal(Boolean(qa), expectsHint, `${file}: unexpected SectionQA return hint visibility`);
   }
   if (qa) {
@@ -50,6 +53,6 @@ for (const file of files) {
   }
 }
 assert.equal(endpoints, 21, 'product route must have 21 real reading endpoints');
-assert.equal(qaLinks, 32, 'all 32 enabled SectionQA return links must use the normalized base');
+assert.equal(qaLinks, 31, 'all 31 enabled SectionQA return links must use the normalized base');
 if (issues.length) { console.error(issues.join('\n')); process.exitCode = 1; }
 else console.log(`PASS: ${files.length} HTML pages, ${links} internal links/anchors, 21 product endpoints, SectionQA base links, production/review isolation.`);

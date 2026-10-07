@@ -1,305 +1,327 @@
 ---
-/**
- * EtherCAT“一帧传阅”交互演示：主站每个周期只发一个数据帧，帧沿链路依次经过
- * 四个从站，每个从站从同一帧里取走自己的输出数据（OUT）、把输入数据（IN）
- * 写回同一帧；一圈跑完，所有从站同时完成一次更新。
- *
- * 教学要点：EtherCAT 不需要主站与每个节点建立独立点对点连接——一帧在环路上
- * “传阅”，从站在帧经过时本地读写属于自己的过程数据（PDO），因此多轴可以
- * 严格同步。
- *
- * 交互：默认静止在主站；点“播放”开始传阅，“暂停”冻结，“单步”推进到下一个
- * 从站中心停住，“复位”回到主站并清空所有从站状态。所有 SVG 图形元素都写在
- * markup 里，JS 只用 requestAnimationFrame 改属性/文本/classList；样式跟随
- * Starlight 明暗主题，并遵循 prefers-reduced-motion。
- *
- * 使用方式（仅限 .mdx 小节）：
- *   import EthercatFrameDemo from '../../../components/EthercatFrameDemo.astro';
- *   <EthercatFrameDemo />
- */
-const STATIONS = [330, 470, 610, 750];
-const STATION_NAMES = ['左髋俯仰', '左膝', '左踝俯仰', '左踝侧摆'];
-
-const GEOM = {
-  masterX: 104,
-  master: { x: 30, y: 80, w: 148, h: 92 },
-  node: { w: 112, h: 92, y: 80 },
-  link: { x0: 178, x1: 850, y: 210 },
-  frame: { w: 76, h: 30, y: 195 },
-  slot: { w: 76, h: 40, y: 268 },
-};
-
-const NODES = STATIONS.map((cx, i) => ({
-  i,
-  cx,
-  boxX: cx - GEOM.node.w / 2,
-  slotX: cx - GEOM.slot.w / 2,
-}));
-
-const CFG = { stations: STATIONS, names: STATION_NAMES, geom: GEOM };
+import { JOINTS } from '../lib/ethercat-demo-model.js';
+const urdfUrl = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}models/g1/g1_29dof.urdf`;
 ---
 
-<figure class="ec-demo" data-ec={JSON.stringify(CFG)}>
-  <svg viewBox="0 0 900 400" role="img" aria-label="EtherCAT 一帧传阅教学示意：主站每周期发一帧，帧沿链路依次经过四个从站，每个从站取走输出数据并把输入数据写回同一帧">
-    <text class="ec-title" x="24" y="28">EtherCAT 一帧传阅（教学示意）</text>
-
-    <!-- 主站 -->
-    <rect class="ec-box ec-box-master" x={GEOM.master.x} y={GEOM.master.y} width={GEOM.master.w} height={GEOM.master.h} rx="10"></rect>
-    <text class="ec-box-name" x={GEOM.masterX} y="121" text-anchor="middle">主站 Master</text>
-    <text class="ec-box-sub" x={GEOM.masterX} y="150" text-anchor="middle">每周期发一帧</text>
-
-    <!-- 主站到链路的竖线 -->
-    <line class="ec-link" x1={GEOM.masterX} y1="172" x2={GEOM.masterX} y2="210"></line>
-
-    <!-- 主干链路 -->
-    <line class="ec-link" x1={GEOM.link.x0} y1={GEOM.link.y} x2={GEOM.link.x1} y2={GEOM.link.y}></line>
-
-    <!-- 4 个从站 -->
-    {NODES.map((n) => (
-      <g class="ec-node-g" data-node={n.i}>
-        <rect class="ec-box ec-node" x={n.boxX} y={GEOM.node.y} width={GEOM.node.w} height={GEOM.node.h} rx="10"></rect>
-        <text class="ec-node-name" x={n.cx} y="121" text-anchor="middle">{STATION_NAMES[n.i]}</text>
-        <text class="ec-node-status" data-status={n.i} x={n.cx} y="150" text-anchor="middle">待访问</text>
-      </g>
-    ))}
-
-    <!-- 帧内数据槽（每个从站一格，被访问后点亮） -->
-    {NODES.map((n) => (
-      <g class="ec-slot-g" data-slot={n.i}>
-        <rect class="ec-slot" x={n.slotX} y={GEOM.slot.y} width={GEOM.slot.w} height={GEOM.slot.h} rx="8"></rect>
-        <text class="ec-slot-label" x={n.cx} y="284" text-anchor="middle">目标</text>
-        <text class="ec-slot-label" x={n.cx} y="302" text-anchor="middle">状态</text>
-      </g>
-    ))}
-
-    <!-- 移动的帧：整组平移，帧中心 x 即 fx -->
-    <g class="ec-frame" data-role="frame" transform="translate(104 0)">
-      <rect class="ec-frame-body" x="-38" y="195" width="76" height="30" rx="8"></rect>
-      <text class="ec-frame-text" x="0" y="216" text-anchor="middle">帧</text>
-      <text class="ec-frame-tag" x="44" y="216">OUT+IN</text>
-    </g>
-
-    <text class="ec-note" x="24" y="352">四个从站（左腿关节驱动器）：主站只发一帧，所有从站按顺序在同一帧上读写。</text>
-  </svg>
-
-  <div class="ec-controls">
-    <button type="button" class="ec-btn ec-play" data-play aria-pressed="false">播放</button>
-    <button type="button" class="ec-btn" data-step>单步</button>
-    <button type="button" class="ec-btn" data-reset>复位</button>
+<figure class="ec-demo" id="ethercat-arms-demo" data-ethercat-arms data-urdf={urdfUrl}>
+  <header class="ec-heading">
+    <span class="ec-eyebrow">一个动作，看懂通信与同步</span>
+    <h4>G1 怎样一起抬起双手？</h4>
+    <p>观察 G1 两侧的肩、肘：指令先后送到，动作怎样同步开始？</p>
+  </header>
+  <ol class="ec-stages" aria-label="演示过程">
+    {['送指令', '等时刻', '抬双手', '看反馈'].map((label, i) => <li data-stage={i}><span>{i + 1}</span><b data-stage-label={i}>{label}</b></li>)}
+  </ol>
+  <div class="ec-controls" aria-label="双手抬起演示操作">
+    <button type="button" class="ec-button ec-primary" data-play aria-pressed="false" disabled>开始抬手</button>
+    <button type="button" class="ec-button" data-step disabled>下一步</button>
+    <button type="button" class="ec-button" data-reset disabled>重来</button>
+    <span class="ec-play-note" data-play-note>可随时暂停，或逐步观察。</span>
   </div>
-
-  <div class="ec-readout">
-    <output class="ec-out ec-out-state" aria-live="polite"></output>
-    <output class="ec-out ec-out-slot" aria-live="polite"></output>
+  <div class="ec-scene">
+    <div class="ec-robot-pane">
+      <span class="ec-mode-badge" data-mode-label>按约定时刻执行</span>
+      <div class="ec-g1-view" data-g1-view role="group" aria-label="G1 三维模型：双臂向前抬起，淡青色手臂表示目标姿态。左右按机器人自身区分。">
+        <div class="ec-loading" data-g1-loading role="status" aria-live="polite"><span data-g1-loading-text>正在加载 G1 模型…</span><button class="ec-button" type="button" data-retry hidden>重新加载模型</button></div>
+        {JOINTS.map((joint, i) => <span class="ec-joint" data-joint={i} aria-hidden="true" hidden>{i + 1}</span>)}
+      </div>
+      <div class="ec-legend"><span><i></i>G1 实际姿态</span><span><i class="ec-ghost-key"></i>目标姿态</span></div>
+      <div class="ec-view-hint"><span>拖动模型，换个角度看</span><button type="button" data-camera disabled>恢复视角</button></div>
+    </div>
+    <div class="ec-story">
+      <span class="ec-eyebrow" data-story-kicker>先看一个问题</span>
+      <h5 data-story-title>收到指令，就一起动了吗？</h5>
+      <p data-story-text>试着让 G1 抬起双手。四个关节会先后收到各自的目标，但可以约好同一个时刻开始执行。</p>
+      <div class="ec-exchange" data-exchange hidden>
+        <div><span data-exchange-label>读出目标</span><strong data-target>55°</strong></div>
+        <div><span>写入状态</span><strong data-feedback>0°</strong></div>
+        <small data-snapshot-note>这是动作前已采集的位置，还不是目标位置。</small>
+      </div>
+      <div class="ec-clock" data-clock>
+        <svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="14"/><path d="M18 9V18L24 22"/></svg>
+        <span data-clock-text>执行时刻已约好，先把目标送到。</span>
+      </div>
+    </div>
   </div>
-
-  <figcaption>
-    玩法：点“播放”看一帧怎么依次经过四个从站；单步可以一站一站看。数值为教学示意。
-  </figcaption>
+  <div class="ec-network">
+    <div class="ec-network-heading"><strong data-network-title>一帧，沿途交换数据</strong><span data-delivery>目标已送达 0 / 4</span></div>
+    <div class="ec-route" aria-hidden="true">
+      {[10, 30, 50, 70, 90].map((left) => <i class="ec-stop" style={`left:${left}%`}></i>)}
+      <span data-packet style="left:10%"><span data-packet-label>帧 →</span></span>
+    </div>
+    <div class="ec-stations">
+      <div class="ec-station ec-master"><b>主站</b><span data-master>备好目标</span></div>
+      {JOINTS.map((joint, i) => <div class="ec-station" data-station={i}><b>{i + 1} {joint.name}</b><span data-station-status={i}>待接收</span></div>)}
+    </div>
+  </div>
+  <span class="ec-sr-only" role="status" aria-live="polite" data-announcement></span>
+  <details class="ec-experiment" data-experiment>
+    <summary>试一试：如果收到指令就开始动呢？</summary>
+    <div class="ec-details-body">
+      <p>切换后重新播放，观察两只手的先后。到达时间差已刻意放大，便于比较两种执行方式。</p>
+      <div class="ec-mode-controls" role="group" aria-label="关节执行方式">
+        <button type="button" class="ec-button" data-mode="synchronized" aria-pressed="true">按约定时刻执行</button>
+        <button type="button" class="ec-button" data-mode="received" aria-pressed="false">收到就执行</button>
+      </div>
+      <p class="ec-experiment-result" data-comparison>指令先后到达，关节也能按同一时刻开始执行。</p>
+    </div>
+  </details>
+  <details class="ec-explanation">
+    <summary>这和分布式时钟有什么关系？</summary>
+    <div class="ec-details-body">
+      <p>EtherCAT 帮助主站与各个驱动器交换数据；分布式时钟对齐设备的本地时间。配合驱动器的同步配置，设备就能按约定时刻采样或执行，不必收到一份数据就立即动作。</p>
+      <p>这里将四个关节的运动都简化为三秒完成，只比较开始执行的时刻。真实动作能否协调、准确，还取决于轨迹规划、控制器和机械系统。</p>
+      <p>角度表示相对起始姿态的转动量，正值表示本次抬手的方向；左右按 G1 自身区分。本例只改变两侧肩部前后摆动和肘部弯曲，其余关节保持不动。图中只选取动作前、后的两帧来讲解；实际运动中，指令与反馈会持续交换，反馈数据也可能在帧到达前就已采集好。</p>
+    </div>
+  </details>
+  <figcaption>采用本书的 G1 模型。通信过程已放慢、时间差已放大；通信方式为教学设定，不代表 G1 实机内部总线。</figcaption>
+  <noscript><p>启用 JavaScript 后可操作。观察要点：一帧依次交换各关节数据，设备按约定时刻开始执行，后续通信带回动作后的状态。</p></noscript>
 </figure>
 
 <script>
-  document.querySelectorAll('.ec-demo').forEach((demo) => {
-    const cfg = JSON.parse(demo.dataset.ec);
-    const stations = cfg.stations;
-    const names = cfg.names;
-    const geom = cfg.geom;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  import { JOINTS, DURATION, sampleDemo, nextCheckpoint } from '../lib/ethercat-demo-model.js';
+  import { createVisibleRaf } from '../lib/visible-raf.js';
 
-    const frameEl = demo.querySelector('[data-role="frame"]');
-    const stateOut = demo.querySelector('.ec-out-state');
-    const slotOut = demo.querySelector('.ec-out-slot');
-    const playBtn = demo.querySelector('[data-play]');
-    const stepBtn = demo.querySelector('[data-step]');
-    const resetBtn = demo.querySelector('[data-reset]');
-    const nodeEls = stations.map((_, i) => demo.querySelector('[data-node="' + i + '"]'));
-    const statusEls = stations.map((_, i) => demo.querySelector('[data-status="' + i + '"]'));
-    const slotEls = stations.map((_, i) => demo.querySelector('[data-slot="' + i + '"]'));
-
-    const ZONE = 30;          // 访问区半宽：从站中心 ±30
-    const SPEED = 240;        // 帧移动速度 px/s
-    const DWELL = 0.7;        // 帧返回主站后的停留时间 s
-    const MASTER_X = geom.masterX;
-    const START_X = geom.link.x0;
-    const END_X = geom.link.x1;
-
-    let fx = MASTER_X;        // 帧中心 x
-    let playing = false;
-    let returned = false;     // 是否刚从链路末端返回主站
-    let dwell = 0;
-    let raf = 0;
-    let last = 0;
-
-    // 状态机：0 待访问 / 1 取目标 / 2 写状态 / 3 已更新（由帧位置纯函数推出）
-    const stateOf = (i) => {
-      const c = stations[i];
-      if (fx < c - ZONE) return 0;
-      if (fx > c + ZONE) return 3;
-      const rel = fx - (c - ZONE);
-      if (rel < (ZONE * 2) / 3) return 1;
-      if (rel < (ZONE * 4) / 3) return 2;
-      return 3;
-    };
-
-    const phaseLabel = (s) => (s === 3 ? '已更新' : s === 2 ? '写状态' : '取目标');
-    const doneCount = () => stations.reduce((n, _, i) => n + (stateOf(i) === 3 ? 1 : 0), 0);
-
-    const describe = () => {
-      if (fx <= MASTER_X + 4) return returned ? '帧返回主站' : '帧在主站';
-      for (let i = 0; i < stations.length; i++) {
-        const c = stations[i];
-        if (fx >= c - ZONE && fx <= c + ZONE) {
-          return '帧到达 ' + names[i] + '：' + phaseLabel(stateOf(i));
-        }
-      }
-      const next = stations.find((c) => c > fx);
-      if (next != null) return '帧在链路中，前往 ' + names[stations.indexOf(next)];
-      return '帧即将返回主站';
-    };
-
-    const render = () => {
-      frameEl.setAttribute('transform', 'translate(' + fx.toFixed(1) + ' 0)');
-      stations.forEach((_, i) => {
-        const s = stateOf(i);
-        nodeEls[i].classList.toggle('ec-node-on', s >= 1);
-        nodeEls[i].classList.toggle('ec-node-done', s >= 3);
-        slotEls[i].classList.toggle('ec-slot-on', s >= 1);
-        slotEls[i].classList.toggle('ec-slot-done', s >= 3);
-        statusEls[i].textContent = s === 3 ? '已更新' : s === 2 ? '写状态…' : s === 1 ? '取目标…' : '待访问';
+  document.querySelectorAll<HTMLElement>('[data-ethercat-arms]').forEach((demo) => {
+    if (demo.dataset.initialized) return;
+    demo.dataset.initialized = 'true';
+    const $ = <T extends Element = HTMLElement>(selector: string) => demo.querySelector<T>(selector)!;
+    const play = $<HTMLButtonElement>('[data-play]'), step = $<HTMLButtonElement>('[data-step]');
+    const viewport = $('[data-g1-view]');
+    let robotView: any = null, modelReady = false, loadingModel = false, disposed = false;
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let time = 0, playing = false, last = 0, mode = 'synchronized', lastStory = '';
+    const loop = createVisibleRaf(demo, { rootMargin: '0px', onEnter: () => { last = 0; void Promise.resolve().then(initModel); } });
+    const setText = (selector: string, text: string) => { const el = $(selector); if (el.textContent !== text) el.textContent = text; };
+    const announce = (message: string) => setText('[data-announcement]', message);
+    const rounded = (n: number) => Math.round(n) + '°';
+    async function initModel() {
+      if (loadingModel || modelReady || disposed) return;
+      loadingModel = true;
+      demo.dataset.modelState = 'loading';
+      $('[data-g1-loading]').hidden = false;
+      $('[data-retry]').hidden = true;
+      setText('[data-g1-loading-text]', '正在加载 G1 模型…');
+      try {
+        const { createG1EthercatView } = await import('../lib/g1-ethercat-view.js');
+        if (disposed) return;
+        const view = await createG1EthercatView(viewport, {
+          urdfUrl: demo.dataset.urdf,
+          onInvalidate: () => loop.schedule(),
+        });
+        if (disposed) { view.dispose(); return; }
+        robotView = view; modelReady = true;
+        demo.dataset.modelState = 'ready';
+        $('[data-g1-loading]').hidden = true;
+        demo.querySelectorAll<HTMLElement>('[data-joint]').forEach((label) => { label.hidden = false; });
+        render();
+      } catch (error) { modelFailure(error); }
+      finally { loadingModel = false; }
+    }
+    function modelFailure(error: unknown) {
+      if (disposed) return;
+      stop(); robotView?.dispose(); robotView = null; modelReady = false;
+      demo.dataset.modelState = 'error';
+      $('[data-g1-loading]').hidden = false;
+      $('[data-retry]').hidden = false;
+      setText('[data-g1-loading-text]', 'G1 模型暂时无法显示，请重试。');
+      console.error('G1 抬手演示加载失败：', error);
+      render();
+    }
+    function render() {
+      const s = sampleDemo(time, mode), sync = mode === 'synchronized';
+      demo.dataset.stage = s.stage; demo.dataset.mode = mode;
+      const feedback = s.stage === 'feedback' || s.stage === 'done';
+      // Keep the last visited station's explanation until the next visit, so the
+      // text does not flicker back to a generic message between adjacent nodes.
+      const outbound = s.packet.leg === 'outbound' || s.packet.leg === 'feedback-outbound';
+      const station = outbound ? JOINTS.findLastIndex((j) => s.packet.progress + 1e-8 >= j.position) : -1;
+      const joint = station >= 0 ? s.joints[station] : null;
+      robotView?.update(s, station);
+      robotView?.render();
+      s.joints.forEach((j, i) => {
+        const state = j.motionProgress >= 1 ? 'done' : j.active ? 'moving' : j.received ? 'waiting' : 'idle';
+        $(`[data-joint="${i}"]`).setAttribute('data-state', state);
+        $(`[data-joint="${i}"]`).classList.toggle('ec-highlight', i === station);
+        $(`[data-station="${i}"]`).setAttribute('data-state', state);
+        $(`[data-station="${i}"]`).classList.toggle('ec-highlight', i === station);
+        setText(`[data-station-status="${i}"]`, i === station ? feedback ? '写入状态' : '取出目标' : state === 'done' ? '已到位' : state === 'moving' ? '抬手中' : state === 'waiting' ? '等时刻' : '待接收');
       });
-      stateOut.textContent = describe() + (reduced ? '　（系统已开启减弱动态效果：保持静止，可单步查看）' : '');
-      slotOut.textContent = '已更新 ' + doneCount() + ' / ' + stations.length + ' 个从站';
-    };
-
-    const syncPlayLabel = () => {
-      playBtn.textContent = playing ? '暂停' : '播放';
-      playBtn.setAttribute('aria-pressed', String(playing));
-    };
-
-    const stop = () => {
-      playing = false;
-      if (raf) cancelAnimationFrame(raf);
-      raf = 0;
-    };
-
-    const advance = (dt) => {
-      if (dwell > 0) {
-        dwell -= dt;
-        if (dwell <= 0) {
-          dwell = 0;
-          returned = false;
-          fx = START_X;
-        }
-        return;
-      }
-      fx += SPEED * dt;
-      if (fx >= END_X) {
-        fx = MASTER_X;   // 回到主站，准备下一轮
-        returned = true;
-        dwell = DWELL;
-      }
-    };
-
-    const tick = (ts) => {
-      if (!last) last = ts;
-      const dt = Math.min((ts - last) / 1000, 0.05);
-      last = ts;
-      advance(dt);
-      render();
-      if (playing) {
-        raf = requestAnimationFrame(tick);
+      const returning = s.packet.leg.includes('return');
+      const p = s.packet.leg === 'home' ? 0 : returning ? 1 - s.packet.progress : s.packet.progress;
+      const px = p <= .8 ? 52 + p * 520 : 468 + (p - .8) * 160;
+      $('[data-packet]').style.left = (px / 520 * 100) + '%';
+      $('[data-packet]').setAttribute('data-feedback', String(feedback));
+      setText('[data-packet-label]', s.packet.leg === 'home' ? '帧' : returning ? '← 帧' : '帧 →');
+      setText('[data-delivery]', feedback ? s.reportReady ? '主站已收到动作后的状态' : '后续一帧，带回新状态' : `目标已送达 ${s.receivedCount} / 4`);
+      setText('[data-network-title]', feedback ? '后续通信：确认动作结果' : '一帧，沿途交换数据');
+      setText('[data-master]', s.reportReady ? '收到新状态' : time >= 6.5 ? '已收首帧' : time > .5 ? '等帧返回' : '备好目标');
+      let title = '', text = '', kicker = '';
+      if (s.stage === 'ready') {
+        kicker = sync ? '先看一个问题' : '对照：收到就执行';
+        title = sync ? '收到指令，就一起动了吗？' : '先收到的关节，先开始动';
+        text = sync ? '试着让 G1 抬起双手。四个关节会先后收到各自的目标，但可以约好同一个时刻开始执行。' : '用同样的目标再抬一次手。这次各关节不等约定时刻，收到目标就开始动作。';
+      } else if (s.stage === 'exchange') {
+        kicker = sync || s.receivedCount === 0 ? '① 送指令 · 主站 → 各个驱动器' : '② 先后动 · 指令陆续送到';
+        title = joint ? `${station + 1} ${JOINTS[station].name}：取目标，写状态` : returning ? '带着动作前的状态返回' : '一帧依次经过四个驱动器';
+        text = joint ? sync ? '它读出自己的目标，把已采集的位置写进帧里。指令先存好，等约定时刻再动。' : '它读出自己的目标，就开始动作。留意机器人左右两侧的差别。' : sync ? '先收到的关节继续等待；数据先后到达，不妨碍按同一时刻开始执行。' : s.receivedCount === 4 ? '各关节开始的时刻不同。这一帧带回的，仍是它们各自动作前的位置。' : s.receivedCount === 0 ? '指令正在路上。留意第一个收到目标的关节。' : '先收到的已经在动，后收到的还在等待。传输的先后变成了动作的先后。';
+      } else if (s.stage === 'wait') {
+        kicker = '② 等时刻';
+        title = sync ? '目标已到齐，还没到执行时刻' : '最后收到的关节还在追赶';
+        text = sync ? '四个驱动器都准备好了。它们各自看着已对齐的时钟，等预先约好的时刻。' : '虽然目标都已送达，两只手的动作进度仍然不同。';
+      } else if (s.stage === 'move') {
+        kicker = sync ? '③ 抬双手' : '② 先后动';
+        title = sync ? '时间到了，一起开始执行' : '双手先后抬起，最后到位';
+        text = sync ? '四个关节按同一时刻开始运动，两只手一起抬向淡青色目标姿态。' : '与前一种方式相比，目标不变，但各关节开始的时刻不同。最终姿态一致，不代表动作过程同步。';
+      } else if (s.stage === 'settled') {
+        kicker = sync ? '③ 抬双手 · 已到位' : '③ 都到位';
+        title = '手已经抬起，再看主站收到什么';
+        text = '先前那一帧记录的是动作前的位置。接下来，看后续通信怎样把抬手后的状态带回主站。';
+      } else if (s.stage === 'feedback') {
+        kicker = '④ 看反馈 · 驱动器 → 主站';
+        title = joint ? `${station + 1} ${JOINTS[station].name}：写入新状态` : returning ? '把动作后的状态带回主站' : '再看后续的一帧';
+        text = '这一帧带回的是动作后的状态。实际运动中，主站和驱动器会持续交换数据。';
       } else {
-        raf = 0;
+        kicker = '④ 看反馈 · 本次演示结束';
+        title = '主站收到新状态，确认已经抬起';
+        text = sync ? '送到目标、按时执行、反馈结果，这三件事配合起来，才完成一次协调的动作。' : '两种方式都能到达目标，但“收到就执行”会把到达先后带进动作过程。';
       }
-    };
-
-    const start = () => {
-      if (raf) return;
-      if (fx <= MASTER_X + 4) {
-        fx = START_X;
-        returned = false;
+      setText('[data-story-kicker]', kicker); setText('[data-story-title]', title); setText('[data-story-text]', text);
+      $('[data-exchange]').hidden = !joint;
+      if (joint) {
+        setText('[data-exchange-label]', feedback ? '保持目标' : '读出目标');
+        setText('[data-target]', rounded(joint.target));
+        setText('[data-feedback]', rounded(joint.snapshot ?? 0));
+        setText('[data-snapshot-note]', feedback ? '这是动作后的转动量，随这一帧送回主站。角度均从起始姿态算起。' : '这是动作前的状态，还没开始转动。角度均从起始姿态算起。');
       }
-      last = 0;
-      playing = true;
-      raf = requestAnimationFrame(tick);
-    };
-
-    playBtn.addEventListener('click', () => {
-      if (reduced) return;
-      if (playing) stop(); else start();
-      syncPlayLabel();
+      $('[data-clock]').hidden = !sync || feedback;
+      setText('[data-clock-text]', time >= 7 ? '约定时刻已到，开始执行。' : '执行时刻已约好，先把目标送到。');
+      setText('[data-mode-label]', sync ? '按约定时刻执行' : '对照：收到就执行');
+      setText('[data-stage-label="1"]', sync ? '等时刻' : '先后动');
+      setText('[data-stage-label="2"]', sync ? '抬双手' : '都到位');
+      const current = !sync ? feedback ? 3 : s.motionComplete ? 2 : s.receivedCount > 0 ? 1 : 0
+        : s.stage === 'ready' || s.stage === 'exchange' ? 0 : s.stage === 'wait' ? 1 : s.stage === 'move' || s.stage === 'settled' ? 2 : 3;
+      demo.querySelectorAll('[data-stage]').forEach((el) => { const on = Number(el.getAttribute('data-stage')) === current; el.classList.toggle('ec-current', on); if (on) el.setAttribute('aria-current', 'step'); else el.removeAttribute('aria-current'); });
+      setText('[data-comparison]', sync ? '指令先后到达，关节也能按同一时刻开始执行。' : '左肩先收到、先动作，右肘后收到、后动作。这里放大的时间差不代表真实总线速度。');
+      demo.querySelectorAll('[data-mode]').forEach((el) => { if (el.tagName === 'BUTTON') el.setAttribute('aria-pressed', String(el.getAttribute('data-mode') === mode)); });
+      play.textContent = motion.matches ? '逐步看抬手' : playing ? '暂停' : time >= DURATION ? '再看一遍' : time > 0 ? '继续' : '开始抬手';
+      play.setAttribute('aria-pressed', String(playing)); play.disabled = !modelReady; step.disabled = !modelReady || time >= DURATION;
+      $<HTMLButtonElement>('[data-reset]').disabled = !modelReady;
+      $<HTMLButtonElement>('[data-camera]').disabled = !modelReady;
+      setText('[data-play-note]', motion.matches ? '已减少动态效果；每次点击前进一幕。' : playing ? '正在播放，可随时暂停。' : time >= DURATION ? '可展开下方对照，再试一次。' : '可随时暂停，或逐步观察。');
+      if (title !== lastStory) { lastStory = title; announce(title + '。' + text); }
+      viewport.setAttribute('aria-label', `G1 三维抬手演示：${title}。相对起始姿态转动量：${s.joints.map((j, i) => JOINTS[i].name + ' ' + rounded(j.angle)).join('，')}。淡青色手臂为目标姿态。`);
+    }
+    function stop() { playing = false; last = 0; loop.stop(); }
+    function reset() { stop(); time = 0; render(); }
+    function advance() { stop(); time = nextCheckpoint(time); render(); }
+    loop.onFrame((now: number) => {
+      if (!playing) { robotView?.render(); return false; }
+      const dt = last && now - last < 200 ? Math.min((now - last) / 1000, .05) : 0;
+      last = now; time = Math.min(DURATION, time + dt);
+      if (time >= DURATION) stop();
+      render(); return playing;
+    });
+    play.addEventListener('click', () => {
+      if (time >= DURATION) time = 0;
+      if (motion.matches) { advance(); return; }
+      if (playing) { stop(); announce('演示已暂停。'); } else { playing = true; last = 0; loop.start(); announce('开始观察双手抬起。'); }
       render();
     });
-
-    stepBtn.addEventListener('click', () => {
-      stop();
-      syncPlayLabel();
-      const nextIdx = stations.findIndex((c) => c > fx + 1);
-      if (nextIdx === -1) {
-        fx = MASTER_X;   // 最后一站之后回到主站
-        returned = true;
-      } else {
-        fx = stations[nextIdx];
-        returned = false;
-      }
-      dwell = 0;
-      render();
-    });
-
-    resetBtn.addEventListener('click', () => {
-      stop();
-      syncPlayLabel();
-      fx = MASTER_X;
-      returned = false;
-      dwell = 0;
-      render();
-    });
-
-    if (reduced) playBtn.disabled = true;
-    syncPlayLabel();
+    step.addEventListener('click', advance);
+    $('[data-reset]').addEventListener('click', () => { reset(); robotView?.resetCamera(); loop.schedule(); });
+    $('[data-camera]').addEventListener('click', () => { robotView?.resetCamera(); loop.schedule(); });
+    $('[data-retry]').addEventListener('click', () => { void initModel(); });
+    demo.querySelectorAll<HTMLButtonElement>('button[data-mode]').forEach((button) => button.addEventListener('click', () => { mode = button.dataset.mode!; reset(); }));
+    $('[data-experiment]').addEventListener('toggle', (event) => { if (!(event.currentTarget as HTMLDetailsElement).open && mode !== 'synchronized') { mode = 'synchronized'; reset(); } });
+    const motionChange = () => { if (motion.matches) stop(); render(); };
+    motion.addEventListener('change', motionChange);
+    const leave = () => { stop(); render(); };
+    window.addEventListener('pagehide', leave);
+    document.addEventListener('astro:before-swap', () => { disposed = true; robotView?.dispose(); robotView = null; loop.dispose(); motion.removeEventListener('change', motionChange); window.removeEventListener('pagehide', leave); }, { once: true });
     render();
   });
 </script>
 
 <style>
-  .ec-demo { margin: 1.5rem 0; }
-  .ec-demo svg { display: block; width: 100%; max-width: 900px; height: auto; margin: 0 auto; }
-
-  .ec-title { fill: var(--sl-color-text); font-size: 24px; font-weight: 600; }
-  .ec-note { fill: var(--sl-color-gray-2); font-size: 17px; }
-
-  .ec-box { fill: light-dark(rgba(148, 163, 184, 0.14), rgba(148, 163, 184, 0.12)); stroke: var(--sl-color-gray-4); stroke-width: 1.6; }
-  .ec-box-master { stroke: var(--sl-color-accent); }
-  .ec-box-name { fill: var(--sl-color-text); font-size: 21px; font-weight: 600; }
-  .ec-box-sub { fill: var(--sl-color-gray-2); font-size: 17px; }
-
-  .ec-node-name { fill: var(--sl-color-text); font-size: 20px; font-weight: 600; }
-  .ec-node-status { fill: var(--sl-color-gray-2); font-size: 17px; }
-  .ec-node-g.ec-node-on .ec-node { stroke: var(--sl-color-accent); stroke-width: 2.4; }
-  .ec-node-g.ec-node-done .ec-node { fill: light-dark(rgba(79, 70, 229, 0.12), rgba(139, 131, 255, 0.16)); stroke: var(--sl-color-accent); }
-  .ec-node-g.ec-node-on .ec-node-name { fill: var(--sl-color-accent); }
-  .ec-node-g.ec-node-on .ec-node-status { fill: var(--sl-color-accent); font-weight: 600; }
-
-  .ec-link { stroke: var(--sl-color-gray-3); stroke-width: 2; }
-
-  .ec-slot { fill: light-dark(rgba(148, 163, 184, 0.12), rgba(148, 163, 184, 0.1)); stroke: var(--sl-color-gray-4); stroke-width: 1.4; }
-  .ec-slot-label { fill: var(--sl-color-gray-2); font-size: 17px; }
-  .ec-slot-g.ec-slot-on .ec-slot { stroke: var(--sl-color-accent); stroke-width: 2.2; }
-  .ec-slot-g.ec-slot-on .ec-slot-label { fill: var(--sl-color-text); }
-  .ec-slot-g.ec-slot-done .ec-slot { fill: light-dark(rgba(79, 70, 229, 0.14), rgba(139, 131, 255, 0.18)); stroke: var(--sl-color-accent); }
-  .ec-slot-g.ec-slot-done .ec-slot-label { font-weight: 600; }
-
-  .ec-frame-body { fill: light-dark(rgba(79, 70, 229, 0.16), rgba(139, 131, 255, 0.22)); stroke: var(--sl-color-accent); stroke-width: 2.2; }
-  .ec-frame-text { fill: var(--sl-color-text); font-size: 20px; font-weight: 600; }
-  .ec-frame-tag { fill: var(--sl-color-gray-2); font-size: 17px; }
-
-  .ec-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 0.9rem; max-width: 900px; margin: 0.55rem auto 0; }
-  .ec-btn { display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; margin: 0; padding: 0 0.85rem; box-sizing: border-box; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
-  .ec-btn[aria-pressed='true'] { border-color: var(--sl-color-accent); color: var(--sl-color-accent); background: light-dark(rgba(79, 70, 229, 0.08), rgba(139, 131, 255, 0.14)); font-weight: 600; }
-  .ec-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-  .ec-readout { max-width: 900px; margin: 0.5rem auto 0; font-size: 0.9rem; color: var(--sl-color-text); line-height: 1.7; }
-  .ec-out { display: block; white-space: nowrap; overflow-x: auto; height: 1.7em; line-height: 1.7; }
-  .ec-readout output { color: var(--sl-color-accent); font-weight: 600; }
-  .ec-demo figcaption { max-width: 900px; margin: 0.6rem auto 0; color: var(--sl-color-gray-2); font-size: 0.9rem; line-height: 1.65; }
+  .ec-demo { --ec-accent: #087e91; --ec-soft: #e9f5f6; --ec-amber: #a65d00; --ec-line: #c7d4df; --ec-ink: #233d54; --ec-metal: #e7eef3; margin: 1.4rem 0; padding: 1.2rem; border: 1px solid var(--sl-color-gray-5); border-radius: 16px; background: var(--sl-color-bg); color: var(--sl-color-text); font-size: .9rem; }
+  :global([data-theme='dark']) .ec-demo { --ec-accent: #62d5dd; --ec-soft: #152f37; --ec-amber: #ffc76d; --ec-line: #405668; --ec-ink: #c3d8e8; --ec-metal: #2c4255; }
+  .ec-demo *, .ec-demo * + * { box-sizing: border-box; margin: 0; }
+  .ec-heading h4 { margin: .3rem 0 .45rem; font-size: 1.2rem; line-height: 1.45; }
+  .ec-heading p { margin: 0; color: var(--sl-color-gray-2); line-height: 1.65; }
+  .ec-eyebrow { color: var(--ec-accent); font-size: .76rem; font-weight: 650; letter-spacing: .04em; }
+  .ec-stages { display: grid; grid-template-columns: repeat(4, 1fr); gap: .45rem; margin: 1.1rem 0; padding: 0; list-style: none; }
+  .ec-stages li { display: flex; align-items: center; justify-content: center; gap: .4rem; padding: .5rem .15rem; border-radius: 8px; background: var(--sl-color-gray-7, var(--sl-color-gray-6)); color: var(--sl-color-gray-2); font-size: .8rem; }
+  .ec-stages span { font-size: .7rem; opacity: .75; }
+  .ec-stages .ec-current { background: var(--ec-soft); color: var(--ec-accent); box-shadow: inset 0 -2px var(--ec-accent); }
+  .ec-scene { margin-top: .8rem; display: grid; grid-template-columns: 1.08fr 1fr; gap: .7rem; align-items: center; }
+  .ec-robot-pane { position: relative; min-width: 0; border-radius: 12px; background: linear-gradient(155deg, var(--ec-soft), transparent 80%); padding: .7rem .35rem; }
+  .ec-mode-badge { display: block; text-align: center; font-size: .76rem; color: var(--ec-accent); }
+  .ec-g1-view { position: relative; width: 100%; height: 365px; overflow: hidden; border-radius: 10px; }
+  .ec-g1-view :global(canvas) { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; }
+  .ec-loading { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .8rem; padding: 1rem; text-align: center; background: var(--ec-soft); font-size: .8rem; color: var(--ec-accent); }
+  .ec-joint { position: absolute; z-index: 2; width: 23px; height: 23px; transform: translate(-50%, -50%); display: grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--ec-ink); background: var(--sl-color-bg); color: var(--ec-ink); font: 700 12px/1 system-ui, sans-serif; pointer-events: none; }
+  .ec-joint.ec-highlight { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ec-amber) 35%, transparent); border-color: var(--ec-amber); }
+  .ec-joint[data-state='waiting'] { border-color: var(--ec-amber); }
+  .ec-joint[data-state='moving'], .ec-joint[data-state='done'] { background: var(--ec-soft); border-color: var(--ec-accent); }
+  .ec-view-hint { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .6rem; margin-top: .45rem; font-size: .7rem; color: var(--sl-color-gray-2); }
+  .ec-view-hint button { cursor: pointer; border: 1px solid var(--ec-line); border-radius: 6px; background: var(--sl-color-bg); color: inherit; padding: .3rem .5rem; font: inherit; min-height: 30px; }
+  .ec-view-hint button:focus-visible { outline: 2px solid var(--ec-accent); outline-offset: 2px; }
+  .ec-legend { display: flex; justify-content: center; gap: 1rem; font-size: .73rem; color: var(--sl-color-gray-2); }
+  .ec-legend span { display: inline-flex; align-items: center; gap: .4rem; }
+  .ec-legend i { width: 17px; height: 6px; border: 1px solid var(--ec-ink); background: var(--ec-metal); border-radius: 3px; }
+  .ec-legend .ec-ghost-key { background: color-mix(in srgb, var(--ec-accent) 25%, transparent); border: 1px solid var(--ec-accent); }
+  .ec-story { padding: .75rem; min-width: 0; }
+  .ec-story h5 { font-size: 1.05rem; line-height: 1.6; margin: .4rem 0 .55rem; }
+  .ec-story p { font-size: .87rem; line-height: 1.85; margin: 0; color: var(--sl-color-gray-2); }
+  .ec-exchange { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-top: .8rem; }
+  .ec-exchange div { padding: .4rem .6rem; border-radius: 8px; background: var(--ec-soft); }
+  .ec-exchange span { display: block; font-size: .72rem; color: var(--sl-color-gray-2); }
+  .ec-exchange strong { display: block; font-size: 1.35rem; color: var(--ec-accent); }
+  .ec-exchange small { grid-column: 1 / -1; font-size: .72rem; line-height: 1.6; color: var(--sl-color-gray-2); }
+  .ec-clock { display: flex; align-items: center; gap: .6rem; padding-top: .8rem; margin-top: .8rem; border-top: 1px solid var(--ec-line); font-size: .75rem; color: var(--ec-accent); }
+  .ec-clock svg { flex: 0 0 28px; width: 28px; fill: none; stroke: currentColor; stroke-width: 2; }
+  .ec-network { margin-top: .8rem; padding: .8rem 0 .6rem; border-top: 1px solid var(--ec-line); border-bottom: 1px solid var(--ec-line); }
+  .ec-network-heading { display: flex; justify-content: space-between; gap: .4rem; align-items: baseline; padding: 0 .25rem; font-size: .8rem; }
+  .ec-network-heading span { color: var(--sl-color-gray-2); font-size: .72rem; }
+  .ec-route { position: relative; width: 100%; height: 48px; }
+  .ec-route::before { content: ''; position: absolute; top: 23px; left: 10%; right: 4%; height: 2px; background: var(--ec-line); }
+  .ec-stop { position: absolute; top: 19px; width: 10px; height: 10px; border: 2px solid var(--ec-line); border-radius: 50%; background: var(--sl-color-bg); transform: translateX(-50%); }
+  [data-packet] { position: absolute; top: 10px; transform: translateX(-50%); padding: 3px 8px; border-radius: 7px; background: var(--ec-accent); color: var(--sl-color-bg); font: 650 12px/22px system-ui, sans-serif; white-space: nowrap; }
+  .ec-stations { display: grid; grid-template-columns: repeat(5, 1fr); gap: .3rem; }
+  .ec-station { text-align: center; padding: .4rem .1rem; border: 1px solid transparent; border-radius: 8px; }
+  .ec-station b { display: block; font-size: .8rem; }
+  .ec-station span { display: block; color: var(--sl-color-gray-2); font-size: .72rem; margin-top: .2rem; }
+  .ec-station.ec-highlight { border-color: var(--ec-amber); background: color-mix(in srgb, var(--ec-amber) 9%, transparent); }
+  .ec-station[data-state='moving'], .ec-station[data-state='done'] { background: var(--ec-soft); }
+  .ec-controls, .ec-mode-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .9rem; }
+  .ec-button { appearance: none; border: 1px solid var(--ec-line); border-radius: 8px; background: var(--sl-color-bg); color: var(--sl-color-text); padding: .58rem .85rem; min-height: 42px; font: inherit; font-size: .82rem; cursor: pointer; }
+  .ec-button:hover { border-color: var(--ec-accent); }
+  .ec-button:focus-visible, summary:focus-visible { outline: 2px solid var(--ec-accent); outline-offset: 3px; }
+  .ec-primary, .ec-mode-controls [aria-pressed='true'] { background: var(--ec-accent); color: var(--sl-color-bg); border-color: var(--ec-accent); }
+  .ec-button:disabled { opacity: .5; cursor: default; }
+  .ec-play-note { color: var(--sl-color-gray-2); font-size: .72rem; }
+  .ec-demo details { padding: 0; margin-top: .8rem; border: 1px solid var(--ec-line); border-radius: 9px; overflow: hidden; }
+  .ec-demo summary { padding: .75rem; font-size: .83rem; cursor: pointer; }
+  .ec-details-body { padding: .1rem .85rem .8rem; }
+  .ec-details-body p { font-size: .81rem; line-height: 1.85; margin: .45rem 0; color: var(--sl-color-gray-2); }
+  .ec-details-body .ec-experiment-result { color: var(--ec-accent); }
+  .ec-demo figcaption { margin-top: .8rem; color: var(--sl-color-gray-2); font-size: .72rem; line-height: 1.7; text-align: left; }
+  .ec-demo [hidden] { display: none !important; }
+  .ec-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  @media (max-width: 600px) {
+    .ec-demo { padding: .8rem; }
+    .ec-scene { grid-template-columns: 1fr; gap: .2rem; }
+    .ec-g1-view { height: 340px; }
+    .ec-story { padding: .6rem .2rem; }
+    .ec-story h5 { font-size: 1rem; }
+    .ec-stages { gap: .25rem; }
+    .ec-stages li { gap: .25rem; font-size: .72rem; }
+    .ec-network-heading { display: block; }
+    .ec-network-heading span { display: block; margin-top: .2rem; }
+    .ec-stations { gap: .1rem; }
+    .ec-station b { font-size: .7rem; }
+    .ec-station span { font-size: .65rem; }
+    .ec-play-note { flex-basis: 100%; }
+  }
 </style>
