@@ -1,19 +1,22 @@
 ---
-/** One joint, three continuously operating feedback loops. Teaching geometry and
- * joint-referred model; no claim about G1 firmware or hardware parameters. */
+/** One G1 elbow, three continuously operating feedback loops. Controller and
+ * electrical/mechanical parameters are teaching values, not G1 specifications. */
+const baseUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const urdfUrl = `${baseUrl}models/g1/g1_29dof.urdf`;
 ---
-<figure class="sc-demo" data-state="loading">
+<figure class="sc-demo" data-state="loading" data-urdf-url={urdfUrl}>
   <div class="sc-heading">
     <div><strong>三个环怎样一起抬起前臂？</strong><p>先抬起，再放上重物，观察前臂怎样回到目标位置。</p></div>
-    <span class="sc-model-label">单关节教学模型</span>
+    <span class="sc-model-label">G1 左肘 · 教学模型</span>
   </div>
   <div class="sc-scene-meta">
     <div class="sc-angle-badge"><span>目标 <b data-target>0°</b></span><span>实际 <b data-angle>0.0°</b></span></div>
-    <div class="sc-scene-note">上臂固定 · 只观察肘关节</div>
+    <div class="sc-scene-note">上臂固定 · 角度从下垂起算</div>
   </div>
-  <div class="sc-viewport" role="img" aria-label="斜侧视角的机械臂，上臂固定，前臂绕肘关节转动；浅青色轮廓表示目标位置。">
-    <div class="sc-loading" data-loading>正在准备机械臂…</div>
+  <div class="sc-viewport" role="group" aria-label="G1 左臂：上臂固定，前臂绕肘关节转动；浅青色轮廓表示目标位置。可拖动旋转视角。">
+    <div class="sc-loading" data-loading role="status" aria-live="polite"><span data-loading-message>正在加载 G1 左臂…</span><button type="button" class="sc-button" data-retry hidden>重新加载</button></div>
   </div>
+  <div class="sc-view-tools"><span>拖动可换个角度观察</span><button type="button" class="sc-button" data-reset-view disabled>重置视角</button></div>
   <div class="sc-legend"><i></i> 实际前臂 <i class="sc-ghost-key"></i> 目标轮廓 <i class="sc-weight-key"></i> 重物</div>
   <div class="sc-controls" aria-label="机械臂演示操作">
     <button type="button" data-raise class="sc-button sc-primary" disabled>抬起前臂</button>
@@ -52,8 +55,8 @@
       <text x="42" y="157">6 秒前</text><text x="620" y="157" text-anchor="end">现在</text>
     </svg>
     <p class="sc-chart-key"><span>实线：实际角度</span><span>虚线：目标角度</span></p>
-    <p>这里模拟的是有重力的单关节机械臂。位置环给出速度目标，速度环采用 PI 控制，电流环通过平均绕组电压调节电流；绕组电阻、电感和反电动势共同影响电流变化。速度环的积分作用让前臂在静止托物时仍能保持出力。</p>
-    <p>角度从前臂竖直下垂时的 0° 起算。电流、电压和力矩常数均按包含传动的等效模型计算，不能用来推断真实电机或 G1 的参数。此处展示三环级联，不代表所有驱动器都采用相同结构。</p>
+    <p>这里用 G1 左臂模型演示一个有重力的肘关节。位置环给出速度目标，速度环采用 PI 控制，电流环通过平均绕组电压调节电流；绕组电阻、电感和反电动势共同影响电流变化。速度环的积分作用让前臂在静止托物时仍能保持出力。</p>
+    <p>G1 模型提供外形和关节运动关系；臂长、质量、负载和电气参数采用简化教学值。角度从图中的下垂姿态起算，不是接口里的关节坐标。此处展示三环级联，不代表所有驱动器都采用相同结构。</p>
   </details>
   <figcaption>观察重点：放上重物时，前臂略微下沉，控制器增加出力，随后回到目标附近。</figcaption>
 </figure>
@@ -75,9 +78,8 @@
     let history = [{ t: 0, angle: 0, target: 0 }];
     let running = false, paused = false, ready = false, disposed = false, loading = false;
     let last = 0, lastReadout = -1, lastSample = -1, actionAt = 0, action = 'initial';
-    let renderer: any, scene: any, camera: any, arm: any, ghost: any, weight: any, pushArrow: any;
-    let materials: any, resizeObserver: ResizeObserver, themeObserver: MutationObserver;
-    let webglFailed = false;
+    let armView: any = null;
+    const urdfUrl = demo.dataset.urdfUrl || '';
     const details = demo.querySelector('details') as HTMLDetailsElement;
 
     const fixed = (n: number, digits = 1) => (Math.abs(n) < .5 * 10 ** -digits ? 0 : n).toFixed(digits);
@@ -91,12 +93,14 @@
     }
     function controls() {
       button('raise').disabled = !ready || state.target > 0;
-      button('weight').disabled = !ready || state.target === 0;
+      const canAddWeight = state.target > 0 && Math.abs(state.angle - state.target) < .08 && Math.abs(state.speed) < .12;
+      button('weight').disabled = !ready || (!state.payload && !canAddWeight);
+      button('reset-view').disabled = !ready;
       button('push').disabled = !ready || state.target === 0;
       button('reset').disabled = !ready;
       button('pause').disabled = !ready || reduced.matches || (!running && !paused);
       button('pause').textContent = paused ? '继续' : '暂停';
-      button('weight').textContent = state.payload ? '移除重物' : '放上重物';
+      button('weight').textContent = state.payload ? '移除重物' : state.target > 0 && !canAddWeight ? '抬稳后放重物' : '放上重物';
       button('weight').setAttribute('aria-pressed', String(state.payload));
     }
     function readout() {
@@ -108,21 +112,14 @@
       el('current').textContent = fixed(state.current, 2) + ' A';
       el('voltage').textContent = fixed(state.voltage, 2) + ' V';
       // Readable state in the accessible name; live announcements are reserved for actions.
-      viewport.setAttribute('aria-label', `机械臂教学演示：目标 ${fixed(state.target * deg, 0)} 度，实际 ${fixed(state.angle * deg)} 度，${state.payload ? '托着重物' : '空载'}。三个控制环持续共同工作。`);
-      updateChart();
+      viewport.setAttribute('aria-label', `G1 左肘教学演示：目标 ${fixed(state.target * deg, 0)} 度，实际 ${fixed(state.angle * deg)} 度，${state.payload ? '托着重物' : '空载'}。三个控制环持续共同工作。`);
+      updateChart(); controls();
     }
     function draw() {
-      if (!renderer) return;
-      arm.rotation.z = state.angle;
-      ghost.rotation.z = state.target;
-      ghost.visible = state.target > 0;
-      weight.visible = state.payload;
-      pushArrow.visible = state.time < state.pushUntil;
-      if (pushArrow.visible) {
-        const x = .65 * Math.sin(state.angle), y = 1.05 - .65 * Math.cos(state.angle);
-        pushArrow.position.set(x, y + .52, .1);
-      }
-      renderer.render(scene, camera);
+      if (!armView) return;
+      armView.update({ angle: state.angle, target: state.target, payload: state.payload,
+        pushing: state.time < state.pushUntil, effort: state.current / SERVO_ARM.currentLimit });
+      armView.render();
     }
     function simulate(seconds: number) {
       const count = Math.ceil(seconds / .01), dt = seconds / count;
@@ -187,7 +184,7 @@
       loop.stop(); state = createServoArmState(); history = [{ t: 0, angle: 0, target: 0 }];
       lastSample = lastReadout = -1; last = 0; running = paused = false; action = 'initial';
       el('status').textContent = '点击“抬起前臂”，把前臂从下垂抬到水平。';
-      controls(); readout(); draw();
+      armView?.resetCamera(); controls(); readout(); draw();
     });
     details.addEventListener('toggle', updateChart);
     const motionChange = () => {
@@ -196,101 +193,33 @@
     };
     reduced.addEventListener('change', motionChange);
 
-    function applyTheme() {
-      if (!materials) return;
-      const dark = document.documentElement.dataset.theme === 'dark';
-      materials.body.color.set(dark ? '#93a4b9' : '#52647a');
-      materials.trim.color.set(dark ? '#dce8f5' : '#d6e0eb');
-      materials.joint.color.set(dark ? '#27364b' : '#24354e');
-      materials.floor.color.set(dark ? '#233043' : '#e3e9f1');
-      draw();
-    }
     async function init() {
-      if (loading || disposed || ready || webglFailed) return;
-      loading = true;
+      if (loading || disposed || ready) return;
+      loading = true; demo.dataset.state = 'loading';
+      el('loading').hidden = false; el('retry').hidden = true;
+      el('loading-message').textContent = '正在加载 G1 左臂…';
       try {
-        const THREE = await import('three');
+        const { createG1ArmView } = await import('../lib/g1-arm-view.js');
         if (disposed) return;
-        scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera(34, 1, .1, 30);
-        camera.position.set(1.6, 1.55, 3.3); camera.lookAt(.22, 1.05, 0);
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.outputColorSpace = THREE.SRGBColorSpace;
-        renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
-        renderer.domElement.setAttribute('aria-hidden', 'true'); viewport.prepend(renderer.domElement);
-        materials = {
-          body: new THREE.MeshStandardMaterial({ color: '#52647a', roughness: .45, metalness: .5 }),
-          trim: new THREE.MeshStandardMaterial({ color: '#d6e0eb', roughness: .4, metalness: .35 }),
-          joint: new THREE.MeshStandardMaterial({ color: '#24354e', roughness: .55, metalness: .3 }),
-          floor: new THREE.MeshStandardMaterial({ color: '#e3e9f1', roughness: .85 }),
-          accent: new THREE.MeshStandardMaterial({ color: '#0e949c', roughness: .4 }),
-          weight: new THREE.MeshStandardMaterial({ color: '#efac46', roughness: .5, metalness: .2 }),
-          ghost: new THREE.MeshBasicMaterial({ color: '#15b7bd', transparent: true, opacity: .15, depthWrite: false }),
-          outline: new THREE.LineBasicMaterial({ color: '#17a8b4', transparent: true, opacity: .68 }),
-        };
-        const mesh = (geometry: any, material: any, parent: any, x = 0, y = 0, z = 0) => {
-          const m = new THREE.Mesh(geometry, material); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; parent.add(m); return m;
-        };
-        const box = (w: number, h: number, d: number, material: any, parent: any, x = 0, y = 0, z = 0) => mesh(new THREE.BoxGeometry(w, h, d), material, parent, x, y, z);
-        scene.add(new THREE.HemisphereLight(0xe8f5ff, 0x8899a6, 2.4));
-        const light = new THREE.DirectionalLight(0xffffff, 3.3); light.position.set(2, 5, 4); light.castShadow = true;
-        light.shadow.mapSize.set(1024, 1024); light.shadow.camera.left = light.shadow.camera.bottom = -2.5; light.shadow.camera.right = light.shadow.camera.top = 2.5; light.shadow.normalBias = .025; scene.add(light);
-        const fill = new THREE.DirectionalLight(0x8fc5ed, 1.1); fill.position.set(-3, 2, -2); scene.add(fill);
-        const floor = mesh(new THREE.CircleGeometry(1.85, 64), materials.floor, scene, .15, .025, 0); floor.rotation.x = -Math.PI / 2; floor.castShadow = false;
-        box(.68, .11, .62, materials.joint, scene, -.15, .085, -.06);
-        box(.11, 1.69, .15, materials.body, scene, -.34, .98, -.1);
-        box(.5, .12, .16, materials.body, scene, -.12, 1.82, -.1);
-        // Fixed upper arm and cylindrical shoulder/elbow housings.
-        box(.22, .66, .24, materials.trim, scene, 0, 1.45, 0);
-        box(.075, .46, .26, materials.body, scene, 0, 1.46, .01);
-        const jointAt = (y: number, radius: number) => {
-          const joint = mesh(new THREE.CylinderGeometry(radius, radius, .31, 40), materials.joint, scene, 0, y, .02); joint.rotation.x = Math.PI / 2;
-          const cap = mesh(new THREE.CylinderGeometry(radius * .69, radius * .69, .025, 40), materials.accent, scene, 0, y, .189); cap.rotation.x = Math.PI / 2;
-        };
-        jointAt(1.83, .17); jointAt(1.05, .18);
-        const makeForearm = (target = false) => {
-          const group = new THREE.Group(); group.position.set(0, 1.05, 0); scene.add(group);
-          const geo = new THREE.BoxGeometry(.2, .53, .2);
-          const body = mesh(geo, target ? materials.ghost : materials.body, group, 0, -.34, 0);
-          if (target) { const edge = new THREE.LineSegments(new THREE.EdgesGeometry(geo), materials.outline); edge.position.copy(body.position); group.add(edge); }
-          else { box(.055, .37, .212, materials.trim, group, 0, -.34, .006); }
-          const handGeo = new THREE.BoxGeometry(.1, .26, .3);
-          const hand = mesh(handGeo, target ? materials.ghost : materials.trim, group, 0, -.67, 0);
-          if (target) { const edge = new THREE.LineSegments(new THREE.EdgesGeometry(handGeo), materials.outline); edge.position.copy(hand.position); group.add(edge); }
-          return group;
-        };
-        ghost = makeForearm(true); ghost.visible = false;
-        arm = makeForearm();
-        weight = new THREE.Group(); weight.position.set(.17, -.65, 0); arm.add(weight);
-        box(.23, .22, .3, materials.weight, weight);
-        box(.07, .235, .32, materials.joint, weight);
-        weight.visible = false;
-        pushArrow = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(), .35, 0xe28b30, .1, .075); pushArrow.visible = false; scene.add(pushArrow);
-        const resize = () => {
-          if (!renderer || disposed) return;
-          const w = viewport.clientWidth, h = viewport.clientHeight;
-          if (!w || !h) return;
-          renderer.setSize(w, h); camera.aspect = w / h;
-          camera.position.set(w < 500 ? 1.85 : 1.6, w < 500 ? 1.7 : 1.55, w < 500 ? 3.8 : 3.3);
-          camera.lookAt(.22, 1.05, 0); camera.updateProjectionMatrix(); draw();
-        };
-        resizeObserver = new ResizeObserver(resize); resizeObserver.observe(viewport);
-        themeObserver = new MutationObserver(applyTheme); themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        const view = await createG1ArmView(viewport, { urdfUrl, onInvalidate: () => loop.schedule() });
+        if (disposed) { view.dispose(); return; }
+        armView = view;
         ready = true; demo.dataset.state = 'ready'; el('loading').hidden = true;
-        resize(); applyTheme(); controls(); readout(); draw();
+        controls(); readout(); loop.schedule();
       } catch (error) {
-        webglFailed = true; demo.dataset.state = 'error';
-        el('loading').textContent = '当前浏览器无法显示三维模型。下方仍可阅读三个环的分工。';
-        renderer?.dispose(); renderer?.domElement.remove(); renderer = null;
-        console.warn('Servo arm demo unavailable', error);
-      }
+        if (disposed) return;
+        demo.dataset.state = 'error';
+        el('loading-message').textContent = 'G1 模型暂时未能加载，可以重试。下方仍可阅读三个环的分工。';
+        el('retry').hidden = false;
+        console.warn('G1 servo demo unavailable', error);
+      } finally { loading = false; }
     }
+    button('retry').addEventListener('click', () => { void init(); });
+    button('reset-view').addEventListener('click', () => armView?.resetCamera());
     const dispose = () => {
-      disposed = true; loop.dispose(); resizeObserver?.disconnect(); themeObserver?.disconnect(); reduced.removeEventListener('change', motionChange);
-      scene?.traverse((object: any) => { object.geometry?.dispose(); });
-      if (materials) Object.values(materials).forEach((m: any) => m.dispose());
-      renderer?.dispose(); renderer?.domElement.remove();
+      if (disposed) return;
+      disposed = true; loop.dispose(); reduced.removeEventListener('change', motionChange);
+      armView?.dispose(); armView = null;
     };
     document.addEventListener('astro:before-swap', dispose, { once: true });
   });
@@ -305,7 +234,10 @@
   .sc-viewport { position: relative; overflow: hidden; height: 365px; border-radius: 10px; background: radial-gradient(ellipse at 45% 35%, color-mix(in srgb, var(--sl-color-gray-6) 55%, var(--sl-color-bg)), var(--sl-color-gray-6)); }
   .sc-viewport :global(canvas) { display: block; position: absolute; inset: 0; width: 100%; height: 100%; }
   .sc-loading { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 1.5rem; color: var(--sl-color-gray-2); background: var(--sl-color-gray-6); z-index: 3; font-size: .9rem; }
-  .sc-loading[hidden] { display: none; }
+  .sc-loading[hidden], .sc-loading [hidden] { display: none; }
+  .sc-loading { align-content: center; gap: .8rem; }
+  .sc-view-tools { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .45rem; color: var(--sl-color-gray-2); font-size: .73rem; }
+  .sc-view-tools .sc-button { min-height: 30px; padding: .25rem .5rem; font-size: .73rem; }
   .sc-scene-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; margin-bottom: .6rem; }
   .sc-angle-badge { display: flex; gap: 1.1rem; padding: .45rem .75rem; border: 1px solid var(--sl-color-gray-5); border-radius: 8px; background: color-mix(in srgb, var(--sl-color-bg) 90%, transparent); color: var(--sl-color-gray-2); font-size: .8rem; }
   .sc-angle-badge b { margin-left: .25rem; color: var(--sl-color-text); font-variant-numeric: tabular-nums; }
@@ -345,5 +277,5 @@
   .sc-chart-actual { fill: none; stroke: var(--sl-color-text); stroke-width: 2; }
   .sc-chart-key { display: flex; gap: 1rem; margin: 0; }
   .sc-demo figcaption { margin: .85rem 0 0; font-size: .77rem; line-height: 1.7; color: var(--sl-color-gray-2); }
-  @media (max-width: 600px) { .sc-demo { padding: .7rem; } .sc-model-label { display: none; } .sc-viewport { height: 330px; } .sc-cards { grid-template-columns: 1fr; } .sc-card { display: grid; grid-template-columns: 6rem 1fr; gap: .2rem .6rem; } .sc-card h4 { grid-column: 1; grid-row: 1 / 3; align-self: center; } .sc-card p { margin: 0; } .sc-card-values { grid-column: 2; } .sc-controls-spacer { display: none; } .sc-button { min-height: 40px; } .sc-status { min-height: 0; } }
+  @media (max-width: 600px) { .sc-demo { padding: .7rem; } .sc-heading { flex-wrap: wrap; } .sc-model-label { font-size: .7rem; } .sc-viewport { height: 330px; } .sc-cards { grid-template-columns: 1fr; } .sc-card { display: grid; grid-template-columns: 6rem 1fr; gap: .2rem .6rem; } .sc-card h4 { grid-column: 1; grid-row: 1 / 3; align-self: center; } .sc-card p { margin: 0; } .sc-card-values { grid-column: 2; } .sc-controls-spacer { display: none; } .sc-button { min-height: 40px; } .sc-status { min-height: 0; } }
 </style>
