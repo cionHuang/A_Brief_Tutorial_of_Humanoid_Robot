@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { DEG, rotationZYX, mul, transpose, lessonPose, composeLesson, transformPoint, inversePoint, pushPower, doorTorque } from '../src/lib/robot-math-demo-model.js';
+const near=(a,b)=>{const x=a.flat(Infinity),y=b.flat(Infinity);assert.equal(x.length,y.length);x.forEach((v,i)=>assert.ok(Math.abs(v-y[i])<1e-10,`${v} != ${y[i]}`));};
+test('ZYX rotations preserve lengths and the inverse recovers the same point',()=>{const r=rotationZYX(.4,.7,-.3);near(mul(r,transpose(r)),[[1,0,0],[0,1,0],[0,0,1]]);const pose={r,p:[.3,.2,.8]},p=[.06,.1,-.7];near(inversePoint(pose,transformPoint(pose,p)),p);});
+test('at +90 degree pitch equal yaw and roll changes cancel, but away from lock they do not',()=>{near(rotationZYX(30*DEG,90*DEG,30*DEG),rotationZYX(0,90*DEG,0));assert.ok(Math.abs(rotationZYX(30*DEG,0,30*DEG)[0][1])>.1);});
+test('left and right translation have equal lengths but different directions',()=>{near(composeLesson('world','translate').p,[.4,.2,.8]);near(composeLesson('body','translate').p,[.3+.1*Math.cos(40*DEG),.2+.1*Math.sin(40*DEG),.8]);for(const basis of ['world','body']){const p=composeLesson(basis,'translate').p;near([Math.hypot(p[0]-.3,p[1]-.2)],[.1]);near(composeLesson(basis,'translate',0).p,[.3,.2,.8]);}});
+test('positive world rotation moves the origin counterclockwise; body rotation leaves it fixed',()=>{near(composeLesson('world','rotate').p,[-.2,.3,.8]);near(composeLesson('body','rotate').p,[.3,.2,.8]);near(composeLesson('world','rotate').r,composeLesson('body','rotate').r);});
+test('changing position and changing orientation are independent',()=>{near(lessonPose(2,'translate',30).r,lessonPose().r);near(lessonPose(2,'rotate',90).p,lessonPose().p);});
+test('force examples preserve signs, perpendicular zero power, and door lever-arm scaling',()=>{near([pushPower(0),pushPower(90),pushPower(180)],[2,0,-2]);near([doorTorque(0,.8),doorTorque(90,.8),doorTorque(-90,.8),doorTorque(90,.1)],[0,8,-8,1]);});

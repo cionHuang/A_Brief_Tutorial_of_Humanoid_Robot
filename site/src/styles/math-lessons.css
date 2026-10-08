@@ -1,0 +1,30 @@
+.math-lesson { margin:1.4rem 0; border:1px solid var(--sl-color-gray-5); border-radius:12px; overflow:hidden; background:var(--sl-color-bg); color:var(--sl-color-text); }
+.math-lesson * { box-sizing:border-box; }
+.math-lesson :is(p,div,figure,svg,button,label,output,details,summary) { margin-block:0; }
+.math-lesson header { padding:1rem 1rem .7rem; }
+.math-lesson h4 { font-size:1.05rem; margin:0 0 .3rem; }
+.math-lesson header p, .math-lesson .ml-small { font-size:.75rem; color:var(--sl-color-gray-2); line-height:1.6; }
+.math-lesson .ml-tabs { display:flex; gap:.4rem; padding:0 1rem .65rem; }
+.math-lesson button { font:inherit; font-size:.76rem; line-height:1.4; border:1px solid var(--sl-color-gray-4); border-radius:7px; background:var(--sl-color-bg); color:var(--sl-color-text); padding:.45rem .65rem; cursor:pointer; min-height:36px; }
+.math-lesson button[aria-pressed='true'] { color:var(--sl-color-text-accent); border-color:var(--sl-color-accent); background:var(--sl-color-accent-low); }
+.math-lesson button:disabled { opacity:.45; cursor:default; }
+.math-lesson :is(button,input,summary):focus-visible { outline:2px solid var(--sl-color-text-accent); outline-offset:3px; }
+.math-lesson .ml-body { padding:0 1rem 1rem; }
+.math-lesson .ml-svg { display:block; width:100%; height:auto; border-radius:8px; background:color-mix(in srgb,var(--sl-color-gray-6) 65%,var(--sl-color-bg)); }
+.math-lesson svg text { fill:var(--sl-color-text); font-family:inherit; font-size:17px; }
+.math-lesson .ml-readout { display:flex; justify-content:space-between; align-items:baseline; gap:.5rem; padding:.65rem 0 .4rem; }
+.math-lesson .ml-readout strong { font-size:1.08rem; font-variant-numeric:tabular-nums; }
+.math-lesson .ml-readout span { font-size:.77rem; }
+.math-lesson .ml-story { font-size:.8rem; line-height:1.7; background:var(--sl-color-accent-low); border-left:3px solid var(--sl-color-accent); padding:.55rem .65rem; min-height:3.4em; }
+.math-lesson .ml-controls { display:flex; align-items:center; flex-wrap:wrap; gap:.5rem; padding-top:.65rem; }
+.math-lesson label { display:flex; align-items:center; gap:.6rem; flex:1 1 220px; font-size:.76rem; }
+.math-lesson input[type=range] { flex:1; min-width:60px; width:100%; accent-color:var(--sl-color-accent); }
+.math-lesson output { font-variant-numeric:tabular-nums; min-width:3.4em; text-align:right; }
+.math-lesson details { padding:.65rem 1rem; border-top:1px solid var(--sl-color-gray-5); font-size:.76rem; }
+.math-lesson summary { cursor:pointer; }
+.math-lesson details p { margin-top:.6rem; line-height:1.65; }
+.math-lesson figcaption { font-size:.67rem; line-height:1.65; color:var(--sl-color-gray-2); padding:.55rem 1rem .75rem; }
+.math-lesson [hidden] { display:none !important; }
+.math-lesson .ml-pills { display:flex; gap:.6rem; flex-wrap:wrap; padding-top:.5rem; font-size:.75rem; }
+.math-lesson .ml-pills span { padding:.2rem .5rem; border-radius:5px; background:var(--sl-color-gray-6); }
+@media(max-width:580px) { .math-lesson header {padding:.8rem .7rem .6rem;} .math-lesson .ml-tabs {padding-inline:.7rem;gap:.25rem;} .math-lesson .ml-tabs button {flex:1;padding:.4rem .2rem;font-size:.72rem;} .math-lesson .ml-body {padding-inline:.7rem;} .math-lesson button {min-height:40px;} .math-lesson h4{font-size:.98rem;} .math-lesson details,.math-lesson figcaption{padding-inline:.7rem;} }
