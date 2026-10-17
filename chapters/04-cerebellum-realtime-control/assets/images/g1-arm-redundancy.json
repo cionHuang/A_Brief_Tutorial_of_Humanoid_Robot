@@ -1,0 +1,34 @@
+{
+  "model": "robot_descriptions/g1/g1_29dof.urdf",
+  "joints": [
+    "left_shoulder_pitch_joint",
+    "left_shoulder_roll_joint",
+    "left_shoulder_yaw_joint",
+    "left_elbow_joint",
+    "left_wrist_roll_joint",
+    "left_wrist_pitch_joint",
+    "left_wrist_yaw_joint"
+  ],
+  "pose_a_rad": [
+    -0.8726646259971648,
+    0.3490658503988659,
+    -0.4363323129985824,
+    0.2617993877991494,
+    0.0,
+    0.6108652381980153,
+    0.0
+  ],
+  "pose_b_rad": [
+    -1.698084548262908,
+    0.6315771984206433,
+    -2.2175323932910556,
+    0.37641016678783223,
+    -1.6283151038866082,
+    -0.2574729659281553,
+    0.5935509629375852
+  ],
+  "hand_position_error_m": 1.1188630228279524e-16,
+  "hand_orientation_error_rad": 0.0,
+  "elbow_separation_m": 0.14061792366123538,
+  "scope": "Kinematic illustration; joint limits checked; not a collision-checked motion plan."
+}

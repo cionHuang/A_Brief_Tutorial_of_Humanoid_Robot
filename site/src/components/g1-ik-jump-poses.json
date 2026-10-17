@@ -1,0 +1,33 @@
+{
+  "jointNames": [
+    "left_shoulder_pitch_joint",
+    "left_shoulder_roll_joint",
+    "left_shoulder_yaw_joint",
+    "left_elbow_joint",
+    "left_wrist_roll_joint",
+    "left_wrist_pitch_joint",
+    "left_wrist_yaw_joint"
+  ],
+  "start": [
+    -1.5576721859680862,
+    0.0,
+    0.0,
+    1.49,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "end": [
+    -1.603865115946344,
+    0.23222764691342165,
+    1.6293059776723786,
+    2.0686259959330346,
+    1.619477211278699,
+    -0.01052651734237619,
+    0.26542191260987774
+  ],
+  "positionErrorM": 1.2104939693936598e-15,
+  "rotationError": 4.946152650811808e-16,
+  "targetRetractionM": 0.02,
+  "note": "Constructed discontinuous IK solution; not output of a named IK library or dynamics simulation."
+}

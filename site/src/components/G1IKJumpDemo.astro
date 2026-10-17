@@ -1,0 +1,63 @@
+---
+const url = import.meta.env.BASE_URL.replace(/\/?$/, '/') + 'models/g1/g1_29dof.urdf';
+---
+<figure id="g1-ik-jump-demo" class="jump-demo" data-ik-jump data-urdf={url}>
+  <p class="title">手腕只往回收 2 厘米，整条手臂却突然换了姿势</p>
+  <p class="tag">错误示范：不检查关节变化，直接下发新的 IK 解</p>
+  <div class="stage"><span data-loading>正在加载 G1…</span><span class="badge">橙色：碰撞假人　绿色：手的目标</span></div>
+  <p class="status" data-status>准备演示</p>
+  <figcaption>沿用上一动效的接近伸直姿态；这次允许整条左臂调整。两组关节角由 G1 URDF 求得，手的目标内移 2 厘米、朝向不变。姿态切换与假人倒地为风险示意，动作已慢放；不代表某个运动学库的必然输出，也不是碰撞动力学仿真。</figcaption>
+</figure>
+<script>
+import * as THREE from 'three';
+import URDFLoader from 'urdf-loader';
+import poses from './g1-ik-jump-poses.json';
+async function start(root) {
+  if(root.dataset.started)return;root.dataset.started='true';
+  const stage=root.querySelector('.stage'),loading=root.querySelector('[data-loading]'),status=root.querySelector('[data-status]');
+  const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(35,1,.01,20);
+  let renderer,robot,raf=0,disposed=false,elapsed=0,last=0,visible=false,resize,visibility;
+  const cleanup=()=>{disposed=true;cancelAnimationFrame(raf);resize?.disconnect();visibility?.disconnect();const gs=new Set(),ms=new Set();scene.traverse(o=>{if(o.geometry)gs.add(o.geometry);if(o.material)[].concat(o.material).forEach(m=>ms.add(m));});gs.forEach(g=>g.dispose());ms.forEach(m=>m.dispose());renderer?.dispose();document.removeEventListener('astro:before-swap',cleanup);};
+  document.addEventListener('astro:before-swap',cleanup,{once:true});
+  try {
+    renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputColorSpace=THREE.SRGBColorSpace;stage.append(renderer.domElement);
+    scene.add(new THREE.HemisphereLight(0xffffff,0x8c99a5,2.5));const light=new THREE.DirectionalLight(0xffffff,3);light.position.set(2,3,5);scene.add(light);
+    const response=await fetch(root.dataset.urdf);if(!response.ok)throw Error('URDF');
+    const manager=new THREE.LoadingManager();let failed=false;const loaded=new Promise(resolve=>manager.onLoad=resolve);manager.onError=()=>failed=true;
+    const loader=new URDFLoader(manager);loader.workingPath=root.dataset.urdf.slice(0,root.dataset.urdf.lastIndexOf('/')+1);
+    manager.itemStart('model');robot=loader.parse(await response.text());manager.itemEnd('model');await loaded;scene.add(robot);if(disposed){cleanup();return;}if(failed)throw Error('mesh');
+    function pose(f){poses.jointNames.forEach((n,i)=>robot.setJointValue(n,THREE.MathUtils.lerp(poses.start[i],poses.end[i],f)));robot.updateMatrixWorld(true);}
+    pose(0);const startPoint=robot.links.left_rubber_hand.getWorldPosition(new THREE.Vector3());pose(1);const endPoint=robot.links.left_rubber_hand.getWorldPosition(new THREE.Vector3());
+    root.dataset.retractionMm=(startPoint.distanceTo(endPoint)*1000).toFixed(3);
+    const elbowEnd=robot.links.left_elbow_link.getWorldPosition(new THREE.Vector3());pose(0);
+    const floor=-.77;
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(3,3),new THREE.MeshStandardMaterial({color:0xdce3e9,transparent:true,opacity:.45}));ground.position.z=floor;scene.add(ground);
+    const dummy=new THREE.Group();dummy.position.set(elbowEnd.x+.02,elbowEnd.y+.125,floor);scene.add(dummy);
+    const orange=new THREE.MeshStandardMaterial({color:0xf0a038,roughness:.7}),dark=new THREE.MeshStandardMaterial({color:0x875c30,roughness:.7});
+    function ball(r,x,y,z){const m=new THREE.Mesh(new THREE.SphereGeometry(r,20,16),orange);m.position.set(x,y,z);dummy.add(m);return m;}
+    function limb(a,b,r,material=orange){const v=new THREE.Vector3(...a),w=new THREE.Vector3(...b),m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,v.distanceTo(w),12),material);m.position.copy(v).add(w).multiplyScalar(.5);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),w.sub(v).normalize());dummy.add(m);}
+    // A simple crash-test mannequin; the fall is authored, not a force simulation.
+    const shoulderHeight=elbowEnd.z-floor;
+    ball(.075,0,0,shoulderHeight+.15);limb([0,0,shoulderHeight],[0,0,shoulderHeight+.1],.025,dark);limb([0,0,.55],[0,0,shoulderHeight],.09);ball(.075,0,0,.55);
+    for(const side of [-1,1]){limb([side*.045,0,.54],[side*.07,0,.07],.035,dark);limb([side*.095,0,shoulderHeight],[side*.13,0,shoulderHeight-.32],.028);}
+    const goal=new THREE.Mesh(new THREE.TorusGeometry(.016,.003,8,32),new THREE.MeshBasicMaterial({color:0x00a878,depthTest:false}));goal.position.copy(endPoint);goal.renderOrder=3;scene.add(goal);
+    // Trace the elbow during the constructed rapid joint transition.
+    const points=[];for(let k=0;k<=40;k++){pose(k/40);points.push(robot.links.left_elbow_link.getWorldPosition(new THREE.Vector3()));}pose(0);
+    const trace=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0xe86119,depthTest:false}));trace.renderOrder=4;scene.add(trace);
+    const impact=new THREE.Mesh(new THREE.TorusGeometry(.065,.005,8,32),new THREE.MeshBasicMaterial({color:0xd64a1e,depthTest:false}));impact.position.copy(elbowEnd).add(new THREE.Vector3(0,.04,0));impact.renderOrder=5;scene.add(impact);
+    const center=new THREE.Vector3(.16,.35,-.04);const fit=()=>{const w=stage.clientWidth,h=stage.clientHeight;camera.aspect=w/h;camera.up.set(0,0,1);camera.position.copy(center).addScaledVector(new THREE.Vector3(1,-3,1.2).normalize(),2.7*Math.max(1,.9/camera.aspect));camera.lookAt(center);camera.updateProjectionMatrix();renderer.setSize(w,h,false);goal.quaternion.copy(camera.quaternion);impact.quaternion.copy(camera.quaternion);};
+    resize=new ResizeObserver(fit);resize.observe(stage);fit();visibility=new IntersectionObserver(([e])=>{visible=e.isIntersecting;last=0;});visibility.observe(root);
+    loading.remove();root.dataset.loaded='true';
+    function draw(){const f=THREE.MathUtils.clamp((elapsed-2)/.75,0,1);pose(f);const fall=THREE.MathUtils.clamp((elapsed-2.65)/1.1,0,1);dummy.rotation.x=-fall*1.47;dummy.position.z=floor+fall*.065;trace.visible=elapsed>=2;impact.visible=elapsed>=2.65&&elapsed<3.3;
+      const phase=elapsed<1?'start':elapsed<2?'target':elapsed<2.75?'jump':'impact';root.dataset.phase=phase;
+      status.textContent=phase==='start'?'① 手臂接近伸直，假人在手肘旁边':phase==='target'?'② 手的目标内移 2 厘米，求得另一组关节角':phase==='jump'?'③ 未检查连续性，关节目标突然切换':'④ 手臂扫到旁边的假人：末端到位，不等于过程安全';
+      renderer.render(scene,camera);
+    }
+    function frame(now){if(disposed)return;if(visible&&!document.hidden){if(last)elapsed=(elapsed+Math.min(.05,(now-last)/1000))%6;draw();}last=now;raf=requestAnimationFrame(frame);}draw();raf=requestAnimationFrame(frame);
+  }catch(e){console.error('G1 IK jump demo:',e);loading.textContent='模型加载失败，请刷新重试。';cleanup();}
+}
+function init(){document.querySelectorAll('[data-ik-jump]').forEach(start);}init();document.addEventListener('astro:page-load',init);
+</script>
+<style>
+.jump-demo{margin:1.5rem 0;padding:1rem;border:1px solid var(--sl-color-gray-5);border-radius:12px;background:var(--sl-color-gray-7)}.title{font-weight:700;margin:0!important}.tag{font-size:.8rem;color:#b75e16;margin:.4rem 0!important}.stage{height:360px;position:relative;overflow:hidden}.stage :global(canvas){display:block;width:100%;height:100%}.badge{position:absolute;bottom:3px;left:0;font-size:.75rem;background:var(--sl-color-bg);padding:.15rem .35rem;border-radius:4px}.status{font-weight:600;font-size:.9rem;min-height:2.7em;margin:.5rem 0!important}figcaption{font-size:.75rem;color:var(--sl-color-gray-3);line-height:1.6;margin-top:.7rem}@media(max-width:480px){.stage{height:320px}}
+</style>

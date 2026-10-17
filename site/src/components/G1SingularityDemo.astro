@@ -1,0 +1,154 @@
+---
+const url = import.meta.env.BASE_URL.replace(/\/?$/, '/') + 'models/g1/g1_29dof.urdf';
+---
+<figure class="singularity" id="g1-singularity-demo" data-singularity data-urdf={url}>
+  <p class="demo-title">在不同的手臂姿态下，让手腕沿着直线往回收2厘米，会发生什么？</p>
+  <div class="comparison">
+    <section><h4>弯着：容易往回收</h4><div class="stage" data-view="0"><span class="loading">正在加载 G1…</span></div><p data-result="0">准备移动</p></section>
+    <section><h4 data-right-title>接近伸直：往回收变难</h4><div class="stage" data-view="1"></div><p data-result="1">准备移动</p></section>
+  </div>
+  <div class="legend"><span>绿色圆环：目标</span><span>橙色连线：手与目标的差距</span></div>
+  <div class="bottom"><strong data-caption>同样往回收 2 厘米，同样的关节限速</strong><button type="button" data-play>暂停</button></div>
+  <figcaption>固定躯干及其他关节，只让肩、肘配合。动作由 G1 模型计算并慢放；随后把右侧手臂弯起来，再做一次对照。</figcaption>
+</figure>
+<script>
+  import * as THREE from 'three';
+  import URDFLoader from 'urdf-loader';
+  async function start(root) {
+    if (root.dataset.started) return;
+    root.dataset.started='true';
+    const stages=[...root.querySelectorAll('.stage')], stage=stages[0], note=root.querySelector('.loading');
+    const button=root.querySelector('[data-play]'), caption=root.querySelector('[data-caption]');
+    const renderers=[], scenes=[];
+    let renderer, robot, raf=0, disposed=false, elapsed=0, last=0, visible=true;
+    const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+    let playing=!reduced.matches;
+    const scene=new THREE.Scene();
+    const camera=new THREE.PerspectiveCamera(34,1,.01,10);
+    const geometries=new Set(), materials=new Set();
+    let resize, visibility;
+    function cleanup() {
+      disposed=true;cancelAnimationFrame(raf);resize?.disconnect();visibility?.disconnect();
+      [scene,...scenes].forEach(s=>s.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)for(const m of [].concat(o.material))materials.add(m);}));
+      geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());renderers.forEach(r=>r.dispose());
+      document.removeEventListener('astro:before-swap',cleanup);
+    }
+    document.addEventListener('astro:before-swap',cleanup,{once:true});
+    try {
+      renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+      renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+      renderer.outputColorSpace=THREE.SRGBColorSpace;renderers.push(renderer);
+      stage.append(renderer.domElement);
+      scene.add(new THREE.HemisphereLight(0xffffff,0x7d8997,2.5));
+      const light=new THREE.DirectionalLight(0xffffff,3);light.position.set(2,1,3);scene.add(light);
+      const response=await fetch(root.dataset.urdf);if(!response.ok)throw Error('URDF');
+      const xml=new DOMParser().parseFromString(await response.text(),'application/xml');
+      for(const link of xml.querySelectorAll('robot > link')) {
+        if(!/^left_(shoulder_|elbow_|wrist_|rubber_hand)/.test(link.getAttribute('name')) && !['torso_link','head_link','logo_link'].includes(link.getAttribute('name'))) {
+          link.querySelectorAll(':scope > visual').forEach(v=>v.remove());
+        }
+      }
+      const manager=new THREE.LoadingManager();let failed=false;
+      const loaded=new Promise(resolve=>manager.onLoad=resolve);manager.onError=()=>failed=true;
+      const loader=new URDFLoader(manager);loader.workingPath=root.dataset.urdf.slice(0,root.dataset.urdf.lastIndexOf('/')+1);
+      manager.itemStart('model');robot=loader.parse(xml);manager.itemEnd('model');await loaded;
+      if(disposed){scene.add(robot);cleanup();return;}if(failed)throw Error('mesh');
+      scene.add(robot);
+      // Compute trajectories using actual URDF joint axes, including fixed offsets.
+      // Both cases have the same task duration, controller, and joint speed cap.
+      const jointNames=['left_shoulder_pitch_joint','left_elbow_joint'];
+      function sample(q){
+        jointNames.forEach((n,i)=>robot.setJointValue(n,q[i]));robot.updateMatrixWorld(true);
+        const p=robot.links.left_rubber_hand.getWorldPosition(new THREE.Vector3());
+        const cols=jointNames.map(n=>{const j=robot.joints[n];return new THREE.Vector3(0,1,0).transformDirection(j.matrixWorld).cross(p.clone().sub(j.getWorldPosition(new THREE.Vector3())));});
+        return {p,cols};
+      }
+      function trajectory(elbow){
+        let q=[-Math.PI/2,elbow];let start=sample(q).p;
+        const pivot=robot.joints.left_shoulder_pitch_joint.getWorldPosition(new THREE.Vector3());
+        let radial=start.clone().sub(pivot);q[0]+=Math.atan2(radial.z,radial.x);
+        const initial=sample(q);start=initial.p;
+        // Smallest singular direction of the actual 3x2 position Jacobian.
+        // Keep the target in the two-joint tangent plane, rather than demanding
+        // an impossible sideways motion from the URDF's slightly skew axes.
+        const [u,v]=initial.cols, a=u.dot(u), b=u.dot(v), c=v.dot(v);
+        const eigen=(a+c-Math.hypot(a-c,2*b))/2;
+        const direction=u.clone().multiplyScalar(b).addScaledVector(v,eigen-a).normalize();
+        if(direction.dot(pivot.clone().sub(start))<0)direction.negate();
+        const frames=[];const dt=1/240,duration=.4,speed=.02/duration,cap=.65;
+        for(let k=0;k<=96;k++){
+          const {p,cols:[a,b]}=sample(q);const target=start.clone().addScaledVector(direction,speed*k*dt);
+          frames.push({q:q.slice(),p:p.clone(),target:target.clone(),gap:p.distanceTo(target)});
+          const velocity=direction.clone().multiplyScalar(speed).add(target.clone().sub(p).multiplyScalar(8));
+          const aa=a.dot(a)+1e-8,ab=a.dot(b),bb=b.dot(b)+1e-8,det=aa*bb-ab*ab;
+          const av=a.dot(velocity),bv=b.dot(velocity);
+          let rates=[(bb*av-ab*bv)/det,(aa*bv-ab*av)/det];
+          const scale=Math.min(1,cap/Math.max(...rates.map(Math.abs)));
+          q=q.map((v,i)=>Math.max(robot.joints[jointNames[i]].limit.lower,Math.min(robot.joints[jointNames[i]].limit.upper,v+rates[i]*scale*dt)));
+        }
+        return frames;
+      }
+      const bent=trajectory(.25), straight=trajectory(1.49);
+      root.dataset.bentGapMm=(bent.at(-1).gap*1000).toFixed(2);
+      root.dataset.straightGapMm=(straight.at(-1).gap*1000).toFixed(2);
+      const secondScene=new THREE.Scene();scenes.push(secondScene);
+      secondScene.add(new THREE.HemisphereLight(0xffffff,0x7d8997,2.5));
+      const secondLight=light.clone();secondScene.add(secondLight);
+      const other=robot.clone(true);secondScene.add(other);
+      const secondRenderer=new THREE.WebGLRenderer({antialias:true,alpha:true});secondRenderer.setPixelRatio(Math.min(devicePixelRatio,2));secondRenderer.outputColorSpace=THREE.SRGBColorSpace;stages[1].append(secondRenderer.domElement);renderers.push(secondRenderer);
+      const robots=[robot,other], views=[scene,secondScene], cameras=[camera,camera.clone()];
+      const targets=[], overlays=[];
+      for(const s of views){
+        const ring=new THREE.Mesh(new THREE.TorusGeometry(.014,.0025,8,40),new THREE.MeshBasicMaterial({color:0x20ad79,depthTest:false}));ring.renderOrder=4;s.add(ring);targets.push(ring);
+        const overlay=document.createElementNS('http://www.w3.org/2000/svg','svg');
+        overlay.classList.add('gap-overlay');overlay.setAttribute('aria-hidden','true');
+        overlay.innerHTML='<line data-halo stroke="white" stroke-width="8" stroke-linecap="round"/><line data-gap stroke="#e97713" stroke-width="4" stroke-linecap="round"/><circle data-hand r="4" fill="#e97713" stroke="white" stroke-width="1.5"/><circle data-goal r="5" fill="none" stroke="#079969" stroke-width="2.5"/><path data-leader fill="none" stroke="#e97713" stroke-width="1.5"/><text data-label fill="#a34c00" font-size="13" font-weight="700" stroke="white" stroke-width="3" paint-order="stroke" text-anchor="middle"></text>';
+        stages[overlays.length].append(overlay);overlays.push(overlay);
+      }
+      // Identical side views keep the target gap visible; crop to the upper body.
+      const center=new THREE.Vector3(.19,.1,.45);
+      const fit=()=>stages.forEach((s,i)=>{const w=s.clientWidth,h=s.clientHeight,c=cameras[i];c.up.set(0,0,1);c.aspect=w/h;c.fov=32;c.updateProjectionMatrix();c.position.copy(center).addScaledVector(new THREE.Vector3(.25,3,.4).normalize(),1.35*Math.max(1,.75/c.aspect));c.lookAt(center);renderers[i].setSize(w,h,false);});
+      resize=new ResizeObserver(fit);stages.forEach(s=>resize.observe(s));fit();
+      visibility=new IntersectionObserver(([e])=>{visible=e.isIntersecting;last=0;});visibility.observe(root);
+      note.remove();root.dataset.loaded='true';
+      function pose(t){
+        const cycle=t%12, recovery=cycle>=6, local=cycle%6;
+        const progress=Math.min(1,Math.max(0,(local-1)/2.5));
+        const index=Math.round(progress*96);
+        [bent,recovery?bent:straight].forEach((data,i)=>{
+          const f=data[index];jointNames.forEach((n,j)=>robots[i].setJointValue(n,f.q[j]));robots[i].updateMatrixWorld(true);
+          targets[i].position.copy(f.target);targets[i].quaternion.copy(cameras[i].quaternion);
+          const overlay=overlays[i],w=stages[i].clientWidth,h=stages[i].clientHeight;
+          overlay.setAttribute('viewBox',`0 0 ${w} ${h}`);
+          const project=p=>{const v=p.clone().project(cameras[i]);return [(v.x+1)*w/2,(1-v.y)*h/2];};
+          const [x1,y1]=project(f.p),[x2,y2]=project(f.target);
+          overlay.style.display=f.gap>.002?'block':'none';
+          for(const el of overlay.querySelectorAll('line'))for(const [key,value] of Object.entries({x1,y1,x2,y2}))el.setAttribute(key,String(value));
+          for(const [key,x,y] of [['hand',x1,y1],['goal',x2,y2]]){const el=overlay.querySelector(`[data-${key}]`);el.setAttribute('cx',String(x));el.setAttribute('cy',String(y));}
+          const mx=(x1+x2)/2,my=(y1+y2)/2,lx=Math.max(55,Math.min(w-55,mx)),ly=Math.max(30,my-44);
+          overlay.querySelector('[data-leader]').setAttribute('d',`M ${mx} ${my-7} L ${lx} ${ly+8}`);
+          const label=overlay.querySelector('[data-label]');label.setAttribute('x',String(lx));label.setAttribute('y',String(ly));label.textContent=`相差 ${(f.gap*100).toFixed(1)} 厘米`;
+          root.querySelector(`[data-result="${i}"]`).textContent=local<1?'目标：沿直线往回收 2 厘米':f.gap<.002?'手跟上了目标':`还差 ${(f.gap*100).toFixed(1)} 厘米`;
+          renderers[i].render(views[i],cameras[i]);
+        });
+        root.querySelector('[data-right-title]').textContent=recovery?'弯起来再试：也能跟上':'接近伸直：往回收变难';
+        caption.textContent=recovery?'把右侧手臂弯起来，同样的动作就容易了':'同样往回收 2 厘米，同样的关节限速';
+        root.dataset.phase=recovery?'recovery':'comparison';
+      }
+      const updateButton=()=>{button.textContent=playing?'暂停':'播放';button.setAttribute('aria-pressed',String(playing));};updateButton();
+      button.addEventListener('click',()=>{playing=!playing;last=0;updateButton();});
+      function frame(now){if(disposed)return;if(visible&&!document.hidden){if(playing&&last)elapsed+=Math.min((now-last)/1000,.05);pose(elapsed);}last=now;raf=requestAnimationFrame(frame);}
+      raf=requestAnimationFrame(frame);
+    }catch(error){console.error('G1 singularity demo:',error);note.textContent='G1 模型暂未加载成功，请刷新重试。';button.disabled=true;cleanup();}
+  }
+  function init(){document.querySelectorAll('[data-singularity]').forEach(root=>start(root));}
+  init();document.addEventListener('astro:page-load',init);
+</script>
+<style>
+.singularity{margin:1.5rem 0;padding:1rem;border:1px solid var(--sl-color-gray-5);border-radius:12px;background:var(--sl-color-gray-7)}
+.demo-title{font-weight:700;font-size:1rem;line-height:1.6;margin:0 0 1rem!important}.comparison{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}.comparison section{min-width:0;text-align:center;margin:0}.comparison .stage{margin:0}.comparison h4{font-size:.85rem;margin:0}.comparison p{font-size:.85rem;margin:.3rem 0;font-weight:600}.stage{height:280px;position:relative;overflow:hidden}.stage :global(.gap-overlay){position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;margin:0}.stage :global(canvas){width:100%;height:100%;display:block}.loading{position:absolute;inset:45% 0;text-align:center;color:var(--sl-color-gray-3)}
+.legend{display:flex;justify-content:center;gap:1rem;flex-wrap:wrap;font-size:.8rem}.legend span:first-child{color:#16865f}.legend span:last-child{color:#b96c13}
+.bottom{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-top:.8rem}.bottom strong{font-size:.95rem}button{border:1px solid var(--sl-color-gray-4);border-radius:6px;padding:.3rem .9rem;color:var(--sl-color-text);background:var(--sl-color-bg);cursor:pointer}
+figcaption{font-size:.75rem;color:var(--sl-color-gray-3);margin-top:.7rem;line-height:1.6}
+@media(max-width:480px){.stage{height:230px}.comparison{gap:.3rem}.comparison h4,.comparison p{font-size:.7rem}.legend{gap:.4rem;font-size:.7rem}.bottom strong{font-size:.8rem}}
+</style>
