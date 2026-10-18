@@ -1,0 +1,100 @@
+---
+const {kind='zmp'}=Astro.props;
+const zmp=kind==='zmp',reach=kind==='reach';
+const id=zmp?'zmp-recovery-demo':reach?'g1-whole-body-demo':'g1-capture-step-demo';
+const title=zmp?'身体向前晃，怎样让它慢下来？':reach?'手向前伸，身体怎样一起配合？':'同样向前晃，什么时候需要迈一步？';
+const names=zmp?['把受力位置移到质心前方']:reach?['G1 站立伸手与迈步靠近']:['较小扰动：原地收稳','较大扰动：迈步接住'];
+const url=import.meta.env.BASE_URL.replace(/\/?$/,'/')+'models/g1/g1_29dof.urdf';
+---
+<figure class="bl-demo" id={id} data-bl-kind={kind} data-urdf={url}>
+ <header><strong>{title}</strong><p>{zmp?'观察紫色质心向前移动后，橙色受力点怎样帮助它减速。':reach?'先伸手，再协调髋部和躯干；目标移远后，迈步靠近再继续伸手。':'两次扰动使用相同的质心高度与初始站位，只改变向前速度。'}</p></header>
+ <p class="bl-story" data-bl-story aria-live="off">点击播放，观察动作过程。</p>
+ <div class:list={['bl-panels',{'bl-double':!zmp&&!reach}]}>
+ {names.map((name,i)=><section class="bl-card" data-bl-card={i}>
+ <h4>{name}</h4>
+ {!zmp&&<div class="bl-model" data-bl-model={i} role="img" aria-label={name+'，G1 动作示意'}><span data-bl-loading>正在加载 G1…</span></div>}
+ {zmp?<svg class="bl-side" viewBox="0 0 560 320" role="img" aria-label="线性倒立摆：上方球体代表质心，摆杆连接地面 ZMP 支点；质心保持固定高度，支点前移后摆杆倾斜并逐渐回正">
+ <path d="M55 250H505" class="bl-ground"/>
+ <rect x="160" y="245" width="136" height="12" rx="6" class="bl-support"/>
+ <path d="M125 70H310" class="bl-height-guide"/>
+ <path d="M100 70V250M94 70H106M94 250H106" class="bl-ground"/>
+ <text x="82" y="150" text-anchor="end">高度</text><text x="82" y="176" text-anchor="end">不变</text>
+ <path data-bl-drop d="M200 70V250" class="bl-dash"/>
+ <line data-bl-rod x1="200" y1="250" x2="200" y2="70" class="bl-rod"/>
+ <line data-bl-rod-inner x1="200" y1="250" x2="200" y2="70" class="bl-rod-inner"/>
+ <path data-bl-pivot d="M200 250l-13 19h26Z" class="bl-pivot"/>
+ <circle data-bl-mass cx="200" cy="70" r="22" class="bl-com bl-bob"/>
+ <circle data-bl-shine cx="194" cy="63" r="6" class="bl-shine"/>
+ <text data-bl-masslabel x="200" y="31" text-anchor="middle">质心</text>
+ <circle data-bl-zmp cx="200" cy="250" r="6" class="bl-zmp"/>
+ <text data-bl-zlabel x="200" y="300" text-anchor="middle">受力点 ZMP</text>
+ <path data-bl-velocity d="" class="bl-velocity"/><text x="345" y="68" data-bl-speed>向前速度</text>
+ <path data-bl-accel d="" class="bl-accel"/><text x="345" y="111" data-bl-acceltext>减速作用</text>
+ <text x="345" y="247">绿色：支撑范围</text>
+ </svg>:<svg class="bl-feet" viewBox="0 0 400 145" role="img" aria-label={reach?"脚下接触的前后方向投影，虚线脚印表示摆动脚，紫点为模型质心投影":"脚下接触的前后方向投影，虚线脚印表示摆动脚；紫点为质心投影，橙点为捕获点"}>
+ <text x="12" y="18">支撑的前后投影</text><text x="388" y="18" text-anchor="end">前方 →</text>
+ <path d="M20 75H380" class="bl-ground"/>
+ <rect data-bl-left x="30" y="38" width="76" height="20" rx="5" class="bl-foot"/><text x="12" y="53">左</text>
+ <rect data-bl-right x="30" y="94" width="76" height="20" rx="5" class="bl-foot"/><text x="12" y="110">右</text>
+ <path data-bl-support d="M30 75H106" class="bl-support-line"/>
+ <circle data-bl-projection cx="50" cy="75" r="6" class="bl-com"/>
+ {!reach&&<path data-bl-cp d="M50 67L58 75L50 83L42 75Z" class="bl-cp"/>}
+ <text x="12" y="138">{reach?'紫点：模型质心投影':'紫点：质心投影　橙菱形：捕获点'}</text>
+ </svg>}
+ <p class="bl-result" data-bl-result>准备</p>
+ </section>)}
+ </div>
+ {reach&&<ol class="bl-tasks"><li data-bl-task="0">保持足底支撑</li><li data-bl-task="1">调整髋部与躯干</li><li data-bl-task="2">手接近目标</li></ol>}
+ <div class="bl-actions"><button type="button" data-bl-play>播放</button><button type="button" data-bl-reset>重播</button><span data-bl-time>0 秒</span></div>
+ <figcaption>{zmp?'球体代表质心，摆杆连接地面受力点 ZMP。线性倒立摆保持质心高度不变，摆杆长度随倾斜调整；绿色区域表示可用支撑范围。':reach?'G1 官方模型的运动示意：脚部通过逆运动学保持接触，紫点由各连杆质量计算。用于观察任务配合，动作采用预设轨迹。':'前后运动按固定高度倒立摆模型计算，脚下图展示接触范围在前后方向的投影。G1 姿态用于说明换脚过程；模型质心高度为 0.7 m，播放速度放慢。'}</figcaption>
+</figure>
+<script>
+ import {createVisibleRaf} from '../lib/visible-raf.js';
+ import {recovery,reach} from '../lib/balance-lessons.js';
+ document.querySelectorAll<HTMLElement>('.bl-demo').forEach(root=>{
+  if(root.dataset.blReady)return;root.dataset.blReady='true';
+  const kind=root.dataset.blKind!,isReach=kind==='reach',isZmp=kind==='zmp',duration=isReach?16:14;
+  const cards=[...root.querySelectorAll<HTMLElement>('[data-bl-card]')],play=root.querySelector<HTMLButtonElement>('[data-bl-play]')!;
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)');let t=0,last=0,paused=true,loading=false,ready=isZmp,started=false;const views:any[]=[];
+  const loop=createVisibleRaf(root,{rootMargin:'0px',onEnter:()=>{last=0;void load();}});
+  function paint(){
+   cards.forEach((card,i)=>{
+    const s=isReach?reach(t):recovery(t,i===1),pose=views[i]?.render(s);
+    const set=(sel:string,attr:string,value:any)=>card.querySelector(sel)?.setAttribute(attr,String(value));
+    if(isZmp){
+     const x=200+800*s.x,p=200+800*s.p;
+     set('[data-bl-mass]','cx',x);set('[data-bl-masslabel]','x',x);set('[data-bl-zmp]','cx',p);set('[data-bl-zlabel]','x',p);set('[data-bl-drop]','d',`M${x} 70V250`);
+     set('[data-bl-shine]','cx',x-6);
+     for(const rod of ['[data-bl-rod]','[data-bl-rod-inner]']){set(rod,'x1',p);set(rod,'x2',x);}
+     set('[data-bl-pivot]','d',`M${p} 250l-13 19h26Z`);
+     const arrow=(x:number,y:number,d:number)=>Math.abs(d)<1?'':`M${x} ${y}h${d}m${-Math.sign(d)*7} -4l${Math.sign(d)*7} 4l${-Math.sign(d)*7} 4`;
+     set('[data-bl-velocity]','d',arrow(x+28,70,s.v*360));set('[data-bl-accel]','d',arrow(x-8,115,s.a*65));
+     card.querySelector('[data-bl-speed]')!.textContent=`向前速度 ${s.v.toFixed(2)} m/s`;
+     card.querySelector('[data-bl-acceltext]')!.textContent=t<2?'等待扰动':s.v>.01?'向后加速，逐渐减速':'逐渐停稳';
+    }else{
+     const X=(v:number)=>70+v*650,footWidth=.17*650;
+     set('[data-bl-left]','x',X(-.05));set('[data-bl-left]','width',footWidth);
+     set('[data-bl-right]','x',X(s.rightX-.05));set('[data-bl-right]','width',footWidth);
+     const flying=s.rightZ>.001;set('[data-bl-right]','stroke-dasharray',flying?'4 3':'none');set('[data-bl-right]','opacity',flying?.4:1);
+     set('[data-bl-support]','d',`M${X(-.05)} 75H${X((flying?0:s.rightX)+.12)}`);
+     set('[data-bl-projection]','cx',X(isReach?(pose?.com[0]??0):s.x));
+     if(!isReach){const x=X(s.cp);set('[data-bl-cp]','d',`M${x} 67l8 8l-8 8l-8 -8Z`);}
+    }
+    card.querySelector('[data-bl-result]')!.textContent=isReach?['准备伸手','手臂向前，质量分布随之改变','髋部后移、躯干调整，手保持接近目标','目标移远：左脚支撑，右脚向前摆动','右脚落地，身体前移，手继续接近目标'][s.phase]:t<2?'站稳，准备接受扰动':i===1?(s.single?'左脚保持接触，右脚正向新的支撑位置摆动':s.landed?'右脚落地，质心逐渐接近新的停稳位置':'捕获点超出原支撑范围，准备向前迈步'):(s.v>.01?'受力点位于质心前方，向前速度逐渐减小':'原地收稳，质心逐渐接近受力点');
+   });
+   root.querySelector('[data-bl-story]')!.textContent=isReach?['先观察手、身体和脚的位置。','先伸手：观察手的位置和紫色质心投影。','保持手端目标，加入髋部与躯干的配合。','更远的目标需要新的站位：先卸载右脚，再向前迈。','落脚后再前移身体，让手继续接近物体。'][reach(t).phase]:isZmp?(t<2?'先站稳；随后给予一次向前扰动。':t<5?'质心向前移动，把 ZMP 调到它的前方，产生向后的加速度。':'观察速度箭头逐渐缩短，质心慢慢靠近受力位置。'):(t<2?'初始站位相同；接下来分别给予较小和较大的向前速度。':t<4.5?'对照橙色捕获点：小扰动能在原支撑内收住，大扰动需要换到前方支撑。':'右脚落地后，新的支撑位置接住向前移动的身体。');
+   root.querySelectorAll<HTMLElement>('[data-bl-task]').forEach((el,i)=>{const phase=reach(t).phase;el.dataset.active=String(i===0||i===1&&phase>=2||i===2&&(phase===1||phase===4));});
+   play.textContent=t>=duration?'再看一遍':paused?'播放':'暂停';root.querySelector('[data-bl-time]')!.textContent=`${t.toFixed(1)} / ${duration} 秒`;
+  }
+  async function load(){if(loading)return;loading=true;if(!isZmp){try{const {createBalanceView}=await import('../lib/g1-balance-view.js');for(const v of root.querySelectorAll<HTMLElement>('[data-bl-model]'))views.push(await createBalanceView(v,root.dataset.urdf,kind));root.querySelectorAll<HTMLElement>('[data-bl-loading]').forEach(e=>e.hidden=true);ready=true;}catch(e){console.error(e);root.querySelectorAll('[data-bl-loading]').forEach(e=>e.textContent='G1 模型暂未加载，脚下图仍可播放。');ready=true;}}
+   if(!started&&!reduced.matches){paused=false;started=true;}if(!paused)loop.start();paint();}
+  loop.onFrame(now=>{if(paused||!ready)return false;if(last)t=Math.min(duration,t+Math.min(.05,(now-last)/1000));last=now;if(t>=duration){paused=true;loop.stop();}paint();return !paused;});
+  play.addEventListener('click',()=>{started=true;if(t>=duration)t=0;paused=!paused;last=0;paint();if(!paused)loop.start();else loop.stop();});
+  root.querySelector('[data-bl-reset]')!.addEventListener('click',()=>{started=true;t=0;last=0;paused=false;paint();loop.start();});
+  reduced.addEventListener('change',()=>{if(reduced.matches){paused=true;loop.stop();paint();}});document.addEventListener('visibilitychange',()=>last=0);paint();
+ });
+</script>
+<style>
+.bl-demo{margin:1.5rem 0;padding:1rem;border:1px solid var(--sl-color-gray-5);border-radius:14px;scroll-margin-top:7rem;}.bl-demo :is(p,div,header,h4,ol,li,section,button){margin:0;}.bl-demo header strong{font-size:1.08rem;}.bl-demo header p,.bl-demo figcaption{font-size:.85rem;line-height:1.7;color:var(--sl-color-gray-2);margin-top:.5rem;}.bl-story{margin:1rem 0!important;min-height:3rem;font-size:.9rem;}.bl-panels{display:grid;gap:.75rem;}.bl-double{grid-template-columns:repeat(2,minmax(0,1fr));}.bl-card{min-width:0;padding:.7rem;border:1px solid var(--sl-color-gray-5);border-radius:10px;background:var(--sl-color-bg);}.bl-card h4{font-size:.9rem;}.bl-model{height:285px;position:relative;}.bl-model span{position:absolute;left:.5rem;top:45%;font-size:.8rem;}.bl-model [hidden]{display:none;}.bl-side,.bl-feet{display:block;width:100%;height:auto;overflow:visible;margin:.7rem 0;}.bl-feet text{font-size:13px;fill:var(--sl-color-text);}.bl-double .bl-feet text{font-size:18px;}.bl-side text{font-size:15px;fill:var(--sl-color-text);}.bl-height-guide{stroke:var(--sl-color-gray-4);stroke-dasharray:3 5;fill:none;opacity:.7;}.bl-rod{stroke:#8e9dad;stroke-width:12;stroke-linecap:round;}.bl-rod-inner{stroke:#d7dfe7;stroke-width:5;stroke-linecap:round;}.bl-bob{stroke:#655ac2;stroke-width:3;}.bl-shine{fill:#fff;opacity:.45;}.bl-pivot{fill:#d89126;fill-opacity:.22;stroke:#d89126;stroke-width:2;}.bl-ground{stroke:var(--sl-color-gray-4);fill:none;}.bl-support{fill:#28897e;opacity:.25;}.bl-support-line{stroke:#28897e;stroke-width:10;opacity:.35;}.bl-foot{fill:#82bcb1;fill-opacity:.3;stroke:#28897e;stroke-width:2;}.bl-com{fill:#8174df;}.bl-zmp,.bl-cp{fill:#d89126;}.bl-dash{stroke:#8174df;stroke-dasharray:4 4;fill:none;}.bl-velocity{stroke:#348f9e;stroke-width:3;fill:none;}.bl-accel{stroke:#d89126;stroke-width:3;fill:none;}.bl-result{min-height:3rem;font-size:.82rem;line-height:1.65;}.bl-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;margin-top:1rem!important;}.bl-actions button{min-height:44px;padding:.4rem 1rem;border:1px solid var(--sl-color-gray-4);border-radius:8px;background:var(--sl-color-bg);color:var(--sl-color-text);font:inherit;font-size:.85rem;cursor:pointer;}.bl-actions button:focus-visible{outline:2px solid var(--sl-color-text-accent);outline-offset:3px;}.bl-actions span{font-size:.8rem;font-variant-numeric:tabular-nums;}.bl-tasks{display:flex;flex-wrap:wrap;gap:.5rem;padding:0;list-style:none;margin-top:.7rem!important;}.bl-tasks li{font-size:.8rem;padding:.4rem .6rem;border-radius:6px;background:var(--sl-color-gray-6);}.bl-tasks [data-active=true]{box-shadow:inset 3px 0 #28897e;}.bl-demo[data-bl-kind=reach] .bl-model{height:330px;}
+@media(max-width:600px){.bl-demo{padding:.75rem;}.bl-double{grid-template-columns:1fr;}.bl-model{height:260px;}.bl-demo[data-bl-kind=reach] .bl-model{height:280px;}.bl-side text{font-size:21px;}.bl-feet text{font-size:17px;}.bl-story{min-height:4.5rem;}.bl-card{padding:.5rem;}}
+</style>
