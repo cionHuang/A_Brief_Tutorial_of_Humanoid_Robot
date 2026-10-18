@@ -1,0 +1,141 @@
+---
+const urdfUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/') + 'models/g1/g1_29dof.urdf';
+---
+<figure class="kf-demo" id="g1-kalman-update-demo" data-urdf={urdfUrl}>
+  <header><strong>从 8° 出发，这一次该修正多少？</strong><p>同样预测为 10°，同样测到 12°。依次看看测量较稳定、测量波动较大时的结果。</p></header>
+  <div class="kf-case" data-kf-case>第一遍 · 测量较稳定</div>
+  <ol class="kf-steps" aria-label="卡尔曼滤波的三个步骤">
+    <li data-kf-step="0" aria-current="step">① 上一次：8°</li>
+    <li data-kf-step="1">② 预测：10°</li>
+    <li data-kf-step="2">③ 用测量更新</li>
+  </ol>
+  <p class="kf-story" data-kf-story>上一次，我们估计 G1 向前倾斜了 8°。</p>
+  <div class="kf-layout">
+    <div class="cf-card kf-model-card" style="--cf-color:#39a58c">
+      <div class="kf-model" data-cf-model="fuse" role="img" aria-label="G1 当前估计姿态；更新时，虚线保留 10 度的预测姿态"><span data-kf-loading>正在加载 G1…</span></div>
+      <strong class="kf-angle">当前估计 <span data-kf-angle>8.0°</span></strong>
+      <p>绿色实体：当前估计<br />虚线轮廓：<span data-kf-reference>上一次的 8°</span></p>
+    </div>
+    <div class="kf-comparison">
+      <strong>把判断放在同一把角度尺上</strong>
+      <div class="kf-scale" aria-hidden="true"><span>6°</span><span>12°</span><span>18°</span></div>
+      <div class="kf-row" data-kf-prediction hidden>
+        <div class="kf-label"><b>预测 10°</b><span>不确定度 ±2°</span></div>
+        <div class="kf-track"><span class="kf-band kf-prediction" style="left:16.667%;width:33.333%"></span><span class="kf-point" style="left:33.333%"></span></div>
+      </div>
+      <div class="kf-row" data-kf-measurement hidden>
+        <div class="kf-label"><b>测量 12°</b><span data-kf-sigma>不确定度 ±1°</span></div>
+        <div class="kf-track"><span class="kf-band kf-measurement" data-kf-band style="left:41.667%;width:16.667%"></span><span class="kf-point" style="left:50%"></span></div>
+      </div>
+      <div class="kf-row">
+        <div class="kf-label"><b>当前估计</b><span data-kf-value>8.0°</span></div>
+        <div class="kf-track"><span class="kf-point kf-result" data-kf-marker style="left:16.667%"></span></div>
+      </div>
+      <p class="kf-explain">色带越窄，表示这份判断的不确定度越小。黑色短线标出预测值或测量值。</p>
+      <p class="kf-equation" data-kf-equation>从上一次的估计开始。</p>
+    </div>
+  </div>
+  <div class="kf-actions"><button type="button" data-kf-play>暂停</button><button type="button" data-kf-replay>从头看</button><span data-kf-time>0 / 26 秒</span></div>
+  <figcaption>两遍演示从同一个 8° 重新开始。12° 是测量值；真实倾角在这里未知。色带显示 ±1 个标准差，数值为教学示意，采用单轴卡尔曼更新。</figcaption>
+  <noscript>预测为 10°、测量为 12° 时：若预测标准差为 2°、测量标准差为 1°，更新得到 11.6°；若测量标准差增大到 4°，更新得到 10.4°。</noscript>
+</figure>
+<script>
+  import { createVisibleRaf } from '../lib/visible-raf.js';
+  import { createG1EstimationView } from '../lib/g1-estimation-view.js';
+  import { kalmanLesson } from '../lib/kalman-lesson.js';
+  document.querySelectorAll<HTMLElement>('.kf-demo').forEach(root => {
+    const q = (s: string) => root.querySelector<HTMLElement>(s)!;
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+    let time = 0, last = 0, paused = reduced.matches, loading = false, view;
+    function paint() {
+      const s = kalmanLesson(time);
+      q('[data-kf-case]').textContent = s.scenario === 0 ? '第一遍 · 测量较稳定' : '第二遍 · 测量波动较大';
+      root.querySelectorAll('[data-kf-step]').forEach((el,i)=>{
+        if(i === s.stage) el.setAttribute('aria-current','step'); else el.removeAttribute('aria-current');
+      });
+      const stories = ['上一次，我们估计 G1 向前倾斜了 8°。', '陀螺仪测得又向前转了 2°。从 8° 推进到 10°，得到这一次的预测。', s.scenario === 0 ? '测量的不确定度较小，更新结果多向 12° 靠近，得到 11.6°。' : '测量的不确定度较大，更新结果多保留 10° 的预测，得到 10.4°。'];
+      q('[data-kf-story]').textContent = stories[s.stage];
+      q('[data-kf-angle]').textContent = q('[data-kf-value]').textContent = s.estimate.toFixed(1) + '°';
+      q('[data-kf-reference]').textContent = s.stage === 0 ? '上一次的 8°' : '这一次的预测 10°';
+      q('[data-kf-prediction]').hidden = s.stage === 0;
+      q('[data-kf-measurement]').hidden = s.stage < 2;
+      q('[data-kf-sigma]').textContent = `不确定度 ±${s.sigma}°`;
+      q('[data-kf-band]').style.left = `${(12-s.sigma-6)/12*100}%`;
+      q('[data-kf-band]').style.width = `${2*s.sigma/12*100}%`;
+      q('[data-kf-marker]').style.left = `${(s.estimate-6)/12*100}%`;
+      q('[data-kf-equation]').textContent = s.stage === 0 ? '从上一次的估计开始。' : s.stage === 1 ? '预测：8° + 2° = 10°' : `更新：10° + ${Math.round(s.gain*100)}% × (12° − 10°) = ${s.result.toFixed(1)}°`;
+      q('[data-kf-time]').textContent = `${Math.floor(time)} / 26 秒`;
+      q('[data-kf-play]').textContent = time >= 26 ? '再看一遍' : paused ? '播放' : '暂停';
+      view?.render({truth:s.stage === 0 ? 8 : 10, fuse:s.estimate});
+    }
+    async function load() {
+      if(loading) return;
+      loading = true;
+      try {
+        view = await createG1EstimationView(root,root.dataset.urdf);
+        q('[data-kf-loading]').hidden = true;
+        paint(); if(!paused) loop.start();
+      } catch { q('[data-kf-loading]').textContent = 'G1 加载失败，请刷新重试'; }
+    }
+    const loop = createVisibleRaf(root,{rootMargin:'0px',onEnter:()=>{last=0;void load();}});
+    loop.onFrame(now=>{
+      if(paused || !view) return false;
+      if(last) time = Math.min(26,time + Math.min((now-last)/1000,.05));
+      last = now;
+      if(time >= 26) {paused=true;loop.stop();}
+      paint(); return !paused;
+    });
+    function restart() {time=last=0;paused=false;paint();loop.start();}
+    q('[data-kf-replay]').addEventListener('click',restart);
+    q('[data-kf-play]').addEventListener('click',()=>{
+      if(time>=26) return restart();
+      paused=!paused;last=0;paint();if(paused)loop.stop();else loop.start();
+    });
+    reduced.addEventListener('change',()=>{if(reduced.matches){paused=true;loop.stop();paint();}});
+    document.addEventListener('visibilitychange',()=>{last=0;});
+    paint();
+  });
+</script>
+<style>
+  .kf-demo { margin:1.5rem 0; padding:1rem; border:1px solid var(--sl-color-gray-5); border-radius:14px; scroll-margin-top:7rem; }
+  .kf-demo :is(div,p,ol,li,header,button,figcaption) { margin:0; }
+  .kf-demo [hidden] { display:none !important; }
+  .kf-demo .kf-row[hidden] { display:block !important; visibility:hidden; }
+  .kf-demo header strong {font-size:1.1rem;}
+  .kf-demo header p,.kf-demo figcaption {font-size:.85rem;line-height:1.7;color:var(--sl-color-gray-2);margin-top:.5rem;}
+  .kf-case {margin-top:1rem !important;font-size:.9rem;font-weight:700;color:var(--sl-color-text-accent);}
+  .kf-steps {display:flex;flex-wrap:wrap;gap:.4rem;padding:0;list-style:none;margin-top:.6rem !important;}
+  .kf-steps li {font-size:.8rem;padding:.3rem .5rem;border-radius:6px;}
+  .kf-steps [aria-current] {background:var(--sl-color-accent-low);color:var(--sl-color-text-accent);font-weight:700;}
+  .kf-story {font-size:.9rem;min-height:5rem;margin-top:.8rem !important;}
+  .kf-layout {display:grid;grid-template-columns:minmax(130px,1fr) minmax(0,1.65fr);gap:1rem;}
+  .kf-model {height:240px;position:relative;}
+  .kf-model>span {position:absolute;top:40%;font-size:.8rem;}
+  .kf-model-card {min-width:0;}
+  .kf-model-card p {font-size:.75rem;color:var(--sl-color-gray-2);line-height:1.6;margin-top:.4rem;}
+  .kf-angle {display:block;font-size:1rem;font-variant-numeric:tabular-nums;}
+  .kf-comparison {min-width:0;font-size:.85rem;}
+  .kf-scale {display:flex;justify-content:space-between;font-size:.75rem;margin:1rem 0 .5rem !important;color:var(--sl-color-gray-2);}
+  .kf-label {display:flex;justify-content:space-between;gap:.3rem;flex-wrap:wrap;}
+  .kf-label span {font-size:.75rem;}
+  .kf-track {height:30px;position:relative;background:var(--sl-color-gray-6);border-radius:4px;margin:.3rem 0 .8rem !important;}
+  .kf-band {position:absolute;top:6px;height:18px;border-radius:3px;opacity:.65;}
+  .kf-prediction {background:#b879da;}
+  .kf-measurement {background:#d18b30;}
+  .kf-point {position:absolute;top:3px;bottom:3px;width:3px;transform:translateX(-50%);background:var(--sl-color-text);}
+  .kf-result {background:#39a58c;width:5px;}
+  .kf-explain {font-size:.75rem;line-height:1.6;color:var(--sl-color-gray-2);}
+  .kf-equation {font-size:.85rem;font-weight:600;margin-top:.7rem !important;line-height:1.7;}
+  .kf-actions {display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-top:1rem !important;}
+  .kf-actions button {min-height:44px;padding:.4rem 1rem;font:inherit;font-size:.85rem;background:var(--sl-color-bg);color:var(--sl-color-text);border:1px solid var(--sl-color-gray-4);border-radius:8px;cursor:pointer;}
+  .kf-actions button:focus-visible {outline:2px solid var(--sl-color-text-accent);outline-offset:3px;}
+  .kf-actions span {font-size:.8rem;color:var(--sl-color-gray-2);}
+  @media(max-width:600px) {
+    .kf-demo {padding:.75rem;}
+    .kf-layout {grid-template-columns:1fr;}
+    .kf-model-card {display:grid;grid-template-columns:110px minmax(0,1fr);align-items:center;gap:.3rem .7rem;}
+    .kf-model {height:160px;grid-column:1;grid-row:1/3;}
+    .kf-angle,.kf-model-card p {grid-column:2;}
+    .kf-story {min-height:6rem;}
+  }
+</style>

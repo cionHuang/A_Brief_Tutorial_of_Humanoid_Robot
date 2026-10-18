@@ -1,461 +1,143 @@
 ---
-import ScrollableDiagram from "./ScrollableDiagram.astro";
-/**
- * 4.4 状态估计：互补滤波与陀螺积分漂移交互演示 —— “## 互补滤波”一节之后。
- *
- * 纯 2D SVG 时间轴 + HTML 读数，无 3D、无外部依赖。页面里真算四条轨迹：
- *   真值 θ_true、纯陀螺积分 θ_g、加速度计观测 θ_a、互补滤波输出 θ_hat。
- * 更新式（与正文公式一致）：
- *   θ_g   ← θ_g + (ω_meas − b_g) dt
- *   θ_hat ← α (θ_hat + (ω_meas − b_g) dt) + (1 − α) θ_a      （重力观测关闭时退化为 θ_hat = θ_g）
- *
- * 画法：三条泳道各自画“相对真值的误差”（零线 = 真值），每条泳道用自己的纵轴范围
- *   —— 否则陀螺漂到上百度时，加速度计的 ±2° 抖动会被压成一条直线，什么也看不出来。
- *   泳道顺序即讲解顺序：陀螺（会漂）→ 加速度计（会抖）→ 融合（两者加权，误差最小）。
- *
- * 教学示意参数（噪声、零偏为可复现的伪随机，量级为示意）：
- *   θ_true = 25° · sin(2π t / 9)，角速度由解析导数给出；
- *   陀螺噪声 0.25°/s、零偏可注入；加速度计噪声 1.5°，快速运动时按 |ω| 加权放大；
- *   α 由滑块给出（0.80–0.998），对应时间常数 τ ≈ α/(1−α)；
- *   yaw 通道没有重力观测：陀螺零偏会把 yaw 估计单调拉开，用来解释“不可观”。
- * 漂移机理、互补滤波的权重行为是真实的；具体噪声与偏置数值是示意，不代表某台 G1。
- */
-
-const R2D = 180 / Math.PI;
-const WINDOW_S = 12;
-const YAW_WINDOW_S = 30;
-const MAX_PTS = 600;
-const ALPHA_DEF = 0.96;
-const ALPHA_MIN = 0.8;
-const ALPHA_MAX = 0.998;
-const GYRO_N = 0.25;
-const ACC_N = 1.5;
-const YAW_BIAS = 0.35;
-
-const fmt1 = (v) => (Math.abs(v) < 0.05 ? "0.0" : (v < 0 ? "−" : "") + Math.abs(v).toFixed(1));
-const tauText = (a) => ((a / (1 - a)) * (1 / 30)).toFixed(2);
-const CFG = {
-  window: WINDOW_S,
-  yawWindow: YAW_WINDOW_S,
-  maxPts: MAX_PTS,
-  alpha: ALPHA_DEF,
-  aMin: ALPHA_MIN,
-  aMax: ALPHA_MAX,
-  gyroN: GYRO_N,
-  accN: ACC_N,
-  yawBias: YAW_BIAS,
-  tau: tauText(ALPHA_DEF),
-};
-
-// 三条泳道：顺序即讲解顺序
-const LANES = [
-  { key: 'gyro', top: 84, h: 88, title: '纯陀螺积分', sub: '误差 = 陀螺积分 − 真值' },
-  { key: 'acc', top: 190, h: 88, title: '加速度计', sub: '误差 = 加速度计 − 真值' },
-  { key: 'fuse', top: 296, h: 88, title: '互补滤波输出', sub: '误差 = 融合输出 − 真值' },
-];
-const X0 = 24;
-const X1 = 696;
-const AXIS_Y = 400;
-const LEGEND = [
-  { x: 24, label: '陀螺积分', cls: 'cf-gyro' },
-  { x: 184, label: '加速度计', cls: 'cf-acc' },
-  { x: 344, label: '融合输出', cls: 'cf-fuse' },
-  { x: 504, label: '零线 = 真值', cls: 'cf-zero-sample' },
+const urdfUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/') + 'models/g1/g1_29dof.urdf';
+const cards = [
+  { key: 'gyro', title: '只累加陀螺仪读数', note: '跟得上转动，小偏差也会越积越多。', color: '#b879da' },
+  { key: 'acc', title: '只看加速度计', note: '能找到倾斜方向，读数会来回波动。', color: '#d18b30' },
+  { key: 'fuse', title: '把两者结合起来', note: '跟踪转动，再用重力方向持续校正。', color: '#39a58c' },
 ];
 ---
-
-<figure class="cf-demo" data-cf={JSON.stringify(CFG)}>
-  <ScrollableDiagram width={720}>
-  <svg
-    viewBox="0 0 720 436"
-    role="img"
-    aria-label="互补滤波教学示意：三条泳道分别画纯陀螺积分、加速度计和互补滤波输出相对真值的误差曲线，零线代表真值；每条泳道有自己的纵轴范围。拖动 α 滑块改变对陀螺与重力观测的信任比例。"
-  >
-    <defs>
-      <clipPath id="cf-clip">
-        <rect x={X0} y={LANES[0].top} width={X1 - X0} height={LANES[2].top + LANES[2].h - LANES[0].top}></rect>
-      </clipPath>
-    </defs>
-
-    <text class="cf-title" x={X0} y="26">互补滤波：两种都不完美的观测，合成一个稳的估计</text>
-
-    {LEGEND.map((item) => (
-      <g>
-        <line class={'cf-sample ' + item.cls} x1={item.x} y1="48" x2={item.x + 22} y2="48"></line>
-        <text class="cf-legend" x={item.x + 28} y="52">{item.label}</text>
-      </g>
-    ))}
-
-    {LANES.map((lane) => (
-      <g>
-        <text class="cf-lane-name" x={X0} y={lane.top - 7}>{lane.title}</text>
-        <text class="cf-lane-sub" x={X1} y={lane.top - 7} text-anchor="end">{lane.sub}</text>
-        <text class="cf-scale-label" data-cf-scale={lane.key} x={X1} y={lane.top + 14} text-anchor="end">纵轴 ±—</text>
-
-        <rect class="cf-lane-bg" x={X0} y={lane.top} width={X1 - X0} height={lane.h} rx="6"></rect>
-        <line class="cf-zero" x1={X0} y1={lane.top + lane.h / 2} x2={X1} y2={lane.top + lane.h / 2}></line>
-        <line class="cf-grid" x1={X0 + (X1 - X0) / 4} y1={lane.top} x2={X0 + (X1 - X0) / 4} y2={lane.top + lane.h}></line>
-        <line class="cf-grid" x1={X0 + (X1 - X0) / 2} y1={lane.top} x2={X0 + (X1 - X0) / 2} y2={lane.top + lane.h}></line>
-        <line class="cf-grid" x1={X0 + (3 * (X1 - X0)) / 4} y1={lane.top} x2={X0 + (3 * (X1 - X0)) / 4} y2={lane.top + lane.h}></line>
-      </g>
-    ))}
-
-    <g clip-path="url(#cf-clip)">
-      {LANES.map((lane) => (
-        <path class={'cf-series cf-' + lane.key} data-cf-series={lane.key} d=""></path>
-      ))}
-    </g>
-
-    <line class="cf-axis" x1={X0} y1={AXIS_Y} x2={X1} y2={AXIS_Y}></line>
-    <line class="cf-tick" x1={X0} y1={AXIS_Y} x2={X0} y2={AXIS_Y + 6}></line>
-    <line class="cf-tick" x1={X0 + (X1 - X0) / 2} y1={AXIS_Y} x2={X0 + (X1 - X0) / 2} y2={AXIS_Y + 6}></line>
-    <line class="cf-tick" x1={X1} y1={AXIS_Y} x2={X1} y2={AXIS_Y + 6}></line>
-    <text class="cf-axis-label" x={X0} y={AXIS_Y + 22} text-anchor="start">−12 s</text>
-    <text class="cf-axis-label" x={X0 + (X1 - X0) / 2} y={AXIS_Y + 22} text-anchor="middle">−6 s</text>
-    <text class="cf-axis-label" x={X1} y={AXIS_Y + 22} text-anchor="end">现在</text>
-  </svg>
-  </ScrollableDiagram>
-
-  <div class="cf-controls">
-    <div class="cf-row">
-      <span class="cf-row-title">α（信陀螺的比例）</span>
-      <input class="cf-range" type="range" data-cf-alpha min="800" max="998" step="1" value="960" />
-      <span class="cf-alpha-val" data-cf-alpha-val>0.960</span>
-      <span class="cf-hint" data-cf-tau>时间常数 ≈ 3.30 s（教学示意）</span>
-    </div>
-    <div class="cf-row">
-      <span class="cf-row-title"></span>
-      <button type="button" class="cf-btn" data-cf-gravity>重力观测：开</button>
-      <button type="button" class="cf-btn" data-cf-bias>陀螺零偏：关</button>
-      <button type="button" class="cf-btn" data-cf-pause>暂停</button>
-      <button type="button" class="cf-btn" data-cf-reset>复位</button>
-    </div>
-    <div class="cf-row">
-      <span class="cf-row-title"></span>
-      <span class="cf-hint">三条道画的是“各自减掉真值”的误差，零线就是真值；每条道纵轴范围不同，看形状不看绝对高度。</span>
-    </div>
+<figure data-urdf={urdfUrl} class="cf-demo" aria-label="身体倾斜时，三种姿态估计的对比演示">
+  <header><strong>身体停住了，估计也会停住吗？</strong><p>同一次前倾，三种判断。使用本书的 G1 模型，虚线轮廓是真实姿态，彩色 G1 是估计姿态。</p></header>
+  <ol class="cf-steps" aria-label="演示过程">
+    <li data-cf-stage="0" aria-current="step">① 向前倾斜</li>
+    <li data-cf-stage="1">② 保持不动</li>
+    <li data-cf-stage="2">③ 看融合结果</li>
+  </ol>
+  <div class="cf-scene"><span data-cf-story>身体缓缓向前倾斜，三种估计都在跟随这次转动。</span><strong>真实倾角 <span data-cf-true>0.0°</span></strong></div>
+  <div class="cf-cards">
+    {cards.map(card => <section class="cf-card" style={`--cf-color:${card.color}`}>
+      <h4>{card.title}</h4>
+      <div class="cf-model" data-cf-model={card.key} role="img" aria-label={`G1 姿态对照：${card.title}，虚线为真实姿态，实体为估计姿态`}><span data-cf-loading>正在加载 G1…</span></div>
+      <div class="cf-reading"><strong data-cf-angle={card.key}>0.0°</strong><span>相差 <b data-cf-error={card.key}>0.0°</b></span></div>
+      <p>{card.note}</p>
+    </section>)}
   </div>
-
-  <div class="cf-readout">
-    <div class="cf-fields">
-      <div class="cf-field"><span class="cf-field-k">真值 roll</span><span class="cf-field-v" data-cf-out="true">0.0°</span></div>
-      <div class="cf-field"><span class="cf-field-k">融合输出</span><span class="cf-field-v cf-field-fuse" data-cf-out="fuse">0.0°</span></div>
-      <div class="cf-field"><span class="cf-field-k">yaw 真值</span><span class="cf-field-v" data-cf-out="yawTrue">0.0°</span></div>
-      <div class="cf-field"><span class="cf-field-k">yaw 估计（无重力）</span><span class="cf-field-v cf-field-warn" data-cf-out="yawEst">0.0°</span></div>
-    </div>
-    <div class="cf-metrics">
-      <span>此刻误差</span>
-      <span>陀螺积分 <b data-cf-err="g">0.0</b>°</span>
-      <span>加速度计 <b data-cf-err="a">0.0</b>°</span>
-      <span>融合输出 <b data-cf-err="f">0.0</b>°</span>
-      <span>yaw 漂移 <b data-cf-err="yaw">0.0</b>°</span>
-    </div>
-    <div class="cf-peaks"><span data-cf-out="peak">峰值误差：陀螺积分 0.0° · 加速度计 0.0° · 融合 0.0°</span></div>
-    <div class="cf-note" data-cf-out="warn"></div>
-    <div class="cf-note">重力方向可校正 roll/pitch；yaw 的长期校正需要其他方向观测。本例的 yaw 估计随陀螺零偏逐渐漂移，噪声与零偏采用教学值。</div>
-  </div>
+  <div class="cf-actions"><button type="button" data-cf-play>暂停</button><button type="button" data-cf-replay>从头看</button><span data-cf-time>0 / 18 秒</span></div>
+  <figcaption>观察彩色 G1 与虚线的距离：陀螺积分逐渐偏离，加速度计来回摆动，融合结果更贴近真实姿态。这里用 G1 单轴倾斜说明原理，零偏和波动为教学示意；融合权重固定。</figcaption>
+  <noscript>例如身体保持前倾 15° 时，陀螺仪的小偏差会不断累积；加速度计给出的倾角在 15° 附近波动。互补滤波结合两者，持续校正倾角。</noscript>
 </figure>
-
 <script>
+  import { createG1EstimationView } from '../lib/g1-estimation-view.js';
   import { createVisibleRaf } from '../lib/visible-raf.js';
-
-(function () {
-  const D2R = Math.PI / 180;
-  const R2D = 180 / Math.PI;
-  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-  const fmt1 = (v) => (Math.abs(v) < 0.05 ? "0.0" : (v < 0 ? "−" : "") + Math.abs(v).toFixed(1));
-
-  document.querySelectorAll(".cf-demo").forEach((demo) => {
-    if (!(demo instanceof HTMLElement)) return;
-    const cfg = JSON.parse(demo.dataset.cf || "{}");
-    const ALPHA_DEF = cfg.alpha != null ? cfg.alpha : 0.96;
-    const GYRO_N = cfg.gyroN != null ? cfg.gyroN : 0.25;
-    const ACC_N = cfg.accN != null ? cfg.accN : 1.5;
-    const YAW_BIAS = cfg.yawBias != null ? cfg.yawBias : 0.35;
-    const WINDOW = cfg.window != null ? cfg.window : 12;
-    const YAW_WINDOW = cfg.yawWindow != null ? cfg.yawWindow : 30;
-    const MAXPTS = cfg.maxPts != null ? cfg.maxPts : 600;
-
-    const pick = (name) => demo.querySelector("[data-cf-" + name + "]");
-    const alphaEl = pick("alpha");
-    const alphaValEl = pick("alpha-val");
-    const tauEl = pick("tau");
-    const gravityBtn = pick("gravity");
-    const biasBtn = pick("bias");
-    const pauseBtn = pick("pause");
-    const resetBtn = pick("reset");
-    const outTrue = pick("out='true'");
-    const outFuse = pick("out='fuse'");
-    const outYawTrue = pick("out='yawTrue'");
-    const outYawEst = pick("out='yawEst'");
-    const outPeak = pick("out='peak'");
-    const outWarn = pick("out='warn'");
-    const errG = pick("err='g'");
-    const errA = pick("err='a'");
-    const errF = pick("err='f'");
-    const errYaw = pick("err='yaw'");
-    if (!(alphaEl instanceof HTMLInputElement) || !(gravityBtn instanceof HTMLButtonElement)) return;
-
-    // 三条泳道的几何与各自纵轴范围（阶梯 + 迟滞，避免来回跳）
-    const X0 = 24;
-    const X1 = 696;
-    const PLOT_W = X1 - X0;
-    const LANES = {
-      gyro: { top: 84, h: 88, ladder: [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000], floor: 1 },
-      acc: { top: 190, h: 88, ladder: [1, 2, 5, 10, 20, 50, 100], floor: 1 },
-      fuse: { top: 296, h: 88, ladder: [0.5, 1, 2, 5, 10, 20, 50], floor: 0.5 },
-    };
-    const pathEls = {
-      gyro: pick("series='gyro'"),
-      acc: pick("series='acc'"),
-      fuse: pick("series='fuse'"),
-    };
-    const scaleEls = {
-      gyro: pick("scale='gyro'"),
-      acc: pick("scale='acc'"),
-      fuse: pick("scale='fuse'"),
-    };
-
-    let alpha = ALPHA_DEF;
-    let gravityOn = true;
-    let biasOn = false;
-    let paused = false;
-    let t = 0;
-    let thetaTrue = 0;
-    let thetaGyro = 0;
-    let thetaFuse = 0;
-    let thetaAcc = 0;
-    let yawTrue = 0;
-    let yawEst = 0;
-    let seed = 1234567;
-    let hist = { t: [], gyro: [], acc: [], fuse: [] };
-    let peak = { g: 0, a: 0, f: 0 };
-    let scales = { gyro: 1, acc: 1, fuse: 0.5 };
-    let lastNow = 0;
-    let frame = 0;
-
-    const SAMPLE_T = 0.025;
-
-    const rnd = () => {
-      seed = (seed * 1664525 + 1013904223) % 4294967296;
-      return seed / 4294967296;
-    };
-    const gauss = () => {
-      const u = Math.max(rnd(), 1e-9);
-      const v = rnd();
-      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-    };
-
-    const reset = () => {
-      t = 0;
-      seed = 1234567;
-      thetaTrue = 0;
-      thetaGyro = 0;
-      thetaFuse = 0;
-      thetaAcc = 0;
-      yawTrue = 0;
-      yawEst = 0;
-      hist = { t: [], gyro: [], acc: [], fuse: [] };
-      peak = { g: 0, a: 0, f: 0 };
-      scales = { gyro: 1, acc: 1, fuse: 0.5 };
-      lastNow = 0;
-      paintAll(0, 0, 0, 0);
-    };
-
-    const step = (dt) => {
-      const wTrue = 25 * (2 * Math.PI / 9) * Math.cos(2 * Math.PI * t / 9) * D2R;
-      thetaTrue = 25 * Math.sin(2 * Math.PI * t / 9) * D2R;
-      const wMeas = wTrue + (biasOn ? 1.2 * D2R : 0) + gauss() * GYRO_N * D2R * Math.sqrt(dt * 40);
-      const motion = Math.min(Math.abs(wTrue) * R2D / 60, 1.5);
-      thetaAcc = thetaTrue + gauss() * (ACC_N + 4 * motion) * D2R;
-      const dTheta = wMeas * dt;
-      thetaGyro += dTheta;
-      thetaFuse += dTheta;
-      if (gravityOn) thetaFuse = alpha * thetaFuse + (1 - alpha) * thetaAcc;
-      yawTrue = 6 * Math.sin(2 * Math.PI * t / 23) * D2R;
-      yawEst += (YAW_BIAS * D2R + gauss() * 0.02 * D2R * Math.sqrt(dt * 40)) * dt;
-    };
-
-    const trimHist = () => {
-      const tCut = t - WINDOW - 0.5;
-      let drop = 0;
-      while (drop < hist.t.length && hist.t[drop] < tCut) drop += 1;
-      if (drop > MAXPTS) drop = hist.t.length - MAXPTS;
-      if (drop > 0) {
-        hist.t.splice(0, drop);
-        hist.gyro.splice(0, drop);
-        hist.acc.splice(0, drop);
-        hist.fuse.splice(0, drop);
+  document.querySelectorAll<HTMLElement>('.cf-demo').forEach(demo => {
+    const pick = (s: string) => demo.querySelector<HTMLElement>(s)!;
+    const play = pick('[data-cf-play]');
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+    const dt = 0.02;
+    const alpha = Math.exp(-dt / 0.65);
+    const angle = (t: number) => t >= 4 ? 15 : 7.5 * (1 - Math.cos(Math.PI * t / 4));
+    let t = 0, truth = 0, gyro = 0, acc = 0, fuse = 0;
+    let paused = reduced.matches, last = 0, remainder = 0;
+    let view, loading = false;
+    const stories = [
+      '身体缓缓向前倾斜，三种估计都在跟随这次转动。',
+      '身体停在 15°。陀螺仪的小偏差还在累积，紫色 G1 继续向前偏。',
+      '看绿色 G1：重力方向持续校正漂移，融合后的姿态保持在真实姿态附近。',
+    ];
+    function paint() {
+      const stage = t < 4 ? 0 : t < 10 ? 1 : 2;
+      demo.querySelectorAll<HTMLElement>('[data-cf-stage]').forEach((el, i) => {
+        if (i === stage) el.setAttribute('aria-current', 'step'); else el.removeAttribute('aria-current');
+      });
+      pick('[data-cf-story]').textContent = stories[stage];
+      pick('[data-cf-true]').textContent = truth.toFixed(1) + '°';
+      view?.render({truth, gyro, acc, fuse});
+      Object.entries({gyro, acc, fuse}).forEach(([key, value]) => {
+        pick(`[data-cf-angle="${key}"]`).textContent = value.toFixed(1) + '°';
+        pick(`[data-cf-error="${key}"]`).textContent = Math.abs(value - truth).toFixed(1) + '°';
+      });
+      pick('[data-cf-time]').textContent = `${Math.floor(t + 0.001)} / 18 秒`;
+      play.textContent = t >= 18 ? '再看一遍' : paused ? '播放' : '暂停';
+    }
+    // Fixed 50 Hz integration makes the result independent of screen refresh rate.
+    function step() {
+      const before = truth;
+      t = Math.min(18, t + dt);
+      truth = angle(t);
+      const increment = truth - before + 0.8 * dt;
+      gyro += increment;
+      acc = truth + (1 - Math.exp(-t * 3)) * (2.8 * Math.sin(t * 13) + 1.2 * Math.sin(t * 23));
+      fuse = alpha * (fuse + increment) + (1 - alpha) * acc;
+    }
+    async function loadModel() {
+      if (loading) return;
+      loading = true;
+      try {
+        view = await createG1EstimationView(demo, demo.dataset.urdf);
+        demo.querySelectorAll<HTMLElement>('[data-cf-loading]').forEach(el => { el.hidden = true; });
+        paint(); if (!paused) loop.start();
+      } catch {
+        demo.querySelectorAll<HTMLElement>('[data-cf-loading]').forEach(el => { el.textContent = 'G1 加载失败，请刷新重试'; });
       }
-    };
-
-    const pushHist = () => {
-      hist.t.push(t);
-      hist.gyro.push((thetaGyro - thetaTrue) * R2D);
-      hist.acc.push((thetaAcc - thetaTrue) * R2D);
-      hist.fuse.push((thetaFuse - thetaTrue) * R2D);
-      trimHist();
-    };
-
-    const pickScale = (maxAbs, lane) => {
-      const s = Math.max(lane.floor, maxAbs * 1.15);
-      for (const step of lane.ladder) if (s <= step) return step;
-      return lane.ladder[lane.ladder.length - 1];
-    };
-
-    const toPath = (times, ys, lane, scale, tNow) => {
-      if (times.length < 2) return "";
-      const tStart = tNow - WINDOW;
-      const mid = lane.top + lane.h / 2;
-      const half = lane.h / 2 - 3;
-      let d = "";
-      for (let i = 0; i < times.length; i += 1) {
-        const px = X0 + PLOT_W * (times[i] - tStart) / WINDOW;
-        if (px < X0 || px > X1) continue;
-        const py = mid - (ys[i] / scale) * half;
-        d += (d ? " L " : "M ") + px.toFixed(1) + " " + clamp(py, lane.top + 2, lane.top + lane.h - 2).toFixed(1);
-      }
-      return d;
-    };
-
-    const setPath = (el, d) => { if (el) el.setAttribute("d", d); };
-
-    const renderChart = () => {
-      const tNow = hist.t.length ? hist.t[hist.t.length - 1] : 0;
-      setPath(pathEls.gyro, toPath(hist.t, hist.gyro, LANES.gyro, scales.gyro, tNow));
-      setPath(pathEls.acc, toPath(hist.t, hist.acc, LANES.acc, scales.acc, tNow));
-      setPath(pathEls.fuse, toPath(hist.t, hist.fuse, LANES.fuse, scales.fuse, tNow));
-      const deg = (s) => (s < 1 ? s.toFixed(1) : String(s));
-      if (scaleEls.gyro) scaleEls.gyro.textContent = "纵轴 ±" + deg(scales.gyro) + "°";
-      if (scaleEls.acc) scaleEls.acc.textContent = "纵轴 ±" + deg(scales.acc) + "°";
-      if (scaleEls.fuse) scaleEls.fuse.textContent = "纵轴 ±" + deg(scales.fuse) + "°";
-    };
-
-    const paintAll = (errg, erra, errf, yawErr) => {
-      if (outTrue) outTrue.textContent = fmt1(thetaTrue * R2D) + "°";
-      if (outFuse) outFuse.textContent = fmt1(thetaFuse * R2D) + "°";
-      if (outYawTrue) outYawTrue.textContent = fmt1(yawTrue * R2D) + "°";
-      if (outYawEst) outYawEst.textContent = fmt1(yawEst * R2D) + "°";
-      if (errG) errG.textContent = fmt1(errg);
-      if (errA) errA.textContent = fmt1(erra);
-      if (errF) errF.textContent = fmt1(errf);
-      if (errYaw) errYaw.textContent = fmt1(yawErr);
-      if (outPeak) outPeak.textContent = "峰值误差：陀螺积分 " + fmt1(peak.g) + "° · 加速度计 " + fmt1(peak.a) + "° · 融合 " + fmt1(peak.f) + "°";
-      if (outWarn) {
-        if (!gravityOn) outWarn.textContent = "重力观测已关闭：融合退化为纯陀螺积分，误差随时间线性增长（第三条道会和第一条道长得一样）。";
-        else if (biasOn) outWarn.textContent = "已注入陀螺零偏：纯积分持续漂移；融合在 α 较大时也要很久才拉回来。";
-        else outWarn.textContent = "";
-      }
-    };
-
-    const loop = createVisibleRaf(demo);
-    const tick = (now) => {
-      if (paused) { lastNow = now; return; }
-      if (!lastNow) lastNow = now;
-      let dt = (now - lastNow) / 1000;
-      lastNow = now;
-      dt = clamp(dt, 0.001, 0.05);
-      step(dt);
-      t += dt;
-      pushHist();
-      const errg = Math.abs(thetaGyro - thetaTrue) * R2D;
-      const erra = Math.abs(thetaAcc - thetaTrue) * R2D;
-      const errf = Math.abs(thetaFuse - thetaTrue) * R2D;
-      const yawErr = Math.abs(yawEst - yawTrue) * R2D;
-      peak.g = Math.max(peak.g, errg);
-      peak.a = Math.max(peak.a, erra);
-      peak.f = Math.max(peak.f, errf);
-      // 每条泳道用自己的纵轴范围；只按需要在阶梯上跳，避免每帧抖动
-      for (const key of ["gyro", "acc", "fuse"]) {
-        const series = hist[key];
-        let m = 0;
-        for (let i = 0; i < series.length; i += 1) m = Math.max(m, Math.abs(series[i]));
-        const want = pickScale(m, LANES[key]);
-        const cur = scales[key];
-        if (want > cur || want < cur / 1.6) scales[key] = want;
-      }
-      frame += 1;
-      if (frame % 2 === 0) {
-        renderChart();
-        paintAll(errg, erra, errf, yawErr);
-      }
-    };
-
-    alphaEl.addEventListener("input", () => {
-      alpha = Number(alphaEl.value) / 1000;
-      if (alphaValEl) alphaValEl.textContent = alpha.toFixed(3);
-      if (tauEl) tauEl.textContent = "时间常数 ≈ " + ((alpha / (1 - alpha)) * (1 / 30)).toFixed(2) + " s（教学示意）";
+    }
+    const loop = createVisibleRaf(demo, {rootMargin: '0px', onEnter: () => { last = 0; void loadModel(); }});
+    loop.onFrame(now => {
+      if (paused || !view) return false;
+      if (last) remainder += Math.min((now - last) / 1000, 0.05);
+      last = now;
+      while (remainder >= dt && t < 18) { step(); remainder -= dt; }
+      if (t >= 18) { paused = true; loop.stop(); }
+      paint();
+      return !paused;
     });
-    gravityBtn.addEventListener("click", () => {
-      gravityOn = !gravityOn;
-      gravityBtn.textContent = "重力观测：" + (gravityOn ? "开" : "关");
-      gravityBtn.classList.toggle("cf-btn-off", !gravityOn);
-      if (!gravityOn) thetaFuse = thetaGyro;
+    function restart() {
+      t = truth = gyro = acc = fuse = last = remainder = 0;
+      paused = false; paint(); loop.start();
+    }
+    play.addEventListener('click', () => {
+      if (t >= 18) return restart();
+      paused = !paused; last = 0;
+      if (paused) loop.stop(); else loop.start();
+      paint();
     });
-    biasBtn.addEventListener("click", () => {
-      biasOn = !biasOn;
-      biasBtn.textContent = "陀螺零偏：" + (biasOn ? "开" : "关");
-      biasBtn.classList.toggle("cf-btn-off", biasOn);
-    });
-    pauseBtn.addEventListener("click", () => {
-      paused = !paused;
-      pauseBtn.textContent = paused ? "继续" : "暂停";
-    });
-    resetBtn.addEventListener("click", () => { reset(); });
-    document.addEventListener("visibilitychange", () => { lastNow = 0; });
-
-    reset();
-    if (alphaValEl) alphaValEl.textContent = alpha.toFixed(3);
-    if (tauEl) tauEl.textContent = "时间常数 ≈ " + ((alpha / (1 - alpha)) * (1 / 30)).toFixed(2) + " s（教学示意）";
-    for (let i = 0; i < 480; i += 1) { step(SAMPLE_T); t += SAMPLE_T; pushHist(); }
-    renderChart();
-    paintAll(0, 0, 0, 0);
-    loop.onFrame(tick);
-    loop.start();
+    pick('[data-cf-replay]').addEventListener('click', restart);
+    reduced.addEventListener('change', () => { if (reduced.matches) { paused = true; loop.stop(); paint(); } });
+    document.addEventListener('visibilitychange', () => { last = 0; });
+    paint();
+    if (!paused) loop.start();
   });
-})();
 </script>
-
-<style is:global>
-  .cf-demo { margin: 1.5rem 0; }
-  .cf-demo svg { display: block; width: 100%; max-width: 720px; height: auto; margin: 0 auto; }
-  .cf-title { fill: var(--sl-color-text); font-size: 15px; font-weight: 600; }
-  .cf-legend { fill: var(--sl-color-gray-2); font-size: 11px; }
-  .cf-lane-name { fill: var(--sl-color-text); font-size: 12.5px; font-weight: 600; }
-  .cf-lane-sub, .cf-scale-label { fill: var(--sl-color-gray-3); font-size: 10.5px; }
-  .cf-lane-bg { fill: var(--sl-color-gray-6); opacity: 0.28; }
-  .cf-grid { stroke: var(--sl-color-gray-4); stroke-width: 1; opacity: 0.35; }
-  .cf-zero { stroke: var(--sl-color-gray-3); stroke-width: 1.2; stroke-dasharray: 5 4; }
-  .cf-axis, .cf-tick { stroke: var(--sl-color-gray-4); stroke-width: 1.2; }
-  .cf-axis-label { fill: var(--sl-color-gray-2); font-size: 10.5px; }
-  .cf-sample { stroke-width: 2.6; }
-  .cf-zero-sample { stroke: var(--sl-color-gray-3); stroke-width: 1.6; stroke-dasharray: 5 4; }
-  .cf-series { fill: none; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
-  .cf-gyro { stroke: var(--sl-color-accent); }
-  .cf-acc { stroke: var(--cf-acc, #b45309); }
-  .cf-fuse { stroke: var(--cf-fuse, #15803d); stroke-width: 2.2; }
-
-  .cf-controls { display: flex; flex-direction: column; gap: 0.5rem; max-width: 720px; margin: 0.6rem auto 0; }
-  .cf-row { display: flex; align-items: center; gap: 0.7rem; margin: 0; flex-wrap: wrap; }
-  .cf-row-title { flex: 0 0 10rem; margin: 0; color: var(--sl-color-gray-2); font-size: 0.8125rem; }
-  .cf-hint { margin: 0; color: var(--sl-color-gray-3); font-size: 0.75rem; }
-  .cf-range { flex: 1 1 12rem; min-width: 6rem; margin: 0; accent-color: var(--sl-color-accent); }
-  .cf-alpha-val { flex: 0 0 4rem; text-align: right; color: var(--sl-color-accent); font-weight: 600; font-variant-numeric: tabular-nums; }
-  .cf-btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; height: 2.1rem; margin: 0; padding: 0 0.8rem; font: inherit; font-size: 0.8125rem; color: var(--sl-color-text); background: var(--sl-color-bg); border: 1px solid var(--sl-color-gray-4); border-radius: 999px; cursor: pointer; }
-  .cf-btn:hover { border-color: var(--sl-color-accent); }
-  .cf-btn.cf-btn-off { border-color: var(--sl-color-orange, #ea580c); color: var(--sl-color-orange, #ea580c); }
-
-  .cf-readout { max-width: 720px; margin: 0.6rem auto 0; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.9rem; }
-  .cf-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; }
-  .cf-field { display: flex; flex-direction: column; gap: 0.1rem; margin: 0 !important; padding: 0.4rem 0.6rem; border: 1px solid var(--sl-color-gray-4); border-radius: 8px; }
-  .cf-field-k { color: var(--sl-color-gray-3); font-size: 0.75rem; line-height: 1.4; }
-  .cf-field-v { color: var(--sl-color-text); font-size: 1.05rem; font-weight: 700; line-height: 1.35; font-variant-numeric: tabular-nums; }
-  .cf-field-fuse { color: var(--cf-fuse, #15803d); }
-  .cf-field-warn { color: var(--sl-color-accent); }
-  .cf-metrics { display: flex; flex-wrap: wrap; gap: 0.25rem 1.1rem; color: var(--sl-color-gray-2); }
-  .cf-metrics b { color: var(--sl-color-accent); font-variant-numeric: tabular-nums; }
-  .cf-peaks { color: var(--sl-color-gray-2); }
-  .cf-note { color: var(--sl-color-gray-3); font-size: 0.8125rem; line-height: 1.6; }
-  @media (max-width: 60rem) { .cf-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 40rem) { .cf-row-title { flex-basis: 100%; } .cf-fields { grid-template-columns: 1fr; } }
+<style>
+  .cf-demo { margin: 1.5rem 0; padding: 1rem; border: 1px solid var(--sl-color-gray-5); border-radius: 14px; background: var(--sl-color-bg); }
+  .cf-demo :is(p, h4, ol, li, section, header, figcaption, div) { margin: 0; }
+  .cf-demo header strong { font-size: 1.1rem; }
+  .cf-demo header p, .cf-demo figcaption { margin-top: .5rem; font-size: .85rem; color: var(--sl-color-gray-2); line-height: 1.7; }
+  .cf-steps { display: flex; flex-wrap: wrap; gap: .5rem; padding: 0; list-style: none; margin-top: 1rem !important; }
+  .cf-steps li { padding: .3rem .6rem; font-size: .8rem; border-radius: 6px; color: var(--sl-color-gray-2); }
+  .cf-steps [aria-current] { background: var(--sl-color-accent-low); color: var(--sl-color-text-accent); font-weight: 700; }
+  .cf-scene { display: grid; gap: .35rem; margin: .8rem 0 !important; min-height: 5.5rem; font-size: .9rem; }
+  .cf-scene strong { font-variant-numeric: tabular-nums; }
+  .cf-cards { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .6rem; }
+  .cf-card { border: 1px solid var(--sl-color-gray-5); border-top: 3px solid var(--cf-color); border-radius: 8px; padding: .65rem; min-width: 0; }
+  .cf-card h4 { font-size: .85rem; line-height: 1.6; }
+  .cf-model { width: 100%; height: 210px; position: relative; }
+  .cf-model span { position: absolute; inset: 40% 0 auto; text-align: center; font-size: .8rem; }
+  .cf-reading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .2rem .5rem; font-variant-numeric: tabular-nums; }
+  .cf-reading strong { font-size: 1.3rem; }
+  .cf-reading span { font-size: .75rem; color: var(--sl-color-gray-2); }
+  .cf-card p { margin-top: .4rem; font-size: .8rem; line-height: 1.6; }
+  .cf-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin-top: 1rem !important; }
+  .cf-actions button { margin: 0; min-height: 44px; padding: .4rem 1rem; border: 1px solid var(--sl-color-gray-4); border-radius: 8px; background: var(--sl-color-bg); color: var(--sl-color-text); font: inherit; font-size: .85rem; cursor: pointer; }
+  .cf-actions button:hover { border-color: var(--sl-color-text-accent); }
+  .cf-actions button:focus-visible { outline: 2px solid var(--sl-color-text-accent); outline-offset: 3px; }
+  .cf-actions span { font-size: .8rem; color: var(--sl-color-gray-2); }
+  @media(max-width: 600px) {
+    .cf-demo { padding: .75rem; }
+    .cf-cards { grid-template-columns: 1fr; }
+    .cf-card { display: grid; grid-template-columns: 105px minmax(0,1fr); gap: .3rem .5rem; align-items: center; }
+    .cf-card .cf-model { height: 145px; grid-column: 1; grid-row: 1 / 4; }
+    .cf-card h4, .cf-card .cf-reading, .cf-card p { grid-column: 2; }
+    .cf-card .cf-reading { justify-content: flex-start; }
+    .cf-scene { min-height: 7rem; }
+  }
 </style>
