@@ -1,0 +1,105 @@
+---
+const {kind = 'pid'} = Astro.props;
+const impedance = kind === 'impedance';
+const names = impedance ? ['较高刚度','较低刚度'] : ['P：根据偏差出力','PD：再加阻尼','PID：再补持续偏差'];
+const notes = impedance ? ['同样的推力下，偏离目标较少。','同样的推力下，允许更大的偏移。'] : ['观察冲过目标和最后留下的偏差。','与 P 相比，重点看振荡怎样收住。','与 PD 相比，重点看最后离目标多远。'];
+const colors=['#9d69ce','#cb892e','#23977d'];
+const url = import.meta.env.BASE_URL.replace(/\/?$/, '/')+'models/g1/g1_29dof.urdf';
+---
+<figure class="cc-demo" id={impedance?'g1-impedance-demo':'pid-comparison-demo'} data-kind={kind} data-urdf={url}>
+  <header><strong>{impedance?'同样持续向下推，手臂会让开多少？':'同一个目标，P、PD、PID 有什么不同？'}</strong><p>{impedance?'两条 G1 手臂从同一姿态开始，同时受到 15 N 的向下外力；保持一段时间，再一起撤去。':'三条曲线同时出发，使用相同的关节模型、目标、负载和 P 增益。对比动作过程与最后停在哪里。'}</p></header>
+  <p class="cc-story" data-cc-story>{impedance?'先保持目标姿态，等待施力。':'先看怎样接近目标，再看能否收稳和消除偏差。'}</p>
+  <div class:list={['cc-cards',{'cc-two':impedance}]}>
+    {names.map((name,i)=><section class="cc-card" style={`--cc-color:${colors[i]}`}>
+      <h4>{name}</h4>
+      {impedance && <div class="cc-model" data-cc-model={i} role="img" aria-label={`${name}的 G1 手臂，浅色轮廓为目标姿态，箭头表示向下外力`}><span data-cc-loading>正在加载 G1…</span></div>}
+      <svg viewBox="0 0 280 150" role="img" aria-label={`${name}的角度曲线；虚线是目标，实线是实际角度，所有图使用相同刻度`}>
+        <line class="cc-axis" x1="32" y1="15" x2="32" y2="125" /><line class="cc-axis" x1="32" y1="125" x2="270" y2="125" />
+        <text x="26" y="20" text-anchor="end">{impedance?'80°':'70°'}</text><text x="26" y="128" text-anchor="end">{impedance?'45°':'0°'}</text>
+        <line class="cc-target" data-cc-target x1="32" y1="50" x2="270" y2="50" />
+        <path class="cc-path" data-cc-path d="" />
+        <text x="32" y="145">0 秒</text><text x="270" y="145" text-anchor="end">{impedance?'13 秒':'10 秒'}</text>
+      </svg>
+      <div class="cc-values"><strong data-cc-angle>—</strong><span>偏差 <b data-cc-error>—</b></span></div>
+      <p>{notes[i]}</p>
+    </section>)}
+  </div>
+  <p class="cc-legend">虚线：目标角度 <b>{impedance?'70.0°':'45.8°'}</b> · 实线：实际角度 · 各图刻度相同</p>
+  <div class="cc-actions"><button type="button" data-cc-play>播放</button><button type="button" data-cc-reset>从头看</button><span data-cc-time>0 秒</span></div>
+  <figcaption>{impedance?'仅改变刚度，惯量与阻尼保持相同；重力已补偿。外力持续到第 9 秒，再观察撤力后的回位。G1 用于显示姿态，计算采用简化单关节模型和教学参数。':'P 与 PD 在这个持续负载下留有稳态误差；PID 的积分逐渐补足所需出力。图中按力矩控制计算，参数为教学值。这里重点比较控制项的作用，三环如何传递指令可回看 3.2 节。'}</figcaption>
+</figure>
+<script>
+  import {createVisibleRaf} from '../lib/visible-raf.js';
+  import {controlComparison} from '../lib/basic-control-lessons.js';
+  import {createG1ArmView} from '../lib/g1-arm-view.js';
+  document.querySelectorAll<HTMLElement>('.cc-demo').forEach(root=>{
+    const impedance=root.dataset.kind==='impedance';
+    const model=controlComparison(root.dataset.kind);
+    const cards=[...root.querySelectorAll<HTMLElement>('.cc-card')];
+    const pick=(s:string)=>root.querySelector<HTMLElement>(s)!;
+    const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+    let time=0,last=0,paused=true,ready=!impedance,loading=false;
+    const views:any[]=[];
+    const y=(q:number)=>125-(q*180/Math.PI-(impedance?45:0))/(impedance?35:70)*110;
+    function paint(){
+      const index=Math.min(Math.floor(time/model.dt),model.series[0].samples.length-1);
+      cards.forEach((card,i)=>{
+        const s=model.series[i].samples[index];
+        card.querySelector('[data-cc-angle]')!.textContent=(s.q*180/Math.PI).toFixed(1)+'°';
+        card.querySelector('[data-cc-error]')!.textContent=(Math.abs(model.target-s.q)*180/Math.PI).toFixed(1)+'°';
+        const target=card.querySelector('[data-cc-target]')!;target.setAttribute('y1',String(y(model.target)));target.setAttribute('y2',String(y(model.target)));
+        const points=model.series[i].samples.filter((_,j)=>j<=index && (j%15===0 || j===index));
+        card.querySelector('[data-cc-path]')!.setAttribute('d',points.map((p,j)=>`${j?'L':'M'}${(32+p.t/model.duration*238).toFixed(1)},${y(p.q).toFixed(1)}`).join(' '));
+        views[i]?.update({angle:s.q,target:model.target,pushing:s.force>0});views[i]?.render();
+      });
+      pick('[data-cc-time]').textContent=`${time.toFixed(1)} / ${model.duration} 秒`;
+      pick('[data-cc-play]').textContent=time>=model.duration?'再看一遍':paused?'播放':'暂停';
+      pick('[data-cc-story]').textContent=impedance?(time<2?'先保持目标姿态，等待施力。':time<9?'持续施加相同的 15 N 向下外力：比较两条手臂偏离目标多少。':'外力已撤去：两条手臂逐渐回到原来的目标姿态。'):(time<3?'先看靠近目标的过程：加入 D 后，动作怎样收稳？':time<7?'再看持续偏差：P 和 PD 仍低于目标，PID 正在补足出力。':'比较最终位置：PD 减少振荡，PID 进一步缩小持续偏差。');
+    }
+    const loop=createVisibleRaf(root,{rootMargin:'0px',onEnter:()=>{last=0;void load();}});
+    async function load(){
+      if(loading)return;loading=true;
+      if(impedance){
+        try{
+          for(const viewport of root.querySelectorAll<HTMLElement>('[data-cc-model]')){
+            views.push(await createG1ArmView(viewport,{urdfUrl:root.dataset.urdf,interactive:false,onInvalidate:()=>paint()}));
+            viewport.querySelector<HTMLElement>('[data-cc-loading]')!.hidden=true;
+          }
+          ready=true;
+        }catch (error) {console.error('Control comparison model failed',error);views.forEach(v=>v.dispose());views.length=0;root.querySelectorAll('[data-cc-loading]').forEach(el=>el.textContent='模型加载失败，请刷新重试');return;}
+      }
+      if(!reduced.matches){paused=false;loop.start();}paint();
+    }
+    loop.onFrame(now=>{if(paused||!ready)return false;if(last)time=Math.min(model.duration,time+Math.min(.05,(now-last)/1000));last=now;if(time>=model.duration){paused=true;loop.stop();}paint();return !paused;});
+    function reset(){time=last=0;paused=false;paint();if(ready)loop.start();}
+    pick('[data-cc-reset]').addEventListener('click',reset);
+    pick('[data-cc-play]').addEventListener('click',()=>{if(time>=model.duration)return reset();paused=!paused;last=0;if(paused)loop.stop();else if(ready)loop.start();paint();});
+    reduced.addEventListener('change',()=>{if(reduced.matches){paused=true;loop.stop();paint();}});
+    document.addEventListener('visibilitychange',()=>{last=0;});
+    paint();
+  });
+</script>
+<style>
+ .cc-demo{margin:1.5rem 0;padding:1rem;border:1px solid var(--sl-color-gray-5);border-radius:14px;scroll-margin-top:7rem;}
+ .cc-demo :is(div,p,h4,header,button,section){margin:0;}
+ .cc-demo header strong{font-size:1.1rem;}
+ .cc-demo header p,.cc-demo figcaption{font-size:.85rem;color:var(--sl-color-gray-2);line-height:1.7;margin-top:.5rem;}
+ .cc-story{font-size:.9rem;min-height:3.5rem;margin-top:1rem!important;}
+ .cc-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem;}
+ .cc-two{grid-template-columns:repeat(2,minmax(0,1fr));}
+ .cc-card{min-width:0;border:1px solid var(--sl-color-gray-5);border-top:3px solid var(--cc-color);border-radius:8px;padding:.65rem;}
+ .cc-card h4{font-size:.9rem;line-height:1.5;}
+ .cc-card svg{display:block;width:100%;height:auto;margin:.6rem 0;}
+ .cc-card svg text{fill:var(--sl-color-gray-2);font-size:11px;}
+ .cc-axis{stroke:var(--sl-color-gray-4);}
+ .cc-target{stroke:var(--sl-color-gray-3);stroke-dasharray:5 4;}
+ .cc-path{fill:none;stroke:var(--cc-color);stroke-width:2.5;stroke-linejoin:round;}
+ .cc-values{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.3rem;font-variant-numeric:tabular-nums;}
+ .cc-values strong{font-size:1.2rem;}.cc-values span,.cc-card p{font-size:.8rem;}.cc-card p{margin-top:.5rem;line-height:1.6;}
+ .cc-legend{font-size:.8rem;margin-top:.8rem!important;color:var(--sl-color-gray-2);}
+ .cc-actions{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin-top:.8rem!important;}
+ .cc-actions button{min-height:44px;padding:.4rem 1rem;font:inherit;font-size:.85rem;background:var(--sl-color-bg);color:var(--sl-color-text);border:1px solid var(--sl-color-gray-4);border-radius:8px;cursor:pointer;}
+ .cc-actions button:focus-visible{outline:2px solid var(--sl-color-text-accent);outline-offset:3px;}.cc-actions span{font-size:.8rem;}
+ .cc-model{height:240px;position:relative;}.cc-model>span{position:absolute;top:40%;font-size:.8rem;}.cc-demo [hidden]{display:none!important;}
+ @media(max-width:600px){.cc-demo{padding:.75rem;}.cc-cards{grid-template-columns:1fr;}.cc-card svg{max-height:150px;}.cc-story{min-height:5rem;}.cc-model{height:200px;}}
+</style>
