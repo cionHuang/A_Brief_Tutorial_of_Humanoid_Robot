@@ -1,0 +1,27 @@
+---
+// One synthetic scene, projected identically in all three panels.
+const project=(x:number,y:number,z:number)=>[180+.8*x-.45*y,160+.25*x+.2*y-z];
+const ring=(z:number)=>Array.from({length:40},(_,i)=>{const a=i/40*Math.PI*2;return project(25*Math.cos(a),25*Math.sin(a),z);});
+const coords=(points:number[][])=>points.map(p=>p.join(',')).join(' ');
+const table=coords([[-120,-70],[120,-70],[120,70],[-120,70]].map(([x,y])=>project(x,y,0)));
+const top=ring(78),bottom=ring(0);
+const walls=Array.from({length:40},(_,i)=>coords([bottom[i],bottom[(i+1)%40],top[(i+1)%40],top[i]]));
+const tablePoints=[];for(let x=-120;x<=120;x+=9)for(let y=-70;y<=70;y+=9)if(x*x+y*y>28*28)tablePoints.push(project(x,y,0));
+const cupPoints=[];for(let z=0;z<=78;z+=6)for(let i=0;i<28;i++){const a=i/28*2*Math.PI;cupPoints.push(project(25*Math.cos(a),25*Math.sin(a),z));}
+const panels=[['检测','框出杯子所在区域'],['分割','沿杯子轮廓标记像素'],['点云','用空间点呈现杯子与桌面']];
+---
+<figure class="perception-comparison" id="perception-comparison">
+ <div class="panels">{panels.map(([title,note],i)=><section>
+  <strong>{title}</strong>
+  <svg viewBox="0 0 360 240" role="img" aria-label={note}>
+   {i<2?<><polygon points={table} fill="#dce2e7"/>{walls.map(points=><polygon points={points} fill={i===0?'#c7655b':'#438dbe'}/>)}<polygon points={coords(top)} fill={i===0?'#f0b2a2':'#83c8df'} stroke={i===0?'#ab5148':'#276a93'} stroke-width="2"/></>:<><g fill="#42977e">{tablePoints.map(([cx,cy])=><circle cx={cx} cy={cy} r="1.5"/>)}</g><g fill="#c7655b">{cupPoints.map(([cx,cy])=><circle cx={cx} cy={cy} r="1.5"/>)}</g></>}
+   {i===0&&<><rect x="152" y="69" width="56" height="107" fill="none" stroke="#5474c0" stroke-width="2.5"/><text x="180" y="55" text-anchor="middle">杯子</text></>}
+   {i===1&&<text x="180" y="55" text-anchor="middle">蓝色：杯子掩码</text>}
+   {i===2&&<text x="180" y="55" text-anchor="middle">杯子点 · 桌面点</text>}
+  </svg><p>{note}</p>
+ </section>)}</div>
+ <figcaption>图 5.2-1 同一桌面场景的三种表示。几何与标注为教学示意：检测给出区域，分割给出轮廓，点云呈现空间结构。</figcaption>
+</figure>
+<style>
+.perception-comparison{margin:1.5rem 0}.panels{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}.panels section{min-width:0;margin:0;padding:.7rem;border:1px solid var(--sl-color-gray-5);border-radius:10px}.panels strong{font-size:1rem}.panels svg{width:100%;display:block;margin:.6rem 0}.panels text{font:22px system-ui;fill:var(--sl-color-text)}.panels p{font-size:.85rem;line-height:1.6;margin:0}.perception-comparison figcaption{font-size:.8rem;line-height:1.7;color:var(--sl-color-gray-2);margin-top:.7rem}@media(max-width:700px){.panels{grid-template-columns:1fr}.panels svg{max-width:350px;margin:.3rem auto}.panels text{font-size:17px}}
+</style>

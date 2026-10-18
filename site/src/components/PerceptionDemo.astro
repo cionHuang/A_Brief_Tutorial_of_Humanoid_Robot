@@ -1,0 +1,68 @@
+---
+interface Props {kind:'target'|'slam'}
+const {kind}=Astro.props;
+---
+<figure class="perception-demo" id={`perception-${kind}-demo`} data-perception={kind} data-urdf={`${import.meta.env.BASE_URL.replace(/\/?$/, '/')}models/g1/g1_29dof.urdf`}>
+ <strong>{kind==='target'?'画面里的杯子，怎样变成空间目标？':'走一圈，定位怎样利用重访信息修正？'}</strong>
+ <p class="story" data-story aria-live="polite"></p>
+ {kind==='target'?<>
+  <div class="steps"><span data-step="0">① 找到杯子</span><span data-step="1">② 获得位置</span><span data-step="2">③ 换到身体坐标</span></div>
+  <svg viewBox="0 0 360 150" role="img" aria-label="相机画面中选中杯子表面的一个点">
+   <rect x="15" y="10" width="330" height="130" rx="8" class="scene"/><path d="M30 115H330" class="line"/>
+   <path d="M190 40H235V100Q212 114 190 100Z" fill="#c7655b"/><path d="M235 48Q260 48 257 72Q253 84 235 81" fill="none" stroke="#c7655b" stroke-width="5"/>
+   <rect x="183" y="30" width="82" height="86" class="box"/><circle cx="220" cy="65" r="5" class="point"/><text x="32" y="35">相机画面</text><text x="32" y="65" data-pixel>选中一个表面点</text>
+  </svg>
+  <div class="g1-view" data-g1-view role="img" aria-label="G1 头部相机观察杯子，从相机位置换算到骨盆身体坐标"><span data-loading>正在加载 G1…</span></div>
+  <p class="readout" data-readout></p>
+  <div class="controls"><button type="button" data-next>下一步</button><button type="button" data-reset>重播</button></div>
+  <figcaption>以 G1 骨盆为身体原点，头部相机朝前。教学安装关系设为向前 0.10 米、向上 0.50 米；实际使用时由标定确定。绿色连线表示观察方向，三色箭头表示身体前、左、上。</figcaption>
+ </>:<>
+  <div class="g1-view" data-g1-view role="img" aria-label="G1 绕桌移动，紫色半透明模型显示估计位置，重访桌角后校正定位"><span data-loading>正在加载 G1…</span></div>
+  <div class="legend"><span>实体 G1 / 灰线：真实运动</span><span>紫色虚影 / 紫线：估计运动</span></div>
+  <p class="readout" data-readout></p>
+  <div class="controls"><button type="button" data-play>播放</button></div>
+  <figcaption>G1 的移动表示位置变化，步态省略、漂移放大。回环校正调整紫色的估计位置与路线；实体 G1 停在重访处，绿色连线表示再次观察到桌角。</figcaption>
+ </>}
+</figure>
+<script>
+ import {pixelToBody,loopFrame} from '../lib/perception-lessons.js';
+ import {createG1PerceptionView} from '../lib/g1-perception-view.js';
+ import {createVisibleRaf} from '../lib/visible-raf.js';
+ document.querySelectorAll<HTMLElement>('[data-perception]').forEach(root=>{
+  const $=(s:string)=>root.querySelector<HTMLElement>(s)!;
+  const text=(s:string,v:string)=>{$(s).textContent=v;};
+  let view:any,visualState=0;
+  const draw=(v:number)=>{visualState=v;view?.render(v);};
+  createG1PerceptionView($('[data-g1-view]'),root.dataset.perception,root.dataset.urdf).then(v=>{view=v;$('[data-loading]').remove();draw(visualState);}).catch(error=>{console.error('G1 perception',error);text('[data-loading]','G1 加载失败，请刷新重试');});
+  document.addEventListener('astro:before-swap',()=>view?.dispose(),{once:true});
+  if(root.dataset.perception==='target'){
+   let step=0;const values=pixelToBody();
+   function paint(){
+    text('[data-story]',['先在画面中找到杯子，并选中它表面的一个像素。','结合这个像素的观察方向与深度，得到相对相机的位置。','从 G1 头部相机换到骨盆原点：同一个杯子表面点，改用身体的前、左、上描述。'][step]);
+    text('[data-pixel]',step?'深度：0.80 米':'选中一个表面点');
+    text('[data-readout]',['画面位置：第 380 列、第 200 行。',`相对相机：向右 ${values.camera[0].toFixed(2)} 米、向上 ${(-values.camera[1]).toFixed(2)} 米、向前 ${values.camera[2].toFixed(2)} 米。`,`相对身体：向前 ${values.body[0].toFixed(2)} 米、向右 ${(-values.body[1]).toFixed(2)} 米、向上 ${values.body[2].toFixed(2)} 米。`][step]);
+    draw(step);
+    root.querySelectorAll<HTMLElement>('[data-step]').forEach((e,i)=>e.dataset.active=String(i===step));
+    const next=$('[data-next]') as HTMLButtonElement;next.disabled=step===2;next.textContent=step===2?'已完成':'下一步';
+   }
+   $('[data-next]').addEventListener('click',()=>{step=Math.min(2,step+1);paint();});$('[data-reset]').addEventListener('click',()=>{step=0;paint();});paint();
+  }else{
+   let time=0,last=0,playing=false;
+   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+   const loop=createVisibleRaf(root,{rootMargin:'0px',onEnter:()=>{last=0;}});
+   function paint(){const s=loopFrame(time),end=s.points.at(-1)!;
+    draw(time);
+    text('[data-story]',['机器人沿桌子周围移动，估计路线逐渐出现累积偏差。','回到桌前，识别出曾经观察过的桌角，建立重访联系。','加入重访地点的约束，调整估计路线，减小累计偏差。','校正完成，重访区域的定位更加一致。'][s.phase]);
+    text('[data-readout]',['行走与估计','识别重访地点','利用回环约束校正','完成一次回环示意'][s.phase]);
+    text('[data-play]',reduced.matches?(time>=13?'重播':'下一阶段'):playing?'暂停':time>=13?'重播':time>0?'继续':'播放');
+   }
+   loop.onFrame(now=>{if(last)time=Math.min(13,time+Math.min(.05,(now-last)/1000));last=now;if(time>=13)playing=false;paint();return playing;});
+   $('[data-play]').addEventListener('click',()=>{if(reduced.matches){time=time>=13?0:time<8?8:time<10?10:13;paint();return;}if(time>=13)time=0;playing=!playing;last=0;paint();if(playing)loop.start();else loop.stop();});
+   document.addEventListener('visibilitychange',()=>{last=0;});reduced.addEventListener('change',()=>{playing=false;loop.stop();paint();});paint();
+  }
+ });
+</script>
+<style>
+.perception-demo{margin:1.5rem 0;padding:1rem;border:1px solid var(--sl-color-gray-4);border-radius:12px;scroll-margin-top:7rem}.perception-demo :is(div,span,button,strong,svg){margin-block-start:0}.perception-demo>strong{font-size:1rem}.story{min-height:3.4em;line-height:1.7;font-size:.95rem;margin:.8rem 0}.perception-demo svg{display:block;width:100%;max-width:480px;margin:.8rem auto}.perception-demo svg text{font:14px system-ui;fill:var(--sl-color-text)}.scene{fill:var(--sl-color-gray-6)}.line{stroke:var(--sl-color-gray-3);fill:none}.box{fill:none;stroke:#6679c6;stroke-width:2;stroke-dasharray:5 3}.point{fill:#2a987c}.camera{fill:#8795a3}.mount{stroke:#8795a3;stroke-width:9}.ray{fill:none;stroke:#2a987c;stroke-width:2;stroke-dasharray:4 3}.body-axis{fill:none;stroke:#8670d8;stroke-width:2}[data-ray],[data-body]{transition:opacity .5s}.steps,.controls,.legend{display:flex;flex-wrap:wrap;gap:.5rem}.steps span{font-size:.8rem;padding:.4rem;background:var(--sl-color-gray-6);border-radius:5px}.steps [data-active=true]{box-shadow:inset 0 -3px #8670d8}.readout{padding:.8rem;background:var(--sl-color-gray-6);border-radius:7px;font-size:.9rem;line-height:1.8;min-height:3.5em}.controls button{min-height:44px;font:inherit;font-size:.9rem;color:var(--sl-color-text);background:var(--sl-color-bg);border:1px solid var(--sl-color-gray-4);padding:.4rem 1rem;border-radius:7px;cursor:pointer}.controls button:disabled{opacity:.5;cursor:default}.controls button:focus-visible{outline:2px solid var(--sl-color-text-accent);outline-offset:3px}.perception-demo figcaption{font-size:.8rem;color:var(--sl-color-gray-2);line-height:1.7;margin-top:.8rem}.room{fill:none;stroke:var(--sl-color-gray-4);stroke-width:2}.truth{fill:none;stroke:#8c969e;stroke-width:2;stroke-dasharray:5 4}.estimate{fill:none;stroke:#8670d8;stroke-width:3}.robot{fill:#8c969e}.estimated-point{fill:#8670d8}.landmark{fill:#299b7a}.closure{stroke:#299b7a;stroke-width:2;stroke-dasharray:4 4;fill:none}.legend{font-size:.8rem}.legend span:last-child{color:var(--sl-color-text-accent)}@media(max-width:600px){.perception-demo{padding:.75rem}.perception-demo svg text{font-size:14px}}@media(prefers-reduced-motion:reduce){.perception-demo *{transition:none!important}}
+.g1-view{height:340px;position:relative;overflow:hidden;border-radius:8px;background:var(--sl-color-gray-6);margin-top:1rem!important}.g1-view :global(.g1-perception-label){position:absolute;transform:translate(-50%,-50%);font-size:12px;white-space:nowrap;background:var(--sl-color-bg);color:var(--sl-color-text);padding:2px 5px;border-radius:4px;pointer-events:none}.g1-view [data-loading]{position:absolute;inset:45% 0;text-align:center}@media(max-width:600px){.g1-view{height:290px}}
+</style>
