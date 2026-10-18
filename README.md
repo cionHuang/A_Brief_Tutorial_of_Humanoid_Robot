@@ -56,7 +56,7 @@
 - [4.6 双足平衡与全身控制：判据与手段](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/04-cerebellum-realtime-control/06-balance-and-whole-body-control/)
 
 **五、大脑：感知、规划、VLA 与 WAM**（7 节）
-- [5.1 机器人学习与 AI 词汇](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms/)
+- [5.1 机器学习与具身智能模型基础](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/05-brain-perception-planning-vla-wam/01-robot-learning-and-ai-terms/)
 - [5.2 感知系统](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/05-brain-perception-planning-vla-wam/02-perception-system/)
 - [5.3 运动规划：大脑与小脑之间的桥](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/05-brain-perception-planning-vla-wam/03-motion-planning/)
 - [5.4 双臂操作与灵巧手](https://cionhuang.github.io/A_Brief_Tutorial_of_Humanoid_Robot/05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands/)

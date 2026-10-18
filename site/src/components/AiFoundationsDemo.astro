@@ -1,0 +1,168 @@
+---
+interface Props { kind: 'network' | 'training' | 'attention' | 'generation' }
+const { kind } = Astro.props;
+const titles = {
+  network: '跟着两个数，走完一次网络计算',
+  training: '预测、求梯度、更新参数，再试一个新输入',
+  attention: '从图像小块到加权汇集',
+  generation: '同一段动作，三种生成过程',
+};
+---
+<figure class="foundation-demo" id={`ai-foundation-${kind}`} data-foundation={kind}>
+  <header><strong>{titles[kind]}</strong><span data-progress></span></header>
+  {kind === 'attention' && <div class="choices" aria-label="选择指令">
+    <button type="button" data-choice="red" aria-pressed="true">拿红杯子</button>
+    <button type="button" data-choice="blue" aria-pressed="false">拿蓝杯子</button>
+  </div>}
+  {kind === 'generation' && <div class="choices" aria-label="选择生成方法">
+    <button type="button" data-choice="ar" aria-pressed="true">自回归</button>
+    <button type="button" data-choice="diffusion" aria-pressed="false">扩散</button>
+    <button type="button" data-choice="flow" aria-pressed="false">流匹配</button>
+  </div>}
+  <p class="story" data-story aria-live="polite"></p>
+  {kind === 'network' && <>
+    <div class="calculation" data-calculation>
+      <div class="calc-row" data-row="0"><span>输入 × 权重</span><b data-value="product1">2 × 0.5</b><b data-value="product2">1 × (−1)</b></div>
+      <div class="calc-row" data-row="1"><span>相加</span><b data-value="sum">等待前一步</b></div>
+      <div class="calc-row" data-row="2"><span>加偏置 0.2</span><b data-value="bias">等待前一步</b></div>
+      <div class="calc-row" data-row="3"><span>经过 ReLU</span><b data-value="relu">等待前一步</b></div>
+    </div>
+    <svg class="network" viewBox="0 0 360 175" role="img" aria-label="输入经过隐藏层，再进入输出层">
+      <g class="connections"><path d="M55 65L175 45M55 65L175 95M55 125L175 45M55 125L175 95M175 45L305 85M175 95L305 85"/></g>
+      <g data-layer="0"><circle cx="55" cy="65" r="18"/><circle cx="55" cy="125" r="18"/></g>
+      <g data-layer="1"><circle cx="175" cy="45" r="18"/><circle cx="175" cy="95" r="18"/></g>
+      <g data-layer="2"><circle cx="305" cy="85" r="20"/></g>
+      <text x="55" y="165" text-anchor="middle">输入</text><text x="175" y="165" text-anchor="middle">隐藏层</text><text x="305" y="165" text-anchor="middle">输出层</text>
+    </svg>
+  </>}
+  {kind === 'training' && <>
+    <p class="fixed">训练记录：2 秒走了 4 米　｜　模型：预测距离 = k × 时间</p>
+    <div class="metrics"><div><small>参数 k</small><b data-k></b></div><div><small data-input-label>输入 2 秒</small><b data-prediction></b></div><div><small data-loss-label>平方误差</small><b data-loss></b></div></div>
+    <div class="distance"><div><span>预测</span><div class="track"><i data-bar></i></div></div><div data-actual><span>实测</span><div class="track"><i class="actual"></i></div></div><small data-bar-caption>条长按距离绘制；实测为 4 米。</small></div>
+    <div class="phase-list">{['算预测', '算损失', '求梯度', '更新参数'].map((s, i) => <span data-phase={i}>{s}</span>)}</div>
+    <p class="equation" data-equation></p>
+  </>}
+  {kind === 'attention' && <>
+    <div class="tokens"><span data-token>拿</span><span data-token data-color>红色</span><span data-token>杯子</span></div>
+    <svg viewBox="0 0 360 160" role="img" aria-label="桌面分成图像小块，包含红杯子、蓝杯子和背景">
+      <rect x="10" y="12" width="340" height="130" rx="9" class="table"/>
+      <path d="M123 12V142M237 12V142" class="patch-grid"/>
+      <g data-patch="0"><path d="M40 45H83V100Q61 115 40 100Z" class="red-cup"/><path d="M83 52Q108 52 103 77Q100 88 83 85" class="cup-handle red"/></g>
+      <g data-patch="1"><path d="M155 45H198V100Q176 115 155 100Z" class="blue-cup"/><path d="M198 52Q223 52 218 77Q215 88 198 85" class="cup-handle blue"/></g>
+      <text x="294" y="80" text-anchor="middle">桌面背景</text>
+      <text x="65" y="134" text-anchor="middle">小块 1</text><text x="180" y="134" text-anchor="middle">小块 2</text>
+    </svg>
+    <div class="attention-values">{['红杯小块', '蓝杯小块', '背景小块'].map((s,i)=><div><strong>{s}</strong><span data-vector={i}></span><span data-weight={i}></span><div class="weight-track"><i data-weight-bar={i}></i></div><span data-contribution={i}></span></div>)}</div>
+    <p class="equation" data-combination></p>
+  </>}
+  {kind === 'generation' && <>
+    <div class="phase-list"><span data-generation-phase="0">① 计算动作序列</span><span data-generation-phase="1">② 执行动作</span></div>
+    <svg viewBox="0 0 360 220" role="img" aria-label="六步动作数值随生成计算更新，完成后手再按目标移动">
+      <text x="12" y="23" data-chart-title>每个点对应一步的目标</text>
+      <path d="M32 42V180H325" class="axis"/>
+      <text x="180" y="210" text-anchor="middle" data-axis>动作序列中的第 1 → 6 步</text>
+      <g data-arrows></g><polyline data-path class="generated-path" points=""/>
+      <g data-points></g><circle data-hand r="10" cx="60" cy="145" class="hand" visibility="hidden"/>
+    </svg>
+    <p class="equation" data-generation-readout></p>
+  </>}
+  <div class="controls"><button type="button" data-next>下一步</button><button type="button" data-reset>重播</button></div>
+  <figcaption>{kind === 'network' ? '上方数值按正文公式计算；下方展示多个计算单元怎样组成网络。' : kind === 'training' ? '单样本梯度下降示例，学习率固定为 0.0625。演示三轮更新后使用当前参数推理。' : kind === 'attention' ? '分词、向量和注意力权重均为教学示意；加权求和按所示数值计算。' : '三种生成过程的教学示意，使用固定数值展示更新方式。六个点代表六步手部目标；训练好的生成器在实际系统中负责预测更新。'}</figcaption>
+</figure>
+<script>
+  import { neuron, trainingFrame, attentionExample, generationPoints, targetPoints } from '../lib/ai-foundations.js';
+  import { createVisibleRaf } from '../lib/visible-raf.js';
+  document.querySelectorAll<HTMLElement>('[data-foundation]').forEach(root => {
+    const kind = root.dataset.foundation;
+    const $ = (selector: string) => root.querySelector<HTMLElement>(selector)!;
+    const set = (selector: string, value: string) => { $(selector).textContent = value; };
+    let step = 0, choice = kind === 'attention' ? 'red' : 'ar';
+    const max = kind === 'network' ? 7 : kind === 'training' ? 13 : kind === 'attention' ? 4 : 12;
+    const fmt = (n: number) => Number(n.toFixed(4)).toString();
+    let fromPoints: number[][] = [], toPoints: number[][] = [], elapsed = 0, last = 0;
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+    const loop = createVisibleRaf(root, {onEnter: () => { last = 0; }});
+    function draw(points: number[][]) {
+      if (kind !== 'generation') return;
+      $('[data-path]').setAttribute('points', points.map(p => p.join(',')).join(' '));
+      $('[data-points]').innerHTML = points.map(([x,y],i) => `<circle cx="${x}" cy="${y}" r="5"/><text x="${x}" y="194" text-anchor="middle">${i+1}</text>`).join('');
+    }
+    loop.onFrame(now => {
+      if (last) elapsed += Math.min(50, now - last);
+      last = now;
+      const u = Math.min(1, elapsed / 550), ease = u * u * (3 - 2 * u);
+      draw(toPoints.map((p,i) => p.map((v,j) => (fromPoints[i]?.[j] ?? v) + (v - (fromPoints[i]?.[j] ?? v)) * ease)));
+      return u < 1;
+    });
+    function paint(animate = false) {
+      set('[data-progress]', `${step + 1} / ${max + 1}`);
+      const next = $('[data-next]') as HTMLButtonElement;
+      next.disabled = step === max;
+      next.textContent = step === max ? '已完成' : kind === 'training' && step === 12 ? '试一个新输入' : kind === 'generation' && step === 6 ? '开始执行' : '下一步';
+      if (kind === 'network') {
+        const n = neuron();
+        const stories = ['输入是 2 和 1。先观察它们各自乘上哪个权重。','分别相乘：第一路得到 1，第二路得到 −1。','把两路结果相加：1 + (−1) = 0。','加上偏置 0.2，得到 0.2。','ReLU 保留这个正数，单元输出 0.2。','把这样的计算单元连接起来。输入层先提供数值。','隐藏层的多个单元分别完成计算，把结果传给下一层。','输出层利用上一层的结果给出输出，这就是一次前向传播。'];
+        set('[data-story]', stories[step]);
+        set('[data-value="product1"]', step ? `2 × 0.5 = ${n.products[0]}` : '2 × 0.5');
+        set('[data-value="product2"]', step ? `1 × (−1) = ${n.products[1]}` : '1 × (−1)');
+        set('[data-value="sum"]', step >= 2 ? '1 + (−1) = 0' : '等待前一步');
+        set('[data-value="bias"]', step >= 3 ? `0 + 0.2 = ${fmt(n.z)}` : '等待前一步');
+        set('[data-value="relu"]', step >= 4 ? `ReLU(0.2) = ${fmt(n.output)}` : '等待前一步');
+        root.querySelectorAll<HTMLElement>('[data-row]').forEach((e,i) => e.dataset.active = String(step === i+1));
+        root.querySelectorAll('[data-layer]').forEach((e,i) => e.setAttribute('data-active', String(step >= i+5)));
+      } else if (kind === 'training') {
+        const s = trainingFrame(step), input = s.inference ? 2.5 : 2;
+        set('[data-k]', fmt(s.k)); set('[data-input-label]', `输入 ${input} 秒`);
+        set('[data-prediction]', `${fmt(s.k * input)} 米`);
+        set('[data-loss-label]', s.inference ? '训练记录上的误差' : '平方误差');
+        set('[data-loss]', step === 0 ? '下一步计算' : fmt(s.loss));
+        set('[data-bar-caption]', s.inference ? '新输入为 2.5 秒，条长表示这次推理的预测距离。' : '条长按距离绘制；2 秒对应的实测为 4 米。');
+        $('[data-actual]').hidden = s.inference;
+        $('[data-bar]').style.width = `${s.k * input / 5 * 100}%`;
+        root.querySelectorAll<HTMLElement>('[data-phase]').forEach((e,i) => e.dataset.active = String(step < 12 && s.phase === i));
+        const stories = [`第 ${s.round+1} 轮：使用当前 k，预测 2 秒走了多远。`, '比较预测与实测，把差距平方得到损失。', '计算损失对 k 的梯度，判断怎样调整这个参数。', '优化器按固定学习率更新 k；点击下一步，查看更新后的预测。'];
+        set('[data-story]', s.inference ? '换成 2.5 秒的新输入。参数保持 1.875，计算预测距离。' : step === 12 ? '三轮更新完成：参数从 1 变成 1.875，训练记录上的误差降到 0.0625。' : stories[s.phase]);
+        const equations = [`预测 = ${fmt(s.k)} × 2 = ${fmt(s.prediction)} 米`, `损失 = (${fmt(s.prediction)} − 4)² = ${fmt(s.loss)}`, `梯度 = 4 × (${fmt(s.prediction)} − 4) = ${fmt(s.gradient)}`, `新 k = ${fmt(s.k)} − 0.0625 × (${fmt(s.gradient)}) = ${fmt(s.next)}`];
+        set('[data-equation]', s.inference ? `推理：1.875 × 2.5 = ${fmt(s.k*input)} 米` : step === 12 ? '接下来换一个输入，使用学到的参数。' : equations[s.phase]);
+      } else if (kind === 'attention') {
+        const s = attentionExample(choice === 'blue');
+        const stories = ['先看输入：一条指令和包含两个杯子的桌面图像。','图像分成小块，指令分成若干处理单元，这些单元称为 token。','每个图像小块编码为一个向量。这里用两个数作示意。','当前指令参与匹配计算，为各个小块分配汇集信息的权重。','把每个向量乘上对应权重再相加，得到结合上下文的表示。'];
+        set('[data-story]', stories[step]); set('[data-color]', choice === 'blue' ? '蓝色' : '红色');
+        root.dataset.stage = String(step);
+        s.values.forEach((v,i) => {set(`[data-vector="${i}"]`, step >= 2 ? `[${v.join(', ')}]` : '待编码');set(`[data-weight="${i}"]`, step >= 3 ? `权重 ${s.weights[i]}` : ''); $(`[data-weight-bar="${i}"]`).style.width = `${step >= 3 ? s.weights[i]*100 : 0}%`; set(`[data-contribution="${i}"]`, step >= 4 ? `加权后 [${v.map(n => fmt(n*s.weights[i])).join(', ')}]` : '');});
+        set('[data-combination]', step >= 4 ? `${s.weights[0]} × [1, 0] + ${s.weights[1]} × [0, 1] + 0.1 × [0.2, 0.2] = [${s.result.map(fmt).join(', ')}]` : step >= 2 ? '两个数一起构成一个向量，供后续计算使用。' : '点击“下一步”，观察输入怎样组织成计算单元。');
+      } else {
+        const executing = step > 6;
+        set('[data-story]', executing ? `动作已生成。手现在移动到第 ${step-6} 个目标。` : choice === 'ar' ? (step ? `已生成第 ${step} 个目标；后续计算可利用已有输出。` : '自回归按固定顺序生成六个动作目标，先从第一项开始。') : choice === 'diffusion' ? (step === 6 ? '多轮修正完成，得到六步动作目标。' : '整段数值一起参与去噪修正，逐步形成六步动作目标。') : (step === 6 ? '沿变化方向完成更新，得到六步动作目标。' : '箭头表示本轮的数值变化方向；下一步沿方向更新。'));
+        set('[data-generation-readout]', executing ? `实际执行：${step-6} / 6 步` : `生成计算：${step} / 6 次　｜　目标序列：6 步`);
+        set('[data-chart-title]', executing ? '橙点：手沿目标移动（示意）' : '竖向位置：手部目标（示意）');
+        root.querySelectorAll<HTMLElement>('[data-generation-phase]').forEach((e,i) => e.dataset.active = String(i === Number(executing)));
+        const points = generationPoints(choice, step);
+        $('[data-arrows]').innerHTML = choice === 'flow' && step < 6 ? points.map(([x,y],i) => {const end=generationPoints(choice,step+1)[i][1]; return `<path d="M${x} ${y}V${end}m-4 ${end>y?-5:5}l4 ${end>y?5:-5}l4 ${end>y?-5:5}"/>`;}).join('') : '';
+        const hand = $('[data-hand]'); hand.setAttribute('visibility',executing?'visible':'hidden');
+        const h = targetPoints[Math.max(0,step-7)]; hand.style.transform = `translate(${h[0]-60}px,${h[1]-145}px)`;
+        if (animate && !reduced.matches && toPoints.length === points.length && !executing) {fromPoints=toPoints;toPoints=points;elapsed=last=0;loop.start();} else {loop.stop();toPoints=points;draw(points);}
+      }
+    }
+    $('[data-next]').addEventListener('click', () => {step=Math.min(max,step+1);paint(true);});
+    $('[data-reset]').addEventListener('click', () => {step=0;paint();});
+    root.querySelectorAll<HTMLButtonElement>('[data-choice]').forEach(button => button.addEventListener('click', () => {
+      choice=button.dataset.choice!;
+      root.querySelectorAll('[data-choice]').forEach(e=>e.setAttribute('aria-pressed', String(e===button)));
+      if(kind==='generation') step=0;
+      paint(true);
+    }));
+    paint();
+  });
+</script>
+<style>
+.foundation-demo{margin:1.5rem 0;padding:1rem;border:1px solid var(--sl-color-gray-4);border-radius:12px;scroll-margin-top:7rem;background:var(--sl-color-bg);color:var(--sl-color-text)}
+.foundation-demo :is(div,span,b,strong,small,svg,header,button){margin-block-start:0}.foundation-demo [hidden]{display:none!important}.foundation-demo header{display:flex;justify-content:space-between;gap:1rem;align-items:baseline}.foundation-demo header strong{font-size:1rem}.foundation-demo header span{font-size:.8rem;white-space:nowrap}.foundation-demo p{margin:.8rem 0}.story{min-height:3.5em;line-height:1.7}.foundation-demo svg{display:block;width:100%;max-width:520px;margin:1rem auto;overflow:visible}.foundation-demo svg :global(text){font:14px system-ui;fill:var(--sl-color-text)}
+.controls,.choices{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.8rem}.foundation-demo button{font:inherit;font-size:.9rem;min-height:44px;padding:.45rem .9rem;border:1px solid var(--sl-color-gray-4);border-radius:7px;color:var(--sl-color-text);background:var(--sl-color-bg);cursor:pointer}.foundation-demo button:focus-visible{outline:2px solid var(--sl-color-text-accent);outline-offset:3px}.foundation-demo button:disabled{opacity:.5;cursor:default}.choices [aria-pressed=true]{border-color:var(--sl-color-text-accent);background:var(--sl-color-gray-6)}
+.calc-row{display:grid;grid-template-columns:1fr 1.2fr 1.2fr;gap:.5rem;padding:.7rem;border-radius:6px;background:var(--sl-color-gray-6);margin:.4rem 0;font-size:.85rem;transition:box-shadow .3s}.calc-row b{font-weight:500}.calc-row[data-active=true]{box-shadow:inset 4px 0 #8670d8}.connections path{stroke:var(--sl-color-gray-4);stroke-width:2;fill:none}.network circle{fill:var(--sl-color-gray-5);stroke:var(--sl-color-gray-3);transition:fill .5s}.network [data-active=true] circle{fill:#8670d8;stroke:#8670d8}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem}.metrics>div{padding:.7rem;background:var(--sl-color-gray-6);border-radius:7px}.metrics small,.metrics b{display:block}.metrics small{font-size:.75rem}.metrics b{font-size:1.1rem;margin-top:.3rem}.fixed,.distance small{font-size:.8rem}.distance>div{display:flex;align-items:center;gap:1rem;margin:.6rem 0}.distance span{font-size:.85rem}.track{flex:1;background:var(--sl-color-gray-6);height:22px;border-radius:4px;overflow:hidden}.track i{display:block;background:#8670d8;height:100%;transition:width .5s}.track .actual{width:80%;background:#288b79}.phase-list{display:flex;flex-wrap:wrap;gap:.4rem;margin:.8rem 0}.phase-list span{font-size:.8rem;padding:.4rem;border-radius:5px;background:var(--sl-color-gray-6)}.phase-list [data-active=true]{box-shadow:inset 0 -3px #8670d8}.equation{padding:.8rem;border-radius:7px;background:var(--sl-color-gray-6);font-size:.9rem;overflow-wrap:anywhere;min-height:3.3em}
+.tokens{display:flex;gap:.7rem;justify-content:center}.tokens span{padding:.4rem;border:1px solid transparent;border-radius:5px;transition:border-color .5s}.foundation-demo[data-stage]:not([data-stage="0"]) .tokens span{border-color:#8670d8}.table{fill:var(--sl-color-gray-6)}.patch-grid{stroke:#8670d8;stroke-width:1.5;stroke-dasharray:5 4;opacity:1;transition:opacity .4s}[data-stage="0"] .patch-grid{opacity:0}.red-cup{fill:#cd5959}.blue-cup{fill:#477cbb}.cup-handle{fill:none;stroke-width:5}.red{stroke:#cd5959}.blue{stroke:#477cbb}.attention-values{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem}.attention-values>div{display:flex;flex-direction:column;text-align:center;padding:.5rem;background:var(--sl-color-gray-6);border-radius:6px;gap:.3rem;font-size:.8rem}.attention-values strong{font-weight:500}
+.weight-track{height:8px;background:var(--sl-color-gray-5);border-radius:4px;overflow:hidden}.weight-track i{display:block;height:100%;width:0;background:#8670d8;transition:width .5s}.axis{stroke:var(--sl-color-gray-4);fill:none}.generated-path{stroke:#8670d8;stroke-width:2;fill:none}[data-points] :global(circle){fill:#8670d8}[data-arrows] :global(path){stroke:#278b79;stroke-width:2;fill:none}.hand{fill:#df9d35;stroke:var(--sl-color-text);stroke-width:1;transition:transform .65s ease}.foundation-demo figcaption{font-size:.8rem;line-height:1.7;color:var(--sl-color-gray-2);margin-top:.8rem}
+@media(max-width:600px){.foundation-demo{padding:.75rem}.calc-row{grid-template-columns:1fr 1fr}.calc-row>span{grid-column:1/-1}.metrics>div{padding:.45rem}.metrics b{font-size:.95rem}.foundation-demo svg :global(text){font-size:15px}.story{min-height:5em}}
+@media(prefers-reduced-motion:reduce){.foundation-demo *{transition:none!important}}
+</style>
