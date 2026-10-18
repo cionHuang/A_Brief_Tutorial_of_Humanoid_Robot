@@ -1,4 +1,5 @@
 ---
+import ScrollableDiagram from "./ScrollableDiagram.astro";
 /**
  * 3.1 电源系统：电源树 + 工况功耗 + 再生 + 保护 + 预充 交互演示（方案 1+2 合并）。
  *
@@ -54,6 +55,7 @@ const rows = CFG.actions.map((a, i) => {
 });
 ---
 <figure class="pt-demo" data-pt={JSON.stringify(CFG)}>
+  <ScrollableDiagram width={720}>
   <svg viewBox="0 0 900 810" role="img" aria-label="电源树交互演示：选择工况，观察各支路电流、母线电压、保护跳闸与再生回流">
     <defs>
       <marker id="pt-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="currentColor"></path></marker>
@@ -123,6 +125,7 @@ const rows = CFG.actions.map((a, i) => {
       </g>
     ))}
   </svg>
+  </ScrollableDiagram>
 
   <div class="pt-controls" role="group" aria-label="选择工况">
     {CFG.actions.map((a, i) => (
@@ -141,7 +144,7 @@ const rows = CFG.actions.map((a, i) => {
   </div>
 
   <figcaption>
-    玩法：先选一个工况（站立 / 行走 / 抬腿 / 操作 / 下蹲回收 / 过载），看六条支路的电流粗细、母线电压和电池侧功率；下方横条是各工况的平均功率、竖线是瞬时峰值。点“上电（先预充）”会先经预充电阻给母线电容充电、电压爬升后再闭合接触器；点“直接闭合接触器”对比跳过预充的冲击电流（会触发主保险）。下蹲回收时腿部电机发电，能量反向流回母线、电池转入充电，这就是再生能量。所有电压、电流、功率和阈值都是教学示意，不是 G1 的真实参数。
+    选择工况，观察各支路的电流、母线电压，以及平均与瞬时功率。“上电”展示预充过程，“直接闭合接触器”展示冲击电流与保护触发；下蹲回收时，能量从电机流回母线和电池。电压、电流、功率与阈值均采用教学参数。
   </figcaption>
 </figure>
 

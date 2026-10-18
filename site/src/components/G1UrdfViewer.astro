@@ -41,12 +41,12 @@ const urdfUrl = `${baseUrl}models/g1/g1_29dof.urdf`;
   <figcaption>
     {interactive ? (
       <>
-        这是 Unitree 官方 URDF 描述文件的浏览器渲染结果，用来观察整机外形与连杆布局。玩法：拖动旋转、滚轮缩放；点一下模型上的任意部件，右侧源码会跳到它的定义行并高亮整个 <code>&lt;link&gt;</code> / <code>&lt;joint&gt;</code> 块；点右侧的 <code>&lt;link&gt;</code> / <code>&lt;joint&gt;</code> 行，也会反过来高亮左侧对应部件；默认开启的“精简”会折叠超长网格行，取消勾选即可看逐字全文。网格为可视化模型，不代表真实硬件的内部结构或外观细节。模型来源：
+        拖动旋转、滚轮缩放。点击模型部件，右侧高亮对应的 <code>&lt;link&gt;</code> / <code>&lt;joint&gt;</code> 源码；点击源码行，也会高亮对应部件。“精简”折叠超长网格行，取消后可查看全文。模型采用 Unitree 官方 URDF 与可视化网格，用于观察整机外形和连杆布局。来源：
         <a href="https://github.com/unitreerobotics/unitree_rl_gym/tree/main/resources/robots/g1_description">unitree_rl_gym</a>。
       </>
     ) : (
       <>
-        这是 Unitree 官方 URDF 描述文件的浏览器渲染结果，用于观察整机外形、连杆布局和关节连接关系；网格为可视化模型，不代表真实硬件的内部结构或外观细节。模型来源：
+        采用 Unitree 官方 URDF 与可视化网格，展示整机外形、连杆布局和关节连接关系。模型来源：
         <a href="https://github.com/unitreerobotics/unitree_rl_gym/tree/main/resources/robots/g1_description">unitree_rl_gym</a>。
       </>
     )}
@@ -759,6 +759,7 @@ const urdfUrl = `${baseUrl}models/g1/g1_29dof.urdf`;
   }
 
   @media (max-width: 40rem) {
+    .g1-source-title { white-space: normal; overflow-wrap: anywhere; }
     .g1-viewport {
       aspect-ratio: 4 / 3;
       min-height: 300px;

@@ -20,7 +20,7 @@ import SectionQA from '../../../components/SectionQA.astro';
 
 库与仿真器的交叉验证必须用同一份模型，否则分不清差异来自算法还是模型。本书统一用 unitree_rl_gym 的 G1 描述文件（2.5、[6.2 节](../06-software-tools-simulation/02-mujoco.mdx)）。[5]
 
-> **一句话听懂**：库输出“量”、仿真器演化“世界”；二者不是替代关系，而是“同一份模型的两套算法”，所以交叉验证要先把模型对齐。
+> **一句话听懂**：工具库计算位姿、雅可比和力矩等量，仿真器推进运动与接触；比较两边结果时，先统一模型和坐标约定。
 
 ## 先看全局：什么时候该调用哪个库
 
@@ -33,7 +33,7 @@ import SectionQA from '../../../components/SectionQA.astro';
 | ROS 2 手臂自由空间规划、自碰撞检查、规划组组织 | 路径，内部用 IK 与碰撞检查 | MoveIt 2：规划框架 | [MoveIt 2](#moveit-2ros-2-里的运动规划框架) |
 | 确认库与仿真器对同一个 G1 算得是否一致 | FK 位姿、$g(q)$、雅可比、逆动力学力矩 | 选一个库 + 仿真器，不必引入整套框架 | [交叉验证](#library-validation) |
 
-例如让 G1 抓杯子：MoveIt 2 可以规划手臂的避障路径，控制器再用 Pinocchio 算雅可比与重力项；如果研究的是带动力学约束的整段轨迹，可以用 Drake 建优化问题。动态步行、全身平衡和接触力分配仍要由 [4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)的全身控制器承担，调用工具库不等于有了完整控制器。
+例如让 G1 抓杯子：MoveIt 2 可以规划手臂的避障路径，控制器再用 Pinocchio 算雅可比与重力项；如果研究的是带动力学约束的整段轨迹，可以用 Drake 建优化问题。动态步行、全身平衡和接触力分配仍要由 [4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)的全身控制器承担。
 
 > **跳读提示**：下面三个工具的 API 与插件细节可以在使用时查阅；第一遍可先跳到[用同一个 G1 交叉验证](#library-validation)，看为什么换了库仍要核对模型与约定。
 
@@ -74,7 +74,7 @@ Pinocchio 可加载 URDF 的 collision 几何并计算连杆对距离和碰撞�
 Drake 的定位比 Pinocchio 更宽：多体动力学、接触与约束、系统框图，以及数学优化都在同一个框架里。[3]
 
 - **MultibodyPlant**（多体系统）：Drake 里描述机器人及其动力学的那棵树，从 URDF/SDF 建模，提供位姿、雅可比、质量矩阵、接触力这些量；
-- **接触与约束**：接触不是事后挂上去的插件，而是动力学系统的一部分，约束与接触力可以进入优化；
+- **接触与约束**：接触作为动力学系统的一部分参与建模，约束与接触力可以进入优化；
 - **Diagram**（系统框图）：把控制器、估计器、被控对象和环境连成一张有向信号流图，每个方块有输入输出端口，整张图可以被当作一个系统来仿真或分析；
 - **MathematicalProgram**（数学规划）：把优化问题写成“决策变量 + 约束 + 代价”，由求解器在背后选方法；
 - **Direct Collocation**（直接配点法）：轨迹优化的一种常见建模方式——把轨迹在时间上离散成若干节点，让动力学在节点之间成立，代价与约束直接写在这些节点上。
@@ -89,13 +89,13 @@ MoveIt 2 把 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-plannin
 - **规划器插件**：真正求解路径的算法，以 OMPL（Open Motion Planning Library，一个采样类运动规划库）等采样规划器为主；
 - **运动学插件**：负责解 IK（[4.2 节](../04-cerebellum-realtime-control/02-kinematics.mdx)），给定末端目标位姿求关节角；
 - **碰撞检查**：基于 FCL（Flexible Collision Library，一个碰撞检测库）判断路径上是否碰障碍或发生自碰撞；
-- **执行端**：规划出的轨迹通过 ros2_control 的轨迹接口下发（[6.1 节](../06-software-tools-simulation/01-ros2-software-architecture.mdx)），而不是自己拼关节命令。
+- **执行端**：规划出的轨迹通过 ros2_control 的轨迹接口下发（[6.1 节](../06-software-tools-simulation/01-ros2-software-architecture.mdx)）。
 
 对 G1 而言，典型用法是按规划组（Planning Group，一组放在一起规划的关节，例如左臂、右臂）组织：左臂、右臂各一组，双臂一组，腰部可并入躯干组；末端规划和双臂协同（[5.4 节](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx)）都有对应入口。
 
-接入 G1 前，还要做时间参数化（把几何路径变成带时间戳、满足速度与加速度限制的轨迹），核对速度限幅与 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)的刷新纪律；不能默认规划结果可直接交给真机执行。
+接入 G1 前，还要做时间参数化（把几何路径变成带时间戳、满足速度与加速度限制的轨迹），核对速度限幅与 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)的刷新纪律。
 
-> **一句话听懂**：MoveIt 2 是框架不是算法——规划好不好用，取决于你插了哪个规划器插件、场景里有没有放对碰撞体，以及轨迹能不能顺利交给 ros2_control 下发。
+> **一句话听懂**：MoveIt 2 把规划器、场景与执行接口组织成一个框架；规划好不好用，取决于你插了哪个规划器插件、场景里有没有放对碰撞体，以及轨迹能不能顺利交给 ros2_control 下发。
 
 <span id="library-validation"></span>
 
@@ -115,7 +115,7 @@ MoveIt 2 把 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-plannin
 - **四元数分量顺序**：w 在前还是在后？仿真器、库和自写代码可能各用一套；顺序用错会让姿态角不一致，进而影响算出的足端位置。姿态误差用度或弧度，位置误差用米或厘米（见 [4.1 节](../04-cerebellum-realtime-control/01-robot-mathematics-foundations.mdx)四元数）；
 - **坐标系与单位**：角度是弧度还是度、长度是米还是毫米、力矩在关节侧还是末端侧，以及左手系 / 右手系、Z 轴朝上还是朝前；
 - **`nq` 与 `nv`**：浮动基座占 6 个速度维度，四元数让位置多一个数；把 $\tau$ 按 `nq` 索引就会整体错位（回扣 [4.3 节](../04-cerebellum-realtime-control/03-dynamics.mdx)浮动基座形式）；
-- **雅可比参考系**：LOCAL / WORLD / LOCAL_WORLD_ALIGNED 不能靠“数值看起来差不多”蒙混，必须在接口处显式声明；
+- **雅可比参考系**：在接口处明确声明使用 LOCAL、WORLD 还是 LOCAL_WORLD_ALIGNED，并据此转换比较量；
 - **关节索引顺序**：同一个 G1，URDF 的关节序、库内部的自由度序和仿真器 `qpos`/`qvel` 的顺序可能不同，跨库传向量前先对齐索引表。
 
 这份清单就是调用方与库之间的接口契约：四元数顺序、$\tau$ 索引和雅可比参考系，都要在接口处写清楚。

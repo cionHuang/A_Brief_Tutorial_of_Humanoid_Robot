@@ -1,0 +1,82 @@
+---
+const urdfUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/') + 'models/g1/g1_29dof.urdf';
+---
+<figure class="arm-dynamics" id="g1-arm-dynamics-demo" data-urdf-url={urdfUrl}>
+  <div class="ad-heading"><strong data-stage>① 慢慢抬起</strong><span data-count>1 / 4</span></div>
+  <p class="ad-explanation" data-explanation aria-live="polite">先安排好抬臂动作，再算肘关节要出多大力矩。这是逆动力学。</p>
+  <div class="ad-view" data-view role="img" aria-label="固定视角的 G1 左臂动力学演示">
+    <span class="ad-loading" data-loading>滚动到此处加载 G1 模型</span>
+    <span class="ad-torque">肘关节力矩 <b data-output>0.50 N·m</b></span>
+  </div>
+  <div class="ad-actions"><button type="button" data-play disabled>播放演示</button><span data-note>慢抬：动作时长 3 秒</span></div>
+  <div class="ad-plot" data-plot>
+    <svg viewBox="0 0 600 185" role="img" aria-label="力矩随抬臂进度变化：实线为总力矩，虚线为支撑重力所需的部分">
+      <g class="ad-grid"><path d="M48 20H570M48 64H570M48 108H570M48 152H570M48 20V152" /></g>
+      <g class="ad-labels"><text x="8" y="24">3</text><text x="8" y="68">2</text><text x="8" y="112">1</text><text x="8" y="156">0</text><text x="4" y="12">N·m</text><text x="48" y="178">起点</text><text x="285" y="178">抬臂中</text><text x="530" y="178">到位</text></g>
+      <path data-gravity class="ad-gravity" d="" /><path data-curve class="ad-curve" d="" /><path data-cursor class="ad-cursor" d="M48 20V152" />
+    </svg>
+    <div class="ad-legend"><span>总力矩</span><span class="gravity">支撑重力的部分</span></div>
+  </div>
+  <p class="ad-result" data-result hidden>逆动力学：安排动作，算出力矩。<br />正动力学：给定力矩，算出运动。</p>
+  <figcaption>G1 固定躯干、肩和腕，仅肘转动。质量与惯量取自 URDF，阻尼采用教学参数；曲线与运动由同一动力学模型计算。</figcaption>
+</figure>
+<script>
+import { createG1ArmView } from '../lib/g1-arm-view.js';
+import { createLessonPlayback } from '../lib/lesson-playback.js';
+import { dynamicsLesson, DYNAMICS_LENGTH } from '../lib/arm-lesson-sequences.js';
+import { gravity, trajectory } from '../lib/arm-dynamics-model.js';
+for (const root of document.querySelectorAll<HTMLElement>('.arm-dynamics')) {
+  const get = <T extends Element = HTMLElement>(name: string) => root.querySelector<T>(`[data-${name}]`)!;
+  let view, disposed = false, lastStep = -1;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const path = points => points.map((p,i) => `${i?'L':'M'}${p[0].toFixed(2)},${p[1].toFixed(2)}`).join(' ');
+  function draw(time) {
+    // Reduced motion presents the four key poses without continuous movement.
+    const live = dynamicsLesson(time);
+    const s = reduced && time > 0 ? dynamicsLesson([4.9,8.9,12.49,16][live.index]) : live;
+    root.dataset.step = String(s.index); root.dataset.angle = String(s.angle);
+    get('output').textContent = s.torque.toFixed(2)+' N·m';
+    get('cursor').setAttribute('d',`M${48+522*s.progress} 20V152`);
+    get('result').hidden = time < DYNAMICS_LENGTH;
+    if (lastStep !== s.index) {
+      get('stage').textContent = s.title; get('count').textContent = `${s.index+1} / 4`;
+      get('explanation').textContent = s.explanation; get('note').textContent = s.note;
+      get('plot').hidden = s.index >= 2;
+      if (s.index < 2) {
+        const samples = Array.from({length:101},(_,i)=>trajectory(i*s.duration/100,s.duration));
+        get('curve').setAttribute('d',path(samples.map((p,i)=>[48+522*i/100,152-44*p.torque])));
+        get('gravity').setAttribute('d',path(samples.map((p,i)=>[48+522*i/100,152-44*gravity(p.angle)])));
+      }
+      lastStep = s.index;
+    }
+    view?.update({angle:s.angle,showTarget:false}); view?.render();
+  }
+  const playback = createLessonPlayback(root,get<HTMLButtonElement>('play'),{
+    duration:DYNAMICS_LENGTH,draw,load:async()=>{
+      get('loading').textContent='正在加载 G1 模型…';
+      try {
+        const loaded = await createG1ArmView(get('view'),{urdfUrl:root.dataset.urdfUrl,profile:'dynamics',interactive:false,onInvalidate:()=>playback.schedule()});
+        if(disposed){loaded.dispose();return;} view=loaded;get('loading').hidden=true;root.dataset.state='ready';
+      } catch(error) {get('loading').textContent='模型加载失败，请刷新页面重试。';throw error;}
+    }
+  });
+  const dispose=()=>{disposed=true;playback.dispose();view?.dispose();};
+  document.addEventListener('astro:before-swap',dispose,{once:true});window.addEventListener('pagehide',dispose,{once:true});
+  draw(0);
+}
+</script>
+<style>
+.arm-dynamics{margin:1.5rem 0;padding:1rem;border:1px solid var(--sl-color-gray-5);border-radius:12px;}
+.arm-dynamics :is(div,p,span,button,svg){margin-top:0;}
+.ad-heading{display:flex;justify-content:space-between;align-items:center;gap:1rem;}.ad-heading strong{color:var(--sl-color-text-accent);}.ad-heading span{font-size:.8rem;color:var(--sl-color-gray-2);}
+.ad-explanation{min-height:3.2em;margin:.65rem 0!important;font-size:.9rem;line-height:1.6;}
+.ad-view{position:relative;height:320px;overflow:hidden;border-radius:8px;background:var(--sl-color-gray-7,var(--sl-color-gray-6));}
+.ad-loading{position:absolute;inset:45% .6rem auto;text-align:center;font-size:.8rem;}
+.ad-torque{position:absolute;left:.7rem;top:.7rem;padding:.4rem .6rem;background:var(--sl-color-bg);border-radius:7px;font-size:.8rem;}.ad-torque b{display:block;color:var(--sl-color-text-accent);font-size:1rem;font-variant-numeric:tabular-nums;}
+.ad-actions{display:flex;align-items:center;gap:1rem;margin:.8rem 0!important;}.ad-actions span{font-size:.78rem;color:var(--sl-color-gray-2);}
+.ad-actions button{flex-shrink:0;font:inherit;font-size:.85rem;padding:.45rem 1rem;border:1px solid var(--sl-color-accent);border-radius:7px;background:var(--sl-color-accent-low);color:var(--sl-color-text-accent);cursor:pointer;}.ad-actions button:disabled{opacity:.5;cursor:wait;}.ad-actions button:focus-visible{outline:2px solid var(--sl-color-accent);outline-offset:3px;}
+.ad-plot svg{display:block;width:100%;height:auto;}.ad-grid path{stroke:var(--sl-color-gray-5);fill:none;}.ad-labels{fill:var(--sl-color-gray-2);font-size:14px;}.ad-curve,.ad-gravity,.ad-cursor{fill:none;stroke-width:2.5;stroke-linejoin:round;}.ad-curve{stroke:var(--sl-color-text-accent);}.ad-gravity{stroke:#bd791e;stroke-dasharray:8 5;}.ad-cursor{stroke:var(--sl-color-gray-2);stroke-width:1;}
+.ad-legend{display:flex;gap:1rem;font-size:.75rem;}.ad-legend span::before{content:'';display:inline-block;width:1.3rem;border-top:2px solid var(--sl-color-text-accent);margin-right:.3rem;vertical-align:middle;}.ad-legend .gravity::before{border-color:#bd791e;border-top-style:dashed;}
+.ad-result{padding:.7rem;border-left:3px solid var(--sl-color-accent);background:var(--sl-color-accent-low);font-size:.9rem;}.arm-dynamics figcaption{font-size:.78rem;color:var(--sl-color-gray-2);line-height:1.6;margin:.8rem 0 0;}.arm-dynamics [hidden]{display:none;}
+@media(max-width:40rem){.arm-dynamics{padding:.7rem;}.ad-view{height:280px;}.ad-labels{font-size:20px;}}
+</style>

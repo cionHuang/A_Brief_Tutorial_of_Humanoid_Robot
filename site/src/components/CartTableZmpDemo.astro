@@ -1,4 +1,5 @@
 ---
+import ScrollableDiagram from "./ScrollableDiagram.astro";
 /**
  * 4.6 用：cart-table（小车—桌子）演示 ZMP 与发散 —— “### 零力矩点（ZMP）”之后。
  *
@@ -28,6 +29,7 @@ const CFG = {
 ---
 
 <figure class="ct2-demo" data-ct={JSON.stringify(CFG)}>
+  <ScrollableDiagram width={700}>
   <svg viewBox="0 0 800 420" role="img" aria-label="cart-table 教学示意图：无质量桌面由支点支撑，支点就是 ZMP；桌面上小车代表整机质心。竖直参考线从支点向上，质心偏离支点时桌面绕支点倾斜，加速度方向背离支点；可切换平衡控制器观察质心发散或收敛">
     <text class="ct2-title" x="24" y="28">cart-table：支点（ZMP）不追质心，质心就自己跑掉</text>
     <text class="ct2-sub" x="24" y="48">竖直参考线过支点 p；质心 x 偏离 p 时，桌面绕支点倾斜</text>
@@ -91,6 +93,7 @@ const CFG = {
 
 
   </svg>
+  </ScrollableDiagram>
 
   <div class="ct2-controls">
     <div class="ct2-row">

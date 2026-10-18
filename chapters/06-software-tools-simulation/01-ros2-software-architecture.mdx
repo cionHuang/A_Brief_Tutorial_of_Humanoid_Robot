@@ -28,12 +28,12 @@ import SectionQA from '../../../components/SectionQA.astro';
 
 它的价值可以拆成四条：
 
-- **进程解耦**：常见做法是每个模块跑成一个独立进程（也就是一个节点，Node），单独编译、单独启动、单独重启，感知节点崩溃不会带着控制器一起退出；
+- **进程解耦**：把感知、规划等节点（Node）按需要部署到独立进程，可分别启动和重启，形成故障隔离；
 - **语言无关**：C++、Python 节点只要消息定义一致就能互通，算法侧用 Python，实时侧用 C++；
 - **生态复用**：导航（Nav2）、坐标变换（TF2）、控制框架（ros2_control）、录包回放（rosbag2）、可视化（RViz 2、Foxglove）和仿真桥都有现成组件，不必重造；
 - **分布式**：节点可以跨主机、跨网卡运行，机载计算机和操作台按 Topic 连接，不需要把所有算力都塞进一个盒子。
 
-**ROS 2 不是一个程序，而是若干可以单独取用的组件，外加一套约定。** 各组件的基本分工是：
+**ROS 2 由可单独取用的组件和一套共同约定组成。** 各组件的基本分工是：
 
 | 组件 | 负责什么 | 本节位置 |
 | --- | --- | --- |
@@ -44,11 +44,11 @@ import SectionQA from '../../../components/SectionQA.astro';
 | 可视化（RViz 2 / Foxglove） | 空间关系与时间序列检查 | [6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.mdx) |
 | RMW 与 QoS | 选择底层 DDS 实现与投递策略 | [3.4 节](../03-electrical-embedded/04-real-time-communication-and-buses.mdx) |
 
-严格说，TF2、ros2_control 是跑在 ROS 2 通信层之上的功能包和框架，rosbag2 与可视化是工具；它们的共同底座是同一套约定：消息定义（`.msg`/`.idl`）、命名与命名空间、时间戳语义、坐标命名。把 ROS 2 理解成“一套东西”会带来一个典型误判：以为用了 Topic 就必须用 TF、用了 ros2_control 就必须录包，实际上每一件都可以单独引入。
+TF2、ros2_control 是功能包和框架，rosbag2 与可视化是工具，可以按项目需要组合使用。它们共用消息定义（`.msg`/`.idl`）、命名与命名空间、时间戳语义和坐标命名。
 
-**边界：普通回调不适合当硬实时控制环。** 节点里的普通回调走的是通用操作系统调度，内存分配、序列化和 DDS 传输都会引入抖动，端到端延迟与抖动在微秒到毫秒量级，**不保证最坏执行时间（WCET）**。要做毫秒级闭环，常见做法是另开专门的实时线程——`ros2_control` 的实时循环、内存预分配、零拷贝与共享内存——或者干脆走底层 SDK。顺带纠正一个常见误解：**节点是逻辑计算单元，不一定等于一个独立进程**，需要时可以把多个节点组合进同一个进程。[4.5 节](../04-cerebellum-realtime-control/05-basic-control.mdx)的关节力矩/阻抗闭环、[4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)的全身控制（Whole-Body Control, WBC）通常要求 1–2 ms（常见 500 Hz～1 kHz）的确定性周期，因此它们跑在实时线程、共享内存或厂商 SDK 的底层循环里，而不是跑在 ROS 2 的 Topic 回调里。ROS 2 的主要职责是 1–100 Hz 的规划与编排、状态汇总、参数与可视化——正是 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)频率分层中的大脑层和规划层那几档。把 WBC 挂进普通 ROS 2 节点通常不报错，只是偶尔丢一个周期，然后机器人抽一下。
+本教程用 ROS 2 组织规划、状态汇总、参数与可视化，用专门设计的实时循环执行高频控制。两部分通过明确的状态与命令接口连接；实时循环可以由 `ros2_control` 或厂商 SDK 实现，具体部署见下文。[4]
 
-> **一句话听懂**：ROS 2 不是操作系统，也不是一个程序，而是“可单独取用的组件 + 一套消息与命名约定”；它管 1–100 Hz 的规划与编排，毫秒级闭环一般交给专门的实时线程和底层 SDK。
+> **一句话听懂**：ROS 2 提供组件和通信约定，让感知、规划、控制与工具按统一接口协作。
 
 <span id="product-read-end"></span>
 
@@ -61,10 +61,10 @@ import SectionQA from '../../../components/SectionQA.astro';
       ↑           ↑        ┃          ↑                              ↑
     感知系统   状态估计     ┃       状态估计                  状态上报（LowState/JointState）
                           ┃
- ROS 2 侧（普通进程，1–100 Hz）┃ 实时线程 + 底层 SDK（毫秒级闭环，不在 ROS 2 里）
+ 规划与编排（普通进程）     ┃ 实时控制循环（ros2_control 或厂商 SDK）
 ```
 
-注意这条路径的**分界**：从“控制器（WBC/关节）”往上是 ROS 2 侧（1–100 Hz，普通进程），从“硬件接口”往下是实时线程与底层 SDK——**毫秒级闭环在下面那半段，不在 ROS 2 里**，这正是上面那条边界。
+图中按运行要求分出普通进程与实时循环：任务和规划产生目标，WBC / 关节控制结合反馈持续更新输出。部署时，要为实时循环配置调度与资源，并测量端到端时序。
 
 后面几节就挂在这条路径上：通信方式决定箭头之间传什么样的数据，TF 决定位姿和时间怎么对齐，ros2_control 对应“硬件接口”那一段，可观测性决定怎么把整条链路录下来复盘；SDK/总线那一段的设备侧细节在 [3.4 节](../03-electrical-embedded/04-real-time-communication-and-buses.mdx)（总线与 DDS）与厂商 SDK（[7]）里。
 
@@ -74,13 +74,13 @@ import SectionQA from '../../../components/SectionQA.astro';
 2. **命令只有一个出口**：同一个命令接口（比如整条腿、或整条手臂）在任一时刻只由一个模块拥有，切换（例如导航接管、遥操作接管、安全降级）必须显式，这正对应 ros2_control 的资源仲裁思想；
 3. **时间基准全局一致**：所有消息带时间戳，跨模块的融合和控制按测量时间对齐。
 
-频率分层与 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)的表一致：行为层秒级、规划层几十赫兹、控制层百赫兹以上；把这些不同节奏的模块塞进一个进程一个线程，是新人最常见的架构错误。
+频率分层与 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)的表一致：行为层秒级、规划层几十赫兹、控制层百赫兹以上；部署时按各模块的时限分配线程和资源，减少慢任务对高频控制的阻塞。
 
 ## 四种通信方式：按数据形态选型
 
 ### 节点与四种交互方式
 
-节点（Node）是 ROS 2 里的逻辑计算单元，默认各自跑在独立进程里（也可以组合进同一个进程，见下文「节点组合」）。节点之间的交互有四种基本形态（ROS 2 文档里叫 Communication Primitives，这里就直说“四种方式”），选型的依据是数据形态而不是习惯：[1][2]
+节点（Node）是 ROS 2 里的逻辑计算单元，可以独立运行，也可以与其他节点组合在同一个进程中。节点之间的交互有四种基本形态（ROS 2 文档里叫 Communication Primitives，这里就直说“四种方式”），按数据形态选择交互方式：[1][2]
 
 | 方式 | 形态 | 典型用途 |
 | --- | --- | --- |
@@ -91,17 +91,19 @@ import SectionQA from '../../../components/SectionQA.astro';
 
 把持续流数据塞进 Service 会压垮请求方；把需要确认完成的长任务塞进 Topic 会让调用方无法知道成败。Topic 背后的 QoS（Quality of Service，可靠性、历史深度、有效期）属于 DDS 概念，[3.4 节](../03-electrical-embedded/04-real-time-communication-and-buses.mdx)已经介绍过，本节不重讲；这里只补一条 ROS 2 侧的失败模式：QoS 不匹配时，两个节点通常“都能发现彼此、也都在发布”，但数据就是收不到，而且不一定报错。[1]
 
-> **一句话听懂**：选通信方式看数据形态：连续流用 Topic、短问答用 Service、长任务用 Action、配置用 Parameter；用错不是性能问题，是语义问题。
+> **一句话听懂**：选通信方式看数据形态：连续流用 Topic、短问答用 Service、长任务用 Action、配置用 Parameter。
 
 ### Launch、生命周期与实时性
 
-*（部署细节：第一遍可跳到[「TF：坐标变换的单一事实来源」](#tf坐标变换的单一事实来源)接着读；节点组合、执行器与实时性留到部署时再查。上文“节点是逻辑单元、普通回调不保证硬实时”这条边界仍要记住。）*
+*（部署细节：第一遍可跳到[「TF：坐标变换的单一事实来源」](#tf坐标变换的单一事实来源)接着读；节点组合、执行器与实时性留到部署时再查。）*
 
-启动文件（Launch）描述一组节点如何启动、参数如何注入；部分节点还有受管生命周期（Managed Lifecycle）：未配置、未激活、激活、销毁等状态显式转换。它的价值在于把“系统是否就绪”变成可查询的状态，而不是靠启动后 sleep 几秒赌运气。
+启动文件（Launch）描述一组节点如何启动、参数如何注入；部分节点还有受管生命周期（Managed Lifecycle）：未配置、未激活、激活、销毁等状态显式转换。它把“系统是否就绪”变成可查询的状态，供后续模块决定何时开始工作。
 
-节点默认各自运行在独立进程里，消息经 DDS 传输：进程边界带来隔离，也带来序列化和跨进程拷贝的开销。节点组合（Node Composition）允许把多个节点加载进同一个进程、共用同一个执行器（Executor），数据以进程内指针传递，省掉中间拷贝；代价是一荣俱荣、一损俱损——一个节点崩溃或阻塞会拖住同进程的其它节点。执行器决定回调在几个线程上、以什么顺序执行：单线程执行器确定性好，但会被慢回调卡住；多线程执行器吞吐高，但回调并发访问共享状态必须显式加锁，否则就是数据竞争和偶发抽动。
+节点分布在不同进程时，消息通常经 DDS 传输：进程边界带来隔离，也带来序列化和跨进程拷贝的开销。节点组合（Node Composition）允许把多个节点加载进同一个进程、共用同一个执行器（Executor），启用进程内通信后，可减少消息传递中的拷贝；代价是一荣俱荣、一损俱损——一个节点崩溃或阻塞会拖住同进程的其它节点。执行器决定回调在几个线程上、以什么顺序执行：单线程执行器依次运行回调，慢回调会阻塞后续任务；多线程执行器允许并发，需要用互斥或其他同步方式保护共享状态。
 
-那能不能干脆上实时？ROS 2 支持实时调度、内存预分配和零拷贝，但一个普通 Linux 用户态进程无法保证最坏执行时间（Worst-Case Execution Time, WCET）。所以高频控制不放在普通节点里：要么把控制循环做成独立实时线程，通过共享内存或 `ros2_control` 的实时 Hardware Interface 更新，ROS 2 只负责参数下发和状态汇总；要么把控制留在厂商 SDK 的底层循环里，ROS 2 侧只做非实时桥接。把 1 kHz 的控制回调直接挂在普通执行器上，典型现象不是报错，而是偶发丢周期、时间戳抖动，然后机器人抽一下。注意：它的外观和开头那句“机器人偶尔抽一下”一样，但根因不同——那边是**两个节点抢同一个命令通道**，这里是**调度抖动**。排查时不能只看现象，要回到“命令谁在发”和“周期是否稳定”这两个问题。
+高频控制需要明确的周期预算。常见做法是在实时内核与适当调度配置下，用独立线程执行“读取状态 → 更新控制器 → 写入命令”，并预分配内存、控制阻塞操作和数据传输开销。`ros2_control` 的 Controller Manager 就提供这样的更新循环；也可以使用厂商 SDK 的底层循环，由桥接节点交换目标与状态。[4]
+
+部署后，按 [3.5 节](../03-electrical-embedded/05-mcu-realtime-embedded-software.mdx)的方法检查最坏执行时间（Worst-Case Execution Time, WCET）、周期抖动与超时处理。机器人偶发抽动时，分别核对命令通道的拥有者和控制周期记录，定位是指令冲突还是调度问题。
 
 ## TF：坐标变换的单一事实来源
 
@@ -115,7 +117,7 @@ TF2（Transform Library 2）维护一棵随时间变化的坐标变换树：广�
 
 坐标命名和约定遵循 REP-103（单位与右手系）和 REP-105（`map`/`odom`/`base_link` 等标准坐标系）。[6] 对 G1，TF 树通常覆盖 `pelvis`、`torso_link`、各关节 link 和 IMU 固定 link（见 [4.4 节](../04-cerebellum-realtime-control/04-state-estimation.mdx)的模型核对）；关节角到各 link 位姿的正运动学变换由 robot_state_publisher 根据 URDF 和 `JointState` 消息自动完成。
 
-> **一句话听懂**：TF 是坐标变换的唯一事实来源：所有模块查同一棵树，而不是各自换算；时间戳不一致、外推越界、树断成环，最后都表现为模型在 RViz 里趴下或散开。
+> **一句话听懂**：TF 让各模块查询同一棵带时间的坐标树，回答“在这个时刻，A 相对 B 在哪里、朝向怎样”。
 
 ## ros2_control：硬件与控制器之间的标准接口
 
@@ -132,16 +134,16 @@ ros2_control 把“读写硬件”和“控制算法”拆成两层，中间用�
 
 ## 观测与调试：rosbag2 与日志
 
-可观测性是架构的一部分，不是事后补丁。ROS 2 侧主要靠两件工具：
+架构设计时就要确定记录哪些状态、命令与事件。ROS 2 侧主要靠两件工具：
 
-- **rosbag2**：按 Topic 记录原始消息，回放（Playback）时可以原速、倍速或按时间戳精确复现一次故障。它记录的是消息层，不记录实时域内部的闭环变量；要让一次抽动可复盘，就得把桥接前后的关键量都录下来——低层 `rt/lowstate` 的关节与 IMU、桥接后的 `JointState` 与 `Imu`、控制器内部误差，缺一段就只能靠猜。记录的第一原则是先记录再分析，“当时没开 bag”是机器人调试里代价最高的四个字；
+- **rosbag2**：按 Topic 记录消息，再按时间戳回放分析。排查一次动作偏差时，记录桥接前后的关键量：低层 `rt/lowstate`、桥接后的 `JointState` 与 `Imu`，以及控制器误差。控制器内部变量需要通过专门的数据通道记录；
 - **日志**：节点日志应带级别和时间，关键状态切换、命令仲裁结果、QoS 不匹配告警和降级触发必须可回溯（呼应 [3.6 节](../03-electrical-embedded/06-electrical-safety-and-protection.mdx)的故障语义）。日志不要写进实时线程，桥接节点里一次磁盘阻塞就足以打乱控制周期。
 
 空间关系看 RViz 2、时间序列看 Foxglove，两者的分工与用法是 [6.4 节](../06-software-tools-simulation/04-gazebo-rviz2-foxglove.mdx)的整节主题，本节不展开。4.4–[4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)与 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)每一节的排查清单，最终都落在这组 bag 记录里“这条曲线长什么样”。
 
 <SectionQA id="6.1" mode="answer" />
 
-> **到这里，你应该已经能听懂**：别人说“`camera_node` → `perception_node` → `planner_node`，中间用 Topic 连起来”——你应该知道这是**软件模块之间的通信关系**，不是三台硬件；坐标和时间戳之所以要统一约定，也是为了让这些模块能对上话。
+> **到这里，你应该已经能听懂**：别人说“`camera_node` → `perception_node` → `planner_node`，中间用 Topic 连起来”——这描述的是**软件模块之间的通信关系**；坐标和时间戳之所以要统一约定，也是为了让这些模块能对上话。
 
 ## 参考资料
 
@@ -151,7 +153,7 @@ ros2_control 把“读写硬件”和“控制算法”拆成两层，中间用�
 
 [3] Open Robotics. *geometry2: TF2 library*. 本文使用提交 `2eccfcd2cc118c7fb92ef553022331f8749c0237`，用于核对 Buffer、Listener、Broadcaster 和时间查询语义。<https://github.com/ros2/geometry2/tree/2eccfcd2cc118c7fb92ef553022331f8749c0237>
 
-[4] ros-controls. *ros2_control: A framework for real-time control of robots using ROS 2*. 本文使用提交 `f1a73f3550c6598ac0691c4ad27211501fcd54e1`，用于核对 Hardware Interface、Controller、Broadcaster 与 Controller Manager 的职责划分。<https://github.com/ros-controls/ros2_control/tree/f1a73f3550c6598ac0691c4ad27211501fcd54e1>
+[4] ros-controls. *ros2_control: A framework for real-time control of robots using ROS 2*. 本文使用提交 `f1a73f3550c6598ac0691c4ad27211501fcd54e1`，用于核对 Hardware Interface、Controller、Broadcaster 与 Controller Manager 的职责划分；实时更新循环见 [Controller Manager 文档](https://control.ros.org/humble/doc/ros2_control/controller_manager/doc/userdoc.html)。<https://github.com/ros-controls/ros2_control/tree/f1a73f3550c6598ac0691c4ad27211501fcd54e1>
 
 [5] Macenski, S., et al. “Robot Operating System 2: Design, Architecture, and Uses in the Wild.” *Science Robotics*, 2022. ROS 2 设计动机、DDS 基础与工程实践综述。<https://doi.org/10.1126/scirobotics.abm6074>
 

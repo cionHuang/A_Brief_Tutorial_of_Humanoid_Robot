@@ -183,4 +183,10 @@ const { cards, caption } = Astro.props;
     font-size: 0.8125rem;
     color: var(--sl-color-gray-2);
   }
+  @media (max-width: 40rem) {
+    .src-card-head { flex-wrap: wrap; gap: .3rem; }
+    .src-step, .src-role, .src-file { flex: 1 1 100%; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+    .src-line { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); }
+    .src-ann { grid-column: 2; margin: 0; padding: .15rem 0 .3rem; white-space: normal; }
+  }
 </style>

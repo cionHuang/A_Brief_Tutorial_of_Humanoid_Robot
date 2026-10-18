@@ -85,6 +85,7 @@ export default defineConfig({
       ],
       tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
       pagination: true,
+      components: { Footer: './src/components/ReadingFooter.astro' },
       customCss: ['./src/styles/custom.css'],
       head: reviewHead,
     }),

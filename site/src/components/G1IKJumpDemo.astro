@@ -6,7 +6,7 @@ const url = import.meta.env.BASE_URL.replace(/\/?$/, '/') + 'models/g1/g1_29dof.
   <p class="tag">错误示范：不检查关节变化，直接下发新的 IK 解</p>
   <div class="stage"><span data-loading>正在加载 G1…</span><span class="badge">橙色：碰撞假人　绿色：手的目标</span></div>
   <p class="status" data-status>准备演示</p>
-  <figcaption>沿用上一动效的接近伸直姿态；这次允许整条左臂调整。两组关节角由 G1 URDF 求得，手的目标内移 2 厘米、朝向不变。姿态切换与假人倒地为风险示意，动作已慢放；不代表某个运动学库的必然输出，也不是碰撞动力学仿真。</figcaption>
+  <figcaption>沿用上一动效的接近伸直姿态，这次允许整条左臂调整。两组关节角由 G1 URDF 求得，手的目标内移 2 厘米、朝向不变。姿态切换与假人倒地采用预设动画，慢放展示手肘扫过的区域。</figcaption>
 </figure>
 <script>
 import * as THREE from 'three';
@@ -50,7 +50,7 @@ async function start(root) {
     loading.remove();root.dataset.loaded='true';
     function draw(){const f=THREE.MathUtils.clamp((elapsed-2)/.75,0,1);pose(f);const fall=THREE.MathUtils.clamp((elapsed-2.65)/1.1,0,1);dummy.rotation.x=-fall*1.47;dummy.position.z=floor+fall*.065;trace.visible=elapsed>=2;impact.visible=elapsed>=2.65&&elapsed<3.3;
       const phase=elapsed<1?'start':elapsed<2?'target':elapsed<2.75?'jump':'impact';root.dataset.phase=phase;
-      status.textContent=phase==='start'?'① 手臂接近伸直，假人在手肘旁边':phase==='target'?'② 手的目标内移 2 厘米，求得另一组关节角':phase==='jump'?'③ 未检查连续性，关节目标突然切换':'④ 手臂扫到旁边的假人：末端到位，不等于过程安全';
+      status.textContent=phase==='start'?'① 手臂接近伸直，假人在手肘旁边':phase==='target'?'② 手的目标内移 2 厘米，求得另一组关节角':phase==='jump'?'③ 未检查连续性，关节目标突然切换':'④ 手到达目标，手肘在切换途中扫到旁边的假人';
       renderer.render(scene,camera);
     }
     function frame(now){if(disposed)return;if(visible&&!document.hidden){if(last)elapsed=(elapsed+Math.min(.05,(now-last)/1000))%6;draw();}last=now;raf=requestAnimationFrame(frame);}draw();raf=requestAnimationFrame(frame);

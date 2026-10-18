@@ -24,11 +24,13 @@ const armLink = (name) => /^left_(shoulder_|elbow_|wrist_|rubber_hand)/.test(nam
 const visibleLink = (name, armOnly) => armLink(name)
   || (!armOnly && ['torso_link', 'logo_link', 'head_link', 'waist_support_link'].includes(name));
 
-export async function createG1ArmView(viewport, { urdfUrl, profile = 'servo', onInvalidate = () => {}, onError } = {}) {
+export async function createG1ArmView(viewport, { urdfUrl, profile = 'servo', interactive = true, onInvalidate = () => {}, onError } = {}) {
   const deadline = profile === 'deadline';
   const safety = profile === 'safety';
-  const armOnly = deadline || safety;
-  const initialAngle = deadline ? Math.PI / 3 : safety ? G1_SAFETY_ARM_RANGE.initialAngle : 0;
+  const dynamics = profile === 'dynamics';
+  const sweep = safety || dynamics;
+  const armOnly = deadline || sweep;
+  const initialAngle = deadline ? Math.PI / 3 : sweep ? G1_SAFETY_ARM_RANGE.initialAngle : 0;
   let renderer, scene, camera, controls, robot, ghost, resizeObserver, themeObserver;
   let payload, pushArrow, ambient, statusRing;
   let safetyStatus = 'ready';
@@ -100,12 +102,13 @@ export async function createG1ArmView(viewport, { urdfUrl, profile = 'servo', on
     scene.add(ambient, key, fill);
     controls = new OrbitControls(camera, renderer.domElement);
     controls.enablePan = false;
+    controls.enabled = interactive;
     controls.enableZoom = false;
     controls.enableDamping = false;
     controls.minPolarAngle = Math.PI * .2;
     controls.maxPolarAngle = Math.PI * .65;
     controls.addEventListener('change', invalidate);
-    Object.assign(renderer.domElement.style, { touchAction: 'pan-y', cursor: 'grab' });
+    Object.assign(renderer.domElement.style, { touchAction: 'pan-y', cursor: interactive ? 'grab' : 'default' });
 
     const manager = new THREE.LoadingManager();
     const failures = new Set();
@@ -201,10 +204,10 @@ export async function createG1ArmView(viewport, { urdfUrl, profile = 'servo', on
     // pose. Safety fits the entire real URDF sweep before fixing the camera.
     assembly.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(assembly);
-    if (safety) {
+    if (sweep) {
       bounds.makeEmpty();
       for (let step = 0; step <= 30; step += 1) {
-        const angle = initialAngle + (G1_SAFETY_ARM_RANGE.targetAngle - initialAngle) * step / 30;
+        const angle = dynamics ? (100 * Math.PI / 180) * step / 30 : initialAngle + (G1_SAFETY_ARM_RANGE.targetAngle - initialAngle) * step / 30;
         robot.setJointValue('left_elbow_joint', g1ElbowAngle(angle));
         robot.updateMatrixWorld(true);
         bounds.union(new THREE.Box3().setFromObject(robot));
@@ -217,7 +220,7 @@ export async function createG1ArmView(viewport, { urdfUrl, profile = 'servo', on
     }
     const center = bounds.getCenter(new THREE.Vector3());
     const size = bounds.getSize(new THREE.Vector3());
-    const safetyRadius = safety ? bounds.getBoundingSphere(new THREE.Sphere()).radius : 0;
+    const safetyRadius = sweep ? bounds.getBoundingSphere(new THREE.Sphere()).radius : 0;
     if (!armOnly) center.z -= .04;
     let distance = 1.7;
     const handPosition = new THREE.Vector3(), elbowPosition = new THREE.Vector3(), projected = new THREE.Vector3();
@@ -234,7 +237,7 @@ export async function createG1ArmView(viewport, { urdfUrl, profile = 'servo', on
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.setSize(width, height, false);
       const oldDistance = distance;
-      if (safety) {
+      if (sweep) {
         // A sphere fit stays valid after orbiting and on a 300 px portrait view.
         const halfVertical = camera.fov * Math.PI / 360;
         const halfHorizontal = Math.atan(Math.tan(halfVertical) * camera.aspect);

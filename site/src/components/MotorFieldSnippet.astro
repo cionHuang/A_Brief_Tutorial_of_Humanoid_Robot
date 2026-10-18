@@ -59,8 +59,8 @@ const cards = {
 };
 
 const captions = {
-  cmd: '片段逐字摘自 unitree_sdk2（提交 <code>9754cd1</code>）的 <code>MotorCmd_.hpp</code>，行号为原文件行号，不连续处为省略。<code>q_</code>、<code>dq_</code>、<code>tau_</code>、<code>kp_</code>、<code>kd_</code> 合起来就是一次阻抗 / PD 指令；字段存在不代表目标固件一定采用，单位与可用范围要以实际 SDK 版本和机器人模式为准。',
-  state: '片段逐字摘自 unitree_sdk2（提交 <code>9754cd1</code>）的 <code>MotorState_.hpp</code>，行号为原文件行号，不连续处为省略。<code>tau_est_</code> 字面就是“估计”而不是输出轴实测力矩；温度、电压和状态码的量纲与有效位也要逐项核对。',
+  cmd: '片段逐字摘自 unitree_sdk2（提交 <code>9754cd1</code>）的 <code>MotorCmd_.hpp</code>，行号为原文件行号，不连续处为省略。<code>q_</code>、<code>dq_</code>、<code>tau_</code>、<code>kp_</code>、<code>kd_</code> 合起来就是一次阻抗 / PD 指令；字段支持情况、单位和可用范围按目标固件、SDK 版本及机器人模式核对。',
+  state: '片段逐字摘自 unitree_sdk2（提交 <code>9754cd1</code>）的 <code>MotorState_.hpp</code>，行号为原文件行号，不连续处为省略。<code>tau_est_</code> 是设备估算的力矩；温度、电压和状态码按接口定义读取量纲与有效位。',
 };
 
 const card = cards[variant] || cards.cmd;

@@ -122,7 +122,7 @@ html[data-has-hero] .hero { position: relative; isolation: isolate; }
 html[data-has-hero] .hero::after {
   content: '';
   position: absolute;
-  inset: -2rem;
+  inset: -2rem 0;
   z-index: -1;
   pointer-events: none;
   background: radial-gradient(75% 130% at 50% 50%, rgba(10, 14, 23, 0.6) 0%, rgba(10, 14, 23, 0.25) 68%, transparent 100%);
@@ -139,3 +139,14 @@ html[data-theme='light'][data-has-hero] .hero::after {
     opacity: 0.4;
   }
 }
+
+/* 手机上的宽表格保留可读列宽，在表格内部横向查看。 */
+@media (max-width: 40rem) {
+  .sl-markdown-content table:has(th:nth-child(3)) :is(th, td) { min-width: 8rem; }
+  .sl-markdown-content table { scrollbar-width: thin; }
+}
+
+/* 显示局部滚动条，提示长公式和宽表格还有右侧内容。 */
+.sl-markdown-content :is(table, .katex-display)::-webkit-scrollbar { height: 6px; }
+.sl-markdown-content :is(table, .katex-display)::-webkit-scrollbar-track { background: var(--sl-color-gray-6); }
+.sl-markdown-content :is(table, .katex-display)::-webkit-scrollbar-thumb { background: var(--sl-color-gray-3); border-radius: 3px; }

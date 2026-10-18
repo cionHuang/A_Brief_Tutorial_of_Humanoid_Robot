@@ -40,7 +40,7 @@ const base=import.meta.env.BASE_URL.replace(/\/?$/,'/');
     </div>
   </div>
   <details data-matrix-details hidden><summary>查看 4 × 4 矩阵</summary><p data-matrix-caption>当前骨盆坐标系在世界中的位姿 T_WP</p><div class="gc-matrix" data-matrix aria-label="当前位姿矩阵"></div></details>
-  <figcaption>使用 G1 的 URDF 模型。演示只改变整体位姿，不计算步态；紫色和绿色标记表示两种指令的目标，不是机器人将同时经过的路线。</figcaption>
+  <figcaption>使用 G1 无手 URDF 模型演示整体位姿变换。紫色与绿色标记分别对应两种指令的目标。</figcaption>
   <noscript>启用 JavaScript 后可以切换三步演示。换坐标系只改变读数；左乘按世界轴施加变换，右乘按自身轴施加变换。</noscript>
 </figure>
 <script>

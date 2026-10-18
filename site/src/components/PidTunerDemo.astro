@@ -1,4 +1,5 @@
 ---
+import ScrollableDiagram from "./ScrollableDiagram.astro";
 /**
  * 4.5 用：单关节 PID 阶跃响应调参台 —— “### 参数整定”之后。
  *
@@ -40,6 +41,7 @@ const CFG = {
 ---
 
 <figure class="pid-demo" data-pid={JSON.stringify(CFG)}>
+  <ScrollableDiagram width={980}>
   <svg viewBox="0 0 980 360" role="img" aria-label="单关节 PID 调参台：一条时间轴显示关节角从 0 到目标 1 弧度的阶跃响应，另一条显示控制力矩与输出限幅；拖动 kp、ki、kd 滑块或选择预设，观察稳态误差、超调和积分饱和">
     <text class="pid-title" x="24" y="26">单关节 PID 调参台：同一台关节，换一组增益</text>
     <text class="pid-legend" x="24" y="44">灰虚线 = 目标　蓝线 = 关节角　橙色阴影 = 输出饱和　灰竖线 = 扰动注入</text>
@@ -73,6 +75,7 @@ const CFG = {
     <text class="pid-scale" data-pid-scale-angle x="940" y="54" text-anchor="end">角 0–1.25 rad</text>
     <text class="pid-scale" data-pid-scale-torque x="940" y="336" text-anchor="end">力矩 ±20 N·m，限幅 ±15</text>
   </svg>
+  </ScrollableDiagram>
 
   <div class="pid-controls">
     <div class="pid-row">

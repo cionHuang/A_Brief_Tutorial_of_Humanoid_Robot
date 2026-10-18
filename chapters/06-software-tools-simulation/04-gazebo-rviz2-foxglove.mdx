@@ -70,13 +70,13 @@ RViz 2 把订阅到的消息画在三维空间里：RobotModel 面板（按 URDF
 
 RViz 2 的正确用法是当作“机器人内部状态的空间投影”：规划器认为脚在哪、TF 树是否成环、检测到的目标在机器人坐标系的什么位置。它挂在“先看全局”那条流的总线一侧，只订阅、不写命令。
 
-> **一句话听懂**：RViz 2 把消息画成三维空间关系——RobotModel 面板看 URDF、TF 面板看坐标树；它只渲染订阅到的内容、不计算物理，所以“RViz 里对”不等于“动力学可行”。
+> **一句话听懂**：RViz 2 把收到的模型、位姿和传感器消息画成三维关系；RobotModel 看机器人模型，TF 看坐标树。物理运动由仿真器或真实机器人产生。
 
 ## Foxglove：看时间，做回放
 
 Foxglove 面向时间序列和日志回放：关节跟踪误差、`tau_est`（关节力矩估计）、IMU 原始数据、接触力、ZMP 裕量、控制器内部残差，按时间轴对齐到同一个界面上；配合 rosbag2 回放（把录制下来的 Topic 按时间戳重新播放），可以把一次故障的完整信号历史逐帧复盘。[4] 空间关系看 RViz 2，时间序列看 Foxglove，两者是同一条数据流上的两个观察者。
 
-开头“没录接触力只能猜”的教训对应一条纪律：记录 Topic 的清单应按故障排查需求设计，而不是按“现在想看什么”设计。4.5–[4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)与 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)每节的排查清单，落到工程上就是 Foxglove 里的一组预设面板和 rosbag2 里的一组必录 Topic。
+开头“没录接触力只能猜”的教训对应一条纪律：记录 Topic 的清单应按故障排查需求设计。4.5–[4.6 节](../04-cerebellum-realtime-control/06-balance-and-whole-body-control.mdx)与 [5.3 节](../05-brain-perception-planning-vla-wam/03-motion-planning.mdx)每节的排查清单，落到工程上就是 Foxglove 里的一组预设面板和 rosbag2 里的一组必录 Topic。
 
 ## 什么时候用哪个工具
 

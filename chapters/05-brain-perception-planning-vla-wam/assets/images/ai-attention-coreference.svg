@@ -38,7 +38,7 @@
     </g>
     <circle cx="520" cy="148" r="5" fill="#ea580c"/>
 
-    <text x="40" y="228" text-anchor="start" font-size="16" fill="#475569">示意图：不是某个真实模型的注意力输出</text>
+    <text x="40" y="228" text-anchor="start" font-size="16" fill="#475569">教学示意：权重用于说明指代关系</text>
     <text x="680" y="228" text-anchor="end" font-size="16" fill="#475569">线越粗 = 注意力权重越大</text>
 
     <rect x="40" y="248" width="640" height="40" rx="12" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>

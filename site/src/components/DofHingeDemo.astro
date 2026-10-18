@@ -76,7 +76,7 @@ const L2 = 108; // 小腿
 
   <figcaption>
     只有一个膝关节时，用 <span set:html={katexHtml('\\theta')}></span> 一个数字就能描述这条腿的姿势，即 1 DoF。
-    膝关节活动范围 <span set:html={katexHtml('-5^\\circ \\sim 165^\\circ')}></span> 取自 G1 的 URDF 模型文件，正方向为屈膝（小腿相对大腿向后摆），−5° 为轻微过伸；G1 的膝关节正是这样一个 1 DoF 关节。图中机器人面朝右方（脚掌朝右），因此屈膝表现为小腿向左摆；该范围是模型 limit 字段的取值，不代表真机实测能力上限。腿长比例为示意。
+    膝关节活动范围 <span set:html={katexHtml('-5^\\circ \\sim 165^\\circ')}></span> 取自 G1 URDF 的 limit 字段。屈膝为正，−5° 为轻微过伸；图中机器人面朝右方，屈膝时小腿向左摆。腿长比例为示意。
   </figcaption>
 </figure>
 

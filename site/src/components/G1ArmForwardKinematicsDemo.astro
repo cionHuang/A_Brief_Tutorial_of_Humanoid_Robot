@@ -974,4 +974,9 @@ const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
       overflow-y: hidden;
     }
   }
+  @media (max-width: 40rem) {
+    .g1fk-slider-label { flex-basis: 100%; }
+    .fk-pose { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 100%; min-width: 0; overflow: visible; }
+    .fk-pose-head { grid-column: 1 / -1; }
+  }
 </style>

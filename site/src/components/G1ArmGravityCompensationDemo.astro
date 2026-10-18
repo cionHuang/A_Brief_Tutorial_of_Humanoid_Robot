@@ -1,250 +1,32 @@
 ---
-/**
- * G1 左臂重力补偿（Gravity Compensation）交互演示 —— 4.3 节“### 重力补偿”之后。
- *
- * 呈现：three.js + urdf-loader 懒加载仓库内 G1 29 DoF URDF（site/public/models/g1/g1_29dof.urdf），
- * 只显示躯干与左臂链；右臂、腰、腿、头 visible = false。
- *
- * 模型（g1_29dof，末端为 29dof 自带的 left_rubber_hand，约 0.17 kg）：
- *   关节 origin xyz / rpy / axis / limit 与各 link 的 <inertial> mass、质心 origin
- *   均逐字取自 g1_29dof.urdf（见 PHY.chain 与 PHY.com）。左臂总质量 ≈ 3.52 kg。
- *
- * 静力学：关节 j 需要承担的重力力矩，等于该关节以远各段“重力矩沿关节轴的分量”之和：
- *   G_j(q) = Σ_{i∈distal(j)} u_j(q) · [ (com_i(q) − p_j(q)) × (0, 0, −m_i g) ]
- * 其中 u_j 为关节轴在世界系（URDF Z-up）的单位向量；加载后与模型坐标做自检。
- *
- * 柔性模型（教学示意，非真机刚度）：忽略重力补偿时，电机只靠位置误差出力，
- *   δ_j = −G_j / K_p（Kp = 8 N·m/rad），限幅 SAG_CAP = 30° 后再夹到 URDF 限位。
- *   于是同一个目标姿态下：开补偿 → 实际姿态贴合目标；关补偿 → 手臂可见下垂，且下垂幅度随姿态变化。
- *   K_p 是演示参数，真机由控制器增益、电流环和负载共同决定，不能当作 G1 的伺服刚度。
- */
-
-import { texParts } from '../lib/tex.js';
-
-const D2R = Math.PI / 180;
-const R2D = 180 / Math.PI;
-const I3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
-
-const mul3 = (A, B) => A.map((row, i) => [0, 1, 2].map((j) => row[0] * B[0][j] + row[1] * B[1][j] + row[2] * B[2][j]));
-const mulVec = (R, v) => R.map((row) => row[0] * v[0] + row[1] * v[1] + row[2] * v[2]);
-// URDF RPY：Rz(yaw)·Ry(pitch)·Rx(roll)
-const rpyMat = (r, p, y) => {
-  const cr = Math.cos(r); const sr = Math.sin(r);
-  const cp = Math.cos(p); const sp = Math.sin(p);
-  const cy = Math.cos(y); const sy = Math.sin(y);
-  return [
-    [cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr],
-    [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr],
-    [-sp, cp * sr, cp * cr],
-  ];
-};
-const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-
-const SAG_KP = 8; // N·m/rad，教学示意刚度
-const SAG_CAP = 30 * D2R; // 单关节偏差限幅
-
-// ── URDF 数据（g1_29dof.urdf 左臂链，逐字抄录）────────────────────────────
-const PHY = {
-  chain: [
-    { name: 'left_shoulder_pitch_joint', key: 'sp', label: '肩 pitch', link: 'left_shoulder_pitch_link', xyz: [0.0039563, 0.10022, 0.23778], rpy: [0.27931, 5.4949e-05, -0.00019159], axis: [0, 1, 0], lo: -3.0892, hi: 2.6704, def: 0, movable: true },
-    { name: 'left_shoulder_roll_joint', key: 'sr', label: '肩 roll', link: 'left_shoulder_roll_link', xyz: [0, 0.038, -0.013831], rpy: [-0.27925, 0, 0], axis: [1, 0, 0], lo: -1.5882, hi: 2.2515, def: 20, movable: true },
-    { name: 'left_shoulder_yaw_joint', key: 'sy', label: '肩 yaw', link: 'left_shoulder_yaw_link', xyz: [0, 0.00624, -0.1032], rpy: [0, 0, 0], axis: [0, 0, 1], lo: -2.618, hi: 2.618, def: 0, movable: true },
-    { name: 'left_elbow_joint', key: 'el', label: '肘', link: 'left_elbow_link', xyz: [0.015783, 0, -0.080518], rpy: [0, 0, 0], axis: [0, 1, 0], lo: -1.0472, hi: 2.0944, def: 40, movable: true },
-    { name: 'left_wrist_roll_joint', key: 'wr', label: '腕 roll', link: 'left_wrist_roll_link', xyz: [0.1, 0.00188791, -0.01], rpy: [0, 0, 0], axis: [1, 0, 0], lo: -1.972222054, hi: 1.972222054, def: 0, movable: true },
-    { name: 'left_wrist_pitch_joint', key: 'wp', label: '腕 pitch', link: 'left_wrist_pitch_link', xyz: [0.038, 0, 0], rpy: [0, 0, 0], axis: [0, 1, 0], lo: -1.614429558, hi: 1.614429558, def: 0, movable: true },
-    { name: 'left_wrist_yaw_joint', key: 'wy', label: '腕 yaw', link: 'left_wrist_yaw_link', xyz: [0.046, 0, 0], rpy: [0, 0, 0], axis: [0, 0, 1], lo: -1.614429558, hi: 1.614429558, def: 0, movable: true },
-    { name: 'left_hand_palm_joint', key: 'palm', label: '手', link: 'left_rubber_hand', xyz: [0.0415, 0.003, 0], rpy: [0, 0, 0], axis: [0, 0, 1], lo: 0, hi: 0, def: 0, movable: false, fixed: true },
-  ],
-  // 每个 link 的 <inertial>：质量与质心（link 系）
-  com: {
-    left_shoulder_pitch_link: { m: 0.718, c: [0, 0.035892, -0.011628] },
-    left_shoulder_roll_link: { m: 0.643, c: [-0.000227, 0.00727, -0.063243] },
-    left_shoulder_yaw_link: { m: 0.734, c: [0.010773, -0.002949, -0.072009] },
-    left_elbow_link: { m: 0.6, c: [0.064956, 0.004454, -0.010062] },
-    left_wrist_roll_link: { m: 0.08544498, c: [0.01713944778, 0.00053759094, 0.00000048864] },
-    left_wrist_pitch_link: { m: 0.48404956, c: [0.02299989837, -0.00111685314, -0.00111658096] },
-    left_wrist_yaw_link: { m: 0.08457647, c: [0.02200381568, 0.00049485096, 0.00053861123] },
-    left_rubber_hand: { m: 0.17, c: [0.05361310808, -0.00295905240, 0.00215413091] },
-  },
-};
-
-const CH = PHY.chain;
-const COM = PHY.com;
-const SLIDERS = CH.filter((c) => c.movable);
-const DEF_Q = CH.map((c) => c.def * D2R);
-
-// ── URDF 正运动学（Z-up），返回各关节 p/u 与各 link 位姿 ──────────────────
-const fk = (q) => {
-  const joints = {};
-  const links = {};
-  let R = I3;
-  let p = [0, 0, 0];
-  CH.forEach((j, i) => {
-    const d = mulVec(R, j.xyz);
-    p = [p[0] + d[0], p[1] + d[1], p[2] + d[2]];
-    R = mul3(R, rpyMat(j.rpy[0], j.rpy[1], j.rpy[2]));
-    if (j.fixed) { joints[j.name] = { p: p.slice(), u: [0, 0, 0] }; links[j.link] = { p: p.slice(), R: R.map((r) => r.slice()) }; return; }
-    joints[j.name] = { p: p.slice(), u: mulVec(R, j.axis) };
-    const ang = q[i];
-    const n = Math.hypot(j.axis[0], j.axis[1], j.axis[2]) || 1;
-    const ux = j.axis[0] / n; const uy = j.axis[1] / n; const uz = j.axis[2] / n;
-    const c = Math.cos(ang); const s = Math.sin(ang); const t = 1 - c;
-    R = mul3(R, [
-      [t * ux * ux + c, t * ux * uy - s * uz, t * ux * uz + s * uy],
-      [t * ux * uy + s * uz, t * uy * uy + c, t * uy * uz - s * ux],
-      [t * ux * uz - s * uy, t * uy * uz + s * ux, t * uz * uz + c],
-    ]);
-    links[j.link] = { p: p.slice(), R: R.map((r) => r.slice()) };
-  });
-  return { joints, links };
-};
-const comWorld = (links) => {
-  const out = {};
-  for (const [name, info] of Object.entries(COM)) {
-    const f = links[name];
-    if (!f) continue;
-    const c = mulVec(f.R, info.c);
-    out[name] = [f.p[0] + c[0], f.p[1] + c[1], f.p[2] + c[2]];
-  }
-  return out;
-};
-// G_j(q)：关节 j 以远各段重力矩沿关节轴的分量之和。
-// 符号约定与正文 τ_hold ≈ g(q) 一致：返回的是“电机为保持姿态需要承担的力矩”。
-// 因此重力力矢量取 +mg ẑ；若写成 −mg ẑ 会整体反号，关掉补偿后手臂会被算成
-// 向上升（势能升高），与物理和正文都相反。
-const gravityTorques = (q) => {
-  const { joints, links } = fk(q);
-  const com = comWorld(links);
-  const out = {};
-  CH.forEach((c, ji) => {
-    const j = joints[c.name];
-    let acc = 0;
-    for (const downstream of CH.slice(ji + 1)) {
-      const info = COM[downstream.link];
-      if (!info) continue;
-      const r = [com[downstream.link][0] - j.p[0], com[downstream.link][1] - j.p[1], com[downstream.link][2] - j.p[2]];
-      const gg = cross(r, [0, 0, info.m * 9.81]);
-      acc += j.u[0] * gg[0] + j.u[1] * gg[1] + j.u[2] * gg[2];
-    }
-    out[c.name] = acc;
-  });
-  return out;
-};
-// 关补偿：δ = −G/Kp（限幅 + 夹限位）；开补偿：实际 = 目标
-const sagFrom = (q) => {
-  const G = gravityTorques(q);
-  const actual = CH.map((c, i) => clamp(q[i] + clamp(-G[c.name] / SAG_KP, -SAG_CAP, SAG_CAP), c.lo, c.hi));
-  return { G, actual };
-};
-
-// ── 首屏静态读数（加载 3D 前先写进 markup）────────────────────────────────
-const DEF_SAG = sagFrom(DEF_Q);
-const DEF_G = gravityTorques(DEF_Q);
-const DEF_W = fk(DEF_Q).links.left_wrist_yaw_link.p;
-const DEF_W2 = fk(DEF_SAG.actual).links.left_wrist_yaw_link.p;
-const DEF_ERR = Math.hypot(DEF_W[0] - DEF_W2[0], DEF_W[1] - DEF_W2[1], DEF_W[2] - DEF_W2[2]);
-const fmt1 = (v) => (Math.abs(v) < 0.05 ? '0.0' : (v < 0 ? '−' : '') + Math.abs(v).toFixed(1));
-const fmt2 = (v) => (Math.abs(v) < 0.005 ? '0.00' : (v < 0 ? '−' : '') + Math.abs(v).toFixed(2));
-const EXPR = (s) => ({ tex: s });
-const DEF_TAU_PARTS = [{ text: '需电机承担的重力力矩（正负号表示方向）：' }].concat(
-  SLIDERS.map((c, i) => (i ? [{ text: '　' }, { text: c.label + ' ' }, EXPR(fmt1(DEF_G[c.name]) + '\\ \\text{N·m}')] : [{ text: c.label + ' ' }, EXPR(fmt1(DEF_G[c.name]) + '\\ \\text{N·m}')])).flat(),
-);
-const DEF_SAG_PARTS = [{ text: '关补偿后的实际角（偏差 Δ = −τ_g/K_p）：' }].concat(
-  SLIDERS.map((c, i) => {
-    const idx = CH.indexOf(c);
-    const actual = DEF_SAG.actual[idx] * R2D;
-    const dev = actual - c.def;
-    const item = [{ text: c.label + ' ' }, EXPR(fmt1(actual) + '^\\circ'), EXPR('(\\Delta ' + fmt1(dev) + '^\\circ)')];
-    return i ? [{ text: '　' }].concat(item) : item;
-  }).flat(),
-);
-const DEF_ERR_PARTS = [{ text: '手端位置差 |Δp| = ' }, EXPR(fmt2(DEF_ERR * 100) + '\\ \\text{cm}')];
-const DEF_NAMES = SLIDERS.map((c) => c.label).join(' / ');
-
-const baseUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/');
-const urdfUrl = baseUrl + 'models/g1/g1_29dof.urdf';
+import { gravityTorques } from '../lib/g1-arm-physics.js';
+import { GRAVITY_TARGET } from '../lib/arm-lesson-sequences.js';
+const initial = gravityTorques(GRAVITY_TARGET);
+const urdfUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/') + 'models/g1/g1_29dof.urdf';
 ---
-
-<figure
-  class="gcarm-demo"
-  data-state="idle"
-  data-urdf-url={urdfUrl}
-  data-phy={JSON.stringify({ chain: CH, com: COM, kp: SAG_KP, cap: SAG_CAP, def: CH.map((c) => c.def) })}
->
-  <div
-    class="gcarm-viewport"
-    data-gcarm-viewport
-    role="application"
-    tabindex="0"
-    aria-label="G1 左臂重力补偿三维演示：拖动肩、肘、腕六个关节角滑块设定目标姿态，用真实 G1 URDF 网格渲染的左臂实时显示；关闭重力补偿后手臂会因重力下垂，半透明幽灵臂保留目标姿态"
-  >
-    <div class="gcarm-loading" data-gcarm-loading>
-      <span class="gcarm-spinner" aria-hidden="true"></span>
-      <span class="gcarm-status" data-gcarm-status>滚动到此处加载 3D 模型</span>
-    </div>
+<figure id="g1-gravity-compensation-demo" class="gcarm-demo" data-state="idle" data-urdf-url={urdfUrl}>
+  <div class="gcarm-heading"><strong data-gcarm-mode>① 空手，未补偿</strong><span data-gcarm-count>1 / 3</span></div>
+  <p class="gcarm-explanation" data-gcarm-explanation aria-live="polite">目标姿势固定。只靠位置反馈支撑时，手臂会留下一些下垂。</p>
+  <div class="gcarm-viewport" data-gcarm-viewport role="img" aria-label="固定目标姿势，对照空手、加重物和开启重力补偿后的 G1 左臂">
+    <div class="gcarm-loading"><span data-gcarm-status>滚动到此处加载 G1 模型</span></div>
     <div class="gcarm-overlay" data-gcarm-overlay aria-hidden="true">
-      <div class="gcarm-tag" data-gcarm-tag="sp">肩</div>
-      <div class="gcarm-tag" data-gcarm-tag="el">肘</div>
-      <div class="gcarm-tag" data-gcarm-tag="wr">腕</div>
-      <div class="gcarm-tag gcarm-tag-target" data-gcarm-tag="ghost">目标姿态（半透明臂）</div>
-    </div>
-    <div class="gcarm-mode" data-gcarm-mode>重力补偿：开</div>
-    <div class="gcarm-torques" data-gcarm-float role="group" aria-label="此刻的重力力矩">
-      <div class="gcarm-tq-title">此刻的重力力矩</div>
-      <div class="gcarm-tq-row"><span>肩 pitch</span><b data-gcarm-float-sp>—</b></div>
-      <div class="gcarm-tq-row"><span>肘</span><b data-gcarm-float-el>—</b></div>
+      <span class="gcarm-tag" data-gcarm-tag="ghost">目标姿势</span>
     </div>
   </div>
-
-  <div class="gcarm-controls">
-    <div class="gcarm-row">
-      <span class="gcarm-row-title">肩</span>
-      {SLIDERS.slice(0, 3).map((c) => (
-        <label class="gcarm-slider-label">{c.label}
-          <input class="gcarm-range" type="range" data-gcarm-joint={c.key} min={(R2D * c.lo).toFixed(1)} max={(R2D * c.hi).toFixed(1)} step="1" value={c.def.toFixed(1)} />
-          <span class="gcarm-val" data-gcarm-val={c.key}>{fmt1(c.def)}°</span>
-        </label>
-      ))}
-    </div>
-    <div class="gcarm-row">
-      <span class="gcarm-row-title">肘 / 腕</span>
-      {SLIDERS.slice(3).map((c) => (
-        <label class="gcarm-slider-label">{c.label}
-          <input class="gcarm-range" type="range" data-gcarm-joint={c.key} min={(R2D * c.lo).toFixed(1)} max={(R2D * c.hi).toFixed(1)} step="1" value={c.def.toFixed(1)} />
-          <span class="gcarm-val" data-gcarm-val={c.key}>{fmt1(c.def)}°</span>
-        </label>
-      ))}
-    </div>
-    <div class="gcarm-row gcarm-row-btns">
-      <span class="gcarm-row-title"></span>
-      <div class="gcarm-btnpair">
-        <button type="button" class="gcarm-btn" data-gcarm-toggle>重力补偿：开</button>
-        <button type="button" class="gcarm-btn" data-gcarm-resetcam disabled>复位视角</button>
-      </div>
-    </div>
-    <div class="gcarm-row">
-      <span class="gcarm-row-title"></span>
-      <span class="gcarm-hint">只画左臂；半透明臂 = 目标姿态，实心臂 = 实际姿态。K_p = 8 N·m/rad（教学示意）</span>
-    </div>
-  </div>
-
+  <div class="gcarm-actions"><button type="button" data-gcarm-play disabled>播放演示</button><span>半透明臂：目标姿势 · 实心臂：实际姿势</span></div>
   <div class="gcarm-readout">
-    <output class="gcarm-out gcarm-out-comp" aria-live="polite"><span data-gcarm-tex="comp" set:html={texParts(DEF_TAU_PARTS)}></span></output>
-    <output class="gcarm-out gcarm-out-sag" aria-live="polite"><span data-gcarm-tex="sag" set:html={texParts(DEF_SAG_PARTS)}></span></output>
-    <output class="gcarm-out gcarm-out-err" aria-live="polite"><span data-gcarm-tex="err" set:html={texParts(DEF_ERR_PARTS)}></span></output>
+    <span>肩部支撑力矩 <b data-gcarm-float-sp>{Math.abs(initial.left_shoulder_pitch_joint).toFixed(1)} N·m</b></span>
+    <span>肘部支撑力矩 <b data-gcarm-float-el>{Math.abs(initial.left_elbow_joint).toFixed(1)} N·m</b></span>
+    <span>手端位置偏差 <b data-gcarm-error>0.0 cm</b></span>
   </div>
-
-  <figcaption>
-    用 G1 官方 URDF 网格渲染的左臂（<code>g1_29dof.urdf</code>；肩 3 + 肘 1 + 腕 3 共 7 个可动关节，手为无手模型自带的固定橡胶手）：拖动滑块设定目标姿态，半透明幽灵臂停在目标姿态，实心臂按 K_p = 8 N·m/rad 的关节刚度跟随，下垂量按 Δ = −τ_g/K_p 算出后再夹到模型限位。关掉重力补偿，三条读数会同时变化——需电机承担的重力力矩、各关节实际角与偏差、手端位置差 |Δp|。关节顺序、轴线和限位逐字取自模型文件，网格为可视化模型，不代表真实硬件的内部结构；K_p 是演示参数，真机由控制器增益、电流环和负载共同决定，不能当作 G1 的伺服刚度。模型来源：
-    <a href="https://github.com/unitreerobotics/unitree_rl_gym/tree/main/resources/robots/g1_description">unitree_rl_gym</a>。
-  </figcaption>
-
+  <figcaption>保持同一目标姿势，依次比较空手、增加 0.5 kg 载荷、开启补偿。支撑力矩取自 G1 模型的质量与质心，下垂用简化关节刚度估算。</figcaption>
 </figure>
-
 <script>
-import { texParts } from '../lib/tex.js';
-import { createVisibleRaf } from '../lib/visible-raf.js';
+import { fk, gravityTorques as calculateGravity } from '../lib/g1-arm-physics.js';
+import { G1_PAYLOAD_MOUNT } from '../lib/g1-arm-view.js';
+import { createLessonPlayback } from '../lib/lesson-playback.js';
+import { PHY } from '../lib/g1-arm-physics.js';
+import { GRAVITY_LENGTH, GRAVITY_TARGET, gravityLesson } from '../lib/arm-lesson-sequences.js';
 (function () {
   const PIN = new Set(['pelvis', 'pelvis_contour_link', 'waist_yaw_link', 'waist_roll_link', 'torso_link', 'logo_link', 'waist_support_link', 'head_link',
     'left_shoulder_pitch_link', 'left_shoulder_roll_link', 'left_shoulder_yaw_link', 'left_elbow_link',
@@ -258,112 +40,32 @@ import { createVisibleRaf } from '../lib/visible-raf.js';
     const viewport = demo.querySelector('[data-gcarm-viewport]');
     const statusEl = demo.querySelector('[data-gcarm-status]');
     const modeEl = demo.querySelector('[data-gcarm-mode]');
-    const tqEl = demo.querySelector('[data-gcarm-float]');
     const tqShoulder = demo.querySelector('[data-gcarm-float-sp]');
     const tqElbow = demo.querySelector('[data-gcarm-float-el]');
-    const toggleBtn = demo.querySelector('[data-gcarm-toggle]');
-    const resetBtn = demo.querySelector('[data-gcarm-resetcam]');
-    const raw = demo.dataset.phy;
+    const errorEl = demo.querySelector('[data-gcarm-error]');
+    const playBtn = demo.querySelector('[data-gcarm-play]');
+    const explanationEl = demo.querySelector('[data-gcarm-explanation]');
+    const countEl = demo.querySelector('[data-gcarm-count]');
     const urdfUrl = demo.dataset.urdfUrl;
-    if (!(viewport instanceof HTMLElement) || !raw || !urdfUrl || !(toggleBtn instanceof HTMLButtonElement)) return;
-
-    const PHY = JSON.parse(raw);
+    if (!(viewport instanceof HTMLElement) || !urdfUrl || !(playBtn instanceof HTMLButtonElement)) return;
     const CHAIN = PHY.chain;
-    const COM = PHY.com;
-    const KP = PHY.kp;
-    const CAP = PHY.cap;
-    const R2D = 180 / Math.PI;
     const D2R = Math.PI / 180;
-    const I3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
-    const mul3 = (A, B) => A.map((row, i) => [0, 1, 2].map((j) => row[0] * B[0][j] + row[1] * B[1][j] + row[2] * B[2][j]));
-    const mulVec = (R, v) => R.map((row) => row[0] * v[0] + row[1] * v[1] + row[2] * v[2]);
-    const rpyMat = (r, p, y) => {
-      const cr = Math.cos(r); const sr = Math.sin(r); const cp = Math.cos(p); const sp = Math.sin(p); const cy = Math.cos(y); const sy = Math.sin(y);
-      return [[cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr], [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr], [-sp, cp * sr, cp * cr]];
-    };
-    const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-    const fmt1 = (v) => (Math.abs(v) < 0.05 ? '0.0' : (v < 0 ? '−' : '') + Math.abs(v).toFixed(1));
-    const fmt2 = (v) => (Math.abs(v) < 0.005 ? '0.00' : (v < 0 ? '−' : '') + Math.abs(v).toFixed(2));
-
-    const fk = (q) => {
-      const joints = {};
-      const links = {};
-      let R = I3;
-      let p = [0, 0, 0];
-      CHAIN.forEach((j, i) => {
-        const d = mulVec(R, j.xyz);
-        p = [p[0] + d[0], p[1] + d[1], p[2] + d[2]];
-        R = mul3(R, rpyMat(j.rpy[0], j.rpy[1], j.rpy[2]));
-        if (j.fixed) { joints[j.name] = { p: p.slice(), u: [0, 0, 0] }; links[j.link] = { p: p.slice(), R: R.map((r) => r.slice()) }; return; }
-        joints[j.name] = { p: p.slice(), u: mulVec(R, j.axis) };
-        const n = Math.hypot(j.axis[0], j.axis[1], j.axis[2]) || 1;
-        const ux = j.axis[0] / n; const uy = j.axis[1] / n; const uz = j.axis[2] / n;
-        const c = Math.cos(q[i]); const s = Math.sin(q[i]); const t = 1 - c;
-        R = mul3(R, [[t * ux * ux + c, t * ux * uy - s * uz, t * ux * uz + s * uy], [t * ux * uy + s * uz, t * uy * uy + c, t * uy * uz - s * ux], [t * ux * uz - s * uy, t * uy * uz + s * ux, t * uz * uz + c]]);
-        links[j.link] = { p: p.slice(), R: R.map((r) => r.slice()) };
-      });
-      return { joints, links };
-    };
-    const gravityTorques = (q) => {
-      const { joints, links } = fk(q);
-      const com = {};
-      for (const [name, info] of Object.entries(COM)) {
-        const f = links[name];
-        if (!f) continue;
-        const c = mulVec(f.R, info.c);
-        com[name] = [f.p[0] + c[0], f.p[1] + c[1], f.p[2] + c[2]];
-      }
-      const out = {};
-      CHAIN.forEach((c, ji) => {
-        const j = joints[c.name];
-        let acc = 0;
-        for (const downstream of CHAIN.slice(ji + 1)) {
-          const info = COM[downstream.link];
-          if (!info) continue;
-          const r = [com[downstream.link][0] - j.p[0], com[downstream.link][1] - j.p[1], com[downstream.link][2] - j.p[2]];
-          const gg = cross(r, [0, 0, info.m * 9.81]);
-          acc += j.u[0] * gg[0] + j.u[1] * gg[1] + j.u[2] * gg[2];
-        }
-        out[c.name] = acc;
-      });
-      return out;
-    };
-    const sagFrom = (q) => {
-      const G = gravityTorques(q);
-      const actual = CHAIN.map((c, i) => clamp(q[i] + clamp(-G[c.name] / KP, -CAP, CAP), c.lo, c.hi));
-      return { G, actual };
-    };
-
-    const target = CHAIN.map((c) => c.def * D2R);
-    const live = target.slice();
-    let compOn = true;
-    let dirty = true;
-    let ghostDirty = true; // 幽灵臂需要重新贴合“当前目标姿态”
-    let desired = target.slice();
-    const recompute = () => { desired = compOn ? target.slice() : sagFrom(target).actual; dirty = true; };
-    recompute();
-
-    const ranges = {};
-    const vals = {};
-    CHAIN.filter((c) => c.movable).forEach((c) => {
-      ranges[c.key] = demo.querySelector('[data-gcarm-joint="' + c.key + '"]');
-      vals[c.key] = demo.querySelector('[data-gcarm-val="' + c.key + '"]');
-    });
+    const fmt1 = v => Math.abs(v).toFixed(1);
+    let payloadMass = 0, payload = null;
+    const gravityTorques = q => calculateGravity(q, payloadMass);
+    const target = GRAVITY_TARGET;
+    let live = target.slice(), compOn = false, lastStep = -1;
     const tags = { sp: demo.querySelector('[data-gcarm-tag="sp"]'), el: demo.querySelector('[data-gcarm-tag="el"]'), wr: demo.querySelector('[data-gcarm-tag="wr"]'), ghost: demo.querySelector('[data-gcarm-tag="ghost"]') };
-    const tex = { comp: demo.querySelector('[data-gcarm-tex="comp"]'), sag: demo.querySelector('[data-gcarm-tex="sag"]'), err: demo.querySelector('[data-gcarm-tex="err"]') };
-
     let THREE_NS = null;
-    let started = false;
     let scene; let camera; let renderer; let controls; let grid = null;
     let robot; let ghost; let modelGroup; let torsoLink;
-    let loop = null; // 由 visible-raf 统一调度：离屏/后台自动暂停
+    let playback = null;
     let resizeObserver; let themeObserver; let mediaQuery;
     let probe = null;
     let disposed = false;
 
     const setState = (s, msg) => { demo.dataset.state = s; if (msg !== undefined && statusEl) statusEl.textContent = msg; };
-    const scheduleRender = () => { if (loop) loop.schedule(); };
+    const scheduleRender = () => { if (playback) playback.schedule(); };
     const reducedMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const syncOverlay = () => {
@@ -401,34 +103,25 @@ import { createVisibleRaf } from '../lib/visible-raf.js';
       return out.visible;
     };
 
-    // 每帧只跑一条 rAF（由 visible-raf 统一调度）：先推进关节动画，再渲染一帧。
-    // 元素滚出视口或标签页切到后台时整条循环自动暂停，回来自动续。
-    const frameStep = () => {
+    const frameStep = time => {
       if (disposed) return;
-      const step = reducedMotion() ? 1 : 0.16;
-      let moving = false;
-      for (let i = 0; i < live.length; i += 1) {
-        const d = desired[i] - live[i];
-        if (Math.abs(d) > 1e-4) { live[i] += d * step; moving = true; } else { live[i] = desired[i]; }
+      const s = gravityLesson(time, reducedMotion());
+      live = s.angles; payloadMass = s.payloadMass; compOn = s.compensation;
+      demo.dataset.step = String(s.index);
+      if (s.index !== lastStep) {
+        modeEl.textContent = s.title;
+        explanationEl.textContent = s.explanation;
+        countEl.textContent = `${s.index + 1} / 3`;
+        lastStep = s.index;
       }
-      if (robot && (moving || dirty || ghostDirty)) {
+      if (robot) {
         applyJoints(robot, live);
-        if (ghost) {
-          // 幽灵臂必须停在“当前目标姿态”：只在加载时设一次的话，
-          // 拖动滑块后再关补偿，会看到一条姿态对不上的手臂
-          if (ghostDirty) { applyJoints(ghost, target); ghostDirty = false; }
-          ghost.visible = !compOn;
-        }
+        applyJoints(ghost, target);
+        ghost.visible = true;
         updateReadout();
-        dirty = false;
-      } else if (robot && ghost) {
-        ghost.visible = !compOn;
       }
       if (!renderer || !scene || !camera) return;
-      if (controls) controls.update();
-      renderer.render(scene, camera);
-      demo.dataset.rendered = 'true';
-      syncOverlay();
+      renderer.render(scene, camera); demo.dataset.rendered = 'true'; syncOverlay();
     };
 
     const resolveCssColor = (expr, fallback) => {
@@ -463,7 +156,7 @@ import { createVisibleRaf } from '../lib/visible-raf.js';
         const jnt = robot.joints[pair[0]];
         if (!jnt) { errs.push(pair[0] + " 缺失"); return; }
         const lp = joints[pair[0]].p;
-        const local = new THREE.Vector3(lp[0], lp[2], -lp[1]);
+        const local = new THREE.Vector3(...lp);
         torsoLink.updateMatrixWorld(true);
         const expect = torsoLink.localToWorld(local.clone());
         const got = new THREE.Vector3();
@@ -526,42 +219,20 @@ import { createVisibleRaf } from '../lib/visible-raf.js';
       scheduleRender();
     };
 
-    // ── 读数：KaTeX 由 4.1 节的 tex.js 渲染 ─────────────────────────────────
-    const setParts = (el, parts) => {
-      if (!el) return;
-      el.innerHTML = texParts(parts);
-    };
     const updateReadout = () => {
       const G = gravityTorques(target);
-      const wTarget = fk(target).links[WRIST_LINK].p;
-      const wActual = fk(live).links[WRIST_LINK].p;
-      const err = Math.hypot(wTarget[0] - wActual[0], wTarget[1] - wActual[1], wTarget[2] - wActual[2]);
-      const compParts = [{ text: "需电机承担的重力力矩（正负号表示方向）：" }];
-      CHAIN.filter((c) => c.movable).forEach((c, i) => {
-        if (i) compParts.push({ text: "　" });
-        compParts.push({ text: c.label + " " });
-        compParts.push({ tex: fmt1(G[c.name]) + "\\ \\text{N·m}" });
-      });
-      const sagParts = [{ text: compOn ? "实际角 = 目标角（补偿把重力力矩全包了）：" : "实际角（偏差 Δ = −τ_g/K_p）：" }];
-      CHAIN.filter((c) => c.movable).forEach((c, i) => {
-        if (i) sagParts.push({ text: "　" });
-        const idx = CHAIN.indexOf(c);
-        const dev = (live[idx] - target[idx]) * R2D;
-        sagParts.push({ text: c.label + " " });
-        sagParts.push({ tex: fmt1(live[idx] * R2D) + "^\\circ" + (compOn ? "" : "(\\Delta " + fmt1(dev) + "^\\circ)") });
-      });
-      const errParts = [{ text: "手端位置差 |Δp| = " }, { tex: fmt2(err * 100) + "\\ \\text{cm}" }];
-      setParts(tex.comp, compParts);
-      setParts(tex.sag, sagParts);
-      setParts(tex.err, errParts);
-      if (modeEl) modeEl.textContent = '重力补偿：' + (compOn ? '开' : '关');
-      if (modeEl) modeEl.classList.toggle('gcarm-mode-off', !compOn);
-      if (tqShoulder) tqShoulder.textContent = fmt1(G.left_shoulder_pitch_joint) + ' N·m';
-      if (tqElbow) tqElbow.textContent = fmt1(G.left_elbow_joint) + ' N·m';
-      CHAIN.filter((c) => c.movable).forEach((c) => {
-        const node = vals[c.key];
-        if (node) node.textContent = fmt1(target[CHAIN.indexOf(c)] * R2D) + "°";
-      });
+      demo.dataset.payloadMass = String(payloadMass);
+      demo.dataset.compensation = String(compOn);
+      demo.dataset.tauShoulder = String(G.left_shoulder_pitch_joint);
+      demo.dataset.tauElbow = String(G.left_elbow_joint);
+      if (payload) payload.visible = payloadMass > 0;
+      const expected = fk(target).links[WRIST_LINK].p;
+      const actual = fk(live).links[WRIST_LINK].p;
+      const err = Math.hypot(...actual.map((v,i) => v-expected[i]));
+      demo.dataset.handError = String(err);
+      tqShoulder.textContent = fmt1(G.left_shoulder_pitch_joint) + ' N·m';
+      tqElbow.textContent = fmt1(G.left_elbow_joint) + ' N·m';
+      errorEl.textContent = fmt1(err * 100) + ' cm';
     };
 
     const load = async () => {
@@ -584,7 +255,8 @@ import { createVisibleRaf } from '../lib/visible-raf.js';
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.setClearColor(0x000000, 0);
-        renderer.domElement.style.touchAction = "none";
+        renderer.domElement.style.touchAction = "pan-y";
+        renderer.domElement.setAttribute("aria-hidden", "true");
         viewport.appendChild(renderer.domElement);
 
         scene.add(new THREE.HemisphereLight(0xffffff, 0x46505f, 2.3));
@@ -595,12 +267,12 @@ import { createVisibleRaf } from '../lib/visible-raf.js';
         scene.add(key, fill);
 
         controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
+        controls.enabled = false;
+        controls.enableDamping = false;
         controls.dampingFactor = 0.09;
         controls.minDistance = 0.25;
         controls.maxDistance = 3.2;
         controls.addEventListener("change", scheduleRender);
-        controls.listenToKeyEvents(viewport);
 
         const manager = new THREE.LoadingManager();
         let resolveRes = () => {};
@@ -625,8 +297,15 @@ import { createVisibleRaf } from '../lib/visible-raf.js';
         ghost.rotation.x = -Math.PI / 2;
         Object.keys(robot.links).forEach((n) => { if (robot.links[n]) robot.links[n].visible = PIN.has(n); });
         Object.keys(ghost.links).forEach((n) => { if (ghost.links[n]) ghost.links[n].visible = PIN.has(n); });
-        ghost.position.y += 0.018;
         applyGhostMaterial();
+        payload = new THREE.Group();
+        const mount = G1_PAYLOAD_MOUNT;
+        for (const [size, center, color] of [[mount.traySize, mount.trayCenter, 0x667085], [mount.blockSize, mount.blockCenter, 0xeaa447]]) {
+          const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), new THREE.MeshStandardMaterial({color, roughness:.7}));
+          mesh.position.set(...center); payload.add(mesh);
+        }
+        robot.links[mount.link].add(payload);
+        payload.visible = payloadMass > 0;
         modelGroup = new THREE.Group();
         modelGroup.add(robot, ghost);
         scene.add(modelGroup);
@@ -655,113 +334,58 @@ import { createVisibleRaf } from '../lib/visible-raf.js';
           mediaQuery.addEventListener("change", applyTheme);
         }
 
-        if (resetBtn instanceof HTMLButtonElement) { resetBtn.disabled = false; resetBtn.addEventListener("click", fitCamera); }
         setState("ready", "");
         resize();
         fitCamera();
         updateReadout();
-        dirty = true;
-        if (loop) loop.start(); // 连续渲染：离屏自动暂停，回来自动续
         scheduleRender();
       } catch (error) {
         console.error("G1 左臂重力补偿演示加载失败：", error);
         setState("error", "模型加载失败，请检查网络或资源路径");
         disposeAll();
+        throw error;
       }
     };
-
-    CHAIN.filter((c) => c.movable).forEach((c) => {
-      const el = ranges[c.key];
-      if (!(el instanceof HTMLInputElement)) return;
-      el.addEventListener("input", () => {
-        target[CHAIN.indexOf(c)] = Number(el.value) * D2R;
-        ghostDirty = true;
-        recompute();
-        updateReadout();
-        scheduleRender();
-      });
-    });
-    toggleBtn.addEventListener("click", () => {
-      compOn = !compOn;
-      toggleBtn.textContent = '重力补偿：' + (compOn ? '开' : '关');
-      toggleBtn.classList.toggle('gcarm-btn-off', !compOn);
-      recompute();
-      updateReadout();
-      dirty = true;
-      scheduleRender();
-    });
 
     // 失败路径也要把 WebGL 上下文、观察者与监听还回去（旧实现只清状态文案）
     const disposeAll = () => {
       if (disposed) return;
       disposed = true;
-      if (loop) loop.dispose();
+      if (playback) playback.dispose();
       if (resizeObserver) resizeObserver.disconnect();
       if (themeObserver) themeObserver.disconnect();
       if (mediaQuery) mediaQuery.removeEventListener("change", applyTheme);
       if (controls) controls.dispose();
+      const geometries = new Set(), materials = new Set();
+      scene?.traverse(o => {
+        if (o.geometry) geometries.add(o.geometry);
+        for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (m) materials.add(m);
+      });
+      geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose());
       if (renderer) { renderer.dispose(); renderer.domElement.remove(); }
       renderer = null;
     };
 
-    const start = () => {
-      if (started || disposed) return;
-      started = true;
-      load();
-    };
-    // 唯一的观察者与 visibilitychange 由 visible-raf 统一持有：
-    // 进视口才加载模型，离屏即停渲染，回来自动续（不再各自 observe）。
-    loop = createVisibleRaf(demo, { rootMargin: '240px', onEnter: () => start() });
-    loop.onFrame(frameStep);
+    document.addEventListener('astro:before-swap', disposeAll, { once: true });
+    window.addEventListener('pagehide', disposeAll, { once: true });
+
+    playback = createLessonPlayback(demo, playBtn, {duration: GRAVITY_LENGTH, draw: frameStep, load});
   });
 })();
 </script>
 
 <style is:global>
-  .gcarm-demo { margin: 1.5rem 0; }
-  .gcarm-viewport { position: relative; overflow: hidden; width: 100%; min-height: 420px; aspect-ratio: 16 / 10; border: 1px solid var(--sl-color-gray-5); border-radius: 10px; background: var(--sl-color-gray-7, var(--sl-color-gray-6)); }
-  .gcarm-viewport canvas { position: absolute; inset: 0; display: block; width: 100% !important; height: 100% !important; touch-action: none; }
-  .gcarm-loading { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 0.7rem; padding: 1rem; color: var(--sl-color-gray-2); font-size: 0.9375rem; text-align: center; }
-  .gcarm-demo[data-state='ready'] .gcarm-loading { display: none; }
-  .gcarm-spinner { flex: 0 0 auto; width: 1.15rem; height: 1.15rem; border: 2px solid var(--sl-color-gray-4); border-top-color: var(--sl-color-accent); border-radius: 50%; animation: gcarm-spin 0.9s linear infinite; }
-  .gcarm-demo[data-state='error'] .gcarm-spinner { display: none; }
-  .gcarm-demo[data-state='error'] .gcarm-status { color: var(--sl-color-danger, #dc2626); }
-
-  .gcarm-overlay { position: absolute; inset: 0; pointer-events: none; }
-  .gcarm-tag { position: absolute; top: 0; left: 0; padding: 0.05rem 0.3rem; border-radius: 5px; background: color-mix(in srgb, var(--sl-color-bg) 78%, transparent); color: var(--sl-color-accent); font-size: 0.8125rem; font-weight: 700; white-space: nowrap; transition: opacity 0.15s linear; }
-  .gcarm-tag-target { padding: 0.05rem 0.35rem; border-style: dashed; border-color: var(--sl-color-orange, #ea580c); color: var(--sl-color-orange, #ea580c); white-space: nowrap; }
-  .gcarm-torques { position: absolute; left: 0.65rem; top: 0.65rem; min-width: 8.5rem; padding: 0.4rem 0.55rem; border: 1px solid var(--sl-color-gray-5); border-radius: 8px; background: color-mix(in srgb, var(--sl-color-bg) 88%, transparent); font-size: 0.75rem; line-height: 1.45; }
-  .gcarm-mode { position: absolute; right: 0.65rem; top: 0.65rem; padding: 0.15rem 0.5rem; border: 1px solid var(--sl-color-gray-5); border-radius: 999px; background: color-mix(in srgb, var(--sl-color-bg) 86%, transparent); color: var(--sl-color-accent); font-size: 0.75rem; }
-  .gcarm-mode.gcarm-mode-off { border-color: var(--sl-color-orange, #ea580c); color: var(--sl-color-orange, #ea580c); }
-
-  .gcarm-controls { display: flex; flex-direction: column; gap: 0.5rem; max-width: 900px; margin: 0.6rem auto 0; }
-  .gcarm-row { display: flex; align-items: center; gap: 0.7rem; margin: 0; flex-wrap: wrap; }
-  .gcarm-row-btns { gap: 0; }
-  .gcarm-btnpair { display: grid; grid-auto-flow: column; grid-auto-columns: 10.5rem; align-items: stretch; justify-content: start; gap: 0.7rem; margin-left: 0.7rem; }
-  .gcarm-tq-title { color: var(--sl-color-gray-2); margin-bottom: 0.1rem; }
-  .gcarm-tq-row { display: flex; justify-content: space-between; gap: 0.6rem; color: var(--sl-color-gray-2); }
-  .gcarm-tq-row b { color: var(--sl-color-accent); font-weight: 600; font-variant-numeric: tabular-nums; }
-  .gcarm-row-title { flex: 0 0 3.4rem; margin: 0; color: var(--sl-color-gray-2); font-size: 0.8125rem; }
-  .gcarm-hint { margin: 0; color: var(--sl-color-gray-3); font-size: 0.75rem; }
-  .gcarm-slider-label { display: flex; flex: 1 1 8.5rem; min-width: 0; align-items: center; gap: 0.35rem; margin: 0; color: var(--sl-color-gray-2); font-size: 0.8125rem; white-space: nowrap; }
-  .gcarm-range { flex: 1 1 auto; width: auto; min-width: 3rem; margin: 0; accent-color: var(--sl-color-accent); }
-  .gcarm-val { flex: 0 0 4rem; margin: 0; text-align: right; color: var(--sl-color-accent); font-weight: 600; font-variant-numeric: tabular-nums; }
-  .gcarm-btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; height: 2.1rem; margin: 0 !important; padding: 0 0.85rem; border: 1px solid var(--sl-color-gray-4); border-radius: 6px; background: var(--sl-color-bg); color: var(--sl-color-accent); font: inherit; font-size: 0.8125rem; line-height: 1; cursor: pointer; }
-  .gcarm-demo .gcarm-btnpair .gcarm-btn { margin: 0; }
-  .gcarm-btn:hover:not(:disabled) { border-color: var(--sl-color-accent); }
-  .gcarm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .gcarm-btn.gcarm-btn-off { border-color: var(--sl-color-orange, #ea580c); color: var(--sl-color-orange, #ea580c); }
-
-  .gcarm-readout { max-width: 900px; margin: 0.5rem auto 0; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; }
-  .gcarm-out { display: block; white-space: nowrap; overflow-x: auto; min-height: 1.7em; line-height: 1.7; margin: 0; }
-  .gcarm-out-comp { color: var(--sl-color-accent); font-weight: 600; }
-  .gcarm-out-sag { color: var(--sl-color-orange, #ea580c); font-weight: 600; }
-  .gcarm-out-err { color: var(--sl-color-gray-2); }
-  .gcarm-readout .katex { font-size: 1em; }
-
-  .gcarm-demo figcaption { max-width: 900px; margin: 0.7rem auto 0; color: var(--sl-color-gray-2); font-size: 0.9rem; line-height: 1.65; }
-
-  @media (prefers-reduced-motion: reduce) { .gcarm-spinner { animation: none; } }
-  @keyframes gcarm-spin { to { transform: rotate(360deg); } }
-  @media (max-width: 40rem) { .gcarm-viewport { min-height: 340px; aspect-ratio: 4 / 3; } }
+.gcarm-demo{margin:1.5rem 0;padding:1rem;border:1px solid var(--sl-color-gray-5);border-radius:12px;}
+.gcarm-demo :is(div,p,span,button){margin-top:0;}
+.gcarm-heading{display:flex;justify-content:space-between;align-items:center;gap:1rem;}.gcarm-heading strong{color:var(--sl-color-text-accent);}.gcarm-heading span{font-size:.8rem;color:var(--sl-color-gray-2);}
+.gcarm-explanation{min-height:3.2em;margin:.65rem 0!important;font-size:.9rem;line-height:1.6;}
+.gcarm-viewport{position:relative;overflow:hidden;width:100%;height:350px;border-radius:8px;background:var(--sl-color-gray-7,var(--sl-color-gray-6));}
+.gcarm-viewport canvas{position:absolute;inset:0;display:block;width:100%!important;height:100%!important;touch-action:pan-y;}
+.gcarm-loading{position:absolute;inset:45% .6rem auto;text-align:center;font-size:.8rem;}.gcarm-demo[data-state='ready'] .gcarm-loading{display:none;}
+.gcarm-overlay{position:absolute;inset:0;pointer-events:none;}.gcarm-tag{position:absolute;top:0;left:0;padding:.1rem .3rem;border:1px dashed var(--sl-color-accent);border-radius:5px;background:var(--sl-color-bg);color:var(--sl-color-text-accent);font-size:.75rem;white-space:nowrap;}
+.gcarm-actions{display:flex;align-items:center;gap:1rem;margin:.8rem 0!important;}.gcarm-actions span{font-size:.78rem;color:var(--sl-color-gray-2);}
+.gcarm-actions button{flex-shrink:0;font:inherit;font-size:.85rem;padding:.45rem 1rem;border:1px solid var(--sl-color-accent);border-radius:7px;background:var(--sl-color-accent-low);color:var(--sl-color-text-accent);cursor:pointer;}.gcarm-actions button:disabled{opacity:.5;cursor:wait;}.gcarm-actions button:focus-visible{outline:2px solid var(--sl-color-accent);outline-offset:3px;}
+.gcarm-readout{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;padding:.7rem;background:var(--sl-color-gray-7,var(--sl-color-gray-6));border-radius:8px;font-size:.75rem;}.gcarm-readout b{display:block;color:var(--sl-color-text-accent);font-size:1rem;font-variant-numeric:tabular-nums;}
+.gcarm-demo figcaption{font-size:.78rem;color:var(--sl-color-gray-2);line-height:1.6;margin:.8rem 0 0;}
+@media(max-width:40rem){.gcarm-demo{padding:.7rem;}.gcarm-viewport{height:300px;}.gcarm-readout{gap:.3rem;padding:.5rem;font-size:.7rem;}.gcarm-readout b{font-size:.85rem;}}
 </style>

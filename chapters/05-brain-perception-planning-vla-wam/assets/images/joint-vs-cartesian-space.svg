@@ -18,7 +18,7 @@
     <text x="305" y="215" text-anchor="middle" font-size="15" fill="#475569">终点</text>
     <text x="195" y="130" text-anchor="middle" font-size="16" font-weight="700" fill="#2563eb">末端走直线：路径可控</text>
     <text x="191" y="356" text-anchor="middle" font-size="15" fill="#64748b">关节空间插值出的末端轨迹：</text>
-    <text x="191" y="378" text-anchor="middle" font-size="15" font-weight="700" fill="#64748b">走什么路不可控</text>
+    <text x="191" y="378" text-anchor="middle" font-size="15" font-weight="700" fill="#64748b">末端路径随关节运动确定</text>
 
     <rect x="364" y="68" width="330" height="332" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
     <text x="529" y="96" text-anchor="middle" font-size="19" font-weight="700" fill="#0f172a">肘朝上 / 肘朝下：两组解</text>

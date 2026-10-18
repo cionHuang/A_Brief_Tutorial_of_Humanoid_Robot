@@ -1,4 +1,5 @@
 ---
+import ScrollableDiagram from "./ScrollableDiagram.astro";
 /**
  * 5.3 用：MPC 滚动时域（receding horizon）演示 —— 放在「## 怎么算：采样、轨迹优化与 MPC」
  * 小节 MPC 段落之后、“一句话听懂”之前。
@@ -31,6 +32,7 @@ const CFG = {
 ---
 
 <figure class="mpc-demo" data-mpc={JSON.stringify(CFG)}>
+  <ScrollableDiagram width={800}>
   <svg viewBox="0 0 980 520" role="img" aria-label="MPC 滚动时域演示：一维质点从 0 走向右侧目标 1 米；时间—位置图上，绿色实线是已执行的轨迹，蓝色虚线是当前周期在 N 步预测时域内重新算出的计划，灰色竖线是当前周期，橙色竖线标记扰动时刻；可播放暂停、重置、手动加扰动并调节预测时域 N，观察窗口滑动与计划随新状态整体改变">
     <text class="mpc-title" x="24" y="32">MPC 滚动时域：每周期重算，只执行第一步</text>
     <text class="mpc-legend" x="24" y="64">绿实线 = 已执行　蓝虚线 = 本周期计划　灰 = 当前周期　橙 = 扰动时刻</text>
@@ -79,6 +81,7 @@ const CFG = {
       </marker>
     </defs>
   </svg>
+  </ScrollableDiagram>
 
   <div class="mpc-controls">
     <div class="mpc-row">

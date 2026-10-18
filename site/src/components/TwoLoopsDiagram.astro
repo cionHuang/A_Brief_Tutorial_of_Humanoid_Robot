@@ -64,9 +64,9 @@ const backPath = (lastRight: number, y: number) =>
     <text x={x0 + bw / 2 - 8} y={(yOn + bh + yOff) / 2 - 4} text-anchor="end" class="tl-cross-label">真机日志回流</text>
   </svg>
   <figcaption>
-    两个环不是一回事：在线运行闭环跑在机器人身上，每一层各跑一圈；离线开发闭环跑在开发机上，一轮几天到几周。
+    在线运行闭环跑在机器人身上，每一层各跑一圈；离线开发闭环跑在开发机上，一轮几天到几周。
     它们只在两处相接——训练好的模型<b>部署上线</b>进入在线环，真机日志<b>回流</b>变成下一轮训练的数据。
-    常规部署以推理为主，但在线学习、在线适应和真机强化学习也是存在的模式。
+    本图展示以推理为主的常规部署流程。
   </figcaption>
 </figure>
 

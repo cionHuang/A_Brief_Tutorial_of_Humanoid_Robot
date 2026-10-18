@@ -18,7 +18,7 @@ import '../styles/math-lessons.css';
     <div class="ml-controls"><button type="button" data-preset="0">同向 0°</button><button type="button" data-preset="90">垂直 90°</button><button type="button" data-preset="180">反向 180°</button></div>
   </div>
   <details><summary>查看对应公式</summary><p data-formula>功率 P = F · v = |F| |v| cos θ。</p></details>
-  <figcaption data-caption>固定速度为 0.2 m/s、力为 10 N，只比较这股力的功率，不模拟小车加速。</figcaption>
+  <figcaption data-caption>在速度固定为 0.2 m/s、力为 10 N 的条件下，观察力的方向怎样影响功率。</figcaption>
   <noscript>启用 JavaScript 后可以拖动施力方向。力垂直于速度时，功率为零；力垂直于门时，绕门轴的力矩最大。</noscript>
 </figure>
 <script>
@@ -45,7 +45,7 @@ import '../styles/math-lessons.css';
         q('[data-result]').textContent=`${Math.abs(value)<.005?'0.00':value.toFixed(2)} ${door?'N·m':'W'}`;
         q('[data-story]').textContent=door?(Math.abs(value)<.001?'力沿着门板方向，绕门轴的力矩为零。':`${value>0?'逆时针':'顺时针'}转动的趋势。${pos?'力的方向固定；离门轴越远，力矩越大。':'施力位置固定；力越接近垂直于门，力矩的大小越大。'}`):(Math.abs(value)<.001?'力与速度垂直，这股力此刻不做功。':value>0?'力有顺着运动方向的分量，做正功。越接近同向，功率越大。':'力有逆着运动方向的分量，做负功，阻碍当前运动。');
         q('[data-formula]').textContent=door?'力矩 τ = r × F。这里门轴竖直，绕门轴的力矩为 10 × 距门轴的距离 × sin θ；正负号区分转动方向。':'功率 P = F · v = |F| |v| cos θ。力固定为 10 N，速度固定为 0.2 m/s。';
-        q('[data-caption]').textContent=door?'俯视一扇门：力固定为 10 N，角度从门轴指向施力点的方向量起。弧形箭头表示转动趋势，不是门的实际运动轨迹。':'固定速度为 0.2 m/s、力为 10 N，只比较这股力的功率，不模拟小车加速。';
+        q('[data-caption]').textContent=door?'俯视一扇门：力固定为 10 N，角度从门轴指向施力点的方向量起。弧形箭头标出力矩方向。':'在速度固定为 0.2 m/s、力为 10 N 的条件下，观察力的方向怎样影响功率。';
         let drawing;
         if(!door){drawing=`<path d="M40 204 H480" stroke="#94a3b8" stroke-width="2"/><g fill="#91a5bc"><circle cx="238" cy="189" r="13"/><circle cx="294" cy="189" r="13"/></g><rect x="224" y="123" width="85" height="55" rx="8" fill="#c4d0df" stroke="#64748b" stroke-width="2"/><path d="M170 148 H205 M148 166 H201" stroke="#94a3b8" stroke-width="3"/>${arrow(235,225,110,0,'#2489d1','速度向右')}${arrow(266,150,95*Math.cos(a),-95*Math.sin(a),'#e58b27','力 10 N')}<circle cx="266" cy="150" r="4" fill="#e58b27"/><text x="22" y="30">只改力的方向，小车速度固定</text>`;}
         else {const x=130+distance*260;const sign=value>=0?1:-1;const sweep=sign>0?0:1;drawing=`<path d="M50 160 H130" stroke="#94a3b8" stroke-width="8"/><rect x="130" y="153" width="260" height="14" rx="4" fill="#c4d0df" stroke="#64748b" stroke-width="2"/><circle cx="130" cy="160" r="9" fill="#435c79"/><text x="115" y="193">门轴</text>${arrow(x,160,78*Math.cos(a),-78*Math.sin(a),'#e58b27','力 10 N')}<circle cx="${x}" cy="160" r="6" fill="#e58b27"/><line x1="130" y1="213" x2="${x}" y2="213" stroke="#2489d1" stroke-width="2"/><text x="${(130+x)/2}" y="249" text-anchor="middle">${Math.round(distance*100)} cm</text><text x="22" y="30">俯视门板 · 改变${pos?'施力位置':'施力方向'}</text>${Math.abs(value)>.001?`<path d="M ${130+65} 160 A65 65 0 0 ${sweep} 130 ${160-sign*65}" fill="none" stroke="#16a084" stroke-width="${2+Math.abs(value)*.45}"/><path d="M 125 ${160-sign*65} l 11 -5 v 10 Z" fill="#16a084"/>`:''}`;}

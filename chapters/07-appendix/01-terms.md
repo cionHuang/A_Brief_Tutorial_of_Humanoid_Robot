@@ -101,7 +101,7 @@
 | [积分饱和（Integral Windup）](../04-cerebellum-realtime-control/05-basic-control.mdx) | 执行器已饱和而误差仍累积，积分项攒过头造成严重超调 | 补不上还一直攒劲，一松就猛冲 |
 | [抗积分饱和（Anti-Windup）](../04-cerebellum-realtime-control/05-basic-control.mdx) | 检测饱和时停止或回退积分、对积分量限幅的措施 | 给积分项设个上限，别让它攒过头 |
 | [前馈（Feedforward）](../04-cerebellum-realtime-control/05-basic-control.mdx) | 按模型提前给出主要力矩，反馈只修正残余误差 | 按模型先出力，不等出错再补 |
-| [阻抗控制（Impedance Control）](../04-cerebellum-realtime-control/05-basic-control.mdx) | 让关节对外表现为可调弹簧—阻尼行为，由 kp、kd 决定 | 管碰到东西时有多硬，而不是只看到没到 |
+| [阻抗控制（Impedance Control）](../04-cerebellum-realtime-control/05-basic-control.mdx) | 让关节对外表现为可调弹簧—阻尼行为，由 kp、kd 决定 | 调节接触时的刚度与阻尼 |
 | [导纳控制（Admittance Control）](../04-cerebellum-realtime-control/05-basic-control.mdx) | 先测量外力再反算位置修正，与阻抗控制是对偶关系 | 先测到力，再改成位置让一点 |
 | [轨迹（Trajectory）](../04-cerebellum-realtime-control/05-basic-control.mdx) | 带时间的位置、速度、加速度序列，要求彼此连续自洽 | 不光说经过哪，还说几点到哪 |
 | [电流环（Current Loop）](../03-electrical-embedded/02-motors-drivers-servo-control.mdx) | 最内层控制环，让实测相电流或 id、iq 跟随给定值 | 管给电机通多大电流，三个环里最快 |
@@ -175,7 +175,7 @@
 | [力封闭（Force Closure）](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx) | 接触点布局与摩擦能封住物体所有可能运动方向的判据 | 接触力能不能封住物体怎么跑 |
 | [动作空间（Action Space）](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx) | 算法下发的动作形态，如关节、末端增量、手指原语或轨迹 | 算法眼里的手有哪几种给法 |
 | [双臂协同（Bimanual Coordination）](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx) | 双臂搬运时维护两手相对位姿约束的协同方式 | 两只手一起搬，相对位置不能变 |
-| [移动操作（Loco-Manipulation）](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx) | 把腿、腰、臂、手当作一个整体同时求解的全身操作问题，而不是“先走过去、再伸手抓” | 边走边干活，全身一起解 |
+| [移动操作（Loco-Manipulation）](../05-brain-perception-planning-vla-wam/04-dual-arm-manipulation-and-dexterous-hands.mdx) | 把腿、腰、臂、手当作一个整体同时求解的全身操作问题 | 边走边干活，全身一起解 |
 
 ## 学习与训练
 

@@ -90,7 +90,7 @@ const steps = ['看电机', '看出力', '跟随转子看'];
   <span class="foc-sr-only" data-announcement role="status" aria-live="polite"></span>
   <details class="foc-experiment" data-experiment>
     <summary>试一试：如果三相电流不再跟着转子调整呢？</summary>
-    <div class="foc-details-body"><p>固定此刻的三相电流，再手动拖动“转子电角度”。合成磁场不再跟随，你会看到转矩减小、归零，甚至反向。</p><button class="foc-button" type="button" data-freeze aria-pressed="false">固定现在的三相电流</button><p data-fixed-result>这是外力转动转子的对照实验，固定电流时不能播放。</p></div>
+    <div class="foc-details-body"><p>固定此刻的三相电流，再手动拖动“转子电角度”。合成磁场不再跟随，你会看到转矩减小、归零，甚至反向。</p><button class="foc-button" type="button" data-freeze aria-pressed="false">固定现在的三相电流</button><p data-fixed-result>电流已固定。手动拖动转子电角度，观察转矩变化。</p></div>
   </details>
   <details class="foc-formulas">
     <summary>对应到 Clarke / Park 变换</summary>
@@ -175,7 +175,7 @@ const steps = ['看电机', '看出力', '跟随转子看'];
       $('[data-fixed-result]').textContent = fixed
         ? s.fieldSize < 0.001 ? '当前三相电流为零，任何转子位置的转矩都为零；恢复跟随后增大出力，再做比较。'
           : `三相电流已固定在 ${Math.round(fixedAt)}° 时的取值。现在转矩为 ${signed(s.torque)}；拖动位置，看看何时归零或反向。关闭本实验也会恢复电流跟随。`
-        : '这是外力转动转子的对照实验，固定电流时不能播放。';
+        : '电流已固定。手动拖动转子电角度，观察转矩变化。';
       play.disabled = fixed !== null; effortInput.disabled = fixed !== null;
       play.textContent = fixed ? '手动观察中' : motion.matches ? '前进 15°' : playing ? '暂停' : '播放观察';
       play.setAttribute('aria-pressed', String(playing));

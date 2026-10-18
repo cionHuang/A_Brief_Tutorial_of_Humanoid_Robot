@@ -1,4 +1,5 @@
 ---
+import ScrollableDiagram from "./ScrollableDiagram.astro";
 /**
  * 整机总图（canonical system map）：纵向功能链六层 + 上行反馈 + 横向基础设施。
  * 第一章结尾的唯一总结图，也是后续各章「在整机里的位置」共同引用的那张图。
@@ -47,6 +48,7 @@ const feedbackRotate = 'rotate(-90 ' + feedbackLabelX + ' ' + MID_Y + ')';
 ---
 
 <figure class="system-map">
+  <ScrollableDiagram width={700}>
   <svg
     viewBox="0 0 700 640"
     role="img"
@@ -95,6 +97,7 @@ const feedbackRotate = 'rotate(-90 ' + feedbackLabelX + ' ' + MID_Y + ')';
     <text x={INFRA_X + 18} y={TOP + 410} class="sysmap-infra-note">把 ROS 当成「大脑下面的一层」，就会问出</text>
     <text x={INFRA_X + 18} y={TOP + 428} class="sysmap-infra-note">「它在控制之上还是之下」——没有答案。</text>
   </svg>
+  </ScrollableDiagram>
 </figure>
 
 <style>

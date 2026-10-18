@@ -1,0 +1,18 @@
+---
+interface Props { width: number; }
+const { width } = Astro.props;
+---
+<div class="diagram-scroll" style={`--diagram-width: ${width}px`} tabindex="0" role="region" aria-label="图示，可左右滚动查看">
+  <div class="diagram-scroll-hint">← 左右滑动查看完整图示 →</div>
+  <slot />
+</div>
+<style>
+  .diagram-scroll { max-width: 100%; min-width: 0; margin: 0; }
+  .diagram-scroll-hint { display: none; }
+  @media (max-width: 40rem) {
+    .diagram-scroll { overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: .5rem; scrollbar-width: thin; }
+    .diagram-scroll :global(svg) { min-width: var(--diagram-width); touch-action: pan-x pan-y; }
+    .diagram-scroll-hint { display: block; position: sticky; left: 0; width: 100%; box-sizing: border-box; padding: .5rem; margin: 0; font-size: .75rem; line-height: 1.5; color: var(--sl-color-gray-2); background: var(--sl-color-bg); text-align: center; }
+  }
+  .diagram-scroll:focus-visible { outline: 2px solid var(--sl-color-accent); outline-offset: 2px; }
+</style>

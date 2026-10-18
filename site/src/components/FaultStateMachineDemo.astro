@@ -48,7 +48,7 @@ const urdfUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/') + 'models/g1/g1_29
     <p>本例从已完成上电和自检的待命状态开始：待命（SAFE_IDLE）→ 启动与运行（ENABLED / RUNNING）→ 故障锁存（FAULT_LATCHED）→ 恢复检查（RECOVERY）→ 待命。初次上电的 OFF、INIT、SELF_TEST 省略在动效之外；限速对照对应降级运行（DEGRADED）。</p>
     <p>恢复检查会读取当前关节状态、清理旧的运动目标。检查通过只解除运动禁令；再次点击启动后，才从当前位置生成新的抬臂动作。“重置演示”仅用于重放这个例子。</p>
   </details>
-  <figcaption>用 G1 的 URDF 模型演示运动许可：保护后仍由电机保持姿态。流程与时间为教学示例，不代表 G1 固件的保护或急停策略。</figcaption>
+  <figcaption>用 G1 无手 URDF 外形展示一套教学保护流程：电机保持姿态，恢复检查通过后，由读者再次点击启动。流程与时序采用教学设定。</figcaption>
   <noscript><p class="fr-no-script">交互需要启用 JavaScript。故障信号消失后，保护仍保持锁存；检查通过先回到待命，另行启动才恢复运动。</p></noscript>
 </figure>
 

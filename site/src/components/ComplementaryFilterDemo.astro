@@ -1,4 +1,5 @@
 ---
+import ScrollableDiagram from "./ScrollableDiagram.astro";
 /**
  * 4.4 状态估计：互补滤波与陀螺积分漂移交互演示 —— “## 互补滤波”一节之后。
  *
@@ -64,6 +65,7 @@ const LEGEND = [
 ---
 
 <figure class="cf-demo" data-cf={JSON.stringify(CFG)}>
+  <ScrollableDiagram width={720}>
   <svg
     viewBox="0 0 720 436"
     role="img"
@@ -112,6 +114,7 @@ const LEGEND = [
     <text class="cf-axis-label" x={X0 + (X1 - X0) / 2} y={AXIS_Y + 22} text-anchor="middle">−6 s</text>
     <text class="cf-axis-label" x={X1} y={AXIS_Y + 22} text-anchor="end">现在</text>
   </svg>
+  </ScrollableDiagram>
 
   <div class="cf-controls">
     <div class="cf-row">
@@ -149,7 +152,7 @@ const LEGEND = [
     </div>
     <div class="cf-peaks"><span data-cf-out="peak">峰值误差：陀螺积分 0.0° · 加速度计 0.0° · 融合 0.0°</span></div>
     <div class="cf-note" data-cf-out="warn"></div>
-    <div class="cf-note">yaw 没有重力观测：零偏把估计单调拉开，这就是“不可观”，调增益补不回来。噪声与零偏量级为教学示意，漂移与融合行为是真实的。</div>
+    <div class="cf-note">重力方向可校正 roll/pitch；yaw 的长期校正需要其他方向观测。本例的 yaw 估计随陀螺零偏逐渐漂移，噪声与零偏采用教学值。</div>
   </div>
 </figure>
 

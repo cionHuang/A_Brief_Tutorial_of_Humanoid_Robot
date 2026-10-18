@@ -1,4 +1,5 @@
 ---
+import ScrollableDiagram from "./ScrollableDiagram.astro";
 /**
  * 动作表示粒度阶梯：同一个“让机器人做点什么”，可以停在从技能到关节角的不同层级；
  * “单步 / action chunk”是另一个维度（时间粒度）。纯静态 SVG，无 JS。
@@ -36,6 +37,7 @@ const chunkEnd = cellX(cells.length - 1) + cellW;
 ---
 
 <figure class="action-ladder">
+  <ScrollableDiagram width={700}>
   <svg viewBox="0 0 700 500" role="img" aria-label="动作表示粒度阶梯：技能、子目标、末端目标位姿、增量位姿、关节目标，以及单步与 action chunk 两种时间粒度">
     <defs>
       <marker id="arl-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -79,10 +81,11 @@ const chunkEnd = cellX(cells.length - 1) + cellW;
     <text x={(cellX(0) + chunkEnd) / 2} y={chunkY + cellW + 30} class="arl-bracket-label" text-anchor="middle">一次推理 → 未来 N 步（例：N = 16）</text>
     <text x={chunkEnd + 18} y={chunkY + 16} class="arl-strip-note">低频智能模块一次给出一串，高频控制模块照着执行</text>
   </svg>
+  </ScrollableDiagram>
   <figcaption>
     同一个“让机器人做点什么”，可以停在技能、子目标、末端位姿、增量位姿或关节目标——VLA 输出的动作表示可以有很多粒度。
     单步还是 action chunk 是另一个维度：前者每一步都要推理，后者一次推理给出一串。
-    本教程用“较低频的智能模块 + 较高频的控制模块”这条典型分层来解释，但它不是唯一方案。
+    本图以较低频智能模块向较高频控制模块提供目标的分工为例。
   </figcaption>
 </figure>
 

@@ -1,4 +1,5 @@
 ---
+import ScrollableDiagram from "./ScrollableDiagram.astro";
 /**
  * 5.5 用：LeRobot 数据集片段查看器 —— 放在“### 数据采集”记录字段表之后。
  *
@@ -89,6 +90,7 @@ const Y_LINES = [100, 0, -100];
     <span class="ldv-readout" data-ldv-readout>抽样帧 1/{N} · 原 episode 第 {FRAME_INDEX[0]} 帧 · t = 0.00 s</span>
   </div>
 
+  <ScrollableDiagram width={720}>
   <svg class="ldv-chart" viewBox="0 0 720 322" role="img" aria-label="关节状态与动作随时间的折线图：上方面板是 observation.state 实测关节值，下方面板是 action 下发目标，横轴为 episode 时间 0 到 10.07 秒；竖游标与圆点标记当前帧，随时间轴或播放同步移动">
     <text class="ldv-panel-title" x="0" y="20">observation.state（实测关节值）</text>
     <text class="ldv-panel-note" x="720" y="20" text-anchor="end">纵轴 −110…110（数据集原始读数）</text>
@@ -120,6 +122,7 @@ const Y_LINES = [100, 0, -100];
       </g>
     ))}
   </svg>
+  </ScrollableDiagram>
 
   <ul class="ldv-legend">
     {DIMS.map((d, j) => (
@@ -251,7 +254,7 @@ const Y_LINES = [100, 0, -100];
   .ldv-meta-card { padding: 0.7rem 0.85rem; border: 1px dashed var(--sl-color-gray-5); border-radius: 8px; }
   .ldv-meta-card p { display: grid; grid-template-columns: 5.6rem 1fr; gap: 0.5rem; margin: 0.22rem 0 !important; color: var(--sl-color-gray-2); font-size: 0.88rem; line-height: 1.65; }
   .ldv-meta-card p span { color: var(--sl-color-gray-3); font-weight: 600; }
-  .ldv-meta-card a { color: var(--sl-color-accent); }
+  .ldv-meta-card a { min-width: 0; overflow-wrap: anywhere; color: var(--sl-color-accent); }
   @media (max-width: 44rem) {
     .ldv-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .ldv-meta-card p { grid-template-columns: 1fr; gap: 0.05rem; }

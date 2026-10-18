@@ -1,4 +1,5 @@
 ---
+import ScrollableDiagram from "./ScrollableDiagram.astro";
 /**
  * 轴向拉伸应力—应变交互演示。
  *
@@ -18,6 +19,7 @@ import { katexHtml } from '../lib/tex.js';
 ---
 
 <figure class="ss-demo">
+  <ScrollableDiagram width={800}>
   <svg viewBox="0 0 800 420" role="img" aria-label="轴向拉伸应力应变交互演示：拖动载荷滑块，观察弹性变形、屈服和卸载后的塑性残余">
     <!-- 左侧：受拉试件 -->
     <g class="ss-panel">
@@ -46,6 +48,7 @@ import { katexHtml } from '../lib/tex.js';
       <text class="ss-break-label" x="586" y="384">← 弹性段 | 塑性段 →</text>
     </g>
   </svg>
+  </ScrollableDiagram>
 
   <div class="ss-controls">
     <div class="ss-materials" role="group" aria-label="选择材料">

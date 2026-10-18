@@ -167,8 +167,8 @@ const cards = {
 const captions = {
   body: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为原文件行号。MJCF 用嵌套 <code>body</code> 表达父子关系，<code>geom</code>、<code>site</code> 和 <code>inertial</code> 都写在 body 内。',
   motor: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>）。<code>actuator</code> 和 <code>sensor</code> 与刚体写在同一个 MJCF 里，这是它与 URDF 最直观的差别之一。',
-  free: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>）。<code>type="free"</code> 让 <code>pelvis</code> 相对世界有 6 个自由度；<code>qpos</code>/<code>qvel</code> 的长度因此不等于电机数量。',
-  state: "片段逐字摘自 <code>g1_29dof.xml</code> 与 <code>g1_29dof.urdf</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为各自原文件行号。<code>site</code> 的 <code>pos</code> 与 URDF <code>fixed joint</code> 的 <code>origin</code> 是同一个安装位姿的两种写法：MJCF 把 IMU 作为 site 挂在刚体上，URDF 则用空 link 加固定关节给它一个坐标系。这些定义只说明安装位置和仿真噪声，不等于真实硬件的偏置、延迟和量程。",
+  free: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>）。<code>type="free"</code> 让 <code>pelvis</code> 相对世界有 6 个自由度；<code>qpos</code>/<code>qvel</code> 分别记录基座与关节的位置和速度。',
+  state: "片段逐字摘自 <code>g1_29dof.xml</code> 与 <code>g1_29dof.urdf</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为各自原文件行号。<code>site</code> 的 <code>pos</code> 与 URDF <code>fixed joint</code> 的 <code>origin</code> 是同一个安装位姿的两种写法：MJCF 把 IMU 作为 site 挂在刚体上，URDF 则用空 link 加固定关节给它一个坐标系。这些字段记录安装位置与仿真噪声；真机参数由设备资料与标定确定。",
   bodycore: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>），行号为原文件行号。一个 body 里同时挂 joint、geom 与 inertial；<code>type="free"</code> 就是 4.3 节 qpos 7+29、qvel 6+29 的来源。',
   site: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>）。site 不带质量，只标记位置与坐标系；两个 IMU 的安装点分别挂在 pelvis 与 torso 上。',
   compiler: '片段逐字摘自 <code>g1_29dof.xml</code>（unitree_rl_gym，提交 <code>276801e</code>）。<code>meshdir</code> 按当前 XML 所在目录解析，移动模型文件时必须保持 <code>meshes/</code> 的相对位置。',

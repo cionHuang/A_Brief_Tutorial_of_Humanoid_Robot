@@ -1,4 +1,5 @@
 ---
+import ScrollableDiagram from "./ScrollableDiagram.astro";
 /** One G1 elbow, three continuously operating feedback loops. Controller and
  * electrical/mechanical parameters are teaching values, not G1 specifications. */
 const baseUrl = import.meta.env.BASE_URL.replace(/\/?$/, '/');
@@ -48,15 +49,17 @@ const urdfUrl = `${baseUrl}models/g1/g1_29dof.urdf`;
   <details class="sc-details">
     <summary>查看角度变化与模型说明</summary>
     <div class="sc-chart-heading"><strong>前臂是否回到目标？</strong><span>最近 6 秒 · 角度（°）</span></div>
-    <svg class="sc-chart" viewBox="0 0 640 160" role="img" aria-label="最近六秒的目标角度与实际角度曲线">
+    <ScrollableDiagram width={640}>
+  <svg class="sc-chart" viewBox="0 0 640 160" role="img" aria-label="最近六秒的目标角度与实际角度曲线">
       <line x1="42" y1="22" x2="620" y2="22" class="sc-grid"/><line x1="42" y1="78" x2="620" y2="78" class="sc-grid"/><line x1="42" y1="134" x2="620" y2="134" class="sc-grid"/>
       <text x="32" y="26" text-anchor="end">100</text><text x="32" y="82" text-anchor="end">50</text><text x="32" y="138" text-anchor="end">0</text>
       <path data-chart-target class="sc-chart-target" d=""/><path data-chart-actual class="sc-chart-actual" d=""/>
       <text x="42" y="157">6 秒前</text><text x="620" y="157" text-anchor="end">现在</text>
     </svg>
+  </ScrollableDiagram>
     <p class="sc-chart-key"><span>实线：实际角度</span><span>虚线：目标角度</span></p>
     <p>这里用 G1 左臂模型演示一个有重力的肘关节。位置环给出速度目标，速度环采用 PI 控制，电流环通过平均绕组电压调节电流；绕组电阻、电感和反电动势共同影响电流变化。速度环的积分作用让前臂在静止托物时仍能保持出力。</p>
-    <p>G1 模型提供外形和关节运动关系；臂长、质量、负载和电气参数采用简化教学值。角度从图中的下垂姿态起算，不是接口里的关节坐标。此处展示三环级联，不代表所有驱动器都采用相同结构。</p>
+    <p>以三环级联为例。G1 模型提供外形和关节关系，臂长、质量、负载与电气参数采用教学值。演示角度从图中下垂姿态起算。</p>
   </details>
   <figcaption>观察重点：放上重物时，前臂略微下沉，控制器增加出力，随后回到目标附近。</figcaption>
 </figure>

@@ -74,7 +74,7 @@ const cards = {
 };
 
 const captionMotor = '片段逐字摘自 <code>include/unitree/idl/hg/MotorCmd_.hpp</code> 与 <code>LowCmd_.hpp</code>（unitree_sdk2，提交 <code>9754cd1</code>），行号为原文件行号。<code>mode</code>/<code>q</code>/<code>dq</code>/<code>tau</code>/<code>kp</code>/<code>kd</code> 就是正文那条阻抗式里的目标、前馈与增益；一帧 <code>LowCmd_</code> 装 35 条 <code>MotorCmd_</code>，G1 实际用到 29 个，其余留空。';
-const captionAnkle = '片段逐字摘自 <code>example/g1/low_level/g1_ankle_swing_example.cpp</code>（unitree_sdk2，提交 <code>9754cd1</code>）。示例以 2 ms 周期用 <code>sin</code> 逐拍生成踝关节目标，再把 <code>q</code>/<code>dq</code>/<code>tau</code>/<code>kp</code>/<code>kd</code> 组装进 <code>LowCmd_</code> 下发——这正是“轨迹逐拍插值 + 关节级阻抗接口”的最小实现；其中的幅度与增益属于示例配置，不代表所有 G1 任务。';
+const captionAnkle = '片段逐字摘自 <code>example/g1/low_level/g1_ankle_swing_example.cpp</code>（unitree_sdk2，提交 <code>9754cd1</code>）。示例以 2 ms 周期用 <code>sin</code> 逐拍生成踝关节目标，再把 <code>q</code>/<code>dq</code>/<code>tau</code>/<code>kp</code>/<code>kd</code> 组装进 <code>LowCmd_</code> 下发——这正是“轨迹逐拍插值 + 关节级阻抗接口”的最小实现；其中的幅度与增益属于示例配置。';
 
 const card = cards[variant] || cards.motorcmd;
 const caption = variant === 'ankle' ? captionAnkle : captionMotor;

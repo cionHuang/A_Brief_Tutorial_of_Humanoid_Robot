@@ -74,7 +74,7 @@ const urdfUrl = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}models/g1/g1_29
       <p>角度表示相对起始姿态的转动量，正值表示本次抬手的方向；左右按 G1 自身区分。本例只改变两侧肩部前后摆动和肘部弯曲，其余关节保持不动。图中只选取动作前、后的两帧来讲解；实际运动中，指令与反馈会持续交换，反馈数据也可能在帧到达前就已采集好。</p>
     </div>
   </details>
-  <figcaption>采用本书的 G1 模型。通信过程已放慢、时间差已放大；通信方式为教学设定，不代表 G1 实机内部总线。</figcaption>
+  <figcaption>用 G1 无手模型外形演示一条假设的 EtherCAT 通信链；过程已慢放，时间差已放大。</figcaption>
   <noscript><p>启用 JavaScript 后可操作。观察要点：一帧依次交换各关节数据，设备按约定时刻开始执行，后续通信带回动作后的状态。</p></noscript>
 </figure>
 
@@ -172,7 +172,7 @@ const urdfUrl = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}models/g1/g1_29
       } else if (s.stage === 'move') {
         kicker = sync ? '③ 抬双手' : '② 先后动';
         title = sync ? '时间到了，一起开始执行' : '双手先后抬起，最后到位';
-        text = sync ? '四个关节按同一时刻开始运动，两只手一起抬向淡青色目标姿态。' : '与前一种方式相比，目标不变，但各关节开始的时刻不同。最终姿态一致，不代表动作过程同步。';
+        text = sync ? '四个关节按同一时刻开始运动，两只手一起抬向淡青色目标姿态。' : '与前一种方式相比，目标不变，但各关节开始的时刻不同。两侧手臂先后到达相同的目标姿态。';
       } else if (s.stage === 'settled') {
         kicker = sync ? '③ 抬双手 · 已到位' : '③ 都到位';
         title = '手已经抬起，再看主站收到什么';
@@ -202,7 +202,7 @@ const urdfUrl = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}models/g1/g1_29
       const current = !sync ? feedback ? 3 : s.motionComplete ? 2 : s.receivedCount > 0 ? 1 : 0
         : s.stage === 'ready' || s.stage === 'exchange' ? 0 : s.stage === 'wait' ? 1 : s.stage === 'move' || s.stage === 'settled' ? 2 : 3;
       demo.querySelectorAll('[data-stage]').forEach((el) => { const on = Number(el.getAttribute('data-stage')) === current; el.classList.toggle('ec-current', on); if (on) el.setAttribute('aria-current', 'step'); else el.removeAttribute('aria-current'); });
-      setText('[data-comparison]', sync ? '指令先后到达，关节也能按同一时刻开始执行。' : '左肩先收到、先动作，右肘后收到、后动作。这里放大的时间差不代表真实总线速度。');
+      setText('[data-comparison]', sync ? '指令先后到达，关节也能按同一时刻开始执行。' : '左肩先开始，右肘后开始，两侧手臂的动作出现时间差。');
       demo.querySelectorAll('[data-mode]').forEach((el) => { if (el.tagName === 'BUTTON') el.setAttribute('aria-pressed', String(el.getAttribute('data-mode') === mode)); });
       play.textContent = motion.matches ? '逐步看抬手' : playing ? '暂停' : time >= DURATION ? '再看一遍' : time > 0 ? '继续' : '开始抬手';
       play.setAttribute('aria-pressed', String(playing)); play.disabled = !modelReady; step.disabled = !modelReady || time >= DURATION;

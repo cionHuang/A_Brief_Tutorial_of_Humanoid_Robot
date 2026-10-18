@@ -12,7 +12,7 @@ import '../styles/math-lessons.css';
     <div class="ml-controls"><button type="button" data-align>调到 90°</button><button type="button" data-pair>两个角各增加 30°</button><button type="button" data-reset>重置</button></div>
   </div>
   <details><summary>查看数学解释</summary><p>角速度转换矩阵的行列式 det(E) = cos(pitch)。pitch 越接近 90°，反算越敏感；到 90° 时，无法唯一反算两个角各自的变化率。</p><svg viewBox="0 0 360 130" role="img" aria-label="cos pitch 从 1 降到 0 的曲线" data-curve style="display:block;width:100%;max-width:400px"></svg></details>
-  <figcaption>浅色轮廓：同一 pitch 下，yaw 和 roll 都为 0° 时的朝向。转环用于说明欧拉角，方块用于观察姿态，不代表机器人关节结构。</figcaption>
+  <figcaption>浅色轮廓：同一 pitch 下，yaw 和 roll 都为 0° 时的朝向。转环表示欧拉角的三次旋转，方块显示合成姿态。</figcaption>
   <noscript>ZYX 顺序下，pitch 为 90° 时，yaw 和 roll 同增相同角度，物体朝向不变。</noscript>
 </figure>
 <script>

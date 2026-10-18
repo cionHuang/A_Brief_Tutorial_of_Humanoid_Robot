@@ -1,0 +1,43 @@
+---
+import Footer from '@astrojs/starlight/components/Footer.astro';
+---
+<Footer {...Astro.props} />
+
+<script>
+  function markScrollableContent() {
+    document.querySelectorAll<HTMLElement>('.sl-markdown-content table, .sl-markdown-content .katex-display').forEach((element) => {
+      if (element.dataset.scrollHint) return;
+      element.dataset.scrollHint = 'true';
+      const wrapper = document.createElement(element.tagName === 'TABLE' ? 'div' : 'span');
+      wrapper.className = 'reading-scroll';
+      const hint = document.createElement('span');
+      hint.className = 'reading-scroll-hint';
+      hint.textContent = element.tagName === 'TABLE' ? '← 左右滑动查看完整表格 →' : '← 左右滑动查看完整公式 →';
+      hint.hidden = true;
+      element.before(wrapper);
+      wrapper.append(hint, element);
+      const update = () => {
+        const overflowing = element.scrollWidth > element.clientWidth + 2;
+        hint.hidden = !overflowing;
+        if (overflowing) element.tabIndex = 0;
+        else element.removeAttribute('tabindex');
+      };
+      const observer = new ResizeObserver(update);
+      observer.observe(element);
+      // 字体加载也可能改变公式的实际宽度。
+      document.fonts.ready.then(update);
+      update();
+    });
+  }
+  markScrollableContent();
+  document.addEventListener('astro:page-load', markScrollableContent);
+</script>
+
+<style is:global>
+  .reading-scroll { display: block; min-width: 0; max-width: 100%; }
+  .reading-scroll-hint { display: none; }
+  @media (max-width: 40rem) {
+    .reading-scroll-hint:not([hidden]) { display: block; margin: .5rem 0 .25rem; color: var(--sl-color-gray-2); font-size: .75rem; line-height: 1.5; }
+  }
+  .reading-scroll > :is(table, .katex-display):focus-visible { outline: 2px solid var(--sl-color-accent); outline-offset: 2px; }
+</style>

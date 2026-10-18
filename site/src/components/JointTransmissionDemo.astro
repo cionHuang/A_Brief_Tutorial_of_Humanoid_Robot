@@ -1,4 +1,5 @@
 ---
+import ScrollableDiagram from "./ScrollableDiagram.astro";
 /**
  * 单个关节模组的传动链交互演示。
  *
@@ -18,6 +19,7 @@ import { katexHtml } from '../lib/tex.js';
 ---
 
 <figure class="jt-demo">
+  <ScrollableDiagram width={820}>
   <svg viewBox="0 0 820 400" role="img" aria-label="单个关节模组传动链演示：电机经齿轮副减速器驱动关节输出">
     <!-- 电机 -->
     <g class="jt-motor">
@@ -68,6 +70,7 @@ import { katexHtml } from '../lib/tex.js';
       <rect class="jt-bar jt-bar-torque-o" x="566" y="278" width="0" height="12" rx="6"></rect>
     </g>
   </svg>
+  </ScrollableDiagram>
 
   <div class="jt-controls">
     <label>电机转速 <input type="range" data-jt-speed min="500" max="6000" step="100" value="3000" /> <output data-jt-speed-out>3000</output> rpm</label>
