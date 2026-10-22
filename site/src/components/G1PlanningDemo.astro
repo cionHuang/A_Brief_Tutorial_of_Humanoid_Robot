@@ -1,0 +1,55 @@
+---
+interface Props {kind:'reach'|'mpc'}
+const {kind}=Astro.props;
+const urdf=import.meta.env.BASE_URL.replace(/\/?$/,'/')+'models/g1/g1_29dof.urdf';
+---
+<figure class="planning-demo" id={`g1-planning-${kind}`} data-planning={kind} data-urdf={urdf}>
+ <strong>{kind==='reach'?'同一个目标，手会怎样过去？':'看前面一段，只执行眼前一小段'}</strong>
+ <p class="story" data-story aria-live="polite">{kind==='reach'?'先安排关节转动，观察手留下的路线。':'从当前手部状态预测接下来一段运动，再执行最前面一小段。'}</p>
+ <div class="viewport" data-view role="img" aria-label={kind==='reach'?'G1 左臂关节插值与末端直线路径对照':'G1 手臂滚动规划：未来计划、短段执行与偏差后更新'}><span data-loading>正在加载 G1…</span></div>
+ <div class="legend"><span>紫色虚线：{kind==='reach'?'手部路径':'本轮未来计划'}</span><span>绿色：{kind==='reach'?'已经走过':'本轮已执行'}</span><span>金色：{kind==='reach'?'肩、肘、腕与目标':'本轮执行终点'}</span></div>
+ {kind==='mpc'&&<div class="cycle"><span data-stage="0">① 读取状态</span><span data-stage="1">② 预测一段</span><span data-stage="2">③ 执行一小段</span><span data-stage="3">④ 再次更新</span></div>}
+ <div class="controls">
+  <button type="button" data-play disabled>播放</button>
+  {kind==='reach'&&<button type="button" data-mode disabled>改看手走直线</button>}
+  <button type="button" data-reset disabled>重播</button>
+ </div>
+ <figcaption>{kind==='reach'?'G1 固定躯干的左臂运动。此处比较手部位置路径，手掌朝向随关节运动变化；金色标记帮助观察整条手臂的配合。':'中途给手部加入一次轻微扰动，观察后续计划怎样更新。这里用手的运动进度、竖直偏移和速度建立简化模型，以接近目标和平稳运动为优化目标；实际规划还需考虑碰撞、力矩和接触约束。'}</figcaption>
+</figure>
+<script>
+ import {createG1PlanningView} from '../lib/g1-planning-view.js';
+ import {createVisibleRaf} from '../lib/visible-raf.js';
+ document.querySelectorAll<HTMLElement>('[data-planning]').forEach(root=>{
+  const $=(s:string)=>root.querySelector<HTMLElement>(s)!;
+  const kind=root.dataset.planning!,reduced=matchMedia('(prefers-reduced-motion: reduce)');
+  let view:any,time=0,last=0,playing=false,mode='joint',disposed=false,loading=false;
+  function paint(){
+   view?.render({time,mode});
+   $('[data-play]').textContent=reduced.matches?'下一步':playing?'暂停':time>=view?.duration?'再看一遍':time>0?'继续':'播放';
+   if(kind==='reach'){
+    $('[data-story]').textContent=mode==='joint'?'直接安排肩、肘、腕的关节角，手沿紫色弧线接近目标。':'先指定手走直线，再连续求出各关节的配合姿势。留意肘部怎样移动。';
+    $('[data-mode]').textContent=mode==='joint'?'改看手走直线':'改看关节转动';
+   }else{
+    const k=Math.floor(time/.7),phase=Math.min(3,Math.floor((time/.7-k)*4));
+    $('[data-story]').textContent=time>=view?.duration?'手已接近目标。每一轮都从更新后的状态出发。':k<5?'紫色虚线是本轮预测，金色点标出这一轮先执行到哪里。':k<8?'手部出现轻微速度偏差。计划根据新的位置与速度更新。':'执行一小段后再次读取状态，逐步修正偏差并接近目标。';
+    root.querySelectorAll<HTMLElement>('[data-stage]').forEach((el,i)=>el.dataset.active=String(i===phase));
+   }
+  }
+  const loop=createVisibleRaf(root,{rootMargin:'200px',onEnter:()=>{last=0;init();}});
+  async function init(){if(loading||view||disposed)return;loading=true;try{
+   const v=await createG1PlanningView($('[data-view]'),{urdfUrl:root.dataset.urdf,kind});if(disposed){v.dispose();return;}view=v;$('[data-loading]').remove();root.querySelectorAll<HTMLButtonElement>('button').forEach(b=>b.disabled=false);paint();
+  }catch(error){console.error('G1 planning demo',error);$('[data-loading]').textContent='G1 加载失败，请刷新重试';}}
+  loop.onFrame(now=>{if(!view)return false;if(last)time=Math.min(view.duration,time+Math.min(.05,(now-last)/1000));last=now;if(time>=view.duration)playing=false;paint();return playing;});
+  $('[data-play]').addEventListener('click',()=>{if(reduced.matches){time=time>=view.duration?0:Math.min(view.duration,time+(kind==='reach'?1.25:.7));paint();return;}if(time>=view.duration)time=0;playing=!playing;last=0;paint();if(playing)loop.start();else loop.stop();});
+  const restart=()=>{time=0;last=0;playing=!reduced.matches;paint();if(playing)loop.start();else loop.stop();};
+  $('[data-reset]').addEventListener('click',restart);
+  if(kind==='reach')$('[data-mode]').addEventListener('click',()=>{mode=mode==='joint'?'cartesian':'joint';restart();});
+  const visibility=()=>{last=0;};document.addEventListener('visibilitychange',visibility);
+  const motion=()=>{playing=false;loop.stop();paint();};reduced.addEventListener('change',motion);
+  const cleanup=()=>{disposed=true;loop.dispose();view?.dispose();document.removeEventListener('visibilitychange',visibility);reduced.removeEventListener('change',motion);};
+  document.addEventListener('astro:before-swap',cleanup,{once:true});
+ });
+</script>
+<style>
+.planning-demo{border:1px solid var(--sl-color-gray-4);border-radius:12px;padding:1rem;margin:1.5rem 0;scroll-margin-top:7rem}.planning-demo :is(div,span,strong,button){margin-block-start:0}.story{font-size:.95rem;min-height:3.4em;line-height:1.7}.viewport{height:360px;position:relative;overflow:hidden;border-radius:8px;background:var(--sl-color-gray-6)}.viewport [data-loading]{position:absolute;top:45%;left:0;right:0;text-align:center}.viewport :global(.gp-label){position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font-size:12px;padding:3px 6px;border-radius:4px;background:var(--sl-color-bg);color:var(--sl-color-text);pointer-events:none}.legend,.controls,.cycle{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.8rem!important}.legend{font-size:.8rem}.legend span:nth-child(1){color:var(--sl-color-text-accent)}.controls button{font:inherit;font-size:.9rem;min-height:44px;padding:.45rem .85rem;border:1px solid var(--sl-color-gray-4);border-radius:7px;background:var(--sl-color-bg);color:var(--sl-color-text);cursor:pointer}.controls button:disabled{opacity:.5;cursor:wait}.controls button:focus-visible{outline:2px solid var(--sl-color-text-accent);outline-offset:3px}.cycle{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}.cycle span{font-size:.8rem;border-radius:5px;padding:.35rem .5rem;background:var(--sl-color-gray-6)}.cycle [data-active=true]{box-shadow:inset 0 -3px #8670d8}figcaption{font-size:.8rem;line-height:1.7;color:var(--sl-color-gray-2);margin-top:1rem}@media(max-width:600px){.planning-demo{padding:.75rem}.viewport{height:300px}.cycle{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>

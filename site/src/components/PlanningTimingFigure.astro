@@ -1,0 +1,20 @@
+---
+import {timing} from '../lib/planning-lessons.js';
+const dots=Array.from({length:13},(_,i)=>({x:35+290*timing(i/12),color:i<3?'#5589c5':i<9?'#269b86':'#c68a31'}));
+---
+<figure class="timing" id="planning-path-time">
+ <strong>同一条路径，给它安排加速与减速</strong>
+ <svg viewBox="0 0 360 300" role="img" aria-label="上方是加速、匀速、减速的梯形速度曲线，下方是每隔相同时间记录的手部位置：两端密，中间疏">
+  <text x="24" y="28">速度</text><path d="M35 43V164H334" class="axis"/><text x="300" y="188">时间</text>
+  <path d="M35 164L107.5 64H252.5L325 164" fill="none" stroke="#7b68ce" stroke-width="3"/>
+  <text x="60" y="130" fill="#5589c5">加速</text><text x="164" y="54" fill="#269b86">匀速</text><text x="278" y="130" fill="#c68a31">减速</text>
+  <text x="24" y="220">每隔相同时间，记录一次手的位置</text>
+  <path d="M35 249H325" class="axis"/>
+  {dots.map(d=><circle cx={d.x} cy="249" r="2.5" fill={d.color}/>)}
+  <text x="35" y="280">起点</text><text x="178" y="280" text-anchor="middle">间距越大，运动越快</text><text x="325" y="280" text-anchor="end">终点</text>
+ </svg>
+ <figcaption>上方曲线决定运动节奏，下方圆点位于同一条直线路径上。加速时点间距逐渐增大，匀速时保持一致，减速时逐渐缩小。</figcaption>
+</figure>
+<style>
+.timing{border:1px solid var(--sl-color-gray-4);border-radius:12px;padding:1rem;margin:1.5rem 0;scroll-margin-top:7rem}.timing svg{display:block;width:100%;max-width:520px;margin:1rem auto}.timing text{font:16px system-ui;fill:var(--sl-color-text)}.axis{stroke:var(--sl-color-gray-3);stroke-width:1.3;fill:none}.timing figcaption{font-size:.8rem;color:var(--sl-color-gray-2);line-height:1.7}
+</style>
