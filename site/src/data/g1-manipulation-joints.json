@@ -1,0 +1,658 @@
+{
+  "left": [
+    {
+      "name": "left_shoulder_pitch_joint",
+      "parent": "torso_link",
+      "child": "left_shoulder_pitch_link",
+      "xyz": [
+        0.0039563,
+        0.10022,
+        0.23778
+      ],
+      "rpy": [
+        0.27931,
+        5.4949e-05,
+        -0.00019159
+      ],
+      "axis": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "lo": -3.0892,
+      "hi": 2.6704
+    },
+    {
+      "name": "left_shoulder_roll_joint",
+      "parent": "left_shoulder_pitch_link",
+      "child": "left_shoulder_roll_link",
+      "xyz": [
+        0.0,
+        0.038,
+        -0.013831
+      ],
+      "rpy": [
+        -0.27925,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "lo": -1.5882,
+      "hi": 2.2515
+    },
+    {
+      "name": "left_shoulder_yaw_joint",
+      "parent": "left_shoulder_roll_link",
+      "child": "left_shoulder_yaw_link",
+      "xyz": [
+        0.0,
+        0.00624,
+        -0.1032
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lo": -2.618,
+      "hi": 2.618
+    },
+    {
+      "name": "left_elbow_joint",
+      "parent": "left_shoulder_yaw_link",
+      "child": "left_elbow_link",
+      "xyz": [
+        0.015783,
+        0.0,
+        -0.080518
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "lo": -1.0472,
+      "hi": 2.0944
+    },
+    {
+      "name": "left_wrist_roll_joint",
+      "parent": "left_elbow_link",
+      "child": "left_wrist_roll_link",
+      "xyz": [
+        0.1,
+        0.00188791,
+        -0.01
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "lo": -1.972222054,
+      "hi": 1.972222054
+    },
+    {
+      "name": "left_wrist_pitch_joint",
+      "parent": "left_wrist_roll_link",
+      "child": "left_wrist_pitch_link",
+      "xyz": [
+        0.038,
+        0.0,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "lo": -1.614429558,
+      "hi": 1.614429558
+    },
+    {
+      "name": "left_wrist_yaw_joint",
+      "parent": "left_wrist_pitch_link",
+      "child": "left_wrist_yaw_link",
+      "xyz": [
+        0.046,
+        0.0,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lo": -1.614429558,
+      "hi": 1.614429558
+    },
+    {
+      "name": "left_hand_palm_joint",
+      "parent": "left_wrist_yaw_link",
+      "child": "left_hand_palm_link",
+      "xyz": [
+        0.0415,
+        0.003,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": null,
+      "lo": 0,
+      "hi": 0
+    },
+    {
+      "name": "left_hand_thumb_0_joint",
+      "parent": "left_hand_palm_link",
+      "child": "left_hand_thumb_0_link",
+      "xyz": [
+        0.0255,
+        0.0,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "lo": -1.04719755,
+      "hi": 1.04719755
+    },
+    {
+      "name": "left_hand_thumb_1_joint",
+      "parent": "left_hand_thumb_0_link",
+      "child": "left_hand_thumb_1_link",
+      "xyz": [
+        -0.0025,
+        -0.0193,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lo": -0.72431163,
+      "hi": 1.04719755
+    },
+    {
+      "name": "left_hand_thumb_2_joint",
+      "parent": "left_hand_thumb_1_link",
+      "child": "left_hand_thumb_2_link",
+      "xyz": [
+        0.0,
+        -0.0458,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lo": 0.0,
+      "hi": 1.74532925
+    },
+    {
+      "name": "left_hand_middle_0_joint",
+      "parent": "left_hand_palm_link",
+      "child": "left_hand_middle_0_link",
+      "xyz": [
+        0.0777,
+        0.0016,
+        -0.0285
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lo": -1.57079632,
+      "hi": 0.0
+    },
+    {
+      "name": "left_hand_middle_1_joint",
+      "parent": "left_hand_middle_0_link",
+      "child": "left_hand_middle_1_link",
+      "xyz": [
+        0.0458,
+        0.0,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lo": -1.74532925,
+      "hi": 0.0
+    },
+    {
+      "name": "left_hand_index_0_joint",
+      "parent": "left_hand_palm_link",
+      "child": "left_hand_index_0_link",
+      "xyz": [
+        0.0777,
+        0.0016,
+        0.0285
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lo": -1.57079632,
+      "hi": 0.0
+    },
+    {
+      "name": "left_hand_index_1_joint",
+      "parent": "left_hand_index_0_link",
+      "child": "left_hand_index_1_link",
+      "xyz": [
+        0.0458,
+        0.0,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lo": -1.74532925,
+      "hi": 0.0
+    }
+  ],
+  "right": [
+    {
+      "name": "right_shoulder_pitch_joint",
+      "parent": "torso_link",
+      "child": "right_shoulder_pitch_link",
+      "xyz": [
+        0.0039563,
+        -0.10021,
+        0.23778
+      ],
+      "rpy": [
+        -0.27931,
+        5.4949e-05,
+        0.00019159
+      ],
+      "axis": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "lo": -3.0892,
+      "hi": 2.6704
+    },
+    {
+      "name": "right_shoulder_roll_joint",
+      "parent": "right_shoulder_pitch_link",
+      "child": "right_shoulder_roll_link",
+      "xyz": [
+        0.0,
+        -0.038,
+        -0.013831
+      ],
+      "rpy": [
+        0.27925,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "lo": -2.2515,
+      "hi": 1.5882
+    },
+    {
+      "name": "right_shoulder_yaw_joint",
+      "parent": "right_shoulder_roll_link",
+      "child": "right_shoulder_yaw_link",
+      "xyz": [
+        0.0,
+        -0.00624,
+        -0.1032
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lo": -2.618,
+      "hi": 2.618
+    },
+    {
+      "name": "right_elbow_joint",
+      "parent": "right_shoulder_yaw_link",
+      "child": "right_elbow_link",
+      "xyz": [
+        0.015783,
+        0.0,
+        -0.080518
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "lo": -1.0472,
+      "hi": 2.0944
+    },
+    {
+      "name": "right_wrist_roll_joint",
+      "parent": "right_elbow_link",
+      "child": "right_wrist_roll_link",
+      "xyz": [
+        0.1,
+        -0.00188791,
+        -0.01
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "lo": -1.972222054,
+      "hi": 1.972222054
+    },
+    {
+      "name": "right_wrist_pitch_joint",
+      "parent": "right_wrist_roll_link",
+      "child": "right_wrist_pitch_link",
+      "xyz": [
+        0.038,
+        0.0,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "lo": -1.614429558,
+      "hi": 1.614429558
+    },
+    {
+      "name": "right_wrist_yaw_joint",
+      "parent": "right_wrist_pitch_link",
+      "child": "right_wrist_yaw_link",
+      "xyz": [
+        0.046,
+        0.0,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lo": -1.614429558,
+      "hi": 1.614429558
+    },
+    {
+      "name": "right_hand_palm_joint",
+      "parent": "right_wrist_yaw_link",
+      "child": "right_hand_palm_link",
+      "xyz": [
+        0.0415,
+        -0.003,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": null,
+      "lo": 0,
+      "hi": 0
+    },
+    {
+      "name": "right_hand_thumb_0_joint",
+      "parent": "right_hand_palm_link",
+      "child": "right_hand_thumb_0_link",
+      "xyz": [
+        0.0255,
+        0.0,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "lo": -1.04719755,
+      "hi": 1.04719755
+    },
+    {
+      "name": "right_hand_thumb_1_joint",
+      "parent": "right_hand_thumb_0_link",
+      "child": "right_hand_thumb_1_link",
+      "xyz": [
+        -0.0025,
+        0.0193,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lo": -1.04719755,
+      "hi": 0.72431163
+    },
+    {
+      "name": "right_hand_thumb_2_joint",
+      "parent": "right_hand_thumb_1_link",
+      "child": "right_hand_thumb_2_link",
+      "xyz": [
+        0.0,
+        0.0458,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lo": -1.74532925,
+      "hi": 0.0
+    },
+    {
+      "name": "right_hand_middle_0_joint",
+      "parent": "right_hand_palm_link",
+      "child": "right_hand_middle_0_link",
+      "xyz": [
+        0.0777,
+        -0.0016,
+        -0.0285
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lo": 0.0,
+      "hi": 1.57079632
+    },
+    {
+      "name": "right_hand_middle_1_joint",
+      "parent": "right_hand_middle_0_link",
+      "child": "right_hand_middle_1_link",
+      "xyz": [
+        0.0458,
+        0.0,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lo": 0.0,
+      "hi": 1.74532925
+    },
+    {
+      "name": "right_hand_index_0_joint",
+      "parent": "right_hand_palm_link",
+      "child": "right_hand_index_0_link",
+      "xyz": [
+        0.0777,
+        -0.0016,
+        0.0285
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lo": 0.0,
+      "hi": 1.57079632
+    },
+    {
+      "name": "right_hand_index_1_joint",
+      "parent": "right_hand_index_0_link",
+      "child": "right_hand_index_1_link",
+      "xyz": [
+        0.0458,
+        0.0,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lo": 0.0,
+      "hi": 1.74532925
+    }
+  ]
+}

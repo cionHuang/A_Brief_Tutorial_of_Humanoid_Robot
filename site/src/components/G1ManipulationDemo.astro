@@ -1,0 +1,52 @@
+---
+interface Props {kind:'grasp'|'bimanual'}
+const {kind}=Astro.props;
+const grasp=kind==='grasp';
+const urdf=import.meta.env.BASE_URL.replace(/\/?$/,'/')+'models/g1/g1_29dof_with_hand.urdf';
+---
+<figure class="manipulation" id={`g1-${kind}-demo`} data-manipulation={kind} data-urdf={urdf}>
+ <strong>{grasp?'碰到以后，怎样把方块拿起来？':'箱子转动，两只手怎样一起配合？'}</strong>
+ <p class="story" data-story aria-live="polite">{grasp?'同一个方块、相同摩擦条件，依次比较较松与足够的夹持力。':'先确定箱子的运动，再让两条手臂跟随各自的抓取位置。'}</p>
+ <div class="scene" data-scene role="img" aria-label={grasp?'G1 三指手近景：接近、合拢、夹持与抬起小方块':'带三指手的 G1 双臂握住箱子两侧把手，随箱子平移和转动'}><span class="loading" data-loading>正在加载 G1…</span></div>
+ <div class="legend">{grasp?<><span class="gold">金色：向内夹持</span><span class="green">绿色：向上摩擦力</span><span>灰色：重力</span></>:<><span class="blue">蓝色：左手抓取点</span><span class="purple">紫色：右手抓取点</span><span>虚线：抓取点走过的路线</span></>}</div>
+ <ol class="steps" aria-label="演示步骤">{(grasp?['接近方块','合拢接触','抬起对照','放回松手']:['保持抓取','一起平移','随箱转动','观察路线']).map((text,i)=><li data-step={i}>{i+1}. {text}</li>)}</ol>
+ <div class="actions"><button type="button" data-play disabled>播放</button><button type="button" data-replay disabled>重播</button><span class="case" data-case>{grasp?'第一遍：夹持较松':'共同目标：箱子的运动'}</span></div>
+ <figcaption>{grasp?'使用本书 G1 三指手模型，按预设关节动作展示接近与夹持。受力对照采用简化的竖直摩擦模型，方块质量与摩擦条件固定；箭头表示教学设定的合力，起始时方块由台面支撑。':'使用本书 G1 带手模型，躯干固定。两只手在箱子把手上的抓取位姿保持不变，双臂通过逆运动学跟随；本展示说明运动配合，载荷分配由正文继续介绍。'}</figcaption>
+</figure>
+<script>
+ import {createVisibleRaf} from '../lib/visible-raf.js';
+ document.querySelectorAll<HTMLElement>('[data-manipulation]').forEach(root=>{
+  const $=(s:string)=>root.querySelector<HTMLElement>(s)!;
+  const grasp=root.dataset.manipulation==='grasp',reduced=matchMedia('(prefers-reduced-motion: reduce)');
+  let view:any,time=0,last=0,playing=false,loading=false,disposed=false;
+  function paint(){
+   view?.render(time);
+   $('[data-play]').textContent=reduced.matches?'下一步':playing?'暂停':time>=view?.duration?'再看一遍':time>0?'继续':'播放';
+   let phase=0,story='';
+   if(grasp){
+    const strong=time>=9,u=strong?time-9:time;phase=u<1.5?0:u<3?1:u<5?2:3;
+    $('[data-case]').textContent=time>=18?'两次对照完成':strong?'第二遍：足够的夹持力':'第一遍：夹持较松';
+    story=phase===0?'张开手指，从侧面接近同一个方块。':phase===1?'手指合拢，在方块两侧建立接触。':phase===2?(strong?'向上的摩擦力足以承担重量，方块随手平稳抬起。':'夹持较松，向上的摩擦力不足。手抬起，方块沿指垫下滑并留在台面。'):u<6?(strong?'方块保持在手中：手指向内夹持，摩擦力向上托住重量。':'方块仍由台面支撑。这一遍的夹持力不足以把它拿起。'):time>=18?'两遍使用相同物体与摩擦条件，改变的是接触后的夹持力。':'手下降回到台面，方块获得支撑后再张开手指。';
+   }else{
+    phase=time<1?0:time<5?1:time<9?2:3;
+    story=['两只手握住箱子两侧的把手，标出各自的抓取点。','箱子平稳上移，两条手臂共同跟随。','箱子转动时，两只手走出不同的路线；各自相对箱子的位置与朝向保持一致。','观察两条虚线：共同跟随一个箱子，可以对应两条不同的手部路线。'][phase];
+   }
+   $('[data-story]').textContent=story;
+   root.querySelectorAll<HTMLElement>('[data-step]').forEach((e,i)=>e.dataset.active=String(i===phase));
+  }
+  async function init(){if(loading||view||disposed)return;loading=true;try{
+   const {createManipulationView}=await import('../lib/g1-manipulation-view.js');
+   const v=await createManipulationView($('[data-scene]'),{urdfUrl:root.dataset.urdf,kind:root.dataset.manipulation});if(disposed){v.dispose();return;}view=v;$('[data-loading]').remove();root.querySelectorAll<HTMLButtonElement>('button').forEach(b=>b.disabled=false);paint();
+  }catch(e){console.error('G1 manipulation demo',e);if(!disposed)$('[data-loading]').textContent='模型加载失败，请刷新重试';}}
+  const loop=createVisibleRaf(root,{rootMargin:'180px',onEnter:()=>{last=0;init();}});
+  loop.onFrame(now=>{if(!view||!playing)return false;if(last)time=Math.min(view.duration,time+Math.min(.05,(now-last)/1000));last=now;if(time>=view.duration)playing=false;paint();return playing;});
+  $('[data-play]').addEventListener('click',()=>{if(!view)return;if(reduced.matches){time=time>=view.duration?0:Math.min(view.duration,time+1.5);paint();return;}if(time>=view.duration)time=0;playing=!playing;last=0;paint();if(playing)loop.start();else loop.stop();});
+  $('[data-replay]').addEventListener('click',()=>{if(!view)return;time=0;last=0;playing=!reduced.matches;paint();if(playing)loop.start();else loop.stop();});
+  const visibility=()=>{last=0;};document.addEventListener('visibilitychange',visibility);
+  const motion=()=>{playing=false;last=0;loop.stop();paint();};reduced.addEventListener('change',motion);
+  document.addEventListener('astro:before-swap',()=>{disposed=true;loop.dispose();view?.dispose();document.removeEventListener('visibilitychange',visibility);reduced.removeEventListener('change',motion);},{once:true});
+ });
+</script>
+<style>
+.manipulation{margin:1.5rem 0;padding:1rem;border:1px solid var(--sl-color-gray-4);border-radius:12px;scroll-margin-top:7rem}.manipulation :is(div,span,li,ol,button){margin-block-start:0}.story{font-size:.95rem;min-height:3.4em;line-height:1.7}.scene{height:360px;position:relative;overflow:hidden;border-radius:8px;background:var(--sl-color-gray-6)}.loading{position:absolute;top:45%;left:0;right:0;text-align:center}.scene :global(.gm-label){position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font-size:12px;padding:3px 6px;border-radius:4px;background:var(--sl-color-bg);color:var(--sl-color-text);pointer-events:none}.legend,.actions{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.8rem!important}.legend,.case{font-size:.8rem}.gold{color:light-dark(#93600e,#e7b955)}.green{color:light-dark(#157b68,#72d4bb)}.blue{color:light-dark(#2575a8,#78bde8)}.purple{color:light-dark(#8151a9,#c89fe8)}.actions{align-items:center}.actions button{font:inherit;font-size:.9rem;min-height:44px;padding:.45rem .85rem;border:1px solid var(--sl-color-gray-4);border-radius:7px;background:var(--sl-color-bg);color:var(--sl-color-text);cursor:pointer}.actions button:disabled{opacity:.5;cursor:wait}.actions button:focus-visible{outline:2px solid var(--sl-color-text-accent);outline-offset:3px}.steps{list-style:none;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;margin-top:.8rem!important}.steps li{font-size:.8rem;padding:.4rem;border-radius:5px;background:var(--sl-color-gray-6)}.steps [data-active=true]{box-shadow:inset 0 -3px #8d71bf}figcaption{font-size:.8rem;line-height:1.7;color:var(--sl-color-gray-2);margin-top:1rem}@media(max-width:600px){.manipulation{padding:.75rem}.scene{height:300px}.steps{grid-template-columns:repeat(2,minmax(0,1fr))}.story{min-height:5.1em}}
+</style>

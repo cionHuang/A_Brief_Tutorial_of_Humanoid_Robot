@@ -12,7 +12,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const robotAssetsRoot = path.resolve(siteRoot, '..', 'robot_descriptions', 'g1');
 const publicAssetsRoot = path.join(siteRoot, 'public', 'models', 'g1');
-const urdfNames = ['g1_29dof.urdf', 'g1_29dof_lock_waist.urdf'];
+const urdfNames = ['g1_29dof.urdf', 'g1_29dof_lock_waist.urdf', 'g1_29dof_with_hand.urdf'];
 // 2.1 节并联踝演示使用的第三方简化踝网格（来源见 third_party/parallel_ankle_g1/SOURCE.md）
 const ankleAssetsRoot = path.resolve(siteRoot, '..', 'third_party', 'parallel_ankle_g1', 'meshes');
 const publicAnkleRoot = path.join(siteRoot, 'public', 'models', 'ankle-g1-simplified');
